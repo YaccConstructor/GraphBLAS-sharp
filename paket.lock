@@ -1,2 +1,17 @@
 STORAGE: NONE
 RESTRICTION: || (== netcoreapp3.1) (== netstandard2.0) (== netstandard2.1)
+NUGET
+  remote: https://api.nuget.org/v3/index.json
+    Brahma.FSharp (1.1.5)
+      FSharp.Quotations.Evaluator
+      FSharpx.Collections (>= 1.15)
+      OpenCL.NET (2.2.9)
+      YC.PrettyPrinter (>= 0.0.5)
+    FSharp.Core (4.7.2)
+    FSharp.Quotations.Evaluator (2.1)
+      FSharp.Core (>= 4.3.1)
+    FSharpx.Collections (2.1.3)
+      FSharp.Core (>= 4.3.4)
+    OpenCL.NET (2.2.9)
+    YC.PrettyPrinter (0.0.5)
+      FSharp.Core
