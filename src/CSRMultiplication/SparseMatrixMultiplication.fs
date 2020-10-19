@@ -184,7 +184,7 @@ module SparseMatrixMultiplication =
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
-        let ndRange = _2D(rightMatrixRowCount, leftMatrixRowCount, 2, 2)
+        let ndRange = _2D(rightMatrixRowCount, leftMatrixRowCount)
         kernelPrepare 
             ndRange 
             resultMatrix 
