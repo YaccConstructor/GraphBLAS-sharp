@@ -146,3 +146,57 @@ module SparseMatrixMultiplication =
 
         (fun i j -> resultMatrix.[i * cscMatrixColumnCount + j])
         |> Array2D.init csrMatrixRowCount cscMatrixColumnCount
+
+    let multiplySpMSpM2 
+        (provider: ComputeProvider) 
+        (commandQueue: CommandQueue) 
+        (csrMatrixRight: CSRMatrix.CSRMatrix) 
+        (csrMatrixLeft: CSRMatrix.CSRMatrix) = 
+
+        let leftMatrixRowCount = csrMatrixLeft |> CSRMatrix.rowCount
+        let leftMatrixColumnCount = csrMatrixLeft |> CSRMatrix.columnCount
+        let rightMatrixRowCount = csrMatrixRight |> CSRMatrix.rowCount
+        let rightMatrixColumnCount = csrMatrixRight |> CSRMatrix.columnCount
+        if leftMatrixColumnCount <> rightMatrixRowCount then  failwith "fail"
+
+        let resultMatrix = Array.zeroCreate<float> (leftMatrixRowCount * rightMatrixColumnCount)
+        let command = 
+            <@
+                fun (ndRange: _1D)
+                    (resultBuffer: float[]) 
+                    (leftCsrValuesBuffer: float[]) 
+                    (leftCsrColumnsBuffer: int[]) 
+                    (leftCsrRowPointersBuffer: int[]) 
+                    (rightCsrValuesBuffer: float[]) 
+                    (rightCsrColumnsBuffer: int[]) 
+                    (rightCsrRowPointersBuffer: int[])  ->
+
+                    let i = ndRange.GlobalID0
+                    for j in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
+                        let col = rightCsrColumnsBuffer.[j]
+                        let value = rightCsrValuesBuffer.[j]
+                        // тоже распараллелить
+                        for k in 0 .. leftMatrixRowCount - 1 do 
+                            let mutable m = leftCsrRowPointersBuffer.[k]
+                            while (m < leftCsrRowPointersBuffer.[k + 1] && leftCsrColumnsBuffer.[m] <= col) do
+                                if leftCsrColumnsBuffer.[m] = col then 
+                                    resultBuffer.[k * rightMatrixColumnCount + col] <- value * leftCsrValuesBuffer.[m]
+                                m <- m + 1
+            @>
+
+        let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
+        let ndRange = _1D(rightMatrixRowCount)
+        kernelPrepare 
+            ndRange 
+            resultMatrix 
+            csrMatrixLeft.GetValues 
+            csrMatrixLeft.GetColumns 
+            csrMatrixLeft.GetRowPointers 
+            csrMatrixRight.GetValues 
+            csrMatrixRight.GetColumns
+            csrMatrixRight.GetRowPointers
+        commandQueue.Add(kernelRun()).Finish() |> ignore
+        commandQueue.Add(resultMatrix.ToHost provider).Finish() |> ignore
+
+        (fun i j -> resultMatrix.[i * rightMatrixColumnCount + j])
+        |> Array2D.init leftMatrixRowCount rightMatrixColumnCount
