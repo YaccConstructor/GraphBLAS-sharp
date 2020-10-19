@@ -173,15 +173,15 @@ module SparseMatrixMultiplication =
 
                     let i = ndRange.GlobalID0
                     for j in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
-                        let col = rightCsrColumnsBuffer.[j]
-                        let value = rightCsrValuesBuffer.[j]
                         // тоже распараллелить
                         for k in 0 .. leftMatrixRowCount - 1 do 
-                            let mutable m = leftCsrRowPointersBuffer.[k]
-                            while (m < leftCsrRowPointersBuffer.[k + 1] && leftCsrColumnsBuffer.[m] <= col) do
-                                if leftCsrColumnsBuffer.[m] = col then 
-                                    resultBuffer.[k * rightMatrixColumnCount + col] <- value * leftCsrValuesBuffer.[m]
-                                m <- m + 1
+                            let mutable pointer = leftCsrRowPointersBuffer.[k]
+                            while (pointer < leftCsrRowPointersBuffer.[k + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
+                                if leftCsrColumnsBuffer.[pointer] = i then 
+                                    resultBuffer.[k * rightMatrixColumnCount + rightCsrColumnsBuffer.[j]] <- 
+                                        resultBuffer.[k * rightMatrixColumnCount + rightCsrColumnsBuffer.[j]] + 
+                                        rightCsrValuesBuffer.[j] * leftCsrValuesBuffer.[pointer]
+                                pointer <- pointer + 1
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
