@@ -162,7 +162,7 @@ module SparseMatrixMultiplication =
         let resultMatrix = Array.zeroCreate<float> (leftMatrixRowCount * rightMatrixColumnCount)
         let command = 
             <@
-                fun (ndRange: _1D)
+                fun (ndRange: _2D)
                     (resultBuffer: float[]) 
                     (leftCsrValuesBuffer: float[]) 
                     (leftCsrColumnsBuffer: int[]) 
@@ -172,20 +172,19 @@ module SparseMatrixMultiplication =
                     (rightCsrRowPointersBuffer: int[])  ->
 
                     let i = ndRange.GlobalID0
-                    for j in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
-                        // тоже распараллелить
-                        for k in 0 .. leftMatrixRowCount - 1 do 
-                            let mutable pointer = leftCsrRowPointersBuffer.[k]
-                            while (pointer < leftCsrRowPointersBuffer.[k + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
-                                if leftCsrColumnsBuffer.[pointer] = i then 
-                                    resultBuffer.[k * rightMatrixColumnCount + rightCsrColumnsBuffer.[j]] <- 
-                                        resultBuffer.[k * rightMatrixColumnCount + rightCsrColumnsBuffer.[j]] + 
-                                        rightCsrValuesBuffer.[j] * leftCsrValuesBuffer.[pointer]
-                                pointer <- pointer + 1
+                    for k in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
+                        let j = ndRange.GlobalID1
+                        let mutable pointer = leftCsrRowPointersBuffer.[j]
+                        while (pointer < leftCsrRowPointersBuffer.[j + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
+                            if leftCsrColumnsBuffer.[pointer] = i then 
+                                resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] <- 
+                                    resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] + 
+                                    rightCsrValuesBuffer.[k] * leftCsrValuesBuffer.[pointer]
+                            pointer <- pointer + 1
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
-        let ndRange = _1D(rightMatrixRowCount)
+        let ndRange = _2D(rightMatrixRowCount, leftMatrixRowCount, 2, 2)
         kernelPrepare 
             ndRange 
             resultMatrix 
