@@ -29,7 +29,7 @@ module SparseMatrixMultiplication =
                     let i = ndRange.GlobalID0
                     let mutable localResultBuffer = resultBuffer.[i]
                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        localResultBuffer <- resultBuffer.[i] + 
+                        localResultBuffer <- localResultBuffer + 
                             csrValuesBuffer.[k] * vectorBuffer.[csrColumnsBuffer.[k]]    
                     resultBuffer.[i] <- localResultBuffer   
             @>
@@ -74,8 +74,7 @@ module SparseMatrixMultiplication =
                     let j = ndRange.GlobalID1
                     let mutable localResultBuffer = resultBuffer.[i * denseMatrixColumnCount + j]
                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        localResultBuffer <- 
-                            resultBuffer.[i * denseMatrixColumnCount + j] + 
+                        localResultBuffer <- localResultBuffer + 
                             csrValuesBuffer.[k] * denseMatrixBuffer.[csrColumnsBuffer.[k] * denseMatrixColumnCount + j]
                     resultBuffer.[i * denseMatrixColumnCount + j] <- localResultBuffer       
             @>
@@ -128,8 +127,7 @@ module SparseMatrixMultiplication =
                         if csrColumnsBuffer.[iPointer] < cscRowsBuffer.[jPointer] then iPointer <- iPointer + 1
                         elif csrColumnsBuffer.[iPointer] > cscRowsBuffer.[jPointer] then jPointer <- jPointer + 1
                         else 
-                            localResultBuffer <- 
-                                resultBuffer.[i * cscMatrixColumnCount + j] + 
+                            localResultBuffer <- localResultBuffer +
                                 csrValuesBuffer.[iPointer] * cscValuesBuffer.[jPointer]
                             iPointer <- iPointer + 1
                             jPointer <- jPointer + 1   
@@ -184,8 +182,7 @@ module SparseMatrixMultiplication =
                         let mutable pointer = leftCsrRowPointersBuffer.[j]
                         while (pointer < leftCsrRowPointersBuffer.[j + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
                             if leftCsrColumnsBuffer.[pointer] = i then 
-                                localResultBuffer <- 
-                                    resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] + 
+                                localResultBuffer <- localResultBuffer +
                                     rightCsrValuesBuffer.[k] * leftCsrValuesBuffer.[pointer]
                             pointer <- pointer + 1
                         resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] <- localResultBuffer
