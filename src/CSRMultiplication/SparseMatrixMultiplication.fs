@@ -27,9 +27,11 @@ module SparseMatrixMultiplication =
                     (vectorBuffer: float[]) ->
 
                     let i = ndRange.GlobalID0
+                    let mutable localResultBuffer = resultBuffer.[i]
                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        resultBuffer.[i] <- resultBuffer.[i] + 
-                            csrValuesBuffer.[k] * vectorBuffer.[csrColumnsBuffer.[k]]       
+                        localResultBuffer <- resultBuffer.[i] + 
+                            csrValuesBuffer.[k] * vectorBuffer.[csrColumnsBuffer.[k]]    
+                    resultBuffer.[i] <- localResultBuffer   
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
@@ -70,10 +72,12 @@ module SparseMatrixMultiplication =
 
                     let i = ndRange.GlobalID0
                     let j = ndRange.GlobalID1
+                    let mutable localResultBuffer = resultBuffer.[i * denseMatrixColumnCount + j]
                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        resultBuffer.[i * denseMatrixColumnCount + j] <- 
+                        localResultBuffer <- 
                             resultBuffer.[i * denseMatrixColumnCount + j] + 
-                            csrValuesBuffer.[k] * denseMatrixBuffer.[csrColumnsBuffer.[k] * denseMatrixColumnCount + j]       
+                            csrValuesBuffer.[k] * denseMatrixBuffer.[csrColumnsBuffer.[k] * denseMatrixColumnCount + j]
+                    resultBuffer.[i * denseMatrixColumnCount + j] <- localResultBuffer       
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
@@ -119,15 +123,17 @@ module SparseMatrixMultiplication =
                     let j = ndRange.GlobalID1
                     let mutable iPointer = csrRowPointersBuffer.[i]
                     let mutable jPointer = cscColumnPointersBuffer.[j]
+                    let mutable localResultBuffer = resultBuffer.[i * cscMatrixColumnCount + j]
                     while (iPointer < csrRowPointersBuffer.[i + 1] && jPointer < cscColumnPointersBuffer.[j + 1]) do
                         if csrColumnsBuffer.[iPointer] < cscRowsBuffer.[jPointer] then iPointer <- iPointer + 1
                         elif csrColumnsBuffer.[iPointer] > cscRowsBuffer.[jPointer] then jPointer <- jPointer + 1
                         else 
-                            resultBuffer.[i * cscMatrixColumnCount + j] <- 
+                            localResultBuffer <- 
                                 resultBuffer.[i * cscMatrixColumnCount + j] + 
                                 csrValuesBuffer.[iPointer] * cscValuesBuffer.[jPointer]
                             iPointer <- iPointer + 1
-                            jPointer <- jPointer + 1    
+                            jPointer <- jPointer + 1   
+                    resultBuffer.[i * cscMatrixColumnCount + j] <- localResultBuffer 
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
@@ -172,15 +178,17 @@ module SparseMatrixMultiplication =
                     (rightCsrRowPointersBuffer: int[])  ->
 
                     let i = ndRange.GlobalID0
+                    let j = ndRange.GlobalID1
                     for k in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
-                        let j = ndRange.GlobalID1
+                        let mutable localResultBuffer = resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]]
                         let mutable pointer = leftCsrRowPointersBuffer.[j]
                         while (pointer < leftCsrRowPointersBuffer.[j + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
                             if leftCsrColumnsBuffer.[pointer] = i then 
-                                resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] <- 
+                                localResultBuffer <- 
                                     resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] + 
                                     rightCsrValuesBuffer.[k] * leftCsrValuesBuffer.[pointer]
                             pointer <- pointer + 1
+                        resultBuffer.[j * rightMatrixColumnCount + rightCsrColumnsBuffer.[k]] <- localResultBuffer
             @>
 
         let (kernel, kernelPrepare, kernelRun) = provider.Compile command 
