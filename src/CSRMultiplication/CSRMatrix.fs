@@ -16,13 +16,12 @@ module CSRMatrix =
         let rowsCount = matrix |> Array2D.length1
         let columnsCount = matrix |> Array2D.length2
         
-        let delta = 1e-8
         let convertedMatrix = 
             [for i in 0 .. rowsCount - 1 -> matrix.[i, *] |> List.ofArray]
             |> List.map (fun row -> 
                 row 
                 |> List.mapi (fun i x -> (x, i)) 
-                |> List.filter (fun pair -> fst pair |> abs > delta)
+                |> List.filter (fun pair -> fst pair |> abs > System.Double.Epsilon)
                 )
             |> List.fold (fun (rowPtrs, valueInx) row -> 
                 ((rowPtrs.Head + row.Length) :: rowPtrs), valueInx @ row) ([0], [])

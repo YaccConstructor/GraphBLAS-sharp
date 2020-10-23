@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{49F89BD1-51B
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSRMultiplication", "src\CSRMultiplication\CSRMultiplication.fsproj", "{E89C432E-8F0C-48B1-A259-DB1A06017F73}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B0BB0F64-39EE-4F9D-B510-5802F938F4E7}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "CSRMultiplication.Tests", "tests\CSRMultiplication.Tests\CSRMultiplication.Tests.fsproj", "{69E472E6-C68B-495B-A428-F207D0BCB567}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,8 +36,21 @@ Global
 		{E89C432E-8F0C-48B1-A259-DB1A06017F73}.Release|x64.Build.0 = Release|Any CPU
 		{E89C432E-8F0C-48B1-A259-DB1A06017F73}.Release|x86.ActiveCfg = Release|Any CPU
 		{E89C432E-8F0C-48B1-A259-DB1A06017F73}.Release|x86.Build.0 = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|x64.Build.0 = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Debug|x86.Build.0 = Debug|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|x64.ActiveCfg = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|x64.Build.0 = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|x86.ActiveCfg = Release|Any CPU
+		{69E472E6-C68B-495B-A428-F207D0BCB567}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E89C432E-8F0C-48B1-A259-DB1A06017F73} = {49F89BD1-51BF-41B7-B1AD-A2F01F10D5CF}
+		{69E472E6-C68B-495B-A428-F207D0BCB567} = {B0BB0F64-39EE-4F9D-B510-5802F938F4E7}
 	EndGlobalSection
 EndGlobal
