@@ -20,7 +20,7 @@ module CSRMatrixTests =
             |> Arb.fromGen
 
     [<Property(Arbitrary=[| typeof<FloatMatrix> |])>]
-    let ``Аfter inverse transformation matrix should be original`` (matrix: float[,]) = 
+    let ``Matrix should be original after inverse (toDense) transformation`` (matrix: float[,]) = 
         let makeDenseFromCsr (matrix: CSRMatrix.CSRMatrix) = 
             let rowCount = matrix |> CSRMatrix.rowCount
             let columnCount = matrix |> CSRMatrix.columnCount
