@@ -12,13 +12,11 @@ module CSRMatrixTests =
 
     type FloatMatrix = 
         static member FloatSparseMatrix () =
-            fun size -> 
-                Gen.oneof [
-                    Arb.Default.NormalFloat () |> Arb.toGen |> Gen.map float
-                    Gen.constant 0.
-                ]
-                |> Gen.array2DOf
-            |> Gen.sized
+            Gen.oneof [
+                Arb.Default.NormalFloat () |> Arb.toGen |> Gen.map float
+                Gen.constant 0.
+            ]
+            |> Gen.array2DOf
             |> Arb.fromGen
 
     [<Property(Arbitrary=[| typeof<FloatMatrix> |])>]

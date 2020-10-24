@@ -9,7 +9,6 @@ open OpenCL.Net
 open Brahma.OpenCL
 open SparseMatrixMultiplication
 
-[<Properties(Verbose=true, MaxTest=100, EndSize=900)>]
 module SparseMatrixMultiplicationTests = 
 
     type MatrixMultiplicationPair = 
@@ -64,41 +63,24 @@ module SparseMatrixMultiplicationTests =
             |> Gen.sized
             |> Arb.fromGen
 
-    // type SetupTestFixture() = 
-    //     let provider =
-    //         try ComputeProvider.Create("INTEL*", DeviceType.Cpu)
-    //         with 
-    //         | ex -> failwith ex.Message
-    //     let mutable commandQueue = new CommandQueue(provider, provider.Devices |> Seq.head)
-
-    //     member this.CsrVectorMultiply = multiplySpMV provider commandQueue
-    //     member this.CsrDenseMultiply = multiplySpMM provider commandQueue
-    //     member this.CsrCscMultiply = multiplySpMSpM provider commandQueue
-    //     member this.CsrCsrMultiply = multiplySpMSpM2 provider commandQueue
-
-    //     interface System.IDisposable with
-    //         member this.Dispose () =
-    //             commandQueue.Dispose ()
-    //             provider.CloseAllBuffers ()
-    //             provider.Dispose ()
-
-    let func<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
+    let getFlattenedDiff<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
             let pairMap f (x, y) = f x, f y 
             (result, expected)
             |> pairMap Seq.cast<float>
             ||> Seq.zip
             |> Seq.map (fun (x, y) -> x - y)
 
-    let check<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
-        func result expected
+    let checkEquality<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
+        getFlattenedDiff result expected
         |> Seq.forall (fun diff -> diff < 1e-8)
 
     let getLabel<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
         sprintf "\n Total diff:\n %A\n Result:\n %A\n Expected:\n %A\n" 
-            (func result expected |> Seq.sum)
+            (getFlattenedDiff result expected |> Seq.sum)
             result 
             expected
 
+    [<Properties(Verbose=false, MaxTest=100, EndSize=1600)>]
     type Tests() = 
         let matrixVectorMultiply (vector: float[]) (matrix: float[,]) = 
             let rows = matrix |> Array2D.length1
@@ -139,64 +121,64 @@ module SparseMatrixMultiplicationTests =
         member this.``CSR x Vector multiplication should work correctly on nonempty and nonzero objects`` (matrix: float[,], vector: float[]) =
             let result = CSRMatrix.makeFromDenseMatrix matrix |> csrVectorMultiply vector
             let expected = matrix |> matrixVectorMultiply vector
-            (check result expected) |@ (getLabel result expected)
+            (checkEquality result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "dense")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x Dense multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrDenseMultiply right
             let expected = left |> matrixMatrixMultiply right
-            (check result expected) |@ (getLabel result expected)
+            (checkEquality result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "csc")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x CSC multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrCscMultiply (CSCMatrix.makeFromDenseMatrix right)
             let expected = left |> matrixMatrixMultiply right
-            (check result expected) |@ (getLabel result expected)
+            (checkEquality result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "csr")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x CSR multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrCsrMultiply (CSRMatrix.makeFromDenseMatrix right)
             let expected = left |> matrixMatrixMultiply right
-            (check result expected) |@ (getLabel result expected)
+            (checkEquality result expected) |@ (getLabel result expected)
 
-        // [<Trait("Category", "csr-cpu")>]
-        // [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
-        // member this.``csr cpu`` (left: float[,], right: float[,]) =
-        //     let csrMultAlgo (csrMatrixRight: CSRMatrix.CSRMatrix) (csrMatrixLeft: CSRMatrix.CSRMatrix) = 
-        //         let leftMatrixRowCount = csrMatrixLeft |> CSRMatrix.rowCount
-        //         let leftMatrixColumnCount = csrMatrixLeft |> CSRMatrix.columnCount
-        //         let rightMatrixRowCount = csrMatrixRight |> CSRMatrix.rowCount
-        //         let rightMatrixColumnCount = csrMatrixRight |> CSRMatrix.columnCount
-        //         if leftMatrixColumnCount <> rightMatrixRowCount then  failwith "fail"
+        [<Trait("Category", "csr-cpu")>]
+        [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
+        member this.``CSR x CSR multiplication algo shoud work correctly on cpu`` (left: float[,], right: float[,]) =
+            let csrMultAlgo (csrMatrixRight: CSRMatrix.CSRMatrix) (csrMatrixLeft: CSRMatrix.CSRMatrix) = 
+                let leftMatrixRowCount = csrMatrixLeft |> CSRMatrix.rowCount
+                let leftMatrixColumnCount = csrMatrixLeft |> CSRMatrix.columnCount
+                let rightMatrixRowCount = csrMatrixRight |> CSRMatrix.rowCount
+                let rightMatrixColumnCount = csrMatrixRight |> CSRMatrix.columnCount
+                if leftMatrixColumnCount <> rightMatrixRowCount then  failwith "fail"
 
-        //         let leftCsrValuesBuffer = csrMatrixLeft.GetValues 
-        //         let leftCsrColumnsBuffer = csrMatrixLeft.GetColumns 
-        //         let leftCsrRowPointersBuffer = csrMatrixLeft.GetRowPointers 
-        //         let rightCsrValuesBuffer = csrMatrixRight.GetValues 
-        //         let rightCsrColumnsBuffer = csrMatrixRight.GetColumns
-        //         let rightCsrRowPointersBuffer = csrMatrixRight.GetRowPointers
+                let leftCsrValuesBuffer = csrMatrixLeft.GetValues 
+                let leftCsrColumnsBuffer = csrMatrixLeft.GetColumns 
+                let leftCsrRowPointersBuffer = csrMatrixLeft.GetRowPointers 
+                let rightCsrValuesBuffer = csrMatrixRight.GetValues 
+                let rightCsrColumnsBuffer = csrMatrixRight.GetColumns
+                let rightCsrRowPointersBuffer = csrMatrixRight.GetRowPointers
 
-        //         let resultMatrix = Array2D.zeroCreate<float> leftMatrixRowCount rightMatrixColumnCount
-        //         for i in 0 .. rightMatrixRowCount - 1 do 
-        //             for j in 0 .. leftMatrixRowCount - 1 do
-        //                 for k in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
-        //                     let mutable localResultBuffer = resultMatrix.[j, rightCsrColumnsBuffer.[k]]
-        //                     let mutable pointer = leftCsrRowPointersBuffer.[j]
-        //                     while (pointer < leftCsrRowPointersBuffer.[j + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
-        //                         if leftCsrColumnsBuffer.[pointer] = i then 
-        //                             localResultBuffer <- localResultBuffer +
-        //                                 rightCsrValuesBuffer.[k] * leftCsrValuesBuffer.[pointer]
-        //                         pointer <- pointer + 1
-        //                     resultMatrix.[j, rightCsrColumnsBuffer.[k]] <- localResultBuffer
+                let resultMatrix = Array2D.zeroCreate<float> leftMatrixRowCount rightMatrixColumnCount
+                for i in 0 .. rightMatrixRowCount - 1 do 
+                    for j in 0 .. leftMatrixRowCount - 1 do
+                        for k in rightCsrRowPointersBuffer.[i] .. rightCsrRowPointersBuffer.[i + 1] - 1 do
+                            let mutable localResultBuffer = resultMatrix.[j, rightCsrColumnsBuffer.[k]]
+                            let mutable pointer = leftCsrRowPointersBuffer.[j]
+                            while (pointer < leftCsrRowPointersBuffer.[j + 1] && leftCsrColumnsBuffer.[pointer] <= i) do
+                                if leftCsrColumnsBuffer.[pointer] = i then 
+                                    localResultBuffer <- localResultBuffer +
+                                        rightCsrValuesBuffer.[k] * leftCsrValuesBuffer.[pointer]
+                                pointer <- pointer + 1
+                            resultMatrix.[j, rightCsrColumnsBuffer.[k]] <- localResultBuffer
 
-        //         resultMatrix
+                resultMatrix
 
-        //     let result = CSRMatrix.makeFromDenseMatrix left |> csrMultAlgo (CSRMatrix.makeFromDenseMatrix right)
-        //     let expected = left |> matrixMatrixMultiply right
-        //     result = expected |@ (sprintf "\n %A \n %A \n %A" (result |> Array2D.mapi (fun i j elem -> elem - expected.[i, j])) result expected)
+            let result = CSRMatrix.makeFromDenseMatrix left |> csrMultAlgo (CSRMatrix.makeFromDenseMatrix right)
+            let expected = left |> matrixMatrixMultiply right
+            (checkEquality result expected) |@ (getLabel result expected)
 
         interface System.IDisposable with
             member this.Dispose () =
