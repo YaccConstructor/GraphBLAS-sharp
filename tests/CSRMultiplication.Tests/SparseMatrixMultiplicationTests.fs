@@ -81,6 +81,23 @@ module SparseMatrixMultiplicationTests =
     //             provider.CloseAllBuffers ()
     //             provider.Dispose ()
 
+    let func<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
+            let pairMap f (x, y) = f x, f y 
+            (result, expected)
+            |> pairMap Seq.cast<float>
+            ||> Seq.zip
+            |> Seq.map (fun (x, y) -> x - y)
+
+    let check<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
+        func result expected
+        |> Seq.forall (fun diff -> diff < System.Double.Epsilon)
+
+    let getLabel<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
+        sprintf "\n Total diff: %A\n Result:\n %A\n Expected:\n %A\n" 
+            (func result expected |> Seq.sum)
+            result 
+            expected
+
     type Tests() = 
         let matrixVectorMultiply (vector: float[]) (matrix: float[,]) = 
             let rows = matrix |> Array2D.length1
@@ -121,28 +138,28 @@ module SparseMatrixMultiplicationTests =
         member this.``CSR x Vector multiplication should work correctly on nonempty and nonzero objects`` (matrix: float[,], vector: float[]) =
             let result = CSRMatrix.makeFromDenseMatrix matrix |> csrVectorMultiply vector
             let expected = matrix |> matrixVectorMultiply vector
-            result = expected |@ (sprintf "%A %A \n" result expected)
+            (check result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "dense")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x Dense multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrDenseMultiply right
             let expected = left |> matrixMatrixMultiply right
-            result = expected |@ (sprintf "%A %A \n" result expected)
+            (check result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "csc")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x CSC multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrCscMultiply (CSCMatrix.makeFromDenseMatrix right)
             let expected = left |> matrixMatrixMultiply right
-            result = expected |@ (sprintf "%A %A \n" result expected)
+            (check result expected) |@ (getLabel result expected)
 
         [<Trait("Category", "csr")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x CSR multiplication should work correctly on nonempty and nonzero matrices`` (left: float[,], right: float[,]) =
             let result = CSRMatrix.makeFromDenseMatrix left |> csrCsrMultiply (CSRMatrix.makeFromDenseMatrix right)
             let expected = left |> matrixMatrixMultiply right
-            result = expected |@ (sprintf "\n %A \n %A \n %A" (result |> Array2D.mapi (fun i j elem -> elem - expected.[i, j])) result expected)
+            (check result expected) |@ (getLabel result expected)
 
         // [<Trait("Category", "csr-cpu")>]
         // [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
