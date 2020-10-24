@@ -11,16 +11,18 @@ open CSRMultiplication
 module CSRMatrixTests = 
 
     type FloatMatrix = 
-        static member FloatMatrix () =
+        static member FloatSparseMatrix () =
             fun size -> 
-                Gen.choose (-1000, 1000) 
-                |> Gen.map float
+                Gen.oneof [
+                    Arb.Default.NormalFloat () |> Arb.toGen |> Gen.map float
+                    Gen.constant 0.
+                ]
                 |> Gen.array2DOf
             |> Gen.sized
             |> Arb.fromGen
 
     [<Property(Arbitrary=[| typeof<FloatMatrix> |])>]
-    let ``Matrix should be original after inverse (toDense) transformation`` (matrix: float[,]) = 
+    let ``Matrix should be original after inverse fromCsr transformation`` (matrix: float[,]) = 
         let makeDenseFromCsr (matrix: CSRMatrix.CSRMatrix) = 
             let rowCount = matrix |> CSRMatrix.rowCount
             let columnCount = matrix |> CSRMatrix.columnCount
@@ -32,4 +34,5 @@ module CSRMatrixTests =
                     bufferMatrix.[rowIdx, columnIdx] <- value 
             bufferMatrix
         
-        matrix |> CSRMatrix.makeFromDenseMatrix |> makeDenseFromCsr = matrix
+        let result = matrix |> CSRMatrix.makeFromDenseMatrix |> makeDenseFromCsr
+        result = matrix |@ (sprintf "\n %A \n %A \n" result matrix)

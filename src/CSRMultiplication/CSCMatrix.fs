@@ -13,16 +13,15 @@ module CSCMatrix =
         member this.GetColumnPointers = this.ColumnPointers
 
     let makeFromDenseMatrix (matrix: float[,]) = 
-        let rowsCount = Array2D.length1 matrix
-        let columnsCount = Array2D.length2 matrix
+        let rowsCount = matrix |> Array2D.length1
+        let columnsCount = matrix |> Array2D.length2
         
-        let delta = 1e-8
         let convertedMatrix = 
             [for i in 0 .. columnsCount - 1 -> matrix.[*, i] |> List.ofArray]
             |> List.map (fun column -> 
                 column 
                 |> List.mapi (fun i x -> (x, i)) 
-                |> List.filter (fun pair -> fst pair |> abs > delta)
+                |> List.filter (fun pair -> fst pair |> abs > System.Double.Epsilon)
                 )
             |> List.fold (fun (columnPtrs, valueInx) row -> 
                 ((columnPtrs.Head + row.Length) :: columnPtrs), valueInx @ row) ([0], [])
@@ -34,6 +33,6 @@ module CSCMatrix =
             RowCount = rowsCount
         }     
 
-    let rowCount (matrix: CSCMatrix) = matrix.ColumnPointers.Length - 1
-    let columnCount (matrix: CSCMatrix) = matrix.RowCount
+    let rowCount (matrix: CSCMatrix) = matrix.RowCount
+    let columnCount (matrix: CSCMatrix) = matrix.ColumnPointers.Length - 1
     let nnz (matrix: CSCMatrix) = matrix.ColumnPointers.[^1] 

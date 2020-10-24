@@ -1,13 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <NoWarn>NU1701</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\CSRMultiplication\CSRMultiplication.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSRMatrixTests.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="CSCMatrixTests.fs" />
+    <Compile Include="SparseMatrixMultiplicationTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
