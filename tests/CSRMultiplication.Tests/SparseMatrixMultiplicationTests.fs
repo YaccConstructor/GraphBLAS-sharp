@@ -9,8 +9,9 @@ open OpenCL.Net
 open Brahma.OpenCL
 open SparseMatrixMultiplication
 
-[<Properties(Verbose=true, MaxTest=100, EndSize=16)>]
+[<Properties(Verbose=true, MaxTest=100, EndSize=900)>]
 module SparseMatrixMultiplicationTests = 
+
     type MatrixMultiplicationPair = 
         static member FloatSparseMatricesPair () =
             fun size ->
@@ -90,10 +91,10 @@ module SparseMatrixMultiplicationTests =
 
     let check<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
         func result expected
-        |> Seq.forall (fun diff -> diff < System.Double.Epsilon)
+        |> Seq.forall (fun diff -> diff < 1e-8)
 
     let getLabel<'a when 'a :> System.Collections.IEnumerable> (result: 'a) (expected: 'a) = 
-        sprintf "\n Total diff: %A\n Result:\n %A\n Expected:\n %A\n" 
+        sprintf "\n Total diff:\n %A\n Result:\n %A\n Expected:\n %A\n" 
             (func result expected |> Seq.sum)
             result 
             expected
