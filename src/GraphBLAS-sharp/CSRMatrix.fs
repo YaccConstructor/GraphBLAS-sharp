@@ -35,4 +35,4 @@ module CSRMatrix =
 
     let rowCount (matrix: CSRMatrix) = matrix.RowPointers.Length - 1
     let columnCount (matrix: CSRMatrix) = matrix.ColumnCount
-    let nnz (matrix: CSRMatrix) = matrix.RowPointers.[^1]    
+    let nnz (matrix: CSRMatrix) = matrix.RowPointers.[matrix.RowPointers.Length - 1]    

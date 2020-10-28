@@ -12,13 +12,13 @@ install:
   - ps: appveyor DownloadFile "https://ci.appveyor.com/api/projects/oblomov/clinfo/artifacts/clinfo.exe?job=platform:+x64" -FileName clinfo.exe
   - .\clinfo.exe
 
-before_build:
-  - cmd: dotnet --version
-  - cmd: dotnet tool restore
-  - cmd: dotnet paket restore
+# before_build:
+#   - cmd: dotnet --version
+#   - cmd: dotnet tool restore
+#   - cmd: dotnet paket restore
 
 build_script:
-  - cmd: dotnet build
+  - cmd: build.cmd
 
-test_script:
-  - cmd: dotnet test
+# test_script:
+#   - cmd: dotnet test

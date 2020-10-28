@@ -35,4 +35,4 @@ module CSCMatrix =
 
     let rowCount (matrix: CSCMatrix) = matrix.RowCount
     let columnCount (matrix: CSCMatrix) = matrix.ColumnPointers.Length - 1
-    let nnz (matrix: CSCMatrix) = matrix.ColumnPointers.[^1] 
+    let nnz (matrix: CSCMatrix) = matrix.ColumnPointers.[matrix.ColumnPointers.Length - 1] 
