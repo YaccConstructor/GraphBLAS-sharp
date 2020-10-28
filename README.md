@@ -1,6 +1,6 @@
 # GraphBLAS-sharp
 
-[Enter useful description for GraphBLAS-sharp]
+GraphBLAS implementation in F#+OpenCL
 
 ---
 
