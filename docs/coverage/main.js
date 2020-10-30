@@ -224,7 +224,7 @@ var assemblies = [
   {
     "name": "GraphBLAS-sharp",
     "classes": [
-      { "name": "GraphBLAS_sharp.Say", "rp": "GraphBLAS_sharp_Say.htm", "cl": 4, "ucl": 0, "cal": 4, "tl": 56, "ct": "LineCoverage", "mc": "-", "cb": 0, "tb": 0, "lch": [], "bch": [], "hc": [] },
+      { "name": "GraphBLAS_sharp.Say", "rp": "GraphBLAS_sharp_Say.htm", "cl": 4, "ucl": 0, "cal": 4, "tl": 58, "ct": "LineCoverage", "mc": "-", "cb": 0, "tb": 0, "lch": [], "bch": [], "hc": [] },
       { "name": "System.AssemblyVersionInformation", "rp": "GraphBLAS_sharp_AssemblyVersionInformation.htm", "cl": 0, "ucl": 0, "cal": 0, "tl": 0, "ct": "MethodCoverage", "mc": "-", "cb": 0, "tb": 0, "lch": [], "bch": [], "hc": [] },
     ]},
 ];
