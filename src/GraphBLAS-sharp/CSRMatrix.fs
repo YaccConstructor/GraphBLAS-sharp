@@ -29,12 +29,12 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
 
     override this.Dot (vector: Vector<'a>) (context: ComputationalContext<'a>) =
         let csrMatrixRowCount = this.RowCount
-        let csrMatrixColumnCount = this.RowCount
+        let csrMatrixColumnCount = this.ColumnCount
         let vectorLength = vector.Length
         if csrMatrixColumnCount <> vectorLength then
             invalidArg
                 "vector"
-                (sprintf "Argument has invalis dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
+                (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
         let plus = context.Semiring.Addition
         let mult = context.Semiring.Multiplication

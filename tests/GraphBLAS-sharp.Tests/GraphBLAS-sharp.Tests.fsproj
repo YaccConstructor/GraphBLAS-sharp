@@ -1,18 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
-		<NoWarn>NU1701</NoWarn>
-    </PropertyGroup>
-    <ItemGroup>
-        <Compile Include="AssemblyInfo.fs" />
-        <Compile Include="CSRMatrixTests.fs" />
-		<Compile Include="CSCMatrixTests.fs" />
-		<Compile Include="SparseMatrixMultiplicationTests.fs" />
-    </ItemGroup>
-    <ItemGroup>
-        <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
-    </ItemGroup>
-    <Import Project="..\..\.paket\Paket.Restore.targets" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="CSRMatrixTests.fs" />
+    <Compile Include="SparseMatrixMultiplicationTests.fs" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

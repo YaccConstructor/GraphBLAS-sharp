@@ -12,7 +12,6 @@
     <Compile Include="ComputationalContext.fs" />
     <Compile Include="Vector.fs" />
     <Compile Include="Matrix.fs" />
-    <Compile Include="CSCMatrix.fs" />
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="SparseMatrixMultiplication.fs" />
   </ItemGroup>
