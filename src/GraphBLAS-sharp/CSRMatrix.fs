@@ -27,7 +27,7 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
     override this.RowCount = this.RowPointers.Length - 1
     override this.ColumnCount = columnsCount
 
-    override this.Dot (vector: Vector<'a>) (context: ComputationalContext<'a>) =
+    override this.Mxv(vector: Vector<'a>) (context: ComputationalContext<'a>) =
         let csrMatrixRowCount = this.RowCount
         let csrMatrixColumnCount = this.ColumnCount
         let vectorLength = vector.Length
@@ -77,3 +77,5 @@ module CSRMatrix =
     let rowCount (matrix: CSRMatrix<'a>) = matrix.RowCount
     let columnCount (matrix: CSRMatrix<'a>) = matrix.ColumnCount
     let nnz (matrix: CSRMatrix<'a>) = matrix.RowPointers.[matrix.RowPointers.Length - 1]
+
+    let s = CSRMatrix(Array2D.map StandardSemiring (array2D [[1.;2.;3.];[1.;2.;3.];[1.;2.;3.]]))
