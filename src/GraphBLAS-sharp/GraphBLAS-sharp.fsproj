@@ -8,11 +8,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="BinaryOp.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
     <Compile Include="ComputationalContext.fs" />
+    <Compile Include="Scalar.fs" />
     <Compile Include="Vector.fs" />
     <Compile Include="Matrix.fs" />
+    <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="SparseMatrixMultiplication.fs" />
   </ItemGroup>

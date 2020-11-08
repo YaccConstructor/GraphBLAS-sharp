@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
+open OpenCLContext
 
 type CSRMatrix<'a>(denseMatrix: 'a[,]) =
     inherit Matrix<'a>()
@@ -27,7 +28,7 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
     override this.RowCount = this.RowPointers.Length - 1
     override this.ColumnCount = columnsCount
 
-    override this.Mxv(vector: Vector<'a>) (context: ComputationalContext<'a>) =
+    override this.Mxv (vector: Vector<'a>) (context: Semiring<'a>) =
         let csrMatrixRowCount = this.RowCount
         let csrMatrixColumnCount = this.ColumnCount
         let vectorLength = vector.Length
@@ -36,8 +37,8 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
                 "vector"
                 (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
-        let plus = context.Semiring.Addition
-        let mult = context.Semiring.Multiplication
+        let plus = !> context.PlusMonoid.Append
+        let mult = !> context.Times
 
         let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
         let command =
@@ -57,7 +58,7 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
                     resultBuffer.[i] <- localResultBuffer
             @>
 
-        let (kernel, kernelPrepare, kernelRun) = context.OCLContext.Provider.Compile command
+        let (kernel, kernelPrepare, kernelRun) = currentContext.Provider.Compile command
         let ndRange = _1D(csrMatrixRowCount)
         kernelPrepare
             ndRange
@@ -66,9 +67,9 @@ type CSRMatrix<'a>(denseMatrix: 'a[,]) =
             this.Columns
             this.RowPointers
             vector.AsArray
-        context.OCLContext.CommandQueue.Add (kernelRun ()) |> ignore
-        context.OCLContext.CommandQueue.Add (resultVector.ToHost context.OCLContext.Provider) |> ignore
-        context.OCLContext.CommandQueue.Finish () |> ignore
+        currentContext.CommandQueue.Add (kernelRun ()) |> ignore
+        currentContext.CommandQueue.Add (resultVector.ToHost currentContext.Provider) |> ignore
+        currentContext.CommandQueue.Finish () |> ignore
 
         upcast DenseVector(resultVector)
 
@@ -77,5 +78,3 @@ module CSRMatrix =
     let rowCount (matrix: CSRMatrix<'a>) = matrix.RowCount
     let columnCount (matrix: CSRMatrix<'a>) = matrix.ColumnCount
     let nnz (matrix: CSRMatrix<'a>) = matrix.RowPointers.[matrix.RowPointers.Length - 1]
-
-    let s = CSRMatrix(Array2D.map StandardSemiring (array2D [[1.;2.;3.];[1.;2.;3.];[1.;2.;3.]]))
