@@ -115,8 +115,12 @@ module SparseMatrixMultiplicationTests =
         [<Trait("Category", "vec")>]
         [<Property(Arbitrary=[| typeof<MatrixMultiplicationPair> |])>]
         member this.``CSR x Vector multiplication should work correctly on nonempty and nonzero objects`` (matrix: float[,], vector: float[]) =
-            let context = {OCLContext = oclContext; Semiring = Semiring.create<float> <@ ( + ) @> <@ ( * ) @>}
-            let result = context |> CSRMatrix(matrix).Dot (DenseVector(vector))
+            let semiring =
+                Semiring.create<float>
+                    LanguagePrimitives.GenericZero
+                    (BinaryOp <@ ( + ) @>)
+                    (BinaryOp <@ ( * ) @>)
+            let result = semiring |> CSRMatrix(matrix) +.* DenseVector(vector)
             let expected = matrix |> matrixVectorMultiply vector
             (checkEquality result.AsArray expected) |@ (getLabel result.AsArray expected)
 

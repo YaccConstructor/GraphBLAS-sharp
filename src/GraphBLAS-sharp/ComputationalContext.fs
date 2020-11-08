@@ -13,7 +13,7 @@ type OpenCLContext = {
 }
 
 module OpenCLContext =
-    let inline (!>) (x: ^a) : ^b = ((^a or ^b) : (static member op_Implicit : 'a -> ^b) x)
+    let inline (!>) (x: ^a) : ^b = (^a : (static member op_Implicit : ^a -> ^b) x)
 
     let private provider =
         try ComputeProvider.Create("INTEL*", DeviceType.Cpu)

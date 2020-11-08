@@ -13,11 +13,12 @@
     <Compile Include="Semiring.fs" />
     <Compile Include="ComputationalContext.fs" />
     <Compile Include="Scalar.fs" />
-    <Compile Include="Vector.fs" />
-    <Compile Include="Matrix.fs" />
+    <Compile Include="MatrixAndVector.fs" />
     <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="SparseMatrixMultiplication.fs" />
+    <Compile Include="Semirings/Boolean.fs" />
+    <Compile Include="Semirings/Float.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
