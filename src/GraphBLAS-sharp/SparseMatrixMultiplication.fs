@@ -5,50 +5,6 @@ namespace GraphBLAS.FSharp
 // open Brahma.FSharp.OpenCL.Extensions
 
 // module SparseMatrixMultiplication =
-//     let multiplySpMV
-//         (provider: ComputeProvider)
-//         (commandQueue: CommandQueue)
-//         (vector: float[])
-//         (matrix: CSRMatrix.CSRMatrix) =
-
-//         let csrMatrixRowCount = matrix |> CSRMatrix.rowCount
-//         let csrMatrixColumnCount = matrix |> CSRMatrix.columnCount
-//         let vectorLength = vector.Length
-//         if csrMatrixColumnCount <> vectorLength then  failwith "fail"
-
-
-//         let resultVector = Array.zeroCreate<float> csrMatrixRowCount
-//         let command =
-//             <@
-//                 fun (ndRange: _1D)
-//                     (resultBuffer: float[])
-//                     (csrValuesBuffer: float[])
-//                     (csrColumnsBuffer: int[])
-//                     (csrRowPointersBuffer: int[])
-//                     (vectorBuffer: float[]) ->
-
-//                     let i = ndRange.GlobalID0
-//                     let mutable localResultBuffer = resultBuffer.[i]
-//                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-//                         localResultBuffer <- localResultBuffer +
-//                             csrValuesBuffer.[k] * vectorBuffer.[csrColumnsBuffer.[k]]
-//                     resultBuffer.[i] <- localResultBuffer
-//             @>
-
-//         let (kernel, kernelPrepare, kernelRun) = provider.Compile command
-//         let ndRange = _1D(csrMatrixRowCount)
-//         kernelPrepare
-//             ndRange
-//             resultVector
-//             matrix.GetValues
-//             matrix.GetColumns
-//             matrix.GetRowPointers
-//             vector
-//         commandQueue.Add(kernelRun()).Finish() |> ignore
-//         commandQueue.Add(resultVector.ToHost provider).Finish() |> ignore
-
-//         resultVector
-
 //     let multiplySpMM
 //         (provider: ComputeProvider)
 //         (commandQueue: CommandQueue)

@@ -1,7 +1,8 @@
 namespace GraphBLAS.FSharp
 
-type DenseVector<'a>(vector: 'a[]) =
-    inherit Vector<'a>()
+// type DenseVector<'a>(vector: 'a[]) =
+//     inherit Vector<'a>()
 
-    override this.Length = Array.length vector
-    override this.AsArray = vector
+//     override this.Length = Array.length vector
+//     override this.AsArray = vector
+

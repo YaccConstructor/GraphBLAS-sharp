@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="BinaryOp.fs" />
+    <Compile Include="Operators.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
     <Compile Include="ComputationalContext.fs" />

@@ -5,76 +5,76 @@ open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
 open OpenCLContext
 
-type CSRMatrix<'a>(denseMatrix: 'a[,]) =
-    inherit Matrix<'a>()
+// type CSRMatrix<'a>(denseMatrix: 'a[,]) =
+//     inherit Matrix<'a>()
 
-    let rowsCount = denseMatrix |> Array2D.length1
-    let columnsCount = denseMatrix |> Array2D.length2
+//     let rowsCount = denseMatrix |> Array2D.length1
+//     let columnsCount = denseMatrix |> Array2D.length2
 
-    let convertedMatrix =
-        [for i in 0 .. rowsCount - 1 -> denseMatrix.[i, *] |> List.ofArray]
-        |> List.map (fun row ->
-            row
-            |> List.mapi (fun i x -> (x, i))
-            // |> List.filter (fun pair -> fst pair |> abs > System.Double.Epsilon)
-            )
-        |> List.fold (fun (rowPtrs, valueInx) row ->
-            ((rowPtrs.Head + row.Length) :: rowPtrs), valueInx @ row) ([0], [])
+//     let convertedMatrix =
+//         [for i in 0 .. rowsCount - 1 -> denseMatrix.[i, *] |> List.ofArray]
+//         |> List.map (fun row ->
+//             row
+//             |> List.mapi (fun i x -> (x, i))
+//             // |> List.filter (fun pair -> fst pair |> abs > System.Double.Epsilon)
+//             )
+//         |> List.fold (fun (rowPtrs, valueInx) row ->
+//             ((rowPtrs.Head + row.Length) :: rowPtrs), valueInx @ row) ([0], [])
 
-    member this.Values = convertedMatrix |> (snd >> List.unzip >> fst) |> List.toArray
-    member this.Columns = convertedMatrix |> (snd >> List.unzip >> snd) |> List.toArray
-    member this.RowPointers = convertedMatrix |> fst |> List.rev |> List.toArray
+//     member this.Values = convertedMatrix |> (snd >> List.unzip >> fst) |> List.toArray
+//     member this.Columns = convertedMatrix |> (snd >> List.unzip >> snd) |> List.toArray
+//     member this.RowPointers = convertedMatrix |> fst |> List.rev |> List.toArray
 
-    override this.RowCount = this.RowPointers.Length - 1
-    override this.ColumnCount = columnsCount
+//     override this.RowCount = this.RowPointers.Length - 1
+//     override this.ColumnCount = columnsCount
 
-    override this.Mxv (vector: Vector<'a>) (context: Semiring<'a>) =
-        let csrMatrixRowCount = this.RowCount
-        let csrMatrixColumnCount = this.ColumnCount
-        let vectorLength = vector.Length
-        if csrMatrixColumnCount <> vectorLength then
-            invalidArg
-                "vector"
-                (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
+//     override this.Mxv (vector: Vector<'a>) (context: Semiring<'a>) =
+//         let csrMatrixRowCount = this.RowCount
+//         let csrMatrixColumnCount = this.ColumnCount
+//         let vectorLength = vector.Length
+//         if csrMatrixColumnCount <> vectorLength then
+//             invalidArg
+//                 "vector"
+//                 (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
-        let plus = !> context.PlusMonoid.Append
-        let mult = !> context.Times
+//         let plus = !> context.PlusMonoid.Append
+//         let mult = !> context.Times
 
-        let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
-        let command =
-            <@
-                fun (ndRange: _1D)
-                    (resultBuffer: 'a[])
-                    (csrValuesBuffer: 'a[])
-                    (csrColumnsBuffer: int[])
-                    (csrRowPointersBuffer: int[])
-                    (vectorBuffer: 'a[]) ->
+//         let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
+//         let command =
+//             <@
+//                 fun (ndRange: _1D)
+//                     (resultBuffer: 'a[])
+//                     (csrValuesBuffer: 'a[])
+//                     (csrColumnsBuffer: int[])
+//                     (csrRowPointersBuffer: int[])
+//                     (vectorBuffer: 'a[]) ->
 
-                    let i = ndRange.GlobalID0
-                    let mutable localResultBuffer = resultBuffer.[i]
-                    for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        localResultBuffer <- (%plus) localResultBuffer
-                            ((%mult) csrValuesBuffer.[k] vectorBuffer.[csrColumnsBuffer.[k]])
-                    resultBuffer.[i] <- localResultBuffer
-            @>
+//                     let i = ndRange.GlobalID0
+//                     let mutable localResultBuffer = resultBuffer.[i]
+//                     for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
+//                         localResultBuffer <- (%plus) localResultBuffer
+//                             ((%mult) csrValuesBuffer.[k] vectorBuffer.[csrColumnsBuffer.[k]])
+//                     resultBuffer.[i] <- localResultBuffer
+//             @>
 
-        let (kernel, kernelPrepare, kernelRun) = currentContext.Provider.Compile command
-        let ndRange = _1D(csrMatrixRowCount)
-        kernelPrepare
-            ndRange
-            resultVector
-            this.Values
-            this.Columns
-            this.RowPointers
-            vector.AsArray
-        currentContext.CommandQueue.Add (kernelRun ()) |> ignore
-        currentContext.CommandQueue.Add (resultVector.ToHost currentContext.Provider) |> ignore
-        currentContext.CommandQueue.Finish () |> ignore
+//         let (kernel, kernelPrepare, kernelRun) = currentContext.Provider.Compile command
+//         let ndRange = _1D(csrMatrixRowCount)
+//         kernelPrepare
+//             ndRange
+//             resultVector
+//             this.Values
+//             this.Columns
+//             this.RowPointers
+//             vector.AsArray
+//         currentContext.CommandQueue.Add (kernelRun ()) |> ignore
+//         currentContext.CommandQueue.Add (resultVector.ToHost currentContext.Provider) |> ignore
+//         currentContext.CommandQueue.Finish () |> ignore
 
-        upcast DenseVector(resultVector)
+//         upcast DenseVector(resultVector)
 
-module CSRMatrix =
-    let ofDense (matrix: 'a[,]) = CSRMatrix(matrix)
-    let rowCount (matrix: CSRMatrix<'a>) = matrix.RowCount
-    let columnCount (matrix: CSRMatrix<'a>) = matrix.ColumnCount
-    let nnz (matrix: CSRMatrix<'a>) = matrix.RowPointers.[matrix.RowPointers.Length - 1]
+// module CSRMatrix =
+//     let ofDense (matrix: 'a[,]) = CSRMatrix(matrix)
+//     let rowCount (matrix: CSRMatrix<'a>) = matrix.RowCount
+//     let columnCount (matrix: CSRMatrix<'a>) = matrix.ColumnCount
+//     let nnz (matrix: CSRMatrix<'a>) = matrix.RowPointers.[matrix.RowPointers.Length - 1]
