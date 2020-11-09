@@ -59,9 +59,6 @@ and [<AbstractClass>] Vector<'a>() =
     static member inline (.+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAddInplace y
     static member inline (.*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMultInplace y
 
-// двойственная к вектору структура, пока это не явно, но должно легуо приводиться друг в друга
-// вместо множества сожно использовать упорядоченную очередь
-// можно сдлеать это DU с 1 элементом
 and Mask1D(size: int, indexList: int list) =
 
     member this.Item
@@ -77,4 +74,18 @@ and Mask1D(size: int, indexList: int list) =
 
     static member (~~) (mask: Mask1D) = mask.GetComplement()
 
-and Mask2D() = class end
+and Mask2D(size: int, indexList: (int * int) list) =
+
+    member this.Item
+        with get (idx: int) = indexList.[idx]
+
+    member this.GetComplement() =
+        let indices = Set.ofList indexList
+        let allIndices = List.init size (fun i -> (i, i)) |> Set.ofList
+        let complementIndices = Set.difference allIndices indices |> Set.toList
+        Mask2D(size, complementIndices)
+
+    member this.GetEnumerator() = (indexList |> List.toSeq).GetEnumerator()
+
+    static member (~~) (mask: Mask2D) = mask.GetComplement()
+
