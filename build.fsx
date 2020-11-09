@@ -726,4 +726,4 @@ Target.create "ReleaseDocs" releaseDocs
 // Target Start
 //-----------------------------------------------------------------------------
 
-Target.runOrDefaultWithArguments "DotnetPack"
+Target.runOrDefaultWithArguments "DotnetTest"
