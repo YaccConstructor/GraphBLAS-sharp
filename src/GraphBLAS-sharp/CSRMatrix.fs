@@ -110,4 +110,4 @@ type CSRMatrix<'a>(csrTuples: CSRFormat<'a>) =
 
     override this.EWiseAddInplace a b c = ()
     override this.EWiseMultInplace a b c = ()
-    override this.ApplyInplace<'b> a (b: UnaryOp<'a, 'b>) = ()
+    override this.ApplyInplace a b = ()
