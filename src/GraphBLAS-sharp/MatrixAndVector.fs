@@ -4,12 +4,12 @@ namespace GraphBLAS.FSharp
 type Matrix<'a>() =
     abstract RowCount: int
     abstract ColumnCount: int
+    abstract Mask: Mask2D
 
     abstract Item: Mask2D option -> Matrix<'a> with get, set
     abstract Item: Mask1D option * int -> Vector<'a> with get, set
     abstract Item: int * Mask1D option -> Vector<'a> with get, set
     abstract Item: int * int -> Scalar<'a> with get, set
-
     abstract Item: Mask2D option -> Scalar<'a> with set
     abstract Item: Mask1D option * int -> Scalar<'a> with set
     abstract Item: int * Mask1D option -> Scalar<'a> with set
@@ -36,12 +36,11 @@ type Matrix<'a>() =
 
 and [<AbstractClass>] Vector<'a>() =
     abstract Length: int
+    abstract Mask: Mask1D
     abstract AsArray: 'a[]
-    abstract Indices: int list
 
     abstract Item: Mask1D option -> Vector<'a> with get, set
     abstract Item: int * int -> Scalar<'a> with get, set
-
     abstract Item: Mask1D option -> Scalar<'a> with set
 
     abstract Vxm: Matrix<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
@@ -64,18 +63,18 @@ and [<AbstractClass>] Vector<'a>() =
 // вместо множества сожно использовать упорядоченную очередь
 // можно сдлеать это DU с 1 элементом
 and Mask1D(size: int, indexList: int list) =
-    let indices = Set.ofList indexList
+
+    member this.Item
+        with get (idx: int) = indexList.[idx]
 
     member this.GetComplement() =
+        let indices = Set.ofList indexList
         let allIndices = List.init size id |> Set.ofList
         let complementIndices = Set.difference allIndices indices |> Set.toList
         Mask1D(size, complementIndices)
 
-    member this.ToArray() =
-        indices |> Set.toArray |> Array.sort
+    member this.GetEnumerator() = (indexList |> List.toSeq).GetEnumerator()
 
-    static member OfVector (vector: Vector<'a>) = Mask1D(vector.Length, vector.Indices)
     static member (~~) (mask: Mask1D) = mask.GetComplement()
 
 and Mask2D() = class end
-

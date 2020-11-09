@@ -34,6 +34,7 @@ type CSRMatrix<'a>(csrTuples: CSRFormat<'a>) =
                 "vector"
                 (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
+        // let (BinaryOp op) = context.Times
         let plus = !> context.PlusMonoid.Append
         let mult = !> context.Times
 
@@ -78,36 +79,36 @@ type CSRMatrix<'a>(csrTuples: CSRFormat<'a>) =
 
     override this.RowCount = rowCount
     override this.ColumnCount = columnCount
+    override this.Mask = failwith "Not Implemented"
 
     override this.Item
-        with get (mask: Mask2D option) : Matrix<'a> = upcast CSRMatrix<'a>()
-        and set (mask: Mask2D option) (value: Matrix<'a>) = ()
+        with get (mask: Mask2D option) : Matrix<'a> = failwith "Not Implemented"
+        and set (mask: Mask2D option) (value: Matrix<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (vectorMask: Mask1D option, colIdx: int) : Vector<'a> = upcast DenseVector<'a>()
-        and set (vectorMask: Mask1D option, colIdx: int) (value: Vector<'a>) = ()
+        with get (vectorMask: Mask1D option, colIdx: int) : Vector<'a> = failwith "Not Implemented"
+        and set (vectorMask: Mask1D option, colIdx: int) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (rowIdx: int, vectorMask: Mask1D option) : Vector<'a> = upcast DenseVector<'a>()
-        and set (rowIdx: int, vectorMask: Mask1D option) (value: Vector<'a>) = ()
+        with get (rowIdx: int, vectorMask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
+        and set (rowIdx: int, vectorMask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (rowIdx: int, colIdx: int) : Scalar<'a> = Scalar Unchecked.defaultof<'a>
-        and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = ()
+        with get (rowIdx: int, colIdx: int) : Scalar<'a> = failwith "Not Implemented"
+        and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Item
+        with set (mask: Mask2D option) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Item
+        with set (vectorMask: Mask1D option, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Item
+        with set (rowIdx: int, vectorMask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
 
-    override this.Item
-        with set (mask: Mask2D option) (value: Scalar<'a>) = ()
-    override this.Item
-        with set (vectorMask: Mask1D option, colIdx: int) (value: Scalar<'a>) = ()
-    override this.Item
-        with set (rowIdx: int, vectorMask: Mask1D option) (value: Scalar<'a>) = ()
+    override this.Mxm a b c = failwith "Not Implemented"
+    override this.Mxv a b c = failwith "Not Implemented"
+    override this.EWiseAdd a b c = failwith "Not Implemented"
+    override this.EWiseMult a b c = failwith "Not Implemented"
+    override this.Apply a b  = failwith "Not Implemented"
+    override this.ReduceIn a b = failwith "Not Implemented"
+    override this.ReduceOut a b = failwith "Not Implemented"
+    override this.T = failwith "Not Implemented"
 
-    override this.Mxm a b c = upcast CSRMatrix<'a>()
-    override this.Mxv a b c = upcast DenseVector<'a>()
-    override this.EWiseAdd a b c = upcast CSRMatrix<'a>()
-    override this.EWiseMult a b c = upcast CSRMatrix<'a>()
-    override this.Apply<'b> a b  = upcast CSRMatrix<'b>()
-    override this.ReduceIn a b = upcast DenseVector<'a>()
-    override this.ReduceOut a b = upcast DenseVector<'a>()
-    override this.T = upcast CSRMatrix<'a>()
-
-    override this.EWiseAddInplace a b c = ()
-    override this.EWiseMultInplace a b c = ()
-    override this.ApplyInplace a b = ()
+    override this.EWiseAddInplace a b c = failwith "Not Implemented"
+    override this.EWiseMultInplace a b c = failwith "Not Implemented"
+    override this.ApplyInplace a b = failwith "Not Implemented"

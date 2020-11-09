@@ -16,7 +16,6 @@
     <Compile Include="MatrixAndVector.fs" />
     <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
-    <Compile Include="SparseMatrixMultiplication.fs" />
     <Compile Include="Semirings/Boolean.fs" />
     <Compile Include="Semirings/Float.fs" />
   </ItemGroup>
