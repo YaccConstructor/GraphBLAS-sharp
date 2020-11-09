@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp
 
 [<AbstractClass>]
-type Matrix<'a>() =
+type Matrix<'a when 'a : struct>() =
     abstract RowCount: int
     abstract ColumnCount: int
     abstract Mask: Mask2D
@@ -34,7 +34,7 @@ type Matrix<'a>() =
     static member inline (.+) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseAddInplace y
     static member inline (.*) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseMultInplace y
 
-and [<AbstractClass>] Vector<'a>() =
+and [<AbstractClass>] Vector<'a when 'a : struct>() =
     abstract Length: int
     abstract Mask: Mask1D
     abstract AsArray: 'a[]

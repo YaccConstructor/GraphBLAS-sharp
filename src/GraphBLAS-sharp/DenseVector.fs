@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp
 
-type DenseVector<'a>(vector: 'a[]) =
+type DenseVector<'a when 'a : struct>(vector: 'a[]) =
     inherit Vector<'a>()
 
     new() = DenseVector(Array.zeroCreate<'a> 0)

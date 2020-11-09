@@ -19,7 +19,7 @@ with
         ColumnCount = 0
     }
 
-type CSRMatrix<'a>(csrTuples: CSRFormat<'a>) =
+type CSRMatrix<'a when 'a : struct>(csrTuples: CSRFormat<'a>) =
     inherit Matrix<'a>()
 
     let rowCount = csrTuples.RowPointers.Length - 1
