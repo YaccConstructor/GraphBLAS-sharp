@@ -5,6 +5,15 @@ type Matrix<'a>() =
     abstract RowCount: int
     abstract ColumnCount: int
 
+    abstract Item: Mask2D option -> Matrix<'a> with get, set
+    abstract Item: Mask1D option * int -> Vector<'a> with get, set
+    abstract Item: int * Mask1D option -> Vector<'a> with get, set
+    abstract Item: int * int -> Scalar<'a> with get, set
+
+    abstract Item: Mask2D option -> Scalar<'a> with set
+    abstract Item: Mask1D option * int -> Scalar<'a> with set
+    abstract Item: int * Mask1D option -> Scalar<'a> with set
+
     abstract Mxm: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
     abstract Mxv: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
     abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
@@ -29,6 +38,11 @@ and [<AbstractClass>] Vector<'a>() =
     abstract Length: int
     abstract AsArray: 'a[]
     abstract Indices: int list
+
+    abstract Item: Mask1D option -> Vector<'a> with get, set
+    abstract Item: int * int -> Scalar<'a> with get, set
+
+    abstract Item: Mask1D option -> Scalar<'a> with set
 
     abstract Vxm: Matrix<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
     abstract EWiseAdd: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
