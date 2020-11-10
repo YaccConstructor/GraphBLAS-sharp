@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <Tailcalls>true</Tailcalls>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Operators.fs" />
+    <Compile Include="Monoid.fs" />
+    <Compile Include="Semiring.fs" />
+    <Compile Include="ComputationalContext.fs" />
+    <Compile Include="Scalar.fs" />
+    <Compile Include="MatrixAndVector.fs" />
+    <Compile Include="DenseVector.fs" />
+    <Compile Include="CSRMatrix.fs" />
+    <Compile Include="Semirings/Boolean.fs" />
+    <Compile Include="Semirings/Float.fs" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>
