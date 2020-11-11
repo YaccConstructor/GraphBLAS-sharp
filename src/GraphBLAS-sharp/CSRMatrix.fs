@@ -71,8 +71,6 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
 
         upcast DenseVector(resultVector)
 
-    new() = CSRMatrix(CSRFormat.ZeroCreate())
-
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns
     member this.RowPointers = csrTuples.RowPointers

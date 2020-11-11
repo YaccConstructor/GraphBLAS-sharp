@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp
 
-type Monoid<'a> = {
-    Zero: 'a
-    Append: BinaryOp<'a, 'a, 'a>
+type Monoid<'T> = {
+    Zero: 'T
+    Append: BinaryOp<'T, 'T, 'T>
 }
