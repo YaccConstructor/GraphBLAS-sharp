@@ -11,7 +11,7 @@
     <Compile Include="Operators.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
-    <Compile Include="ComputationalContext.fs" />
+    <Compile Include="OpenCLContext.fs" />
     <Compile Include="Scalar.fs" />
     <Compile Include="MatrixAndVector.fs" />
     <Compile Include="DenseVector.fs" />

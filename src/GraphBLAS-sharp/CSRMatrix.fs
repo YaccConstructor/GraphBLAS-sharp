@@ -34,9 +34,8 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
                 "vector"
                 (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
-        // let (BinaryOp op) = context.Times
-        let plus = !> context.PlusMonoid.Append
-        let mult = !> context.Times
+        let (BinaryOp plus) = context.PlusMonoid.Append
+        let (BinaryOp mult) = context.Times
 
         let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
         let command =
@@ -70,8 +69,6 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
         currentContext.CommandQueue.Finish () |> ignore
 
         upcast DenseVector(resultVector)
-
-    new() = CSRMatrix(CSRFormat.ZeroCreate())
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns

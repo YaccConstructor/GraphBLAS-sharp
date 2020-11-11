@@ -3,9 +3,6 @@ namespace GraphBLAS.FSharp
 type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[]) =
     inherit Vector<'a>()
 
-    new() = DenseVector(Array.zeroCreate<'a> 0)
-    new(listOfIndices: int list) = DenseVector(Array.zeroCreate<'a> 0)
-
     override this.Length = failwith "Not Implemented"
     override this.AsArray = failwith "Not Implemented"
 
