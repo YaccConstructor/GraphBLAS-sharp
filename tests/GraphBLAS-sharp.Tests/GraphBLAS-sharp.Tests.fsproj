@@ -8,8 +8,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="CSRMatrixTests.fs" />
-    <Compile Include="SparseMatrixMultiplicationTests.fs" />
+    <Compile Include="Tests.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

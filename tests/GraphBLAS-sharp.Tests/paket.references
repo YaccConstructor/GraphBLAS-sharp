@@ -1,9 +1,10 @@
 FSharp.Core
-Microsoft.NET.Test.Sdk
 Microsoft.NETFramework.ReferenceAssemblies
 
-xunit
-xunit.runner.visualstudio
-FsUnit.xUnit
-FsCheck.Xunit
+Expecto
+Microsoft.NET.Test.Sdk
+YoloDev.Expecto.TestSdk
+
+dotnet-mono
+
 Brahma.FSharp
