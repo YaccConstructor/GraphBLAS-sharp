@@ -16,8 +16,8 @@
     <Compile Include="MatrixAndVector.fs" />
     <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
-    <Compile Include="Semirings/Boolean.fs" />
-    <Compile Include="Semirings/Float.fs" />
+    <Compile Include="Predefined/Float.fs" />
+    <Compile Include="Predefined/Boolean.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

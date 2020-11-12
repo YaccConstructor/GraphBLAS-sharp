@@ -12,7 +12,7 @@ type CSRFormat<'a> = {
     ColumnCount: int
 }
 with
-    static member ZeroCreate<'a>() = {
+    static member CreateEmpty<'a>() = {
         Values = Array.zeroCreate<'a> 0
         Columns = Array.zeroCreate<int> 0
         RowPointers = Array.zeroCreate<int> 0
