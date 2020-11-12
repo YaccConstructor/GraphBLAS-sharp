@@ -72,7 +72,7 @@ let docsDir = __SOURCE_DIRECTORY__  @@ "docs"
 let docsSrcDir = __SOURCE_DIRECTORY__  @@ "docsSrc"
 let docsToolDir = __SOURCE_DIRECTORY__ @@ "docsTool"
 
-let gitOwner = "artemgl"
+let gitOwner = "YaccConstructor"
 let gitRepoName = "GraphBLAS-sharp"
 
 let gitHubRepoUrl = sprintf "https://github.com/%s/%s" gitOwner gitRepoName
@@ -726,4 +726,4 @@ Target.create "ReleaseDocs" releaseDocs
 // Target Start
 //-----------------------------------------------------------------------------
 
-Target.runOrDefaultWithArguments "DotnetPack"
+Target.runOrDefaultWithArguments "DotnetTest"

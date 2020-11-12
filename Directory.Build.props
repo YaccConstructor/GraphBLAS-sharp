@@ -2,12 +2,12 @@
     <PropertyGroup>
         <!-- summary is not migrated from project.json, but you can use the <Description> property for that if needed. -->
         <PackageTags>f#, fsharp</PackageTags>
-        <PackageProjectUrl>https://github.com/artemgl/GraphBLAS-sharp</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/artemgl/GraphBLAS-sharp/blob/master/LICENSE.md</PackageLicenseUrl>
+        <PackageProjectUrl>https://github.com/YaccConstructor/GraphBLAS-sharp</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/YaccConstructor/GraphBLAS-sharp/blob/master/LICENSE.md</PackageLicenseUrl>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <RepositoryType>git</RepositoryType>
-        <Authors>artemgl</Authors>
-        <RepositoryUrl>https://github.com/artemgl/GraphBLAS-sharp</RepositoryUrl>
+        <Authors>YaccConstructor</Authors>
+        <RepositoryUrl>https://github.com/YaccConstructor/GraphBLAS-sharp</RepositoryUrl>
         <!-- owners is not supported in MSBuild -->
     </PropertyGroup>
 </Project>

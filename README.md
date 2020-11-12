@@ -8,8 +8,8 @@ GraphBLAS implementation in F#+OpenCL
 
 GitHub Actions |
 :---: |
-[![GitHub Actions](https://github.com/artemgl/GraphBLAS-sharp/workflows/Build%20master/badge.svg)](https://github.com/artemgl/GraphBLAS-sharp/actions?query=branch%3Amaster) |
-[![Build History](https://buildstats.info/github/chart/artemgl/GraphBLAS-sharp)](https://github.com/artemgl/GraphBLAS-sharp/actions?query=branch%3Amaster) |
+[![GitHub Actions](https://github.com/YaccConstructor/GraphBLAS-sharp/workflows/Build%20master/badge.svg)](https://github.com/YaccConstructor/GraphBLAS-sharp/actions?query=branch%3Amaster) |
+[![Build History](https://buildstats.info/github/chart/YaccConstructor/GraphBLAS-sharp)](https://github.com/YaccConstructor/GraphBLAS-sharp/actions?query=branch%3Amaster) |
 
 ## NuGet 
 

@@ -1,7 +1,9 @@
-Expecto
 FSharp.Core
-dotnet-mono
 Microsoft.NET.Test.Sdk
-YoloDev.Expecto.TestSdk
-altcover
 Microsoft.NETFramework.ReferenceAssemblies
+
+xunit
+xunit.runner.visualstudio
+FsUnit.xUnit
+FsCheck.Xunit
+Brahma.FSharp
