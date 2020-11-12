@@ -25,7 +25,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     let rowCount = csrTuples.RowPointers.Length - 1
     let columnCount = csrTuples.ColumnCount
 
-    let spMV (vector: Vector<'a>) (mask: Mask1D<'a>) (context: Semiring<'a>) : Vector<'a> =
+    let spMV (vector: Vector<'a>) (mask: Mask1D<'a>) (semiring: Semiring<'a>) : Vector<'a> =
         let csrMatrixRowCount = rowCount
         let csrMatrixColumnCount = columnCount
         let vectorLength = vector.Length
@@ -34,8 +34,8 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
                 "vector"
                 (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
 
-        let (BinaryOp plus) = context.PlusMonoid.Append
-        let (BinaryOp mult) = context.Times
+        let (BinaryOp plus) = semiring.PlusMonoid.Append
+        let (BinaryOp mult) = semiring.Times
 
         let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
         let command =

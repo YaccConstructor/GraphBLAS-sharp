@@ -18,6 +18,7 @@
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="Predefined/Float.fs" />
     <Compile Include="Predefined/Boolean.fs" />
+    <Compile Include="Algorithms/BFS.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -37,19 +37,24 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>() =
     abstract Length: int
     abstract AsArray: 'a[]
 
-    abstract Item: Mask1D<'a> -> Vector<'a> with get, set
-    abstract Item: int * int -> Scalar<'a> with get, set
-    abstract Item: Mask1D<'a> -> Scalar<'a> with set
+    // abstract Item: Mask1D<'b> -> Vector<'a> with get, set
+    // abstract Item: int -> Scalar<'a> with get, set
+    // abstract Item: Mask1D<'c> -> Scalar<'a> with set
 
-    abstract Vxm: Matrix<'a> -> Mask1D<'a> -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Vector<'a> -> Mask1D<'a> -> Semiring<'a> -> Vector<'a>
-    abstract EWiseMult: Vector<'a> -> Mask1D<'a> -> Semiring<'a> -> Vector<'a>
-    abstract Apply: Mask1D<'a> -> UnaryOp<'a, 'b> -> Vector<'b>
+    abstract Assign: Mask1D<'b> * Vector<'a> -> unit
+    abstract Assign: int * Scalar<'a> -> unit
+    abstract Assign: Mask1D<'b> * Scalar<'a> -> unit
+
+
+    abstract Vxm: Matrix<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
+    abstract EWiseAdd: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
+    abstract EWiseMult: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
+    abstract Apply: Mask1D<'c> -> UnaryOp<'a, 'b> -> Vector<'b>
     abstract Reduce: Monoid<'a> -> Scalar<'a>
 
-    abstract EWiseAddInplace: Vector<'a> -> Mask1D<'a> -> Semiring<'a> -> unit
-    abstract EWiseMultInplace: Vector<'a> -> Mask1D<'a> -> Semiring<'a> -> unit
-    abstract ApplyInplace: Mask1D<'a> -> UnaryOp<'a, 'b> -> unit
+    abstract EWiseAddInplace: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> unit
+    abstract EWiseMultInplace: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> unit
+    abstract ApplyInplace: Mask1D<'c> -> UnaryOp<'a, 'b> -> unit
 
     static member inline (+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAdd y
     static member inline (*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMult y

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Predefined
 
 open GraphBLAS.FSharp
 
