@@ -30,6 +30,9 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Library.fs" />
+    <Compile Include="COOMatrix.fs" />
+    <Compile Include="Semirings/Boolean.fs" />
+    <Compile Include="Semirings/Float.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
