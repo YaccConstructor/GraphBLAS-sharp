@@ -114,7 +114,6 @@ type COOMatrix<'a when 'a : struct and 'a : equality>(triples: array<'a*int*int>
 
                     let i = ndRange.GlobalID0
                     if (%predicate) maskVectorBuffer.[i] zero then
-                    // if maskVectorBuffer.[i] <> zero then
                         let mutable localResultBuffer = resultBuffer.[i]
                         for j in 0 .. valuesBuffer.Length - 1 do
                             if rowsBuffer.[j] = i then

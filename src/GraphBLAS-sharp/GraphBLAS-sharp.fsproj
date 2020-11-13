@@ -17,6 +17,7 @@
     <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="COOMatrix.fs" />
+    <Compile Include="COOVector.fs" />
     <Compile Include="Semirings/Boolean.fs" />
     <Compile Include="Semirings/Float.fs" />
   </ItemGroup>
