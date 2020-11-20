@@ -14,10 +14,11 @@
     <Compile Include="OpenCLContext.fs" />
     <Compile Include="Scalar.fs" />
     <Compile Include="MatrixAndVector.fs" />
-    <Compile Include="DenseVector.fs" />
+    <Compile Include="Vectors.fs" />
     <Compile Include="CSRMatrix.fs" />
     <Compile Include="Predefined/Float.fs" />
     <Compile Include="Predefined/Boolean.fs" />
+    <Compile Include="Predefined/Integer.fs" />
     <Compile Include="Algorithms/BFS.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -1,30 +1,37 @@
 namespace GraphBLAS.FSharp
 
 [<AbstractClass>]
-type Matrix<'a when 'a : struct and 'a : equality>() =
+type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract RowCount: int
     abstract ColumnCount: int
+    default this.RowCount = nrow
+    default this.ColumnCount = ncol
 
-    abstract Item: Mask2D<'a> -> Matrix<'a> with get, set
-    abstract Item: Mask1D<'a> * int -> Vector<'a> with get, set
-    abstract Item: int * Mask1D<'a> -> Vector<'a> with get, set
-    abstract Item: int * int -> Scalar<'a> with get, set
-    abstract Item: Mask2D<'a> -> Scalar<'a> with set
-    abstract Item: Mask1D<'a> * int -> Scalar<'a> with set
-    abstract Item: int * Mask1D<'a> -> Scalar<'a> with set
+    abstract Extract: Mask2D<'t> -> Matrix<'a>
+    abstract Extract: (Mask1D<'t> * int) -> Vector<'a>
+    abstract Extract: (int * Mask1D<'t>) -> Vector<'a>
+    abstract Extract: (int * int) -> Scalar<'a>
 
-    abstract Mxm: Matrix<'a> -> Mask2D<'a> -> Semiring<'a> -> Matrix<'a>
-    abstract Mxv: Vector<'a> -> Mask1D<'a> -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Matrix<'a> -> Mask2D<'a> -> Semiring<'a> -> Matrix<'a>
-    abstract EWiseMult: Matrix<'a> -> Mask2D<'a> -> Semiring<'a> -> Matrix<'a>
-    abstract Apply: Mask1D<'a> -> UnaryOp<'a, 'b> -> Matrix<'b>
-    abstract ReduceIn: Mask1D<'a> -> Monoid<'a> -> Vector<'a>
-    abstract ReduceOut: Mask1D<'a> -> Monoid<'a> -> Vector<'a>
+    abstract Assign: Mask2D<'t> * Matrix<'a> -> unit
+    abstract Assign: (Mask1D<'t> * int) * Vector<'a> -> unit
+    abstract Assign: (int * Mask1D<'t>) * Vector<'a> -> unit
+    abstract Assign: (int * int) * Scalar<'a> -> unit
+    abstract Assign: Mask2D<'t> * Scalar<'a> -> unit
+    abstract Assign: (Mask1D<'t> * int) * Scalar<'a> -> unit
+    abstract Assign: (int * Mask1D<'t>) * Scalar<'a> -> unit
+
+    abstract Mxm: Matrix<'a> -> Mask2D<'t> -> Semiring<'a> -> Matrix<'a>
+    abstract Mxv: Vector<'a> -> Mask1D<'t> -> Semiring<'a> -> Vector<'a>
+    abstract EWiseAdd: Matrix<'a> -> Mask2D<'t> -> Semiring<'a> -> Matrix<'a>
+    abstract EWiseMult: Matrix<'a> -> Mask2D<'t> -> Semiring<'a> -> Matrix<'a>
+    abstract Apply: Mask1D<'t> -> UnaryOp<'a, 'b> -> Matrix<'b>
+    abstract ReduceIn: Mask1D<'t> -> Monoid<'a> -> Vector<'a>
+    abstract ReduceOut: Mask1D<'t> -> Monoid<'a> -> Vector<'a>
     abstract T: Matrix<'a>
 
-    abstract EWiseAddInplace: Matrix<'a> -> Mask2D<'a> -> Semiring<'a> -> unit
-    abstract EWiseMultInplace: Matrix<'a> -> Mask2D<'a> -> Semiring<'a> -> unit
-    abstract ApplyInplace: Mask2D<'a> -> UnaryOp<'a, 'b> -> unit
+    abstract EWiseAddInplace: Matrix<'a> -> Mask2D<'t> -> Semiring<'a> -> unit
+    abstract EWiseMultInplace: Matrix<'a> -> Mask2D<'t> -> Semiring<'a> -> unit
+    abstract ApplyInplace: Mask2D<'t> -> UnaryOp<'a, 'b> -> unit
 
     static member inline (+) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseAdd y
     static member inline (*) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseMult y
@@ -33,28 +40,29 @@ type Matrix<'a when 'a : struct and 'a : equality>() =
     static member inline (.+) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseAddInplace y
     static member inline (.*) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseMultInplace y
 
-and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>() =
+and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Length: int
+    default this.Length = size
+
     abstract AsArray: 'a[]
 
-    // abstract Item: Mask1D<'b> -> Vector<'a> with get, set
-    // abstract Item: int -> Scalar<'a> with get, set
-    // abstract Item: Mask1D<'c> -> Scalar<'a> with set
+    abstract Extract: Mask1D<'t> -> Vector<'a>
+    abstract Extract: int -> Scalar<'a>
 
-    abstract Assign: Mask1D<'b> * Vector<'a> -> unit
-    abstract Assign: int * Scalar<'a> -> unit
-    abstract Assign: Mask1D<'b> * Scalar<'a> -> unit
+    abstract Assign: Vector<'a> * Mask1D<'t>-> unit
+    abstract Assign: Scalar<'a> * int -> unit
+    abstract Assign: Scalar<'a> * Mask1D<'t> -> unit
 
-
-    abstract Vxm: Matrix<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
-    abstract EWiseMult: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> Vector<'a>
-    abstract Apply: Mask1D<'c> -> UnaryOp<'a, 'b> -> Vector<'b>
+    abstract Vxm: Matrix<'b> -> Mask1D<'t> -> Semiring<'a, 'b, 'c> -> Vector<'c>
+    abstract EWiseAdd: Vector<'a> -> Mask1D<'t> -> Semiring<'a> -> Vector<'a>
+    abstract EWiseMult: Vector<'a> -> Mask1D<'t> -> Semiring<'a> -> Vector<'a>
+    abstract Apply: Mask1D<'t> -> UnaryOp<'a, 'b> -> Vector<'b>
     abstract Reduce: Monoid<'a> -> Scalar<'a>
 
-    abstract EWiseAddInplace: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> unit
-    abstract EWiseMultInplace: Vector<'a> -> Mask1D<'b> -> Semiring<'a> -> unit
-    abstract ApplyInplace: Mask1D<'c> -> UnaryOp<'a, 'b> -> unit
+    abstract VxmInplace: Matrix<'a> -> Mask1D<'t> -> Semiring<'a> -> unit
+    abstract EWiseAddInplace: Vector<'a> -> Mask1D<'t> -> Semiring<'a> -> unit
+    abstract EWiseMultInplace: Vector<'a> -> Mask1D<'t> -> Semiring<'a> -> unit
+    abstract ApplyInplace: Mask1D<'t> -> UnaryOp<'a, 'b> -> unit
 
     static member inline (+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAdd y
     static member inline (*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMult y

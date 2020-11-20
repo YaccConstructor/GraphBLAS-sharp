@@ -2,14 +2,14 @@ namespace GraphBLAS.FSharp.Predefined
 
 open GraphBLAS.FSharp
 
-type BooleanMonoid =
-    static member Or: Monoid<bool> = {
+module BooleanMonoid =
+    let any: Monoid<bool> = {
         Zero = false
         Append = BinaryOp <@ ( || ) @>
     }
 
-type BooleanSemiring =
-    static member OrAnd: Semiring<bool> = {
-        PlusMonoid = BooleanMonoid.Or
+module BooleanSemiring =
+    let anyAll: Semiring<bool> = {
+        PlusMonoid = BooleanMonoid.any
         Times = BinaryOp <@ ( && ) @>
     }
