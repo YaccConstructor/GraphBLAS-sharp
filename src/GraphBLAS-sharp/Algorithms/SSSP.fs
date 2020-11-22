@@ -1,8 +1,10 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
+open GraphBLAS.FSharp
 
-module Algorithms =
+[<AutoOpen>]
+module SSSP =
     let SSSP (matrix: Matrix<float>) (source: int) : Vector<float> =
         let vertexCount = matrix.RowCount
         let distance = SparseVector(vertexCount, [source, 0.])

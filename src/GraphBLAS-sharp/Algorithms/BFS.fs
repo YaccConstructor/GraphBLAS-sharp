@@ -1,9 +1,11 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
-open Helpers
+open GraphBLAS.FSharp.Helpers
+open GraphBLAS.FSharp
 
-module Algorithms =
+[<AutoOpen>]
+module BFS =
     let levelBFS (matrix: Matrix<bool>) (source: int) : Vector<int> =
         let vertexCount = matrix.RowCount
         let levels = DenseVector(Array.zeroCreate vertexCount, IntegerMonoid.plus)

@@ -1,8 +1,10 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
+open GraphBLAS.FSharp
 
-module Algorithms =
+[<AutoOpen>]
+module TriangleCounting =
     let sandiaTriangleCount (lowerTriangular: Matrix<bool>) =
         let c = (lowerTriangular +.* lowerTriangular.T) (Mask2D.regular lowerTriangular) BooleanSemiring.anyAll
         c.Reduce BooleanMonoid.any
