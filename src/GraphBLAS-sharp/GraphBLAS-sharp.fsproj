@@ -8,14 +8,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Helpers.fs" />
+    <Compile Include="OpenCLContext.fs" />
     <Compile Include="Operators.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
-    <Compile Include="OpenCLContext.fs" />
     <Compile Include="Scalar.fs" />
-    <Compile Include="MatrixAndVector.fs" />
-    <Compile Include="Vectors.fs" />
-    <Compile Include="CSRMatrix.fs" />
+    <Compile Include="Abstracts.fs" />
+    <Compile Include="Implementations.fs" />
+    <Compile Include="Masks.fs" />
     <Compile Include="Predefined/Float.fs" />
     <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Predefined/Integer.fs" />

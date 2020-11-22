@@ -10,8 +10,6 @@ type OpenCLContext = {
 }
 
 module OpenCLContext =
-    let inline (!>) (x: ^a) : ^b = (^a : (static member op_Implicit : ^a -> ^b) x)
-
     let private defaultProvider =
         try ComputeProvider.Create("*", DeviceType.Default)
         with

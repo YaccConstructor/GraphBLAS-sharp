@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp
 
 open GraphBLAS.FSharp.Predefined
-open OpenCLContext
+open Helpers
 
 module Algorithms =
     let levelBFS (matrix: Matrix<bool>) (source: int) : Vector<int> =
