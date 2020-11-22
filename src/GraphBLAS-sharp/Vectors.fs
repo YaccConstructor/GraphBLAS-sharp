@@ -7,27 +7,16 @@ type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mo
     inherit Vector<'a>(vector.Length)
 
     override this.AsArray = vector
+    override this.Clear () = failwith "Not Implemented"
 
-    override this.Extract (mask: Mask1D<'t>) : Vector<'a> = failwith "Not Implemented"
-    override this.Extract (idx: int) : Scalar<'a> = failwith "Not Implemented"
-
-    override this.Assign(vector: Vector<'a>, mask: Mask1D<'t>) : unit = failwith "Not Implemented"
-    override this.Assign(Scalar (value: 'a), idx: int) : unit = failwith "Not Implemented"
-    override this.Assign(Scalar (value: 'a), mask: Mask1D<'t>) : unit =
-        match mask with
-        | Mask1D maskVector ->
-            match maskVector with
-            | :? SparseVector<'t> as sparse ->
-                sparse.AsList
-                |> List.iter (fun (idx, _) -> vector.[idx] <- value)
-            | _ -> failwith "Not Implemented"
-        | Complemented1D maskVector ->
-            match maskVector with
-            | :? SparseVector<'t> as sparse -> failwith "Not Implemented"
-            | _ -> failwith "Not Implemented"
-        | Mask1D.None ->
-            [0 .. vector.Length - 1]
-            |> List.iter (fun i -> vector.[i] <- value)
+    override this.Item
+        with get (mask: Mask1D) : Vector<'a> = failwith "Not Implemented"
+        and set (mask: Mask1D) (value: Vector<'a>) = failwith "Not Implemented"
+    override this.Item
+        with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
+        and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Fill
+        with set (mask: Mask1D) (value: Scalar<'a>) = failwith "Not Implemented"
 
     override this.Vxm a b c = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
@@ -49,15 +38,18 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
     member this.AsList: (int * 'a) list = listOfNonzeroes
 
     override this.AsArray = failwith "Not Implemented"
+    override this.Clear () = failwith "Not Implemented"
 
-    override this.Extract (mask: Mask1D<'b>) : Vector<'a> = failwith "Not Implemented"
-    override this.Extract (idx: int) : Scalar<'a> = failwith "Not Implemented"
+    override this.Item
+        with get (mask: Mask1D) : Vector<'a> = failwith "Not Implemented"
+        and set (mask: Mask1D) (value: Vector<'a>) = failwith "Not Implemented"
+    override this.Item
+        with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
+        and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Fill
+        with set (mask: Mask1D) (value: Scalar<'a>) = failwith "Not Implemented"
 
-    override this.Assign(vector: Vector<'a>, mask: Mask1D<'b>) : unit = failwith "Not Implemented"
-    override this.Assign(Scalar (value: 'a), idx: int) : unit = failwith "Not Implemented"
-    override this.Assign(Scalar (value: 'a), mask: Mask1D<'b>) : unit = failwith "Not Implemented"
-
-    override this.Vxm (matrix: Matrix<'b>) (mask: Mask1D<'t>) (semiring: Semiring<'a, 'b, 'c>) : Vector<'c> = failwith "Not Implemented"
+    override this.Vxm (matrix: Matrix<'b>) (mask: Mask1D) (semiring: Semiring<'a, 'b, 'c>) : Vector<'c> = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"

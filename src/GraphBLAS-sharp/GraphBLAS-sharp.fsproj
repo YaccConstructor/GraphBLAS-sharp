@@ -20,6 +20,8 @@
     <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Predefined/Integer.fs" />
     <Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/SSSP.fs" />
+    <Compile Include="Algorithms/TriangleCounting.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -25,10 +25,10 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     let rowCount = base.RowCount
     let columnCount = base.ColumnCount
 
-    let spMV (vector: Vector<'a>) (mask: Mask1D<'a>) (semiring: Semiring<'a>) : Vector<'a> =
+    let spMV (vector: Vector<'a>) (mask: Mask1D) (semiring: Semiring<'a>) : Vector<'a> =
         let csrMatrixRowCount = rowCount
         let csrMatrixColumnCount = columnCount
-        let vectorLength = vector.Length
+        let vectorLength = vector.Size
         if csrMatrixColumnCount <> vectorLength then
             invalidArg
                 "vector"
@@ -68,24 +68,30 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
         currentContext.CommandQueue.Add (resultVector.ToHost currentContext.Provider) |> ignore
         currentContext.CommandQueue.Finish () |> ignore
 
-        upcast DenseVector(resultVector)
+        upcast DenseVector(resultVector, semiring.PlusMonoid)
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns
     member this.RowPointers = csrTuples.RowPointers
 
-    override this.Extract (mask: Mask2D<'t>) : Matrix<'a> = failwith "Not Implemented"
-    override this.Extract (colMask: Mask1D<'t> * int) : Vector<'a> = failwith "Not Implemented"
-    override this.Extract (rowMask: int * Mask1D<'t>) : Vector<'a> = failwith "Not Implemented"
-    override this.Extract (idx: int * int) : Scalar<'a> = failwith "Not Implemented"
-
-    override this.Assign (mask: Mask2D<'t>, value: Matrix<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (colMask: Mask1D<'t> * int, value: Vector<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (rowMask: int * Mask1D<'t>, value: Vector<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (idx: int * int, value: Scalar<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (mask: Mask2D<'t>, value: Scalar<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (colMask: Mask1D<'t> * int, value: Scalar<'a>) : unit = failwith "Not Implemented"
-    override this.Assign (rowMask: int * Mask1D<'t>, value: Scalar<'a>) : unit = failwith "Not Implemented"
+    override this.Item
+        with get (mask: Mask2D) : Matrix<'a> = failwith "Not Implemented"
+        and set (mask: Mask2D) (value: Matrix<'a>) = failwith "Not Implemented"
+    override this.Item
+        with get (vectorMask: Mask1D, colIdx: int) : Vector<'a> = failwith "Not Implemented"
+        and set (vectorMask: Mask1D, colIdx: int) (value: Vector<'a>) = failwith "Not Implemented"
+    override this.Item
+        with get (rowIdx: int, vectorMask: Mask1D) : Vector<'a> = failwith "Not Implemented"
+        and set (rowIdx: int, vectorMask: Mask1D) (value: Vector<'a>) = failwith "Not Implemented"
+    override this.Item
+        with get (rowIdx: int, colIdx: int) : Scalar<'a> = failwith "Not Implemented"
+        and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Fill
+        with set (mask: Mask2D) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Fill
+        with set (vectorMask: Mask1D, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Fill
+        with set (rowIdx: int, vectorMask: Mask1D) (value: Scalar<'a>) = failwith "Not Implemented"
 
     override this.Mxm a b c = failwith "Not Implemented"
     override this.Mxv a b c = failwith "Not Implemented"
@@ -94,6 +100,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Apply a b  = failwith "Not Implemented"
     override this.ReduceIn a b = failwith "Not Implemented"
     override this.ReduceOut a b = failwith "Not Implemented"
+    override this.Reduce a = failwith "Not Implemented"
     override this.T = failwith "Not Implemented"
 
     override this.EWiseAddInplace a b c = failwith "Not Implemented"
