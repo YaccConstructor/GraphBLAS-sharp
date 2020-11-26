@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
-<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
@@ -20,17 +16,6 @@
     <Compile Include="MatrixAndVector.fs" />
     <Compile Include="DenseVector.fs" />
     <Compile Include="CSRMatrix.fs" />
-    <Compile Include="Semirings/Boolean.fs" />
-    <Compile Include="Semirings/Float.fs" />
-  </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
-</Project>
-    
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Library.fs" />
-    <Compile Include="COOMatrix.fs" />
     <Compile Include="Semirings/Boolean.fs" />
     <Compile Include="Semirings/Float.fs" />
   </ItemGroup>
