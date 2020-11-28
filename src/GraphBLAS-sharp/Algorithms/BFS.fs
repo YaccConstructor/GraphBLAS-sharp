@@ -15,7 +15,7 @@ module BFS =
         while !> (frontier.Reduce BooleanMonoid.any) && currentLevel <= vertexCount do
             levels.Fill(Mask1D.regular frontier) <- Scalar currentLevel
             frontier.Clear()
-            frontier.[Mask1D.complemented levels] <- (frontier +.* matrix) (Mask1D.complemented levels) BooleanSemiring.anyAll
+            frontier.[Mask1D.complemented levels] <- (frontier .@ matrix) (Mask1D.complemented levels) BooleanSemiring.anyAll
             currentLevel <- currentLevel + 1
 
         upcast levels
@@ -27,7 +27,7 @@ module BFS =
         let parents = SparseVector(vertexCount, [source, -1])
 
         for i in 0 .. vertexCount - 1 do
-            frontier.[Mask1D.complemented parents] <- (frontier +.* matrix) (Mask1D.complemented parents) IntegerSemiring.minFirst
+            frontier.[Mask1D.complemented parents] <- (frontier .@ matrix) (Mask1D.complemented parents) IntegerSemiring.minFirst
             parents.[Mask1D.regular frontier] <- frontier
             frontier.[Mask1D.regular frontier] <- id
 

@@ -105,10 +105,6 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Reduce a = failwith "Not Implemented"
     override this.T = failwith "Not Implemented"
 
-    override this.EWiseAddInplace a b c = failwith "Not Implemented"
-    override this.EWiseMultInplace a b c = failwith "Not Implemented"
-    override this.ApplyInplace a b = failwith "Not Implemented"
-
 and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzeroes: (int * 'a) list) =
     inherit Vector<'a>(size)
 
@@ -131,11 +127,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
     override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"
-
-    override this.VxmInplace a b c = failwith "Not Implemented"
-    override this.EWiseAddInplace a b c = failwith "Not Implemented"
-    override this.EWiseMultInplace a b c = failwith "Not Implemented"
-    override this.ApplyInplace a b = failwith "Not Implemented"
 
 and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Monoid<'a>) =
     inherit Vector<'a>(vector.Length)
@@ -160,8 +151,3 @@ and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mon
         vector
         |> Array.reduce (QuotationEvaluator.Evaluate !> monoid.Append)
         |> Scalar
-
-    override this.VxmInplace a b c = failwith "Not Implemented"
-    override this.EWiseAddInplace a b c = failwith "Not Implemented"
-    override this.EWiseMultInplace a b c = failwith "Not Implemented"
-    override this.ApplyInplace a b = failwith "Not Implemented"
