@@ -6,6 +6,8 @@ open Brahma.FSharp.OpenCL.Extensions
 open OpenCLContext
 open Helpers
 open FSharp.Quotations.Evaluator
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 type CSRFormat<'a> = {
     Values: 'a[]
@@ -57,20 +59,22 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
                     resultBuffer.[i] <- localResultBuffer
             @>
 
-        let (kernel, kernelPrepare, kernelRun) = currentContext.Provider.Compile command
         let ndRange = _1D(csrMatrixRowCount)
-        kernelPrepare
-            ndRange
-            resultVector
-            csrTuples.Values
-            csrTuples.Columns
-            csrTuples.RowPointers
-            vector.AsArray
-        currentContext.CommandQueue.Add (kernelRun ()) |> ignore
-        currentContext.CommandQueue.Add (resultVector.ToHost currentContext.Provider) |> ignore
-        currentContext.CommandQueue.Finish () |> ignore
+        let binder = fun kernelPrepare ->
+            kernelPrepare
+                ndRange
+                resultVector
+                csrTuples.Values
+                csrTuples.Columns
+                csrTuples.RowPointers
+                vector.AsArray
 
-        upcast DenseVector(resultVector, semiring.PlusMonoid)
+        let eval = opencl {
+            do! RunCommand command binder
+            return! ToHost resultVector
+        }
+
+        upcast DenseVector(currentContext.RunSync eval, semiring.PlusMonoid)
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns
@@ -151,3 +155,4 @@ and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mon
         vector
         |> Array.reduce (QuotationEvaluator.Evaluate !> monoid.Append)
         |> Scalar
+

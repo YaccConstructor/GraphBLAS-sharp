@@ -3,3 +3,4 @@ Microsoft.SourceLink.GitHub
 Microsoft.NETFramework.ReferenceAssemblies
 
 Brahma.FSharp
+Brahma.FSharp.OpenCL.WorkflowBuilder
