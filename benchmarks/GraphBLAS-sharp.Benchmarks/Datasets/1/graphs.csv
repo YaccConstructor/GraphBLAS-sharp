@@ -1,0 +1,2 @@
+GraphName,OutputFile,GraphProvider,Url
+coAuthorsCiteseer,coAuthorsCiteseer.mtx,networkrepo,http://nrvis.com/download/data/dimacs10/coAuthorsCiteseer.zip
