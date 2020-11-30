@@ -39,9 +39,9 @@ jobs:
           file-name: clinfo.exe
           
       - name: OpenCL Info
-        run: |
-          dir
-          clinfo.exe    
+        run: clinfo.exe    
           
       - name: Build
         run: ./build.cmd
+        env:
+          CI: true
