@@ -14,6 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Config.fs" />
     <Compile Include="BfsBenchmark.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
