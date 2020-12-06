@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
-open OpenCLContext
+open GlobalContext
 open Helpers
 open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
@@ -74,7 +74,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
             return! ToHost resultVector
         }
 
-        upcast DenseVector(currentContext.RunSync eval, semiring.PlusMonoid)
+        upcast DenseVector(oclContext.RunSync eval, semiring.PlusMonoid)
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns

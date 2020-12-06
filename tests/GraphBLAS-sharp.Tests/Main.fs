@@ -1,6 +1,8 @@
-module ExpectoTemplate
+namespace GraphBLAS.FSharp.Tests
 
 open Expecto
 
-[<EntryPoint>]
-let main argv = runTestsInAssembly defaultConfig argv
+module Main =
+
+    [<EntryPoint>]
+    let main argv = runTestsInAssembly defaultConfig argv

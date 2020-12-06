@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
-    <Compile Include="OpenCLContext.fs" />
+    <Compile Include="GlobalContext.fs" />
     <Compile Include="Operators.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
