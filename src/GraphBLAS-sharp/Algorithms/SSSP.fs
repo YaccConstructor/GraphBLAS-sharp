@@ -10,6 +10,6 @@ module SSSP =
         let distance = SparseVector(vertexCount, [source, 0.])
 
         for _ in 1 .. vertexCount - 1 do
-            distance.[Mask1D.none] <- (distance .@ matrix) Mask1D.none FloatSemiring.addMult
+            distance.[Mask1D.none] <- (distance @. matrix) Mask1D.none FloatSemiring.addMult
 
         upcast distance

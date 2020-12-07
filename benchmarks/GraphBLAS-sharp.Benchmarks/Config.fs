@@ -36,7 +36,6 @@ type TEPSColumn() =
         member this.PriorityInCategory: int = 0
         member this.UnitType: UnitType = UnitType.Dimensionless
 
-
 type Config() =
     inherit ManualConfig()
 

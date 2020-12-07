@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Tests
 
 open Expecto
 open FsCheck
-open System
 open GraphBLAS.FSharp
 
 type OperationCase = {
@@ -52,9 +51,12 @@ type MatrixMultiplicationPair =
         |> Arb.fromGen
 
 module VxmTests =
-    open Backend
+    open MatrixBackend
 
-    let config = { FsCheckConfig.defaultConfig with arbitrary = [typeof<MatrixMultiplicationPair>] }
+    let config = {
+        FsCheckConfig.defaultConfig with
+            arbitrary = [ typeof<MatrixMultiplicationPair> ]
+    }
 
     let testCases =
         [
@@ -79,20 +81,27 @@ module VxmTests =
                     match case.MatrixCase with
                     | MatrixType.CSR -> CSR
                     | _ -> failwith "Not Implemented"
-                // let vectorConstructor =
-                //     match case.VectorCase with
-                //     | VectorType.Sparse ->
+
+                let vectorConstructor =
+                    match case.VectorCase with
+                    | VectorType.Sparse -> (fun array -> Vector.Sparse(array, 0.))
+                    | _ -> failwith "Not Implemented"
+
+                let zeroVectorConstructor =
+                    match case.VectorCase with
+                    | VectorType.Sparse -> (fun length -> Vector.ZeroSparse(length))
+                    | _ -> failwith "Not Implemented"
 
                 [
                     testPropertyWithConfig config "Dimensional mismatch should raise an exception" <|
                         // тут просто размерности генерить и создавать пустые объекты
-                        fun m n k ->
-                            let emptyMatrix = Matrix.ZeroCreate(m, n, matrixBackend)
-                            let emptyVector = Vector.Dense(Predefined.FloatMonoid.add)
+                        fun matrixRowCount matrixColumnCount vectorSize ->
+                            let emptyMatrix = Matrix.ZeroCreate(matrixRowCount, matrixColumnCount, matrixBackend)
+                            let emptyVector = zeroVectorConstructor vectorSize
 
-                            Expect.throwsT
-                                (fun () -> (emptyVector .@ emptyMatrix) Mask1D.none Predefined.FloatSemiring.addMult |> ignore)
-                                (sprintf "Argument has invalid dimension. Need %i, but given %i" k m )
+                            Expect.throwsT<System.ArgumentException>
+                                (fun () -> (emptyVector @. emptyMatrix) Mask1D.none Predefined.FloatSemiring.addMult |> ignore)
+                                "sss???"
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|
                         fun (matrix: float[,]) (vector: float[,]) -> ()

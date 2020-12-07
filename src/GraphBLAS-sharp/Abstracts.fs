@@ -27,8 +27,8 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
 
     static member inline (+) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseAdd y
     static member inline (*) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseMult y
-    static member inline (.@) (x: Matrix<'a>, y: Matrix<'b>) = x.Mxm y
-    static member inline (.@) (x: Matrix<'a>, y: Vector<'b>) = x.Mxv y
+    static member inline (@.) (x: Matrix<'a>, y: Matrix<'b>) = x.Mxm y
+    static member inline (@.) (x: Matrix<'a>, y: Vector<'b>) = x.Mxv y
 
 and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Size: int
@@ -49,7 +49,7 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
 
     static member inline (+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAdd y
     static member inline (*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMult y
-    static member inline (.@) (x: Vector<'a>, y: Matrix<'b>) = x.Vxm y
+    static member inline (@.) (x: Vector<'a>, y: Matrix<'b>) = x.Vxm y
 
 and Mask1D = {
     Indices: int list

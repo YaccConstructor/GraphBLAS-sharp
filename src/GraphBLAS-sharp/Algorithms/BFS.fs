@@ -16,7 +16,7 @@ module BFS =
         while !> (frontier.Reduce BooleanMonoid.any) && currentLevel < vertexCount do
             levels.Fill(Mask1D.regular frontier) <- Scalar currentLevel
             frontier.Clear()
-            frontier.[Mask1D.complemented levels] <- (frontier .@ matrix) (Mask1D.complemented levels) BooleanSemiring.anyAll
+            frontier.[Mask1D.complemented levels] <- (frontier @. matrix) (Mask1D.complemented levels) BooleanSemiring.anyAll
             currentLevel <- currentLevel + 1
 
         upcast levels

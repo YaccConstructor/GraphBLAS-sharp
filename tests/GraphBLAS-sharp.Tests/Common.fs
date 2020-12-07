@@ -9,7 +9,6 @@ type VectorType =
 type MatrixType =
     | CSR = 0
     | COO = 1
-    | Dense = 2
 
 type MaskType =
     | Regular = 0

@@ -28,6 +28,8 @@ type BfsBenchmark() =
     member this.LevelBFS () =
         levelBFS matrix source
 
+    /// Sequence of paths to files where data for benchmarking will be taken from
     static member GraphPaths = seq {
+        // Gets all mtx files from following directory
         yield! Directory.EnumerateFiles(Path.Join [|"Datasets"; "1"|], "*.mtx")
     }
