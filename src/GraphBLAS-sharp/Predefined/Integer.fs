@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
 
 module IntegerMonoid =
-    let plus: Monoid<int> = {
+    let add: Monoid<int> = {
         Zero = 0
         Append = BinaryOp <@ ( + ) @>
     }

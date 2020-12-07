@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
 
 module FloatMonoid =
-    let plus: Monoid<float> = {
+    let add: Monoid<float> = {
         Zero = 0.
         Append = BinaryOp <@ ( + ) @>
     }
@@ -14,12 +14,12 @@ module FloatMonoid =
     }
 
 module FloatSemiring =
-    let plusTimes: Semiring<float> = {
-        PlusMonoid = FloatMonoid.plus
+    let addMult: Semiring<float> = {
+        PlusMonoid = FloatMonoid.add
         Times = BinaryOp <@ ( * ) @>
     }
 
-    let minPlus: Semiring<float> = {
+    let minAdd: Semiring<float> = {
         PlusMonoid = FloatMonoid.min
         Times = BinaryOp <@ ( + ) @>
     }

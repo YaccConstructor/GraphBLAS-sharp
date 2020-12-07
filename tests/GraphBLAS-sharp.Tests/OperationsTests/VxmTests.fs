@@ -88,10 +88,10 @@ module VxmTests =
                         // тут просто размерности генерить и создавать пустые объекты
                         fun m n k ->
                             let emptyMatrix = Matrix.ZeroCreate(m, n, matrixBackend)
-                            let emptyVector = Vector.Dense(Predefined.FloatMonoid.plus)
+                            let emptyVector = Vector.Dense(Predefined.FloatMonoid.add)
 
                             Expect.throwsT
-                                (fun () -> (emptyVector .@ emptyMatrix) Mask1D.none Predefined.FloatSemiring.plusTimes |> ignore)
+                                (fun () -> (emptyVector .@ emptyMatrix) Mask1D.none Predefined.FloatSemiring.addMult |> ignore)
                                 (sprintf "Argument has invalid dimension. Need %i, but given %i" k m )
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|

@@ -8,7 +8,7 @@ open GraphBLAS.FSharp
 module BFS =
     let levelBFS (matrix: Matrix<bool>) (source: int) : Vector<int> =
         let vertexCount = matrix.RowCount
-        let levels = DenseVector(Array.zeroCreate vertexCount, IntegerMonoid.plus)
+        let levels = DenseVector(Array.zeroCreate vertexCount, IntegerMonoid.add)
 
         let frontier = SparseVector(vertexCount, [source, true])
 
