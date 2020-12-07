@@ -25,13 +25,13 @@ type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mo
         Some <| Mask1D(indices, this.Length, true)
 
     override this.Item
-        with get (mask: Mask1D) : Vector<'a> = failwith "Not Implemented"
-        and set (mask: Mask1D) (value: Vector<'a>) = failwith "Not Implemented"
+        with get (mask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
+        and set (mask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
         with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
         and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
     override this.Item
-        with set (mask: Mask1D) (value: Scalar<'a>) = failwith "Not Implemented"
+        with set (mask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
 
     override this.Vxm a b c = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"

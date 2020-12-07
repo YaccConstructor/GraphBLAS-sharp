@@ -84,23 +84,23 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Complemented = failwith "Not implemented"
 
     override this.Item
-        with get (mask: Mask2D) : Matrix<'a> = failwith "Not Implemented"
-        and set (mask: Mask2D) (value: Matrix<'a>) = failwith "Not Implemented"
+        with get (mask: Mask2D option) : Matrix<'a> = failwith "Not Implemented"
+        and set (mask: Mask2D option) (value: Matrix<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (vectorMask: Mask1D, colIdx: int) : Vector<'a> = failwith "Not Implemented"
-        and set (vectorMask: Mask1D, colIdx: int) (value: Vector<'a>) = failwith "Not Implemented"
+        with get (vectorMask: Mask1D option, colIdx: int) : Vector<'a> = failwith "Not Implemented"
+        and set (vectorMask: Mask1D option, colIdx: int) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (rowIdx: int, vectorMask: Mask1D) : Vector<'a> = failwith "Not Implemented"
-        and set (rowIdx: int, vectorMask: Mask1D) (value: Vector<'a>) = failwith "Not Implemented"
+        with get (rowIdx: int, vectorMask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
+        and set (rowIdx: int, vectorMask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
         with get (rowIdx: int, colIdx: int) : Scalar<'a> = failwith "Not Implemented"
         and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
     override this.Item
-        with set (mask: Mask2D) (value: Scalar<'a>) = failwith "Not Implemented"
+        with set (mask: Mask2D option) (value: Scalar<'a>) = failwith "Not Implemented"
     override this.Item
-        with set (vectorMask: Mask1D, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+        with set (vectorMask: Mask1D option, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
     override this.Item
-        with set (rowIdx: int, vectorMask: Mask1D) (value: Scalar<'a>) = failwith "Not Implemented"
+        with set (rowIdx: int, vectorMask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
 
     override this.Mxm a b c = failwith "Not Implemented"
     override this.Mxv a b c = failwith "Not Implemented"
