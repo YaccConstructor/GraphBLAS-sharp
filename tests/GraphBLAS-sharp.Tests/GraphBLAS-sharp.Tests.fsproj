@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Common.fs" />
     <Compile Include="OperationsTests/VxmTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>

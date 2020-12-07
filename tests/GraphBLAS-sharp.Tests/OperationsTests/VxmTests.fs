@@ -1,45 +1,60 @@
 namespace GraphBLAS.FSharp.Tests
 
 open Expecto
+open FsCheck
 open System
-
-type VectorType =
-    | Sparse = 0
-    | Dense = 1
-
-type MatrixType =
-    | CSR = 0
-    | COO = 1
-    | Dense = 2
-
-type MaskType =
-    | Regular = 0
-    | Complemented = 1
-    | None = 2
+open GraphBLAS.FSharp
 
 type OperationCase = {
-    VectorCaseType: VectorType
-    MatrixCaseType: MatrixType
-    MaskCaseType: MaskType
+    VectorCase: VectorType
+    MatrixCase: MatrixType
+    MaskCase: MaskType
 }
 
-module VxmTests =
-    let rec cartesian lstlst =
-        match lstlst with
-        | [x] ->
-            List.fold (fun acc elem -> [elem]::acc) [] x
-        | h::t ->
-            List.fold (fun cacc celem ->
-                (List.fold (fun acc elem -> (elem::celem)::acc) [] h) @ cacc
-                ) [] (cartesian t)
-        | _ -> []
+type MatrixMultiplicationPair =
+    static member DimensionGen2 () =
+        fun size ->
+            Gen.choose (0, size |> float |> sqrt |> int)
+            |> Gen.two
+        |> Gen.sized
+        |> Arb.fromGen
 
-    /// Return all values for an enumeration type
-    let enumValues (enumType: Type) : int list =
-        let values = Enum.GetValues enumType
-        let lb = values.GetLowerBound 0
-        let ub = values.GetUpperBound 0
-        [lb .. ub] |> List.map (fun i -> values.GetValue i :?> int)
+    static member DimensionGen3 () =
+        fun size ->
+            Gen.choose (0, size |> float |> sqrt |> int)
+            |> Gen.three
+        |> Gen.sized
+        |> Arb.fromGen
+
+    static member FloatSparseMatrixVectorPair () =
+        fun size ->
+            let floatSparseGenerator =
+                Gen.oneof [
+                    Arb.Default.NormalFloat () |> Arb.toGen |> Gen.map float
+                    Gen.constant 0.
+                ]
+
+            let dimGenerator =
+                Gen.choose (0, size |> float |> sqrt |> int)
+                |> Gen.two
+
+            gen {
+                let! (rows, cols) = dimGenerator
+                let! matrix = floatSparseGenerator |> Gen.array2DOfDim (rows, cols)
+                let! vector = floatSparseGenerator |> Gen.arrayOfLength cols
+                return (matrix, vector)
+            }
+            |> Gen.filter (fun (matrix, vector) -> matrix.Length <> 0 && vector.Length <> 0)
+            |> Gen.filter (fun (matrix, vector) ->
+                matrix |> Seq.cast<float> |> Seq.exists (fun elem -> abs elem > System.Double.Epsilon) &&
+                vector |> Seq.cast<float> |> Seq.exists (fun elem -> abs elem > System.Double.Epsilon))
+        |> Gen.sized
+        |> Arb.fromGen
+
+module VxmTests =
+    open Backend
+
+    let config = { FsCheckConfig.defaultConfig with arbitrary = [typeof<MatrixMultiplicationPair>] }
 
     let testCases =
         [
@@ -47,33 +62,43 @@ module VxmTests =
             typeof<MatrixType>
             typeof<MaskType>
         ]
-        |> List.map enumValues
-        |> cartesian
-        |> List.map (fun list -> {
-                VectorCaseType = enum<VectorType> list.[0]
-                MatrixCaseType = enum<MatrixType> list.[1]
-                MaskCaseType = enum<MaskType> list.[2]
+        |> List.map Utils.enumValues
+        |> Utils.cartesian
+        |> List.map (fun list ->
+            {
+                VectorCase = enum<VectorType> list.[0]
+                MatrixCase = enum<MatrixType> list.[1]
+                MaskCase = enum<MaskType> list.[2]
             })
 
-    let matrix =
-        array2D [ [ 12; 0; 7 ]
-                  [ 1; 0; 0 ]
-                  [ 3; 6; 9 ] ]
-
-    let vector = [| 1; 1; 0 |]
-
     [<Tests>]
-    let testList =
-        testList "aaa" (
-            testCases
-            |> List.collect (fun case ->
-                    let a = 1 // определеям контекст
-                    testParam case [
-                        "2", fun value () -> Expect.equal a a "ss"
-                    ] |> List.ofSeq
-                )
-        )
+    let vxmTestList =
+        testList "Vector-matrix multiplication tests" (
+            List.collect (fun case ->
+                let matrixBackend =
+                    match case.MatrixCase with
+                    | MatrixType.CSR -> CSR
+                    | _ -> failwith "Not Implemented"
+                // let vectorConstructor =
+                //     match case.VectorCase with
+                //     | VectorType.Sparse ->
 
-// member this.Baddimensions() = ()
-// let corectness = ()
-// let zerovalue = ()
+                [
+                    testPropertyWithConfig config "Dimensional mismatch should raise an exception" <|
+                        // тут просто размерности генерить и создавать пустые объекты
+                        fun m n k ->
+                            let emptyMatrix = Matrix.ZeroCreate(m, n, matrixBackend)
+                            let emptyVector = Vector.Dense(Predefined.FloatMonoid.plus)
+
+                            Expect.throwsT
+                                (fun () -> (emptyVector .@ emptyMatrix) Mask1D.none Predefined.FloatSemiring.plusTimes |> ignore)
+                                (sprintf "Argument has invalid dimension. Need %i, but given %i" k m )
+
+                    testPropertyWithConfig config "Operation should have correct semantic" <|
+                        fun (matrix: float[,]) (vector: float[,]) -> ()
+
+                    ptestPropertyWithConfig config "Explicit zeroes after operation should be dropped" <|
+                        fun a b -> a + b = b + a
+                ]
+            ) testCases
+        )

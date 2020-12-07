@@ -1,5 +1,7 @@
 namespace GraphBLAS.FSharp
 
+open Backend
+
 [<AutoOpen>]
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
