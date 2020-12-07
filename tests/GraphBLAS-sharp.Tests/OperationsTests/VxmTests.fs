@@ -79,6 +79,7 @@ module VxmTests =
         let stdSemiring = Predefined.FloatSemiring.addMult
         ptestList "Float vector-matrix multiplication tests" (
             List.collect (fun case ->
+                // добавить возможность пропускать некоторые случаи
                 let matrixBackend =
                     match case.MatrixCase with
                     | MatrixType.CSR -> CSR
@@ -94,6 +95,11 @@ module VxmTests =
                     | VectorType.Sparse -> (fun length -> Vector.ZeroSparse(length))
                     | _ -> failwith "Not Implemented"
 
+                let mask : Mask1D =
+                    match case.MaskCase with
+                    | MaskType.None -> failwith "Not Implemented"
+                    | _ -> failwith "Not Implemented"
+
                 [
                     testPropertyWithConfig config "Dimensional mismatch should raise an exception" <|
                         fun matrixRowCount matrixColumnCount vectorSize ->
@@ -101,14 +107,14 @@ module VxmTests =
                             let emptyVector = zeroVectorConstructor vectorSize
 
                             Expect.throwsT<System.ArgumentException>
-                                (fun () -> (emptyVector @. emptyMatrix) Mask1D.none stdSemiring |> ignore)
-                                (sprintf "1x%i @ %ix%i" vectorSize matrixRowCount matrixColumnCount)
+                                (fun () -> (emptyVector @. emptyMatrix) mask stdSemiring |> ignore)
+                                (sprintf "1x%i @ %ix%i\n case:\n %A" vectorSize matrixRowCount matrixColumnCount case)
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|
                         fun (denseMatrix: float[,]) (denseVector: float[]) ->
                             let matrix = Matrix.Build(denseMatrix, 0., matrixBackend)
                             let vector = vectorConstructor denseVector
-                            let result = (vector @. matrix) Mask1D.none stdSemiring
+                            let result = (vector @. matrix) mask stdSemiring
                             let a = LinearAlgebra.DenseMatrix.ofArray2 denseMatrix
                             let b = LinearAlgebra.DenseVector.ofArray denseVector
                             let c = b * a
@@ -120,7 +126,7 @@ module VxmTests =
                             Expect.all
                                 elementWiseDifference
                                 (fun diff -> abs diff < Accuracy.medium.absolute)
-                                (sprintf "%A @ %A = %A" vector matrix result)
+                                (sprintf "%A @ %A = %A\n case:\n %A" vector matrix result case)
 
                     ptestPropertyWithConfig config "Explicit zeroes after operation should be dropped" <|
                         fun a b -> a + b = b + a
