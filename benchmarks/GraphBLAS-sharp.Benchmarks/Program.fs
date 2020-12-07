@@ -4,7 +4,7 @@ open GraphBLAS.FSharp.Benchmarks
 [<EntryPoint>]
 let main argv =
     let benchmarks = BenchmarkSwitcher [|
-        typeof<BfsBenchmark>
+        typeof<BFSBenchmark4CSRMatrix>
     |]
 
     benchmarks.Run argv |> ignore

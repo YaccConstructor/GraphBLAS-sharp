@@ -13,8 +13,7 @@ module MatrixBackend =
             failwith "Not Implemented"
 
 [<AutoOpen>]
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Matrix =
+module MatrixExtensions =
     open MatrixBackend
     type Matrix<'a when 'a : struct and 'a : equality> with
         static member Build(denseMatrix: 'T[,], zero: 'T) : Matrix<'T> =
@@ -26,3 +25,6 @@ module Matrix =
         static member ZeroCreate(rowCount: int, columnCount: int) : Matrix<'T> =
             Matrix.ZeroCreate(rowCount, columnCount)
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Matrix =
+    let toSeq (matrix: Matrix<'a>) = failwith "Not Implemented"

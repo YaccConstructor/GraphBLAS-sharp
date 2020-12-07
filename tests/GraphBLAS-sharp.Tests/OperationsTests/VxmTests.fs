@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Tests
 open Expecto
 open FsCheck
 open GraphBLAS.FSharp
+open MathNet.Numerics
 
 type OperationCase = {
     VectorCase: VectorType
@@ -11,25 +12,25 @@ type OperationCase = {
 }
 
 type MatrixMultiplicationPair =
-    static member DimensionGen2 () =
+    static member DimensionGen2() =
         fun size ->
             Gen.choose (0, size |> float |> sqrt |> int)
             |> Gen.two
         |> Gen.sized
         |> Arb.fromGen
 
-    static member DimensionGen3 () =
+    static member DimensionGen3() =
         fun size ->
             Gen.choose (0, size |> float |> sqrt |> int)
             |> Gen.three
         |> Gen.sized
         |> Arb.fromGen
 
-    static member FloatSparseMatrixVectorPair () =
+    static member FloatSparseMatrixVectorPair() =
         fun size ->
             let floatSparseGenerator =
                 Gen.oneof [
-                    Arb.Default.NormalFloat () |> Arb.toGen |> Gen.map float
+                    Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float
                     Gen.constant 0.
                 ]
 
@@ -74,8 +75,9 @@ module VxmTests =
             })
 
     [<Tests>]
-    let vxmTestList =
-        testList "Vector-matrix multiplication tests" (
+    let vxmTestsInStandardSemiring =
+        let stdSemiring = Predefined.FloatSemiring.addMult
+        ptestList "Float vector-matrix multiplication tests" (
             List.collect (fun case ->
                 let matrixBackend =
                     match case.MatrixCase with
@@ -94,17 +96,31 @@ module VxmTests =
 
                 [
                     testPropertyWithConfig config "Dimensional mismatch should raise an exception" <|
-                        // тут просто размерности генерить и создавать пустые объекты
                         fun matrixRowCount matrixColumnCount vectorSize ->
                             let emptyMatrix = Matrix.ZeroCreate(matrixRowCount, matrixColumnCount, matrixBackend)
                             let emptyVector = zeroVectorConstructor vectorSize
 
                             Expect.throwsT<System.ArgumentException>
-                                (fun () -> (emptyVector @. emptyMatrix) Mask1D.none Predefined.FloatSemiring.addMult |> ignore)
-                                "sss???"
+                                (fun () -> (emptyVector @. emptyMatrix) Mask1D.none stdSemiring |> ignore)
+                                (sprintf "1x%i @ %ix%i" vectorSize matrixRowCount matrixColumnCount)
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|
-                        fun (matrix: float[,]) (vector: float[,]) -> ()
+                        fun (denseMatrix: float[,]) (denseVector: float[]) ->
+                            let matrix = Matrix.Build(denseMatrix, 0., matrixBackend)
+                            let vector = vectorConstructor denseVector
+                            let result = (vector @. matrix) Mask1D.none stdSemiring
+                            let a = LinearAlgebra.DenseMatrix.ofArray2 denseMatrix
+                            let b = LinearAlgebra.DenseVector.ofArray denseVector
+                            let c = b * a
+                            let elementWiseDifference =
+                                (result |> Vector.toSeq, c.AsArray() |> Seq.ofArray)
+                                ||>  Seq.zip
+                                |> Seq.map (fun (a, b) -> a - b)
+
+                            Expect.all
+                                elementWiseDifference
+                                (fun diff -> abs diff < Accuracy.medium.absolute)
+                                (sprintf "%A @ %A = %A" vector matrix result)
 
                     ptestPropertyWithConfig config "Explicit zeroes after operation should be dropped" <|
                         fun a b -> a + b = b + a

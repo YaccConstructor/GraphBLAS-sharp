@@ -1,8 +1,7 @@
 namespace GraphBLAS.FSharp
 
 [<AutoOpen>]
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Vector =
+module VectorExtensions =
     type Vector<'a when 'a : struct and 'a : equality> with
         static member Sparse(denseVector: 'T[], zero: 'T) : Vector<'T> =
             failwith "Not Implemented"
@@ -17,3 +16,7 @@ module Vector =
             failwith "Not Implemented"
         static member ZeroDense(length: int, monoid: Monoid<'T>) : Vector<'T> =
             failwith "Not Implemented"
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Vector =
+    let toSeq (vector: Vector<'a>) = failwith "Not Implemented"

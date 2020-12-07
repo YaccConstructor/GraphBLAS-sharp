@@ -7,10 +7,11 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open System.IO
 open System
+open MatrixBackend
 
 [<Config(typeof<Config>)>]
 [<SimpleJob(targetCount=10)>]
-type BfsBenchmark() =
+type BFSBenchmark4CSRMatrix() =
     let random = Random()
 
     let mutable matrix = Unchecked.defaultof<Matrix<bool>>
@@ -20,12 +21,12 @@ type BfsBenchmark() =
     member val PathToGraph = "" with get, set
 
     [<GlobalSetup>]
-    member this.BuildMatrix () =
-        matrix <- Matrix.Build<bool> this.PathToGraph
+    member this.BuildMatrix() =
+        matrix <- Matrix.Build<bool>(this.PathToGraph, CSR)
         source <- random.Next matrix.RowCount
 
     [<Benchmark>]
-    member this.LevelBFS () =
+    member this.LevelBFS() =
         levelBFS matrix source
 
     /// Sequence of paths to files where data for benchmarking will be taken from
