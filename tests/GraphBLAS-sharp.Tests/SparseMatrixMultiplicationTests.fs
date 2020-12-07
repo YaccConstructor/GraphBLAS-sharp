@@ -1,13 +1,13 @@
 namespace CSRMultiplication.Tests
 
-open Xunit
-open FsUnit.Xunit
-open FsCheck
-open FsCheck.Xunit
-open CSRMultiplication
-open OpenCL.Net
-open Brahma.OpenCL
-open GraphBLAS.FSharp
+// open Xunit
+// open FsUnit.Xunit
+// open FsCheck
+// open FsCheck.Xunit
+// open CSRMultiplication
+// open OpenCL.Net
+// open Brahma.OpenCL
+// open GraphBLAS.FSharp
 
 module SparseMatrixMultiplicationTests =
     ()

@@ -1,11 +1,11 @@
 namespace CSRMultiplication.Tests
 
-open System
-open Xunit
-open FsUnit.Xunit
-open FsCheck
-open FsCheck.Xunit
-open GraphBLAS.FSharp
+// open System
+// open Xunit
+// open FsUnit.Xunit
+// open FsCheck
+// open FsCheck.Xunit
+// open GraphBLAS.FSharp
 
 // [<Properties(Verbose=true, MaxTest=100, EndSize=2500)>]
 module CSRMatrixTests =

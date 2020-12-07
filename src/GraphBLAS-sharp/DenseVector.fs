@@ -12,11 +12,17 @@ type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mo
     override this.Length = failwith "Not Implemented"
     override this.AsArray = failwith "Not Implemented"
 
-    override this.CreateMask (isRegular: bool) =
+    override this.Mask =
         let indices =
             [| for i in 0 .. this.Length - 1 do
                 if this.Values.[i] <> this.Monoid.Zero then yield i |]
-        Mask1D(false, indices, this.Length, isRegular)
+        Some <| Mask1D(indices, this.Length, false)
+
+    override this.Complemented =
+        let indices =
+            [| for i in 0 .. this.Length - 1 do
+                if this.Values.[i] <> this.Monoid.Zero then yield i |]
+        Some <| Mask1D(indices, this.Length, true)
 
     override this.Item
         with get (mask: Mask1D) : Vector<'a> = failwith "Not Implemented"

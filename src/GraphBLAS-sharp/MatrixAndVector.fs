@@ -5,7 +5,8 @@ type Matrix<'a when 'a : struct and 'a : equality>() =
     abstract RowCount: int
     abstract ColumnCount: int
 
-    abstract CreateMask: bool -> Mask2D
+    abstract Mask: Option<Mask2D>
+    abstract Complemented: Option<Mask2D>
 
     abstract Item: Mask2D -> Matrix<'a> with get, set
     abstract Item: Mask1D * int -> Vector<'a> with get, set
@@ -39,7 +40,8 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>() =
     abstract Length: int
     abstract AsArray: 'a[]
 
-    abstract CreateMask: bool -> Mask1D
+    abstract Mask: Option<Mask1D>
+    abstract Complemented: Option<Mask1D>
 
     abstract Item: Mask1D -> Vector<'a> with get, set
     abstract Item: int -> Scalar<'a> with get, set
@@ -61,34 +63,24 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>() =
     static member inline (.+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAddInplace y
     static member inline (.*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMultInplace y
 
-and Mask1D(isNone: bool, indices: int[], length: int, isRegular: bool) =
-    member this.IsNone = isNone
-    member this.IsRegular = isRegular
+and Mask1D(indices: int[], length: int, isComplemented: bool) =
+    member this.IsComplemented = isComplemented
 
     member this.Indices = indices
     member this.Length = length
 
     member this.Item
         with get (idx: int) : bool =
-            this.IsNone || this.Indices |> Array.exists ( ( = ) idx) |> ( = ) this.IsRegular
+            this.Indices |> Array.exists ( ( = ) idx) |> ( <> ) this.IsComplemented
 
-    static member Create (vector: Vector<'a>) = vector.CreateMask true
-    static member Complemented (vector: Vector<'a>) = vector.CreateMask false
-    static member None = Mask1D(true, Array.empty, 0, true)
+and Mask2D(indices: (int * int)[], rowCount: int, columnCount: int, isComplemented: bool) =
+    member this.IsComplemented = isComplemented
 
-and Mask2D(isNone: bool, rows: int[], columns: int[], rowCount: int, columnCount: int, isRegular: bool) =
-    member this.IsNone = isNone
-    member this.IsRegular = isRegular
-
-    member this.Rows = rows
-    member this.Columns = columns
+    member this.Rows = indices |> Array.unzip |> fst
+    member this.Columns = indices |> Array.unzip |> snd
     member this.RowCount = rowCount
     member this.ColumnCount = columnCount
 
     member this.Item
         with get (rowIdx: int, colIdx: int) : bool =
-            this.IsNone || Array.zip this.Rows this.Columns |> Array.exists ( ( = ) (rowIdx, colIdx)) |> ( = ) this.IsRegular
-
-    static member Create (matrix: Matrix<'a>) = matrix.CreateMask true
-    static member Complemented (matrix: Matrix<'a>) = matrix.CreateMask false
-    static member None = Mask2D(true, Array.empty, Array.empty, 0, 0, true)
+            Array.zip this.Rows this.Columns |> Array.exists ( ( = ) (rowIdx, colIdx)) |> ( <> ) this.IsComplemented

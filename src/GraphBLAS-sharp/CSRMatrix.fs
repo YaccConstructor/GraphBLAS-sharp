@@ -80,8 +80,8 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.RowCount = rowCount
     override this.ColumnCount = columnCount
 
-    override this.CreateMask (isRegular: bool) =
-        failwith "Not implemented"
+    override this.Mask = failwith "Not implemented"
+    override this.Complemented = failwith "Not implemented"
 
     override this.Item
         with get (mask: Mask2D) : Matrix<'a> = failwith "Not Implemented"
