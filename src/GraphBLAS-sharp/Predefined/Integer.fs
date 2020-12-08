@@ -19,7 +19,7 @@ module IntegerSemiring =
         Times = BinaryOp <@ ( * ) @>
     }
 
-    let minFirst<'b> : Semiring<int, 'b, int> = {
-        PlusMonoid = IntegerMonoid.min
-        Times = BinaryOp <@ fun x y -> x @>
-    }
+    // let minFirst<'b> : Semiring<int, 'b, int> = {
+    //     PlusMonoid = IntegerMonoid.min
+    //     Times = BinaryOp <@ fun x y -> x @>
+    // }

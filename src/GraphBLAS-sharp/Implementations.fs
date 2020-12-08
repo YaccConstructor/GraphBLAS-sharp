@@ -132,7 +132,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
     override this.Fill
         with set (mask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
 
-    override this.Vxm (matrix: Matrix<'b>) (mask: Mask1D option) (semiring: Semiring<'a, 'b, 'c>) : Vector<'c> = failwith "Not Implemented"
+    override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: Semiring<'a>) : Vector<'a> = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
