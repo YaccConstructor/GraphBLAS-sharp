@@ -74,7 +74,6 @@ module VxmTests =
                 MaskCase = enum<MaskType> list.[2]
             })
 
-    [<Tests>]
     let vxmTestsInStandardSemiring =
         let stdSemiring = Predefined.FloatSemiring.addMult
         ptestList "Float vector-matrix multiplication tests" (
