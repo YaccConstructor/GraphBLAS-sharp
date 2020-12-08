@@ -5,8 +5,10 @@ open GraphBLAS.FSharp
 
 [<AutoOpen>]
 module TriangleCounting =
-    // нужна проекция в инт
-    // let sandiaTriangleCount (lowerTriangular: Matrix<bool>) =
-    //     let c = (lowerTriangular .@ lowerTriangular.T) (Mask2D.regular lowerTriangular) BooleanSemiring.anyAll
-    //     c.Reduce BooleanMonoid.any
-    ()
+    let sandiaTriangleCount (lowerTriangular: Matrix<bool>) =
+        let bool2int = function
+            | true -> 1
+            | false -> 0
+        let convertedMatrix = lowerTriangular.Apply None (UnaryOp <@ bool2int @>)
+        let result = (convertedMatrix @. convertedMatrix.T) lowerTriangular.Mask IntegerSemiring.addMult
+        result.Reduce IntegerMonoid.add

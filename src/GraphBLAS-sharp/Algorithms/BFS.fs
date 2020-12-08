@@ -25,12 +25,12 @@ module BFS =
     //     let vertexCount = matrix.RowCount
     //     let parents = SparseVector(vertexCount, [source, -1])
 
-    //     let id = DenseVector(Array.init vertexCount id, IntegerMonoid.plus)
+    //     let id = DenseVector(Array.init vertexCount id, IntegerMonoid.add)
     //     let frontier = SparseVector(vertexCount, [source, source])
 
     //     for _ in 1 .. vertexCount - 1 do
-    //         frontier.[Mask1D.complemented parents] <- (frontier .@ matrix) (Mask1D.complemented parents) IntegerSemiring.minFirst
-    //         parents.[Mask1D.regular frontier] <- frontier
-    //         frontier.[Mask1D.regular frontier] <- id
+    //         frontier.[parents.Complemented] <- (frontier @. matrix) parents.Complemented IntegerSemiring.minFirst
+    //         parents.[frontier.Mask] <- frontier
+    //         frontier.[frontier.Mask] <- id
 
     //     upcast parents

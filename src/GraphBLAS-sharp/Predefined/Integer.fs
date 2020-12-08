@@ -14,6 +14,11 @@ module IntegerMonoid =
     }
 
 module IntegerSemiring =
+    let addMult: Semiring<int> = {
+        PlusMonoid = IntegerMonoid.add
+        Times = BinaryOp <@ ( * ) @>
+    }
+
     let minFirst<'b> : Semiring<int, 'b, int> = {
         PlusMonoid = IntegerMonoid.min
         Times = BinaryOp <@ fun x y -> x @>

@@ -25,7 +25,7 @@ type TEPSColumn() =
                 let (nrows, ncols, nnz) = float matrixInfo.[0], float matrixInfo.[1], float matrixInfo.[2]
                 let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
                 sprintf "%f" (edges / meanTime)
-            | _ -> "file`s format not supported"
+            | another -> sprintf "%s files not supported" another
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
         member this.Id: string = "TEPSColumn"
