@@ -19,7 +19,6 @@
     <Compile Include="Implementations.fs" />
     <Compile Include="Matrix.fs" />
     <Compile Include="Vector.fs" />
-    <Compile Include="Masks.fs" />
     <Compile Include="Predefined/Float.fs" />
     <Compile Include="Predefined/Integer.fs" />
     <Compile Include="Predefined/Boolean.fs" />

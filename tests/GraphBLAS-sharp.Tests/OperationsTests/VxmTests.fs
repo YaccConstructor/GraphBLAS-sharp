@@ -95,7 +95,7 @@ module VxmTests =
                     | VectorType.Sparse -> (fun length -> Vector.ZeroSparse(length))
                     | _ -> failwith "Not Implemented"
 
-                let mask : Mask1D =
+                let mask : Mask1D option =
                     match case.MaskCase with
                     | MaskType.None -> failwith "Not Implemented"
                     | _ -> failwith "Not Implemented"
