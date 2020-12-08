@@ -1,22 +1,37 @@
 namespace GraphBLAS.FSharp
 
-type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[]) =
+type DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Monoid<'a>) =
     inherit Vector<'a>()
 
-    new() = DenseVector(Array.zeroCreate<'a> 0)
-    new(listOfIndices: int list) = DenseVector(Array.zeroCreate<'a> 0)
+    new(monoid: Monoid<'a>) = DenseVector(Array.zeroCreate<'a> 0, monoid)
+    new(listOfIndices: int list, monoid: Monoid<'a>) = DenseVector(Array.zeroCreate<'a> 0, monoid)
+
+    member this.Monoid = monoid
+    member this.Values = vector
 
     override this.Length = failwith "Not Implemented"
     override this.AsArray = failwith "Not Implemented"
 
+    override this.Mask =
+        let indices =
+            [| for i in 0 .. this.Length - 1 do
+                if this.Values.[i] <> this.Monoid.Zero then yield i |]
+        Some <| Mask1D(indices, this.Length, false)
+
+    override this.Complemented =
+        let indices =
+            [| for i in 0 .. this.Length - 1 do
+                if this.Values.[i] <> this.Monoid.Zero then yield i |]
+        Some <| Mask1D(indices, this.Length, true)
+
     override this.Item
-        with get (mask: Mask1D<'a>) : Vector<'a> = failwith "Not Implemented"
-        and set (mask: Mask1D<'a>) (value: Vector<'a>) = failwith "Not Implemented"
+        with get (mask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
+        and set (mask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
     override this.Item
-        with get (rowIdx: int, colIdx: int) : Scalar<'a> = failwith "Not Implemented"
-        and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
+        with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
+        and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
     override this.Item
-        with set (mask: Mask1D<'a>) (value: Scalar<'a>) = failwith "Not Implemented"
+        with set (mask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
 
     override this.Vxm a b c = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
