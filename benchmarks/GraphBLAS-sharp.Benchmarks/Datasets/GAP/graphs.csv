@@ -1,0 +1,4 @@
+GraphName,ArchiveType,Url
+twitter,tar.gz,http://an.kaist.ac.kr/~haewoon/release/twitter_social_graph/twitter_rv.tar.gz
+web,tar.gz,https://sparse.tamu.edu/MM/LAW/sk-2005.tar.gz
+road,gz,http://www.dis.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.USA.gr.gz

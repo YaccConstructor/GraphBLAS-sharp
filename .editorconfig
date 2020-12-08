@@ -23,3 +23,7 @@ indent_size = 2
 [*.paket.references]
 trim_trailing_whitespace = true
 indent_size = 2
+
+[*.yml]
+trim_trailing_whitespace = true
+indent_size = 2

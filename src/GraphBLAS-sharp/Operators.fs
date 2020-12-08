@@ -2,11 +2,11 @@ namespace GraphBLAS.FSharp
 
 open Microsoft.FSharp.Quotations
 
-type UnaryOp<'a, 'b> = UnaryOp of Expr<'a -> 'b>
+type UnaryOp<'TIn, 'TOut> = UnaryOp of Expr<'TIn -> 'TOut>
 with
     static member op_Implicit (UnaryOp source) = source
 
 
-type BinaryOp<'a, 'b, 'c> = BinaryOp of Expr<'a -> 'b -> 'c>
+type BinaryOp<'T1, 'T2, 'TOut> = BinaryOp of Expr<'T1 -> 'T2 -> 'TOut>
 with
     static member op_Implicit (BinaryOp source) = source
