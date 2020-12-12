@@ -175,11 +175,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
 
         let renewedValues = oclContext.RunSync workflow
 
-        (rows, columns, values) <-
+        let resultRows, resultColumns, resultValues =
             (rows, columns, renewedValues)
             |||> Array.zip3
             |> Array.append elementsToAppend
             |> Array.unzip3
+
+        rows <- resultRows
+        columns <- resultColumns
+        values <- resultValues
 
     override this.Item
         with get (matrixMask: Mask2D option) : Matrix<'a> =
@@ -263,11 +267,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
         let renewedValues = oclContext.RunSync workflow
         let renewedElementsToAppend = elementsToAppend |> Array.map (fun (i, a) -> (i, colIdx, a))
 
-        (rows, columns, values) <-
+        let resultRows, resultColumns, resultValues =
             (rows, columns, renewedValues)
             |||> Array.zip3
             |> Array.append renewedElementsToAppend
             |> Array.unzip3
+
+        rows <- resultRows
+        columns <- resultColumns
+        values <- resultValues
 
     override this.Item
         with get (vectorMask: Mask1D option, colIdx: int) : Vector<'a> =
@@ -354,11 +362,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
         let renewedValues = oclContext.RunSync workflow
         let renewedElementsToAppend = elementsToAppend |> Array.map (fun (j, a) -> (rowIdx, j, a))
 
-        (rows, columns, values) <-
+        let resultRows, resultColumns, resultValues =
             (rows, columns, renewedValues)
             |||> Array.zip3
             |> Array.append renewedElementsToAppend
             |> Array.unzip3
+
+        rows <- resultRows
+        columns <- resultColumns
+        values <- resultValues
 
     override this.Item
         with get (rowIdx: int, vectorMask: Mask1D option) : Vector<'a> =
@@ -411,21 +423,29 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
                 i <- i + 1
 
             if not isFound then
-                (rows, columns, values) <-
+                let resultRows, resultCOlumns, resultValues =
                     (rows, columns, values)
                     |||> Array.zip3
                     |> Array.append [|rowIdx, colIdx, value|]
                     |> Array.unzip3
 
+                rows <- resultRows
+                columns <- resultCOlumns
+                values <- resultValues
+
     override this.Fill
         with set (matrixMask: Mask2D option) (Scalar (value: 'a)) =
             match matrixMask with
             | None ->
-                (rows, columns, values) <-
+                let resultRows, resultCOlumns, resultValues =
                     [| for i in 0 .. this.RowCount - 1 do
                         for j in 0 .. this.ColumnCount - 1 do
                             yield (i, j, value) |]
                     |> Array.unzip3
+
+                rows <- resultRows
+                columns <- resultCOlumns
+                values <- resultValues
             | Some mask ->
                 if (mask.RowCount, mask.ColumnCount) <> (this.RowCount, this.ColumnCount) then
                     invalidArg
@@ -478,11 +498,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
                 let renewedValues = oclContext.RunSync workflow
                 let elementsToAppend = indicesToAppend |> Array.map (fun (i, j) -> (i, j, value))
 
-                (rows, columns, values) <-
+                let resultRows, resultColumns, resultValues =
                     (rows, columns, renewedValues)
                     |||> Array.zip3
                     |> Array.append elementsToAppend
                     |> Array.unzip3
+
+                rows <- resultRows
+                columns <- resultColumns
+                values <- resultValues
 
     override this.Fill
         with set (vectorMask: Mask1D option, colIdx: int) (Scalar (value: 'a)) =
@@ -539,11 +563,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
             let renewedValues = oclContext.RunSync workflow
             let elementsToAppend = indicesToAppend |> Array.map (fun i -> (i, colIdx, value))
 
-            (rows, columns, values) <-
+            let resultRows, resultColumns, resultValues =
                 (rows, columns, renewedValues)
                 |||> Array.zip3
                 |> Array.append elementsToAppend
                 |> Array.unzip3
+
+            rows <- resultRows
+            columns <- resultColumns
+            values <- resultValues
 
     override this.Fill
         with set (rowIdx: int, vectorMask: Mask1D option) (Scalar (value: 'a)) =
@@ -600,11 +628,15 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
             let renewedValues = oclContext.RunSync workflow
             let elementsToAppend = indicesToAppend |> Array.map (fun j -> (rowIdx, j, value))
 
-            (rows, columns, values) <-
+            let resultRows, resultColumns, resultValues =
                 (rows, columns, renewedValues)
                 |||> Array.zip3
                 |> Array.append elementsToAppend
                 |> Array.unzip3
+
+            rows <- resultRows
+            columns <- resultColumns
+            values <- resultValues
 
     member private this.MxCOOm
         (matrix: COOMatrix<'a>)
@@ -1144,11 +1176,14 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
 
         let renewedValues = oclContext.RunSync workflow
 
-        (indices, values) <-
+        let resultIndices, resultValues =
             (indices, renewedValues)
             ||> Array.zip
             |> Array.append elementsToAppend
             |> Array.unzip
+
+        indices <- resultIndices
+        values <- resultValues
 
     override this.Item
         with get (vectorMask: Mask1D option) : Vector<'a> =
@@ -1196,20 +1231,26 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
                 i <- i + 1
 
             if not isFound then
-                (indices, values) <-
+                let resultIndices, resultValues =
                     (indices, values)
                     ||> Array.zip
                     |> Array.append [|idx, value|]
                     |> Array.unzip
 
+                indices <- resultIndices
+                values <- resultValues
+
     override this.Fill
         with set (vectorMask: Mask1D option) (Scalar (value: 'a)) =
             match vectorMask with
             | None ->
-                (indices, values) <-
+                let resultIndices, resultValues =
                     [| for i in 0 .. this.Length - 1 do
                         yield (i, value) |]
                     |> Array.unzip
+
+                indices <- resultIndices
+                values <- resultValues
             | Some mask ->
                 if mask.Length <> this.Length then
                     invalidArg
@@ -1255,11 +1296,14 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
                 let renewedValues = oclContext.RunSync workflow
                 let elementsToAppend = indicesToAppend |> Array.map (fun i -> (i, value))
 
-                (indices, values) <-
+                let resultIndices, resultValues =
                     (indices, renewedValues)
                     ||> Array.zip
                     |> Array.append elementsToAppend
                     |> Array.unzip
+
+                indices <- resultIndices
+                values <- resultValues
 
     member internal this.VxCOOm
         (matrix: COOMatrix<'a>)
@@ -1627,7 +1671,8 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
                 let command =
                     <@
                         fun (ndRange: _1D)
-                            (valuesBuffer: 'a[]) ->
+                            (valuesBuffer: 'a[])
+                            (offset: int) ->
 
                             let i = ndRange.GlobalID0
                             valuesBuffer.[i] <- (%plus) valuesBuffer.[i] valuesBuffer.[i + offset]
@@ -1638,6 +1683,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
                     kernelP
                         ndRange
                         values
+                        offset
                 do! RunCommand command binder
                 return! ToHost values
             }
