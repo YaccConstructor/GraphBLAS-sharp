@@ -20,9 +20,9 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
 
     abstract Mxm: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
     abstract Mxv: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Monoid<'a> -> Matrix<'a>
-    abstract EWiseMult: Matrix<'a> -> Mask2D option -> Monoid<'a> -> Matrix<'a>
-    abstract Apply: Mask1D option -> UnaryOp<'a, 'b> -> Matrix<'b>
+    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
+    abstract EWiseMult: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
+    abstract Apply: Mask2D option -> UnaryOp<'a, 'b> -> Matrix<'b>
     abstract ReduceIn: Mask1D option -> Monoid<'a> -> Vector<'a>
     abstract ReduceOut: Mask1D option -> Monoid<'a> -> Vector<'a>
     abstract Reduce: Monoid<'a> -> Scalar<'a>
@@ -48,8 +48,8 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(length: int)
     abstract Fill: Mask1D option -> Scalar<'a> with set
 
     abstract Vxm: Matrix<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Vector<'a> -> Mask1D option -> Monoid<'a> -> Vector<'a>
-    abstract EWiseMult: Vector<'a> -> Mask1D option -> Monoid<'a> -> Vector<'a>
+    abstract EWiseAdd: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
+    abstract EWiseMult: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
     abstract Apply: Mask1D option -> UnaryOp<'a, 'b> -> Vector<'b>
     abstract Reduce: Monoid<'a> -> Scalar<'a>
 
@@ -65,7 +65,7 @@ and Mask1D(indices: int[], length: int, isComplemented: bool) =
     member this.Item
         with get (idx: int) : bool =
             this.Indices
-            |> Array.exists ((=) idx)
+            |> Array.contains idx
             |> (<>) this.IsComplemented
 
 and Mask2D(indices: (int * int)[], rowCount: int, columnCount: int, isComplemented: bool) =
@@ -79,5 +79,5 @@ and Mask2D(indices: (int * int)[], rowCount: int, columnCount: int, isComplement
         with get (rowIdx: int, colIdx: int) : bool =
             (this.Rows, this.Columns)
             ||> Array.zip
-            |> Array.exists ((=) (rowIdx, colIdx))
+            |> Array.contains (rowIdx, colIdx)
             |> (<>) this.IsComplemented
