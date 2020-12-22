@@ -11,12 +11,12 @@ module BFS =
         let levels = DenseVector(Array.zeroCreate vertexCount, IntegerMonoid.add)
 
         let frontier = SparseVector(vertexCount, [source, true])
-
         let mutable currentLevel = 1
+
         while !> (frontier.Reduce BooleanMonoid.any) && currentLevel < vertexCount do
-            levels.Fill(frontier.Mask) <- Scalar currentLevel
+            levels.Assign(frontier.Mask, Scalar currentLevel)
             frontier.Clear()
-            frontier.[levels.Complemented] <- (frontier @. matrix) levels.Complemented BooleanSemiring.anyAll
+            frontier.Assign(levels.Complemented, (frontier @. matrix) levels.Complemented BooleanSemiring.anyAll)
             currentLevel <- currentLevel + 1
 
         upcast levels
