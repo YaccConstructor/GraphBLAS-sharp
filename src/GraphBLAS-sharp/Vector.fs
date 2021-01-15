@@ -6,6 +6,9 @@ module VectorExtensions =
         static member Sparse(denseVector: 'T[], zero: 'T) : Vector<'T> =
             failwith "Not Implemented"
 
+        static member Sparse(length: int, values: (int * 'T) list) : Vector<'T> =
+            failwith "Not Implemented"
+
         static member Sparse(length: int, initializer: int -> 'T) : Vector<'T> =
             // upcast SparseVector(length, List.init)
             failwith "Not Implemented"
