@@ -28,13 +28,16 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
     метод Prune можно переименовать в Select или Filter
 
-    нужно выяснить, как Partitial Aplication методы интеропятся с C#
+    нужно выяснить, как curried методы интеропятся с C#
 
-    возможно, стоит отказаться от перегрузок Extract и Assign, чтобы сделать их PA,
+    возможно, стоит отказаться от перегрузок Extract и Assign, чтобы сделать их curried,
     тем самым, избавившись от скобок при вызове
 
-    можно все методы сделать как методы C# (без PA), а рядом положить модуль с PA функциями
+    можно все методы сделать как методы C# (без curried), а рядом положить модуль с curried функциями
     это нужно, для более гибкого интерфейся и лучшего интеропа с C#
+
+    пара массивов лучше ложиться на opencl чем массив пар. Поэтому изменились аргументы Mask1D
+    стоит это учесть и в дугих местах. Например разреженный вектор должен принимать пару массивов вместо массива пар
 *)
 
 [<AbstractClass>]
@@ -49,7 +52,7 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract Resize: int -> int -> OpenCLEvaluation<Matrix<'a>>
     abstract GetNNZ: unit -> OpenCLEvaluation<int>
     abstract GetTuples: unit -> OpenCLEvaluation<{| Rows: int[]; Columns: int[]; Values: 'a[] |}>
-    abstract GetMask: bool -> OpenCLEvaluation<Mask2D option>
+    abstract GetMask: ?isComplemented: bool -> OpenCLEvaluation<Mask2D option>
 
     abstract Extract: Mask2D option -> OpenCLEvaluation<Matrix<'a>>
     abstract Extract: (Mask1D option * int) -> OpenCLEvaluation<Vector<'a>>
@@ -90,7 +93,7 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Resize: int -> OpenCLEvaluation<Vector<'a>>
     abstract GetNNZ: unit -> OpenCLEvaluation<int>
     abstract GetTuples: unit -> OpenCLEvaluation<{| Indices: int[]; Values: 'a[] |}>
-    abstract GetMask: bool -> OpenCLEvaluation<Mask1D option>
+    abstract GetMask: ?isComplemented: bool -> OpenCLEvaluation<Mask1D option>
 
     abstract Extract: Mask1D option -> OpenCLEvaluation<Vector<'a>>
     abstract Extract: int -> OpenCLEvaluation<Scalar<'a>>
@@ -110,28 +113,15 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     static member inline (@.) (x: Vector<'a>, y: Matrix<'a>) = x.Vxm y
 
 
-and Mask1D(indices: int[], length: int, isComplemented: bool) =
+and Mask1D(indices: int[], size: int, isComplemented: bool) =
     member this.Indices = indices
-    member this.Length = length
+    member this.Size = size
     member this.IsComplemented = isComplemented
 
-    member this.Item
-        with get (idx: int) : bool =
-            this.Indices
-            |> Array.contains idx
-            |> (<>) this.IsComplemented
 
-
-and Mask2D(indices: (int * int)[], rowCount: int, columnCount: int, isComplemented: bool) =
-    member this.Rows = indices |> Array.unzip |> fst
-    member this.Columns = indices |> Array.unzip |> snd
+and Mask2D(rowIndices: int[], columnIndices: int[], rowCount: int, columnCount: int, isComplemented: bool) =
+    member this.RowIndices = rowIndices
+    member this.ColumnIndices = columnIndices
     member this.RowCount = rowCount
     member this.ColumnCount = columnCount
     member this.IsComplemented = isComplemented
-
-    member this.Item
-        with get (rowIdx: int, colIdx: int) : bool =
-            (this.Rows, this.Columns)
-            ||> Array.zip
-            |> Array.contains (rowIdx, colIdx)
-            |> (<>) this.IsComplemented

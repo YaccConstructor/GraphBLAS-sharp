@@ -86,7 +86,9 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Resize a b = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
     override this.GetTuples () = failwith "Not Implemented"
-    override this.GetMask a = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
     override this.Extract (mask: Mask2D option) : OpenCLEvaluation<Matrix<'a>> = failwith "Not Implemented"
     override this.Extract (colMask: Mask1D option * int) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
@@ -113,7 +115,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Kronecker a b c = failwith "Not Implemented"
 
 
-and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzeroes: (int * 'a) list) =
+and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[], values: 'a[]) =
     inherit Vector<'a>(size)
 
     override this.Clear () = failwith "Not Implemented"
@@ -121,7 +123,9 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
     override this.Resize a = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
     override this.GetTuples () = failwith "Not Implemented"
-    override this.GetMask a = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
     override this.Extract (mask: Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
     override this.Extract (idx: int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"
@@ -148,7 +152,9 @@ and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Mon
     override this.Resize a = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
     override this.GetTuples () = failwith "Not Implemented"
-    override this.GetMask a = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
     override this.Extract (mask: Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
     override this.Extract (idx: int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"

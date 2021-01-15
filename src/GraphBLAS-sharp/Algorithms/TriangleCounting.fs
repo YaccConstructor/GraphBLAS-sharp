@@ -2,13 +2,21 @@ namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 [<AutoOpen>]
 module TriangleCounting =
-    let sandiaTriangleCount (lowerTriangular: Matrix<bool>) =
+    // скорее всего, тут не скаляр возвращать нужно, а инт
+    let sandiaTriangleCount (lowerTriangular: Matrix<bool>) : OpenCLEvaluation<Scalar<int>> =
         let bool2int = function
             | true -> 1
             | false -> 0
-        let convertedMatrix = lowerTriangular.Apply None (UnaryOp <@ bool2int @>)
-        let result = (convertedMatrix @. convertedMatrix.T) lowerTriangular.Mask IntegerSemiring.addMult
-        result.Reduce IntegerMonoid.add
+
+        opencl {
+            let! convertedMatrix = lowerTriangular.Apply None (UnaryOp <@ bool2int @>)
+            let! convertedTransposed = convertedMatrix.Transpose()
+            let! lowerTriangularMask = lowerTriangular.GetMask()
+            let! result = (convertedMatrix @. convertedTransposed) lowerTriangularMask IntegerSemiring.addMult
+            return! result.Reduce IntegerMonoid.add
+        }
