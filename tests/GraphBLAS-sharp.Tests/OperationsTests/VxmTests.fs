@@ -4,6 +4,8 @@ open Expecto
 open FsCheck
 open GraphBLAS.FSharp
 open MathNet.Numerics
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open GlobalContext
 
 type OperationCase = {
     VectorCase: VectorType
@@ -106,14 +108,24 @@ module VxmTests =
                             let emptyVector = zeroVectorConstructor vectorSize
 
                             Expect.throwsT<System.ArgumentException>
-                                (fun () -> (emptyVector @. emptyMatrix) mask stdSemiring |> ignore)
+                                (fun () ->
+                                    opencl {
+                                        return! (emptyVector @. emptyMatrix) mask stdSemiring
+                                    }
+                                    |> oclContext.RunSync
+                                    |> ignore
+                                )
                                 (sprintf "1x%i @ %ix%i\n case:\n %A" vectorSize matrixRowCount matrixColumnCount case)
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|
                         fun (denseMatrix: float[,]) (denseVector: float[]) ->
                             let matrix = Matrix.Build(denseMatrix, 0., matrixBackend)
                             let vector = vectorConstructor denseVector
-                            let result = (vector @. matrix) mask stdSemiring
+                            let result =
+                                opencl {
+                                    return! (vector @. matrix) mask stdSemiring
+                                }
+                                |> oclContext.RunSync
                             let a = LinearAlgebra.DenseMatrix.ofArray2 denseMatrix
                             let b = LinearAlgebra.DenseVector.ofArray denseVector
                             let c = b * a

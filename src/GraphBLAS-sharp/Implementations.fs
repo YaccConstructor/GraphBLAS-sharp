@@ -29,10 +29,10 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     let rowCount = base.RowCount
     let columnCount = base.ColumnCount
 
-    let spMV (vector: Vector<'a>) (mask: Mask1D) (semiring: Semiring<'a>) : Vector<'a> =
+    let spMV (vector: DenseVector<'a>) (mask: Mask1D) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
         let csrMatrixRowCount = rowCount
         let csrMatrixColumnCount = columnCount
-        let vectorLength = vector.Length
+        let vectorLength = vector.Size
         if csrMatrixColumnCount <> vectorLength then
             invalidArg
                 "vector"
@@ -67,114 +67,104 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
                 csrTuples.Values
                 csrTuples.Columns
                 csrTuples.RowPointers
-                vector.AsArray
+                vector.Values
 
-        let eval = opencl {
+        opencl {
             do! RunCommand command binder
-            return! ToHost resultVector
+            return upcast DenseVector(resultVector, semiring.PlusMonoid)
         }
 
-        upcast DenseVector(oclContext.RunSync eval, semiring.PlusMonoid)
+    // Not Implemented
+    new(rows: int[], columns: int[], values: 'a[]) = CSRMatrix(CSRFormat.CreateEmpty())
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.Columns
     member this.RowPointers = csrTuples.RowPointers
 
-    override this.Mask = failwith "Not implemented"
-    override this.Complemented = failwith "Not implemented"
+    override this.Clear () = failwith "Not Implemented"
+    override this.Copy () = failwith "Not Implemented"
+    override this.Resize a b = failwith "Not Implemented"
+    override this.GetNNZ () = failwith "Not Implemented"
+    override this.GetTuples () = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
-    override this.Item
-        with get (mask: Mask2D option) : Matrix<'a> = failwith "Not Implemented"
-        and set (mask: Mask2D option) (value: Matrix<'a>) = failwith "Not Implemented"
-    override this.Item
-        with get (vectorMask: Mask1D option, colIdx: int) : Vector<'a> = failwith "Not Implemented"
-        and set (vectorMask: Mask1D option, colIdx: int) (value: Vector<'a>) = failwith "Not Implemented"
-    override this.Item
-        with get (rowIdx: int, vectorMask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
-        and set (rowIdx: int, vectorMask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
-    override this.Item
-        with get (rowIdx: int, colIdx: int) : Scalar<'a> = failwith "Not Implemented"
-        and set (rowIdx: int, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
-    override this.Fill
-        with set (mask: Mask2D option) (value: Scalar<'a>) = failwith "Not Implemented"
-    override this.Fill
-        with set (vectorMask: Mask1D option, colIdx: int) (value: Scalar<'a>) = failwith "Not Implemented"
-    override this.Fill
-        with set (rowIdx: int, vectorMask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Extract (mask: Mask2D option) : OpenCLEvaluation<Matrix<'a>> = failwith "Not Implemented"
+    override this.Extract (colMask: Mask1D option * int) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
+    override this.Extract (rowMask: int * Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
+    override this.Extract (idx: int * int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"
+    override this.Assign (mask: Mask2D option, value: Matrix<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (colMask: Mask1D option * int, value: Vector<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (rowMask: int * Mask1D option, value: Vector<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (idx: int * int, value: Scalar<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (mask: Mask2D option, value: Scalar<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (colMask: Mask1D option * int, value: Scalar<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (rowMask: int * Mask1D option, value: Scalar<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
 
     override this.Mxm a b c = failwith "Not Implemented"
     override this.Mxv a b c = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b  = failwith "Not Implemented"
+    override this.Prune a b = failwith "Not Implemented"
     override this.ReduceIn a b = failwith "Not Implemented"
     override this.ReduceOut a b = failwith "Not Implemented"
     override this.Reduce a = failwith "Not Implemented"
-    override this.T = failwith "Not Implemented"
+    override this.Transpose () = failwith "Not Implemented"
+    override this.Kronecker a b c = failwith "Not Implemented"
 
-and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzeroes: (int * 'a) list) =
+
+and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[], values: 'a[]) =
     inherit Vector<'a>(size)
 
-    member this.AsList: (int * 'a) list = listOfNonzeroes
+    override this.Clear () = failwith "Not Implemented"
+    override this.Copy () = failwith "Not Implemented"
+    override this.Resize a = failwith "Not Implemented"
+    override this.GetNNZ () = failwith "Not Implemented"
+    override this.GetTuples () = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
-    override this.AsArray = failwith "Not Implemented"
-    override this.Clear() = failwith "Not Implemented"
+    override this.Extract (mask: Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
+    override this.Extract (idx: int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"
+    override this.Assign (mask: Mask1D option, vector: Vector<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (idx: int, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (mask: Mask1D option, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
 
-    override this.Mask = failwith "Not implemented"
-    override this.Complemented = failwith "Not implemented"
-
-    override this.Item
-        with get (mask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
-        and set (mask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
-    override this.Item
-        with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
-        and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
-    override this.Fill
-        with set (mask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
-
-    override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: Semiring<'a>) : Vector<'a> = failwith "Not Implemented"
+    override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
+    override this.Prune a b = failwith "Not Implemented"
     override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"
+
 
 and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Monoid<'a>) =
     inherit Vector<'a>(vector.Length)
 
-    // Not Implemented
-    new(monoid: Monoid<'a>) = DenseVector(Array.zeroCreate<'a> 0, monoid)
-    // Not Implemented
-    new(listOfIndices: int list, monoid: Monoid<'a>) = DenseVector(Array.zeroCreate<'a> 0, monoid)
-
     member this.Monoid = monoid
-    member this.Values = vector
+    member this.Values: 'a[] = vector
 
-    override this.AsArray = failwith "Not Implemented"
-    override this.Clear() = failwith "Not Implemented"
+    override this.Clear () = failwith "Not Implemented"
+    override this.Copy () = failwith "Not Implemented"
+    override this.Resize a = failwith "Not Implemented"
+    override this.GetNNZ () = failwith "Not Implemented"
+    override this.GetTuples () = failwith "Not Implemented"
+    override this.GetMask(?isComplemented: bool) =
+        let isComplemented = defaultArg isComplemented false
+        failwith "Not Implemented"
 
-    override this.Mask =
-        let indices =
-            [| for i in 0 .. this.Length - 1 do
-                if this.Values.[i] <> this.Monoid.Zero then yield i |]
-        Some <| Mask1D(indices, this.Length, false)
-
-    override this.Complemented =
-        let indices =
-            [| for i in 0 .. this.Length - 1 do
-                if this.Values.[i] <> this.Monoid.Zero then yield i |]
-        Some <| Mask1D(indices, this.Length, true)
-
-    override this.Item
-        with get (mask: Mask1D option) : Vector<'a> = failwith "Not Implemented"
-        and set (mask: Mask1D option) (value: Vector<'a>) = failwith "Not Implemented"
-    override this.Item
-        with get (idx: int) : Scalar<'a> = failwith "Not Implemented"
-        and set (idx: int) (value: Scalar<'a>) = failwith "Not Implemented"
-    override this.Fill
-        with set (mask: Mask1D option) (value: Scalar<'a>) = failwith "Not Implemented"
+    override this.Extract (mask: Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
+    override this.Extract (idx: int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"
+    override this.Assign (mask: Mask1D option, vector: Vector<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (idx: int, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
+    override this.Assign (mask: Mask1D option, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
 
     override this.Vxm a b c = failwith "Not Implemented"
     override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
+    override this.Prune a b = failwith "Not Implemented"
     override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"

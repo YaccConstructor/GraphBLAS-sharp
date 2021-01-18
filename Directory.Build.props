@@ -9,5 +9,6 @@
         <Authors>YaccConstructor</Authors>
         <RepositoryUrl>https://github.com/YaccConstructor/GraphBLAS-sharp</RepositoryUrl>
         <!-- owners is not supported in MSBuild -->
+        <DisableFody>true</DisableFody>
     </PropertyGroup>
 </Project>
