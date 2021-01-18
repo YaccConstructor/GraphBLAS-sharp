@@ -1,5 +1,8 @@
 namespace GraphBLAS.FSharp
 
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+
 [<AbstractClass>]
 type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract RowCount: int
@@ -20,7 +23,7 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
 
     abstract Mxm: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
     abstract Mxv: Vector<'a> -> Mask1D option -> Semiring<'a> -> Vector<'a>
-    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
+    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
     abstract EWiseMult: Matrix<'a> -> Mask2D option -> Semiring<'a> -> Matrix<'a>
     abstract Apply: Mask2D option -> UnaryOp<'a, 'b> -> Matrix<'b>
     abstract ReduceIn: Mask1D option -> Monoid<'a> -> Vector<'a>

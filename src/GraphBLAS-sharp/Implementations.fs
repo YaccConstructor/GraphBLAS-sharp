@@ -837,7 +837,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
     member private this.EWiseAddCOO
         (matrix: COOMatrix<'a>)
         (mask: Mask2D)
-        (semiring: Semiring<'a>) : Matrix<'a> =
+        (semiring: Semiring<'a>) : OpenCLEvaluation<Matrix<'a>> =
         let (BinaryOp plus) = semiring.PlusMonoid.Append
         let zero = semiring.PlusMonoid.Zero
 
@@ -861,61 +861,72 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(elements: (int * int * 'a)[
                 commonIndices
                 |> Array.contains (i, j))
 
-        let workflow =
-            opencl {
-                let command =
-                    <@
-                        fun (ndRange: _2D)
-                            (resultValuesBuffer: 'a[])
-                            (leftValuesBuffer: 'a[])
-                            (leftRowsBuffer: int[])
-                            (leftColumnsBuffer: int[])
-                            (rightValuesBuffer: 'a[])
-                            (rightRowsBuffer: int[])
-                            (rightColumnsBuffer: int[]) ->
+        opencl {
+            let command =
+                <@
+                    fun (ndRange: _2D)
+                        (resultValuesBuffer: 'a[])
+                        (leftValuesBuffer: 'a[])
+                        (leftRowsBuffer: int[])
+                        (leftColumnsBuffer: int[])
+                        (rightValuesBuffer: 'a[])
+                        (rightRowsBuffer: int[])
+                        (rightColumnsBuffer: int[]) ->
 
-                            let i, j = ndRange.GlobalID0, ndRange.GlobalID1
-                            let row = leftRowsBuffer.[i]
-                            let column = leftColumnsBuffer.[i]
-                            if mask.[row, column] && rightRowsBuffer.[j] = row && rightColumnsBuffer.[j] = column then
-                                resultValuesBuffer.[i] <- (%plus) leftValuesBuffer.[i] rightValuesBuffer.[j]
-                    @>
+                        let i, j = ndRange.GlobalID0, ndRange.GlobalID1
+                        let row = leftRowsBuffer.[i]
+                        let column = leftColumnsBuffer.[i]
+                        if mask.[row, column] && rightRowsBuffer.[j] = row && rightColumnsBuffer.[j] = column then
+                            resultValuesBuffer.[i] <- (%plus) leftValuesBuffer.[i] rightValuesBuffer.[j]
+                @>
 
-                let leftCommonRows, leftCommonColumns, leftCommonValues = leftCommonElements |> Array.unzip3
-                let rightCommonRows, rightCommonColumns, rightCommonValues = rightCommonElements |> Array.unzip3
+            let leftCommonRows, leftCommonColumns, leftCommonValues = leftCommonElements |> Array.unzip3
+            let rightCommonRows, rightCommonColumns, rightCommonValues = rightCommonElements |> Array.unzip3
 
-                let resultCommonValues = Array.init leftCommonElements.Length (fun _ -> zero)
+            let resultCommonValues = Array.init leftCommonElements.Length (fun _ -> zero)
 
-                let binder kernelP =
-                    let ndRange = _2D(leftCommonElements.Length, rightCommonElements.Length)
-                    kernelP
-                        ndRange
-                        resultCommonValues
-                        leftCommonValues
-                        leftCommonRows
-                        leftCommonColumns
-                        rightCommonValues
-                        rightCommonRows
-                        rightCommonColumns
+            let binder kernelP =
+                let ndRange = _2D(leftCommonElements.Length, rightCommonElements.Length)
+                kernelP
+                    ndRange
+                    resultCommonValues
+                    leftCommonValues
+                    leftCommonRows
+                    leftCommonColumns
+                    rightCommonValues
+                    rightCommonRows
+                    rightCommonColumns
 
-                do! RunCommand command binder
-                return! ToHost resultCommonValues
-            }
+            do! RunCommand command binder
+            //return! ToHost resultCommonValues
+            let resultCommonRows, resultCommonColumns, _ = leftCommonElements |> Array.unzip3
+            let uniqueIndices =
+                (leftUniqueElements, rightUniqueElements)
+                ||> Array.append
+                |> Array.filter (fun (i, j, _) -> mask.[i, j])
+            let resultElements =
+                (resultCommonRows, resultCommonColumns, resultCommonValues)
+                |||> Array.zip3
+                |> Array.append uniqueIndices
+                |> Array.filter (third >> (<>) zero)
 
-        let resultCommonValues = oclContext.RunSync workflow
+            return upcast COOMatrix<'a>(resultElements, this.RowCount, this.ColumnCount)
+        }
 
-        let resultCommonRows, resultCommonColumns, _ = leftCommonElements |> Array.unzip3
-        let uniqueIndices =
-            (leftUniqueElements, rightUniqueElements)
-            ||> Array.append
-            |> Array.filter (fun (i, j, _) -> mask.[i, j])
-        let resultElements =
-            (resultCommonRows, resultCommonColumns, resultCommonValues)
-            |||> Array.zip3
-            |> Array.append uniqueIndices
-            |> Array.filter (third >> (<>) zero)
+        //let resultCommonValues = oclContext.RunSync workflow
 
-        upcast COOMatrix<'a>(resultElements, this.RowCount, this.ColumnCount)
+        // let resultCommonRows, resultCommonColumns, _ = leftCommonElements |> Array.unzip3
+        // let uniqueIndices =
+        //     (leftUniqueElements, rightUniqueElements)
+        //     ||> Array.append
+        //     |> Array.filter (fun (i, j, _) -> mask.[i, j])
+        // let resultElements =
+        //     (resultCommonRows, resultCommonColumns, resultCommonValues)
+        //     |||> Array.zip3
+        //     |> Array.append uniqueIndices
+        //     |> Array.filter (third >> (<>) zero)
+
+        //upcast COOMatrix<'a>(resultElements, this.RowCount, this.ColumnCount)
 
     override this.EWiseAdd
         (matrix: Matrix<'a>)
@@ -1406,6 +1417,112 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
         let leftIndices = this.Indices
         let rightIndices = vector.Indices
 
+        let firstIndices, secondIndices =
+            if this.Indices.Length > vector.Indices.Length
+            then this.Indices, vector.Indices
+            else vector.Indices, this.Indices
+
+        let longSide = firstIndices.Length
+        let shortSide = secondIndices.Length
+
+        let maxIndex = max firstIndices.[leftIndices.Length - 1] secondIndices.[rightIndices.Length - 1]
+        let minIndex = min firstIndices.[0] secondIndices.[0]
+
+        let workflow =
+            opencl {
+
+                let allIndices = Array.zeroCreate <| leftIndices.Length + rightIndices.Length
+
+                let extendedFirstIndices = Array.concat [ [| minIndex - 1 |] ; firstIndices ; [| maxIndex + 1 |] ]
+                let extendedSecondIndices = Array.concat [ [| minIndex - 1 |] ; secondIndices ; [| maxIndex + 1 |] ]
+
+                let createUnion =
+                    <@
+                        fun (ndRange: _1D)
+                            (extendedFirstIndicesBuffer: int[])
+                            (extendedSecondIndicesBuffer: int[])
+                            (allIndicesBuffer: int[]) ->
+
+                            let i = ndRange.GlobalID0
+
+                            let mutable leftEdge =
+                                if i < shortSide
+                                then 1
+                                else i + 2 - shortSide
+
+                            let mutable rightEdge =
+                                if i < longSide - 1
+                                then i + 1
+                                else longSide
+
+                            let mutable boundaryX, boundaryY = leftEdge, i + 2 - leftEdge
+
+                            while leftEdge < rightEdge do
+                                let middleIdx = (leftEdge + rightEdge) / 2
+                                if extendedFirstIndicesBuffer.[middleIdx] < extendedSecondIndicesBuffer.[i + 2 - middleIdx]
+                                then
+                                    boundaryX <- middleIdx
+                                    boundaryY <- i + 1 - middleIdx
+                                    leftEdge <- middleIdx + 1
+                                else
+                                    boundaryX <- middleIdx - 1
+                                    boundaryY <- i + 2 - middleIdx
+                                    rightEdge <- middleIdx
+
+                            if extendedFirstIndicesBuffer.[boundaryX] < extendedSecondIndicesBuffer.[boundaryY]
+                            then allIndicesBuffer.[i] <- extendedFirstIndicesBuffer.[boundaryX]
+                            else allIndicesBuffer.[i] <- extendedSecondIndicesBuffer.[boundaryY]
+                    @>
+
+                let auxiliaryArray = Array.zeroCreate allIndices.Length
+
+                let createAuxiliaryArray =
+                    <@
+                        fun (ndRange: _1D)
+                            (allIndicesBuffer: int[])
+                            (auxiliaryArrayBuffer: int[]) ->
+
+                            let i = ndRange.GlobalID0
+
+                            if i > 0 && allIndicesBuffer.[i - 1] <> allIndicesBuffer.[i]
+                            then auxiliaryArrayBuffer.[0] <- 1
+                            else auxiliaryArrayBuffer.[0] <- 0
+                    @>
+
+                //let prefixSumArray = Array.zeroCreate allIndices.Length
+
+                let command =
+                    <@
+                        fun (ndRange: _1D)
+                            (allIndicesBuffer: int[])
+                            (auxiliaryArrayBuffer: int[])
+                            (resultIndicesBuffer: int[]) ->
+
+                            let i = ndRange.GlobalID0
+
+                            let mutable prefixSum = 0
+                            for j in 0 .. i do
+                                prefixSum <- prefixSum + auxiliaryArrayBuffer.[j]
+
+                            //prefixSumArrayBuffer.[i] <- localResultBuffer
+                            resultIndicesBuffer.[i] <- allIndicesBuffer.[prefixSum]
+                    @>
+
+                return 42
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
         let commonIndices =
             leftIndices
             |> Array.filter (fun i ->
@@ -1668,29 +1785,31 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, listOfNonzero
             opencl {
                 let values = resultValues
 
-                let command =
-                    <@
-                        fun (ndRange: _1D)
-                            (valuesBuffer: 'a[])
-                            (offset: int) ->
+                while offset > 0 do
+                    let command =
+                        <@
+                            fun (ndRange: _1D)
+                                (valuesBuffer: 'a[])
+                                (offset: int) ->
 
-                            let i = ndRange.GlobalID0
-                            valuesBuffer.[i] <- (%plus) valuesBuffer.[i] valuesBuffer.[i + offset]
-                    @>
+                                let i = ndRange.GlobalID0
+                                valuesBuffer.[i] <- (%plus) valuesBuffer.[i] valuesBuffer.[i + offset]
+                        @>
 
-                let binder kernelP =
-                    let ndRange = _1D(offset)
-                    kernelP
-                        ndRange
-                        values
-                        offset
-                do! RunCommand command binder
+                    let binder kernelP =
+                        let ndRange = _1D(offset)
+                        kernelP
+                            ndRange
+                            values
+                            offset
+
+                    do! RunCommand command binder
+                    offset <- offset / 2
+
                 return! ToHost values
             }
 
-        while offset > 0 do
-            resultValues <- oclContext.RunSync workflow
-            offset <- offset / 2
+        resultValues <- oclContext.RunSync workflow
 
         Scalar resultValues.[0]
 
