@@ -56,6 +56,7 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract GetNNZ: unit -> OpenCLEvaluation<int>
     abstract GetTuples: unit -> OpenCLEvaluation<{| Indices: int[]; Values: 'a[] |}>
     abstract GetMask: ?isComplemented: bool -> OpenCLEvaluation<Mask1D option>
+    abstract ToHost: unit -> OpenCLEvaluation<Vector<'a>>
 
     abstract Extract: Mask1D option -> OpenCLEvaluation<Vector<'a>>
     abstract Extract: int -> OpenCLEvaluation<Scalar<'a>>
