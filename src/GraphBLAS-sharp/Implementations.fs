@@ -127,7 +127,12 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     override this.Copy () = failwith "Not Implemented"
     override this.Resize a = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
-    override this.GetTuples () = failwith "Not Implemented"
+
+    override this.GetTuples () =
+        opencl {
+            return {| Indices = this.Indices; Values = this.Values |}
+        }
+
     override this.GetMask(?isComplemented: bool) =
         let isComplemented = defaultArg isComplemented false
         failwith "Not Implemented"
@@ -151,7 +156,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     member internal this.CalcPrefixSum
         (inputArray: int[]) =
 
-        let outputArray = Array.copy inputArray
+        let outputArray = Array.zeroCreate inputArray.Length
 
         if inputArray.Length = 1
         then
@@ -177,6 +182,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             }
         else
             let intermediateArray = Array.zeroCreate ((inputArray.Length + 1) / 2)
+            let inputArrayLength = inputArray.Length
 
             let fillIntermediateArray =
                 <@
@@ -185,7 +191,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                         (intermediateArrayBuffer: int[]) ->
 
                         let i = ndRange.GlobalID0
-                        if 2 * i + 1 < inputArrayBuffer.Length
+                        if 2 * i + 1 < inputArrayLength
                         then intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i] + inputArrayBuffer.[2 * i + 1]
                         else intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i]
                 @>
@@ -208,10 +214,13 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                         (inputArrayBuffer: int[])
                         (outputArrayBuffer: int[]) ->
 
-                        let i = ndRange.GlobalID0 + 1
+                        let i = ndRange.GlobalID0
                         let j = (i - 1) / 2
                         if i % 2 = 0
-                        then outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j] + inputArrayBuffer.[i]
+                        then
+                            if i = 0
+                            then outputArrayBuffer.[i] <- inputArrayBuffer.[i]
+                            else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j] + inputArrayBuffer.[i]
                         else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j]
                 @>
 
@@ -220,7 +229,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                 let! auxiliaryPrefixSumArray = this.CalcPrefixSum intermediateArray
 
                 let binder kernelP =
-                    let ndRange = _1D(inputArray.Length - 1)
+                    let ndRange = _1D(inputArray.Length)
                     kernelP
                         ndRange
                         auxiliaryPrefixSumArray
@@ -245,9 +254,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             then this.Indices, this.Values, vector.Indices, vector.Values, append
             else vector.Indices, vector.Values, this.Indices, this.Values, <@ fun x y -> (%append) y x @>
 
-        let longSide = firstIndices.Length
-        let shortSide = secondIndices.Length
-
         let filterThroughMask =
             opencl {
                 //TODO
@@ -256,6 +262,9 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
         let allIndices = Array.zeroCreate <| firstIndices.Length + secondIndices.Length
         let allValues = Array.init (firstIndices.Length + secondIndices.Length) (fun _ -> zero)
+
+        let longSide = firstIndices.Length
+        let shortSide = secondIndices.Length
 
         let createSortedConcatenation =
             <@
@@ -269,8 +278,23 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
                     let i = ndRange.GlobalID0
 
-                    let mutable leftEdge = max 0 (i + 1 - shortSide)
-                    let mutable rightEdge = min i (longSide - 1)
+                    let f n =
+                        if 0 > n + 1 - shortSide
+                        then 0
+                        else n + 1 - shortSide
+                    let mutable leftEdge = f i
+                        // if 0 > i + 1 - shortSide
+                        // then 0
+                        // else i + 1 - shortSide
+
+                    let g n =
+                        if n > longSide - 1
+                        then longSide - 1
+                        else n
+                    let mutable rightEdge = g i
+                        // if i > longSide - 1
+                        // then longSide - 1
+                        // else i
 
                     while leftEdge <= rightEdge do
                         let middleIdx = (leftEdge + rightEdge) / 2
@@ -304,7 +328,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                 do! RunCommand createSortedConcatenation binder
             }
 
-        let auxiliaryArray = Array.zeroCreate allIndices.Length
+        let auxiliaryArray = Array.init allIndices.Length (fun _ -> 1)
 
         let fillAuxiliaryArray =
             <@
@@ -320,7 +344,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                         auxiliaryArrayBuffer.[i + 1] <- 0
                         //Prepare to drop explicit zeroes
                         allValuesBuffer.[i] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-                    else auxiliaryArrayBuffer.[i + 1] <- 1
             @>
 
         let fillAuxiliaryArray =
@@ -372,7 +395,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
                     if auxiliaryArrayBuffer.[i] = 1
                     then
-                        let index = prefixSumArrayBuffer.[i]
+                        let index = prefixSumArrayBuffer.[i] - 1
 
                         resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
                         resultValuesBuffer.[index] <- allValuesBuffer.[i]
@@ -381,24 +404,28 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         let resultIndices = Array.zeroCreate allIndices.Length
         let resultValues = Array.init allValues.Length (fun _ -> zero)
 
+        let createUnion =
+            opencl {
+                let! prefixSumArray = this.CalcPrefixSum auxiliaryArray
+                let binder kernelP =
+                    let ndRange = _1D(auxiliaryArray.Length)
+                    kernelP
+                        ndRange
+                        allIndices
+                        allValues
+                        auxiliaryArray
+                        prefixSumArray
+                        resultIndices
+                        resultValues
+                do! RunCommand createUnion binder
+            }
+
         opencl {
             do! createSortedConcatenation
             do! filterThroughMask
             do! fillAuxiliaryArray
             do! dropExplicitZeroes
-
-            let! prefixSumArray = this.CalcPrefixSum auxiliaryArray
-            let binder kernelP =
-                let ndRange = _1D(auxiliaryArray.Length)
-                kernelP
-                    ndRange
-                    allIndices
-                    allValues
-                    auxiliaryArray
-                    prefixSumArray
-                    resultIndices
-                    resultValues
-            do! RunCommand createUnion binder
+            do! createUnion
 
             return upcast SparseVector<'a>(this.Size, resultIndices, resultValues)
         }
