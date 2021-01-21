@@ -15,6 +15,7 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract GetNNZ: unit -> OpenCLEvaluation<int>
     abstract GetTuples: unit -> OpenCLEvaluation<{| Rows: int[]; Columns: int[]; Values: 'a[] |}>
     abstract GetMask: ?isComplemented: bool -> OpenCLEvaluation<Mask2D option>
+    abstract ToHost: unit -> OpenCLEvaluation<Matrix<'a>>
 
     abstract Extract: Mask2D option -> OpenCLEvaluation<Matrix<'a>>
     abstract Extract: (Mask1D option * int) -> OpenCLEvaluation<Vector<'a>>
