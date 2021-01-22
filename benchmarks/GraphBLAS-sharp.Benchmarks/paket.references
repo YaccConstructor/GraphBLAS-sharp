@@ -1,3 +1,4 @@
 FSharp.Core
 Microsoft.NETFramework.ReferenceAssemblies
 BenchmarkDotNet
+MathNet.Numerics.FSharp

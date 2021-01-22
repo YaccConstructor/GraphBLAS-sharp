@@ -5,7 +5,7 @@ module MatrixBackend =
         static member Build(denseMatrix: 'T[,], zero: 'T, matrixType: MatrixBackendFormat) : Matrix<'T> =
             failwith "Not Implemented"
 
-        static member Build(rows: int[], columns: int[], values: 'T[], matrixType: MatrixBackendFormat) : Matrix<'T> =
+        static member Build(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'T[], matrixType: MatrixBackendFormat) : Matrix<'T> =
             match matrixType with
             | CSR -> upcast CSRMatrix(rows, columns, values)
             | _ -> failwith "Not Implemented"
@@ -26,8 +26,8 @@ module MatrixExtensions =
         static member Build(denseMatrix: 'T[,], zero: 'T) : Matrix<'T> =
             Matrix.Build(denseMatrix, zero, matrixBackendFormat)
 
-        static member Build(rows: int[], columns: int[], values: 'T[]) : Matrix<'T> =
-            Matrix.Build(rows, columns, values)
+        static member Build(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'T[]) : Matrix<'T> =
+            Matrix.Build(rowCount, columnCount, rows, columns, values)
 
         static member Build(pathToMatrix: string) : Matrix<'T> =
             Matrix.Build(pathToMatrix, matrixBackendFormat)

@@ -21,10 +21,10 @@ type TEPSColumn() =
                 use streamReader = new StreamReader(pathToGraph)
                 while streamReader.Peek() = int '%' do
                     streamReader.ReadLine() |> ignore
-                let matrixInfo = streamReader.ReadLine().Split(' ')
-                let (nrows, ncols, nnz) = float matrixInfo.[0], float matrixInfo.[1], float matrixInfo.[2]
+                let matrixInfo = streamReader.ReadLine().Split(' ') |> Array.map int
+                let (nrows, ncols, nnz) = matrixInfo.[0], matrixInfo.[1], matrixInfo.[2]
                 let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
-                sprintf "%f" (edges / meanTime)
+                sprintf "%f" (float edges / meanTime)
             | another -> sprintf "%s files not supported" another
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
