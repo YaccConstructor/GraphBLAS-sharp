@@ -1,5 +1,7 @@
 open BenchmarkDotNet.Running
 open GraphBLAS.FSharp.Benchmarks
+open System.IO
+open MathNet.Numerics
 
 [<EntryPoint>]
 let main argv =

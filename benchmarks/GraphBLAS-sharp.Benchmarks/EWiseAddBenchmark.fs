@@ -41,11 +41,17 @@ type EWiseAddBenchmarks() =
     let mutable secondGraph = Unchecked.defaultof<COOFormat<float>>
 
     [<ParamsSource("GraphPaths")>]
-    member val PathToGraph = Unchecked.defaultof<string * string> with get, set
+    member val PathToGraphPair = Unchecked.defaultof<string * string> with get, set
 
     [<GlobalSetup>]
     member this.ReadMatrices() =
-        let getCOO(pathToGraph: string) =
+        let getFullPathToGraph filename =
+            Path.Join [| __SOURCE_DIRECTORY__
+                         "Datasets"
+                         "EWiseAddDatasets"
+                         filename |]
+
+        let getCOO (pathToGraph: string) =
             use streamReader = new StreamReader(pathToGraph)
 
             while streamReader.Peek() = int '%' do
@@ -66,14 +72,17 @@ type EWiseAddBenchmarks() =
             |> List.toArray
             |> Array.unzip3
             |> fun (rows, cols, values) ->
+                let c f x y = f y x
+                let rows = rows |> Array.map (c (-) 1)
+                let cols = cols |> Array.map (c (-) 1)
                 { Rows = rows
                   Columns = cols
                   Values = values
                   RowCount = nrows
                   ColumnCount = ncols }
 
-        firstGraph <- fst this.PathToGraph |> getCOO
-        secondGraph <- snd this.PathToGraph |> getCOO
+        firstGraph <- fst this.PathToGraphPair |> getFullPathToGraph |> getCOO
+        secondGraph <- snd this.PathToGraphPair |> getFullPathToGraph |> getCOO
 
     [<IterationSetup(Target = "EWiseAdditionCOO")>]
     member this.BuildCOO() =
@@ -149,13 +158,5 @@ type EWiseAddBenchmarks() =
     /// Sequence of paths to files where data for benchmarking will be taken from
     static member GraphPaths =
         seq {
-            let getPathToFile filename =
-                Path.Join [| "Datasets"
-                             "EWiseAddDatasets"
-                             filename |]
-
-            let map f (x, y) = f x, f y
-
-            // data filenames
-            yield ("", "") |> map getPathToFile
+            yield ("arc130.mtx", "arc130.mtx")
         }
