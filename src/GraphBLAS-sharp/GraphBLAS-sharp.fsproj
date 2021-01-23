@@ -14,6 +14,7 @@
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
     <Compile Include="GlobalContext.fs" />
+    <Compile Include="Toolbox.fs" />
     <Compile Include="Scalar.fs" />
     <Compile Include="Abstracts.fs" />
     <Compile Include="Implementations.fs" />
