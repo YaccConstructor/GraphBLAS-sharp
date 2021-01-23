@@ -9,14 +9,13 @@ open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-type Toolbox =
-    static member internal PrefixSum
+module internal Toolbox =
+    let rec internal prefixSum
         (inputArray: int[]) =
 
         let outputArray = Array.zeroCreate inputArray.Length
 
-        if inputArray.Length = 1
-        then
+        if inputArray.Length = 1 then
             let fillOutputArray =
                 <@
                     fun (ndRange: _1D)
@@ -48,8 +47,8 @@ type Toolbox =
                         (intermediateArrayBuffer: int[]) ->
 
                         let i = ndRange.GlobalID0
-                        if 2 * i + 1 < inputArrayLength
-                        then intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i] + inputArrayBuffer.[2 * i + 1]
+                        if 2 * i + 1 < inputArrayLength then
+                            intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i] + inputArrayBuffer.[2 * i + 1]
                         else intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i]
                 @>
 
@@ -73,17 +72,15 @@ type Toolbox =
 
                         let i = ndRange.GlobalID0
                         let j = (i - 1) / 2
-                        if i % 2 = 0
-                        then
-                            if i = 0
-                            then outputArrayBuffer.[i] <- inputArrayBuffer.[i]
+                        if i % 2 = 0 then
+                            if i = 0 then outputArrayBuffer.[i] <- inputArrayBuffer.[i]
                             else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j] + inputArrayBuffer.[i]
                         else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j]
                 @>
 
             opencl {
                 do! fillIntermediateArray
-                let! auxiliaryPrefixSumArray = Toolbox.PrefixSum intermediateArray
+                let! auxiliaryPrefixSumArray = prefixSum intermediateArray
 
                 let binder kernelP =
                     let ndRange = _1D(inputArray.Length)
@@ -95,4 +92,31 @@ type Toolbox =
                 do! RunCommand fillOutputArray binder
 
                 return outputArray
+            }
+
+    module internal EWiseAdd =
+        let internal dropExplicitZeroes
+            (zero: 'a)
+            (allValues: 'a[])
+            (auxiliaryArray: int[]) =
+
+            let command =
+                <@
+                    fun (ndRange: _1D)
+                        (allValuesBuffer: 'a[])
+                        (auxiliaryArrayBuffer: int[]) ->
+
+                        let i = ndRange.GlobalID0
+                        if allValuesBuffer.[i] = zero then auxiliaryArrayBuffer.[i] <- 0
+                @>
+
+            let binder kernelP =
+                let ndRange = _1D(allValues.Length)
+                kernelP
+                    ndRange
+                    allValues
+                    auxiliaryArray
+
+            opencl {
+                do! RunCommand command binder
             }
