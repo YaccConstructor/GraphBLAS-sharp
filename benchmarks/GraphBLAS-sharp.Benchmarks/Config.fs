@@ -6,6 +6,7 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
+open BenchmarkDotNet.Filters
 open System.IO
 
 type TEPSColumn() =
@@ -15,16 +16,21 @@ type TEPSColumn() =
         member this.ColumnName: string = "TEPS"
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
             let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
-            let pathToGraph = benchmarkCase.Parameters.["PathToGraph"].ToString()
-            match Path.GetExtension pathToGraph with
+            let pathToFirstGraph = benchmarkCase.Parameters.["PathToGraphPair"] :?> (string * string) |> fst
+            let getFullPathToGraph filename =
+                Path.Join [| __SOURCE_DIRECTORY__
+                             "Datasets"
+                             "EWiseAddDatasets"
+                             filename |]
+            match Path.GetExtension pathToFirstGraph with
             | ".mtx" ->
-                use streamReader = new StreamReader(pathToGraph)
+                use streamReader = new StreamReader(pathToFirstGraph |> getFullPathToGraph)
                 while streamReader.Peek() = int '%' do
                     streamReader.ReadLine() |> ignore
-                let matrixInfo = streamReader.ReadLine().Split(' ')
-                let (nrows, ncols, nnz) = float matrixInfo.[0], float matrixInfo.[1], float matrixInfo.[2]
+                let matrixInfo = streamReader.ReadLine().Split(' ') |> Array.map int
+                let (nrows, ncols, nnz) = matrixInfo.[0], matrixInfo.[1], matrixInfo.[2]
                 let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
-                sprintf "%f" (edges / meanTime)
+                sprintf "%f" <| float edges / (meanTime * 1e-6)
             | another -> sprintf "%s files not supported" another
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
@@ -41,3 +47,4 @@ type Config() =
 
     do
         base.AddColumn [| TEPSColumn() :> IColumn |] |> ignore
+        base.AddFilter [| NameFilter(fun name -> name.Contains "MathNet") :> IFilter |] |> ignore
