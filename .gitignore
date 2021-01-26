@@ -267,5 +267,4 @@ coverage.*.xml
 .paket/.store
 .paket/paket
 
-.fake
-.ionide
+BenchmarkDotNet.Artifacts/

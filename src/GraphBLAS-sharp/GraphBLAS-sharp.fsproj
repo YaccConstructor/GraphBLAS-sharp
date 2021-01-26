@@ -28,7 +28,7 @@
     <Compile Include="Algorithms/TriangleCounting.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="YC.OpenCL.NET.dll.config">
+    <Content Include="app.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>  
   </ItemGroup>
