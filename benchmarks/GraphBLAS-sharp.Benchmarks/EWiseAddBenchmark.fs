@@ -16,12 +16,13 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.Extensions
 open OpenCL.Net
 
-type COOFormat<'a> =
-    { Rows: int []
-      Columns: int []
-      Values: 'a []
-      RowCount: int
-      ColumnCount: int }
+type COOFormat<'a> = {
+    Rows: int []
+    Columns: int []
+    Values: 'a []
+    RowCount: int
+    ColumnCount: int
+}
 
 [<MinColumn; MaxColumn>]
 [<Config(typeof<Config>)>]
@@ -42,8 +43,8 @@ type EWiseAddBenchmarks() =
     let mutable firstGraph = Unchecked.defaultof<COOFormat<float>>
     let mutable secondGraph = Unchecked.defaultof<COOFormat<float>>
 
-    let contextCPU = OpenCLEvaluationContext("*", DeviceType.Cpu)
-    let contextGPU = OpenCLEvaluationContext("*", DeviceType.Gpu)
+    let contextN = OpenCLEvaluationContext("NVIDIA*", DeviceType.Gpu)
+    let contextA = OpenCLEvaluationContext("AMD*", DeviceType.Gpu)
 
     [<ParamsSource("GraphPaths")>]
     member val PathToGraphPair = Unchecked.defaultof<string * string> with get, set
@@ -90,7 +91,7 @@ type EWiseAddBenchmarks() =
         firstGraph <- fst this.PathToGraphPair |> getFullPathToGraph |> getCOO
         secondGraph <- snd this.PathToGraphPair |> getFullPathToGraph |> getCOO
 
-    [<IterationSetup(Targets=[|"CpuEWiseAdditionCOO"; "GpuEWiseAdditionCOO"|])>]
+    [<IterationSetup(Targets=[|"NEWiseAdditionCOO"; "AEWiseAdditionCOO"|])>]
     member this.BuildCOO() =
         leftCOO <-
             Matrix.Build<float>(
@@ -149,14 +150,14 @@ type EWiseAddBenchmarks() =
                 (List.ofArray <| Array.zip3 secondGraph.Rows secondGraph.Columns secondGraph.Values)
 
     [<Benchmark>]
-    member this.CpuEWiseAdditionCOO() =
+    member this.NEWiseAdditionCOO() =
         leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
-        |> contextCPU.RunSync
+        |> contextN.RunSync
 
     [<Benchmark>]
-    member this.GpuEWiseAdditionCOO() =
+    member this.AEWiseAdditionCOO() =
         leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
-        |> contextGPU.RunSync
+        |> contextA.RunSync
 
     [<Benchmark>]
     member this.EWiseAdditionCSR() =

@@ -27,5 +27,10 @@
     <Compile Include="Algorithms/SSSP.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="YC.OpenCL.NET.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>  
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
