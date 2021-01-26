@@ -13,6 +13,8 @@ open GraphBLAS.FSharp.Predefined
 open MathNet.Numerics
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL.Extensions
+open OpenCL.Net
 
 type COOFormat<'a> =
     { Rows: int []
@@ -39,6 +41,9 @@ type EWiseAddBenchmarks() =
 
     let mutable firstGraph = Unchecked.defaultof<COOFormat<float>>
     let mutable secondGraph = Unchecked.defaultof<COOFormat<float>>
+
+    let contextCPU = OpenCLEvaluationContext("*", DeviceType.Cpu)
+    let contextGPU = OpenCLEvaluationContext("*", DeviceType.Gpu)
 
     [<ParamsSource("GraphPaths")>]
     member val PathToGraphPair = Unchecked.defaultof<string * string> with get, set
@@ -70,6 +75,7 @@ type EWiseAddBenchmarks() =
                     streamReader.ReadLine().Split(' ')
                     |> (fun line -> int line.[0], int line.[1], float line.[2]))
             |> List.toArray
+            |> Array.sortBy (fun (first, _, _) -> first)
             |> Array.unzip3
             |> fun (rows, cols, values) ->
                 let c f x y = f y x
@@ -84,7 +90,7 @@ type EWiseAddBenchmarks() =
         firstGraph <- fst this.PathToGraphPair |> getFullPathToGraph |> getCOO
         secondGraph <- snd this.PathToGraphPair |> getFullPathToGraph |> getCOO
 
-    [<IterationSetup(Target = "EWiseAdditionCOO")>]
+    [<IterationSetup(Targets=[|"CpuEWiseAdditionCOO"; "GpuEWiseAdditionCOO"|])>]
     member this.BuildCOO() =
         leftCOO <-
             Matrix.Build<float>(
@@ -106,7 +112,7 @@ type EWiseAddBenchmarks() =
                 COO
             )
 
-    [<IterationSetup(Target = "EWiseAdditionCSR")>]
+    [<IterationSetup(Target="EWiseAdditionCSR")>]
     member this.BuildCSR() =
         leftCSR <-
             Matrix.Build<float>(
@@ -128,7 +134,7 @@ type EWiseAddBenchmarks() =
                 CSR
             )
 
-    [<IterationSetup(Target = "EWiseAdditionMathNetSparse")>]
+    [<IterationSetup(Target="EWiseAdditionMathNetSparse")>]
     member this.BuildMathNetSparse() =
         leftMathNetSparse <-
             LinearAlgebra.SparseMatrix.ofListi
@@ -143,16 +149,21 @@ type EWiseAddBenchmarks() =
                 (List.ofArray <| Array.zip3 secondGraph.Rows secondGraph.Columns secondGraph.Values)
 
     [<Benchmark>]
-    member this.EWiseAdditionCOO() =
+    member this.CpuEWiseAdditionCOO() =
         leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
-        |> oclContext.RunSync
+        |> contextCPU.RunSync
+
+    [<Benchmark>]
+    member this.GpuEWiseAdditionCOO() =
+        leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
+        |> contextGPU.RunSync
 
     [<Benchmark>]
     member this.EWiseAdditionCSR() =
         leftCSR.EWiseAdd rightCOO None FloatSemiring.addMult
         |> oclContext.RunSync
 
-    [<Benchmark>]
+    [<Benchmark(Baseline=true)>]
     member this.EWiseAdditionMathNetSparse() = leftMathNetSparse + rightMathNetSparse
 
     /// Sequence of paths to files where data for benchmarking will be taken from

@@ -47,4 +47,4 @@ type Config() =
 
     do
         base.AddColumn [| TEPSColumn() :> IColumn |] |> ignore
-        base.AddFilter [| NameFilter(fun name -> name.Contains "MathNet") :> IFilter |] |> ignore
+        base.AddFilter [| NameFilter(fun name -> name.Contains "MathNet" || name.Contains "COO") :> IFilter |] |> ignore

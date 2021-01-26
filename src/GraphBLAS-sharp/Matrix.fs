@@ -8,6 +8,7 @@ module MatrixBackend =
         static member Build(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'T[], matrixType: MatrixBackendFormat) : Matrix<'T> =
             match matrixType with
             | CSR -> upcast CSRMatrix(rows, columns, values)
+            | COO -> upcast COOMatrix(rowCount, columnCount, rows, columns, values)
             | _ -> failwith "Not Implemented"
 
         static member Build(pathToMatrix: string, matrixType: MatrixBackendFormat) : Matrix<'T> =
