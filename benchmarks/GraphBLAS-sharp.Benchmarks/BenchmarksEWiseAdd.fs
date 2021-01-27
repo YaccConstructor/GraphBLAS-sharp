@@ -16,6 +16,15 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.Extensions
 open OpenCL.Net
 
+type ClContext = ClContext of OpenCLEvaluationContext
+with
+    override this.ToString() =
+        let mutable e = ErrorCode.Unknown
+        let (ClContext context) = this
+        let device = context.Device
+        let deviceName = Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString()
+        sprintf "%20s" deviceName
+
 type InputMatrixFormat = {
     MatrixName: string
     MatrixStructure: COOFormat<float>
@@ -129,13 +138,15 @@ type EWiseAddBenchmarks() =
 
     [<Benchmark>]
     [<ArgumentsSource("AvaliableContextsProvider")>]
-    member this.EWiseAdditionCOO(context: OpenCLEvaluationContext) =
+    member this.EWiseAdditionCOO(clContext: ClContext) =
+        let (ClContext context) = clContext
         leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
         |> context.RunSync
 
     [<Benchmark>]
     [<ArgumentsSource("AvaliableContextsProvider")>]
-    member this.EWiseAdditionCSR(context: OpenCLEvaluationContext) =
+    member this.EWiseAdditionCSR(clContext: ClContext) =
+        let (ClContext context) = clContext
         leftCSR.EWiseAdd rightCOO None FloatSemiring.addMult
         |> context.RunSync
 
@@ -204,14 +215,14 @@ type EWiseAddBenchmarks() =
     static member AvaliableContextsProvider =
         let mutable e = ErrorCode.Unknown
         Cl.GetPlatformIDs &e
-        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.All, &e))
+        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.Cpu, &e))
         |> Seq.ofArray
         |> Seq.map
             (fun device ->
                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
-                OpenCLEvaluationContext(platformName, deviceType)
+                OpenCLEvaluationContext(platformName, deviceType) |> ClContext
             )
 
 // не уверен, что на каждой итерации трансфер данных снова происходит
