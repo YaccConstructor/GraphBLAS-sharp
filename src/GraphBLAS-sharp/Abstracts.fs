@@ -46,7 +46,6 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     static member inline (@.) (x: Matrix<'a>, y: Matrix<'a>) = x.Mxm y
     static member inline (@.) (x: Matrix<'a>, y: Vector<'a>) = x.Mxv y
 
-
 and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Size: int
     default this.Size = size
@@ -76,12 +75,10 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     static member inline (*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMult y
     static member inline (@.) (x: Vector<'a>, y: Matrix<'a>) = x.Vxm y
 
-
 and Mask1D(indices: int[], size: int, isComplemented: bool) =
     member this.Indices = indices
     member this.Size = size
     member this.IsComplemented = isComplemented
-
 
 and Mask2D(rowIndices: int[], columnIndices: int[], rowCount: int, columnCount: int, isComplemented: bool) =
     member this.RowIndices = rowIndices

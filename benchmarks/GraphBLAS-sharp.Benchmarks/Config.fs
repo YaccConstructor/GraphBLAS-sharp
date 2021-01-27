@@ -46,5 +46,5 @@ type Config() =
     inherit ManualConfig()
 
     do
-        base.AddColumn [| TEPSColumn() :> IColumn |] |> ignore
+        // base.AddColumn [| TEPSColumn() :> IColumn |] |> ignore
         base.AddFilter [| NameFilter(fun name -> name.Contains "MathNet" || name.Contains "COO") :> IFilter |] |> ignore
