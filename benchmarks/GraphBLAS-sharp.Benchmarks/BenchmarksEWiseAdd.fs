@@ -23,22 +23,23 @@ with
         let (ClContext context) = this
         let device = context.Device
         let deviceName = Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString()
-        sprintf "%20s" deviceName
+        if deviceName.Length < 20 then
+            sprintf "%s" deviceName
+        else
+            let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+            let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
+            let deviceType =
+                match Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>() with
+                | DeviceType.Cpu -> "CPU"
+                | DeviceType.Gpu -> "GPU"
+                | DeviceType.Accelerator -> "Accelerator"
+                | _ -> "another"
 
-type InputMatrixFormat = {
-    MatrixName: string
-    MatrixStructure: COOFormat<float>
-}
-with
-    override this.ToString() =
-        sprintf "%s (%i, %i)"
-            this.MatrixName
-            this.MatrixStructure.RowCount
-            this.MatrixStructure.ColumnCount
+            sprintf "%s, %s" platformName deviceType
 
 [<MinColumn; MaxColumn>]
 [<Config(typeof<Config>)>]
-[<SimpleJob(RunStrategy.Throughput)>]
+[<SimpleJob(RunStrategy.ColdStart, targetCount=1)>]
 type EWiseAddBenchmarks() =
     let mutable leftCOO = Unchecked.defaultof<Matrix<float>>
     let mutable rightCOO = Unchecked.defaultof<Matrix<float>>
@@ -179,7 +180,7 @@ type EWiseAddBenchmarks() =
             let (nrows, ncols, nnz) =
                 matrixInfo.[0], matrixInfo.[1], matrixInfo.[2]
 
-            [ 0 .. nnz - 1 ]
+            [0 .. nnz - 1]
             |> List.map
                 (fun _ ->
                     streamReader.ReadLine().Split(' ')
