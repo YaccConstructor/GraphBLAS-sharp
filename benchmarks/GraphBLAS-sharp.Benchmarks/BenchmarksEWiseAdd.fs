@@ -56,6 +56,9 @@ type EWiseAddBenchmarks() =
     let mutable firstMatrix = Unchecked.defaultof<COOFormat<float>>
     let mutable secondMatrix = Unchecked.defaultof<COOFormat<float>>
 
+    do
+        Control.UseNativeMKL()
+
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrix = Unchecked.defaultof<InputMatrixFormat> with get, set
 

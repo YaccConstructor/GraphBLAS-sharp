@@ -21,6 +21,7 @@ nuget FSharpx.Text.StructuredFormat 2.3.0
 nuget Brahma.FSharp.OpenCL.WorkflowBuilder 2.0.0-alpha4
 nuget BenchmarkDotNet
 nuget MathNet.Numerics.FSharp
+nuget MathNet.Numerics.MKL.Win-x64 2.5.0
 
 // [ FAKE GROUP ]
 group Build
