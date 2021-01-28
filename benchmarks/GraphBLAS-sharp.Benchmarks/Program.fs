@@ -6,7 +6,7 @@ open MathNet.Numerics
 [<EntryPoint>]
 let main argv =
     let benchmarks = BenchmarkSwitcher [|
-        typeof<EWiseAddBenchmarks>
+        typeof<EWiseAddBenchmarks4Float32>
     |]
 
     benchmarks.Run argv |> ignore

@@ -9,7 +9,7 @@ open GraphBLAS.FSharp
 
 type InputMatrixFormat = {
     MatrixName: string
-    MatrixStructure: COOFormat<float>
+    MatrixStructure: COOFormat<float32>
 }
 with
     override this.ToString() =
@@ -45,8 +45,11 @@ type TEPSColumn() =
                 inputMatrix.MatrixStructure.ColumnCount,
                 inputMatrix.MatrixStructure.Values.Length
             let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
-            let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
-            sprintf "%f" <| float edges / (meanTime * 1e-6)
+            if isNull summary.[benchmarkCase].ResultStatistics then
+                "NA"
+            else
+                let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
+                sprintf "%f" <| float edges / (meanTime * 1e-6)
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
         member this.Id: string = "TEPSColumn"
@@ -71,7 +74,7 @@ type Config() =
 
         base.AddFilter(
             DisjunctionFilter(
-                NameFilter(fun name -> name.Contains "MathNet") :> IFilter,
+                // NameFilter(fun name -> name.Contains "MathNet") :> IFilter,
                 NameFilter(fun name -> name.Contains "COO") :> IFilter
             )
         )

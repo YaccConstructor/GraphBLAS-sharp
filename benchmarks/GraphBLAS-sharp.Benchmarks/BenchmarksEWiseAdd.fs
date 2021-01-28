@@ -1,20 +1,27 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Algorithms
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Engines
 open System.IO
-open System
 open MatrixBackend
 open GraphBLAS.FSharp.Predefined
 open MathNet.Numerics
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Brahma.FSharp.OpenCL.Extensions
 open OpenCL.Net
+
+module Float32Monoid =
+    let add: Monoid<float32> = {
+        Zero = 0.f
+        Append = BinaryOp <@ ( + ) @>
+    }
+
+module Float32Semiring =
+    let addMult: Semiring<float32> = {
+        PlusMonoid = Float32Monoid.add
+        Times = BinaryOp <@ ( * ) @>
+    }
 
 type ClContext = ClContext of OpenCLEvaluationContext
 with
@@ -39,32 +46,33 @@ with
 
 [<MinColumn; MaxColumn>]
 [<Config(typeof<Config>)>]
-[<SimpleJob(RunStrategy.ColdStart, targetCount=1)>]
-type EWiseAddBenchmarks() =
-    let mutable leftCOO = Unchecked.defaultof<Matrix<float>>
-    let mutable rightCOO = Unchecked.defaultof<Matrix<float>>
+[<SimpleJob(RunStrategy.Monitoring, targetCount=3)>]
+type EWiseAddBenchmarks4Float32() =
+    let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
+    let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
 
-    let mutable leftCSR = Unchecked.defaultof<Matrix<float>>
-    let mutable rightCSR = Unchecked.defaultof<Matrix<float>>
+    let mutable leftCSR = Unchecked.defaultof<Matrix<float32>>
+    let mutable rightCSR = Unchecked.defaultof<Matrix<float32>>
 
     let mutable leftMathNetSparse =
-        Unchecked.defaultof<LinearAlgebra.Matrix<float>>
+        Unchecked.defaultof<LinearAlgebra.Matrix<float32>>
 
     let mutable rightMathNetSparse =
-        Unchecked.defaultof<LinearAlgebra.Matrix<float>>
+        Unchecked.defaultof<LinearAlgebra.Matrix<float32>>
 
-    let mutable firstMatrix = Unchecked.defaultof<COOFormat<float>>
-    let mutable secondMatrix = Unchecked.defaultof<COOFormat<float>>
+    let mutable firstMatrix = Unchecked.defaultof<COOFormat<float32>>
+    let mutable secondMatrix = Unchecked.defaultof<COOFormat<float32>>
 
     do
         Control.UseNativeMKL()
+        Control.UseMultiThreading()
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrix = Unchecked.defaultof<InputMatrixFormat> with get, set
 
     [<GlobalSetup>]
     member this.FormInputData() =
-        let transposeCOO (matrix: COOFormat<float>) =
+        let transposeCOO (matrix: COOFormat<float32>) =
             (matrix.Rows, matrix.Columns, matrix.Values)
             |||> Array.zip3
             |> Array.sortBy (fun (row, col, value) -> row)
@@ -85,7 +93,7 @@ type EWiseAddBenchmarks() =
     [<IterationSetup(Target="EWiseAdditionCOO")>]
     member this.BuildCOO() =
         leftCOO <-
-            Matrix.Build<float>(
+            Matrix.Build<float32>(
                 firstMatrix.RowCount,
                 firstMatrix.ColumnCount,
                 firstMatrix.Rows,
@@ -95,7 +103,7 @@ type EWiseAddBenchmarks() =
             )
 
         rightCOO <-
-            Matrix.Build<float>(
+            Matrix.Build<float32>(
                 secondMatrix.RowCount,
                 secondMatrix.ColumnCount,
                 secondMatrix.Rows,
@@ -107,7 +115,7 @@ type EWiseAddBenchmarks() =
     [<IterationSetup(Target="EWiseAdditionCSR")>]
     member this.BuildCSR() =
         leftCSR <-
-            Matrix.Build<float>(
+            Matrix.Build<float32>(
                 firstMatrix.RowCount,
                 firstMatrix.ColumnCount,
                 firstMatrix.Rows,
@@ -117,7 +125,7 @@ type EWiseAddBenchmarks() =
             )
 
         rightCSR <-
-            Matrix.Build<float>(
+            Matrix.Build<float32>(
                 secondMatrix.RowCount,
                 secondMatrix.ColumnCount,
                 secondMatrix.Rows,
@@ -144,14 +152,14 @@ type EWiseAddBenchmarks() =
     [<ArgumentsSource("AvaliableContextsProvider")>]
     member this.EWiseAdditionCOO(clContext: ClContext) =
         let (ClContext context) = clContext
-        leftCOO.EWiseAdd rightCOO None FloatSemiring.addMult
+        leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
         |> context.RunSync
 
     [<Benchmark>]
     [<ArgumentsSource("AvaliableContextsProvider")>]
     member this.EWiseAdditionCSR(clContext: ClContext) =
         let (ClContext context) = clContext
-        leftCSR.EWiseAdd rightCOO None FloatSemiring.addMult
+        leftCSR.EWiseAdd rightCOO None Float32Semiring.addMult
         |> context.RunSync
 
     [<Benchmark(Baseline=true)>]
@@ -162,6 +170,8 @@ type EWiseAddBenchmarks() =
         let matricesFilenames =
             seq {
                 "arc130.mtx"
+                "linux_call_graph.mtx"
+                "webbase-1M.mtx"
             }
 
         let getFullPathToMatrix filename =
@@ -187,7 +197,7 @@ type EWiseAddBenchmarks() =
             |> List.map
                 (fun _ ->
                     streamReader.ReadLine().Split(' ')
-                    |> (fun line -> int line.[0], int line.[1], float line.[2]))
+                    |> (fun line -> int line.[0], int line.[1], float32 line.[2]))
             |> List.toArray
             |> Array.sortBy (fun (row, _, _) -> row)
             |> Array.unzip3
@@ -219,7 +229,7 @@ type EWiseAddBenchmarks() =
     static member AvaliableContextsProvider =
         let mutable e = ErrorCode.Unknown
         Cl.GetPlatformIDs &e
-        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.Cpu, &e))
+        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.All, &e))
         |> Seq.ofArray
         |> Seq.map
             (fun device ->
