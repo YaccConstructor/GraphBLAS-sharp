@@ -46,7 +46,7 @@ with
 
 [<MinColumn; MaxColumn>]
 [<Config(typeof<Config>)>]
-[<SimpleJob(RunStrategy.Monitoring, targetCount=3)>]
+[<SimpleJob(RunStrategy.Monitoring, targetCount=1)>]
 type EWiseAddBenchmarks4Float32() =
     let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
     let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
@@ -92,23 +92,37 @@ type EWiseAddBenchmarks4Float32() =
 
     [<IterationSetup(Target="EWiseAdditionCOO")>]
     member this.BuildCOO() =
+        let leftRows = Array.zeroCreate<int> firstMatrix.Rows.Length
+        let leftCols = Array.zeroCreate<int> firstMatrix.Columns.Length
+        let leftVals = Array.zeroCreate<float32> firstMatrix.Values.Length
+        Array.blit firstMatrix.Rows 0 leftRows 0 firstMatrix.Rows.Length
+        Array.blit firstMatrix.Columns 0 leftCols 0 firstMatrix.Columns.Length
+        Array.blit firstMatrix.Values 0 leftVals 0 firstMatrix.Values.Length
+
         leftCOO <-
             Matrix.Build<float32>(
                 firstMatrix.RowCount,
                 firstMatrix.ColumnCount,
-                firstMatrix.Rows,
-                firstMatrix.Columns,
-                firstMatrix.Values,
+                leftRows,
+                leftCols,
+                leftVals,
                 COO
             )
+
+        let rightRows = Array.zeroCreate<int> secondMatrix.Rows.Length
+        let rightCols = Array.zeroCreate<int> secondMatrix.Columns.Length
+        let rightVals = Array.zeroCreate<float32> secondMatrix.Values.Length
+        Array.blit secondMatrix.Rows 0 rightRows 0 secondMatrix.Rows.Length
+        Array.blit secondMatrix.Columns 0 rightCols 0 secondMatrix.Columns.Length
+        Array.blit secondMatrix.Values 0 rightVals 0 secondMatrix.Values.Length
 
         rightCOO <-
             Matrix.Build<float32>(
                 secondMatrix.RowCount,
                 secondMatrix.ColumnCount,
-                secondMatrix.Rows,
-                secondMatrix.Columns,
-                secondMatrix.Values,
+                rightRows,
+                rightCols,
+                rightVals,
                 COO
             )
 
@@ -238,9 +252,3 @@ type EWiseAddBenchmarks4Float32() =
                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
                 OpenCLEvaluationContext(platformName, deviceType) |> ClContext
             )
-
-// не уверен, что на каждой итерации трансфер данных снова происходит
-// тк ссылка на массивы присваивается одна и та же
-// надо бы каждый раз в iterationSetup делать глубокую копию исходных массивов
-
-// нужен ToString для OpenCLEvaliationContext -- печатал бы DeviceInfo.Name
