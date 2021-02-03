@@ -9,7 +9,6 @@ open System.IO
 open System
 open MatrixBackend
 
-[<Config(typeof<Config>)>]
 [<SimpleJob(targetCount=10)>]
 type BFSBenchmark4CSRMatrix() =
     let random = Random()

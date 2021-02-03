@@ -1,12 +1,16 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
+open System.IO
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Predefined
+open GraphBLAS.FSharp.MatrixBackend
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Engines
-open System.IO
-open MatrixBackend
-open GraphBLAS.FSharp.Predefined
-open MathNet.Numerics
+open BenchmarkDotNet.Configs
+open BenchmarkDotNet.Columns
+open BenchmarkDotNet.Filters
+open BenchmarkDotNet.Jobs
+open BenchmarkDotNet.Order
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
@@ -14,61 +18,45 @@ open OpenCL.Net
 module Float32Monoid =
     let add: Monoid<float32> = {
         Zero = 0.f
-        Append = BinaryOp <@ ( + ) @>
+        Append = BinaryOp <@ (+) @>
     }
 
 module Float32Semiring =
     let addMult: Semiring<float32> = {
         PlusMonoid = Float32Monoid.add
-        Times = BinaryOp <@ ( * ) @>
+        Times = BinaryOp <@ (*) @>
     }
 
-type ClContext = ClContext of OpenCLEvaluationContext
-with
-    override this.ToString() =
-        let mutable e = ErrorCode.Unknown
-        let (ClContext context) = this
-        let device = context.Device
-        let deviceName = Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString()
-        if deviceName.Length < 20 then
-            sprintf "%s" deviceName
-        else
-            let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-            let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-            let deviceType =
-                match Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>() with
-                | DeviceType.Cpu -> "CPU"
-                | DeviceType.Gpu -> "GPU"
-                | DeviceType.Accelerator -> "Accelerator"
-                | _ -> "another"
-
-            sprintf "%s, %s" platformName deviceType
-
-[<MinColumn; MaxColumn>]
-[<Config(typeof<Config>)>]
-[<SimpleJob(RunStrategy.Monitoring, targetCount=1)>]
-type EWiseAddBenchmarks4Float32() =
-    let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
-    let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
-
-    let mutable leftCSR = Unchecked.defaultof<Matrix<float32>>
-    let mutable rightCSR = Unchecked.defaultof<Matrix<float32>>
-
-    let mutable leftMathNetSparse =
-        Unchecked.defaultof<LinearAlgebra.Matrix<float32>>
-
-    let mutable rightMathNetSparse =
-        Unchecked.defaultof<LinearAlgebra.Matrix<float32>>
-
-    let mutable firstMatrix = Unchecked.defaultof<COOFormat<float32>>
-    let mutable secondMatrix = Unchecked.defaultof<COOFormat<float32>>
+type Config() =
+    inherit ManualConfig()
 
     do
-        Control.UseNativeMKL()
-        Control.UseMultiThreading()
+        base.AddColumn(
+            MatrixShapeColumn("RowCount", fun matrix -> matrix.MatrixStructure.RowCount) :> IColumn,
+            MatrixShapeColumn("ColumnCount", fun matrix -> matrix.MatrixStructure.ColumnCount) :> IColumn,
+            MatrixShapeColumn("NNZ", fun matrix -> matrix.MatrixStructure.Values.Length) :> IColumn,
+            TEPSColumn() :> IColumn,
+            StatisticColumn.Min,
+            StatisticColumn.Max
+        ) |> ignore
+
+        base.AddFilter(
+            DisjunctionFilter(
+                NameFilter(fun name -> name.Contains "COO") :> IFilter
+            )
+        ) |> ignore
+
+[<Config(typeof<Config>)>]
+[<SimpleJob(RunStrategy.Monitoring, targetCount=2)>]
+type EWiseAddBenchmarks() =
+    member val FirstMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
+    member val SecondMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrix = Unchecked.defaultof<InputMatrixFormat> with get, set
+
+    [<ParamsSource("AvaliableContexts")>]
+    member val OclContext = Unchecked.defaultof<ClContext> with get, set
 
     [<GlobalSetup>]
     member this.FormInputData() =
@@ -87,97 +75,13 @@ type EWiseAddBenchmarks4Float32() =
                         ColumnCount = matrix.RowCount
                     }
 
-        firstMatrix <- this.InputMatrix.MatrixStructure
-        secondMatrix <- transposeCOO this.InputMatrix.MatrixStructure
+        this.FirstMatrix <- this.InputMatrix.MatrixStructure
+        this.SecondMatrix <- this.InputMatrix.MatrixStructure |> transposeCOO
 
-    [<IterationSetup(Target="EWiseAdditionCOO")>]
-    member this.BuildCOO() =
-        let leftRows = Array.zeroCreate<int> firstMatrix.Rows.Length
-        let leftCols = Array.zeroCreate<int> firstMatrix.Columns.Length
-        let leftVals = Array.zeroCreate<float32> firstMatrix.Values.Length
-        Array.blit firstMatrix.Rows 0 leftRows 0 firstMatrix.Rows.Length
-        Array.blit firstMatrix.Columns 0 leftCols 0 firstMatrix.Columns.Length
-        Array.blit firstMatrix.Values 0 leftVals 0 firstMatrix.Values.Length
-
-        leftCOO <-
-            Matrix.Build<float32>(
-                firstMatrix.RowCount,
-                firstMatrix.ColumnCount,
-                leftRows,
-                leftCols,
-                leftVals,
-                COO
-            )
-
-        let rightRows = Array.zeroCreate<int> secondMatrix.Rows.Length
-        let rightCols = Array.zeroCreate<int> secondMatrix.Columns.Length
-        let rightVals = Array.zeroCreate<float32> secondMatrix.Values.Length
-        Array.blit secondMatrix.Rows 0 rightRows 0 secondMatrix.Rows.Length
-        Array.blit secondMatrix.Columns 0 rightCols 0 secondMatrix.Columns.Length
-        Array.blit secondMatrix.Values 0 rightVals 0 secondMatrix.Values.Length
-
-        rightCOO <-
-            Matrix.Build<float32>(
-                secondMatrix.RowCount,
-                secondMatrix.ColumnCount,
-                rightRows,
-                rightCols,
-                rightVals,
-                COO
-            )
-
-    [<IterationSetup(Target="EWiseAdditionCSR")>]
-    member this.BuildCSR() =
-        leftCSR <-
-            Matrix.Build<float32>(
-                firstMatrix.RowCount,
-                firstMatrix.ColumnCount,
-                firstMatrix.Rows,
-                firstMatrix.Columns,
-                firstMatrix.Values,
-                CSR
-            )
-
-        rightCSR <-
-            Matrix.Build<float32>(
-                secondMatrix.RowCount,
-                secondMatrix.ColumnCount,
-                secondMatrix.Rows,
-                secondMatrix.Columns,
-                secondMatrix.Values,
-                CSR
-            )
-
-    [<IterationSetup(Target="EWiseAdditionMathNetSparse")>]
-    member this.BuildMathNetSparse() =
-        leftMathNetSparse <-
-            LinearAlgebra.SparseMatrix.ofListi
-                firstMatrix.RowCount
-                firstMatrix.ColumnCount
-                (List.ofArray <| Array.zip3 firstMatrix.Rows firstMatrix.Columns firstMatrix.Values)
-
-        rightMathNetSparse <-
-            LinearAlgebra.SparseMatrix.ofListi
-                secondMatrix.RowCount
-                secondMatrix.ColumnCount
-                (List.ofArray <| Array.zip3 secondMatrix.Rows secondMatrix.Columns secondMatrix.Values)
-
-    [<Benchmark>]
-    [<ArgumentsSource("AvaliableContextsProvider")>]
-    member this.EWiseAdditionCOO(clContext: ClContext) =
-        let (ClContext context) = clContext
-        leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
-        |> context.RunSync
-
-    [<Benchmark>]
-    [<ArgumentsSource("AvaliableContextsProvider")>]
-    member this.EWiseAdditionCSR(clContext: ClContext) =
-        let (ClContext context) = clContext
-        leftCSR.EWiseAdd rightCOO None Float32Semiring.addMult
-        |> context.RunSync
-
-    [<Benchmark(Baseline=true)>]
-    member this.EWiseAdditionMathNetSparse() = leftMathNetSparse + rightMathNetSparse
+    [<IterationCleanup>]
+    member this.ClearBuffers() =
+        let (ClContext context) = this.OclContext
+        context.Provider.CloseAllBuffers()
 
     /// Sequence of paths to files where data for benchmarking will be taken from
     static member InputMatricesProvider =
@@ -188,59 +92,27 @@ type EWiseAddBenchmarks4Float32() =
                 "webbase-1M.mtx"
             }
 
-        let getFullPathToMatrix filename =
-            Path.Join [| __SOURCE_DIRECTORY__
-                         "Datasets"
-                         "EWiseAddDatasets"
-                         filename |]
-
-        let getCOO (pathToGraph: string) =
-            use streamReader = new StreamReader(pathToGraph)
-
-            while streamReader.Peek() = int '%' do
-                streamReader.ReadLine() |> ignore
-
-            let matrixInfo =
-                streamReader.ReadLine().Split(' ')
-                |> Array.map int
-
-            let (nrows, ncols, nnz) =
-                matrixInfo.[0], matrixInfo.[1], matrixInfo.[2]
-
-            [0 .. nnz - 1]
-            |> List.map
-                (fun _ ->
-                    streamReader.ReadLine().Split(' ')
-                    |> (fun line -> int line.[0], int line.[1], float32 line.[2]))
-            |> List.toArray
-            |> Array.sortBy (fun (row, _, _) -> row)
-            |> Array.unzip3
-            |>
-                fun (rows, cols, values) ->
-                    let c f x y = f y x
-                    let rows = rows |> Array.map (c (-) 1)
-                    let cols = cols |> Array.map (c (-) 1)
-                    {
-                        Rows = rows
-                        Columns = cols
-                        Values = values
-                        RowCount = nrows
-                        ColumnCount = ncols
-                    }
-
         matricesFilenames
         |> Seq.map
             (fun matrixFilename ->
+                let getFullPathToMatrix filename =
+                    Path.Join [|
+                        __SOURCE_DIRECTORY__
+                        "Datasets"
+                        "EWiseAddDatasets"
+                        filename
+                    |]
+
                 let fullPath = getFullPathToMatrix matrixFilename
                 let matrixName = Path.GetFileNameWithoutExtension matrixFilename
-                let matrixStructure = getCOO fullPath
+                let matrixStructure = GraphReader.readMtx fullPath
                 {
                     MatrixName = matrixName
                     MatrixStructure = matrixStructure
                 }
             )
 
-    static member AvaliableContextsProvider =
+    static member AvaliableContexts =
         let mutable e = ErrorCode.Unknown
         Cl.GetPlatformIDs &e
         |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.All, &e))
@@ -252,3 +124,97 @@ type EWiseAddBenchmarks4Float32() =
                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
                 OpenCLEvaluationContext(platformName, deviceType) |> ClContext
             )
+
+type EWiseAddBenchmarks4Float32() =
+    inherit EWiseAddBenchmarks()
+
+    let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
+    let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
+
+    [<IterationSetup>]
+    member this.BuildCOO() =
+        let leftRows = Array.zeroCreate<int> base.FirstMatrix.Rows.Length
+        let leftCols = Array.zeroCreate<int> base.FirstMatrix.Columns.Length
+        let leftVals = Array.zeroCreate<float32> base.FirstMatrix.Values.Length
+        Array.blit base.FirstMatrix.Rows 0 leftRows 0 base.FirstMatrix.Rows.Length
+        Array.blit base.FirstMatrix.Columns 0 leftCols 0 base.FirstMatrix.Columns.Length
+        Array.blit base.FirstMatrix.Values 0 leftVals 0 base.FirstMatrix.Values.Length
+
+        leftCOO <-
+            Matrix.Build<float32>(
+                base.FirstMatrix.RowCount,
+                base.FirstMatrix.ColumnCount,
+                leftRows,
+                leftCols,
+                leftVals,
+                COO
+            )
+
+        let rightRows = Array.zeroCreate<int> base.SecondMatrix.Rows.Length
+        let rightCols = Array.zeroCreate<int> base.SecondMatrix.Columns.Length
+        let rightVals = Array.zeroCreate<float32> base.SecondMatrix.Values.Length
+        Array.blit base.SecondMatrix.Rows 0 rightRows 0 base.SecondMatrix.Rows.Length
+        Array.blit base.SecondMatrix.Columns 0 rightCols 0 base.SecondMatrix.Columns.Length
+        Array.blit base.SecondMatrix.Values 0 rightVals 0 base.SecondMatrix.Values.Length
+
+        rightCOO <-
+            Matrix.Build<float32>(
+                base.SecondMatrix.RowCount,
+                base.SecondMatrix.ColumnCount,
+                rightRows,
+                rightCols,
+                rightVals,
+                COO
+            )
+
+    [<Benchmark>]
+    member this.EWiseAdditionCOOFloat32() =
+        let (ClContext context) = this.OclContext
+        leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
+        |> context.RunSync
+
+type EWiseAddBenchmarks4Bool() =
+    inherit EWiseAddBenchmarks()
+
+    let mutable leftCOO = Unchecked.defaultof<Matrix<bool>>
+    let mutable rightCOO = Unchecked.defaultof<Matrix<bool>>
+
+    [<IterationSetup>]
+    member this.BuildCOO() =
+        let leftRows = Array.zeroCreate<int> base.FirstMatrix.Rows.Length
+        let leftCols = Array.zeroCreate<int> base.FirstMatrix.Columns.Length
+        let leftVals = Array.create<bool> base.FirstMatrix.Values.Length true
+        Array.blit base.FirstMatrix.Rows 0 leftRows 0 base.FirstMatrix.Rows.Length
+        Array.blit base.FirstMatrix.Columns 0 leftCols 0 base.FirstMatrix.Columns.Length
+
+        leftCOO <-
+            Matrix.Build<bool>(
+                base.FirstMatrix.RowCount,
+                base.FirstMatrix.ColumnCount,
+                leftRows,
+                leftCols,
+                leftVals,
+                COO
+            )
+
+        let rightRows = Array.zeroCreate<int> base.SecondMatrix.Rows.Length
+        let rightCols = Array.zeroCreate<int> base.SecondMatrix.Columns.Length
+        let rightVals = Array.create<bool> base.SecondMatrix.Values.Length true
+        Array.blit base.SecondMatrix.Rows 0 rightRows 0 base.SecondMatrix.Rows.Length
+        Array.blit base.SecondMatrix.Columns 0 rightCols 0 base.SecondMatrix.Columns.Length
+
+        rightCOO <-
+            Matrix.Build<bool>(
+                base.SecondMatrix.RowCount,
+                base.SecondMatrix.ColumnCount,
+                rightRows,
+                rightCols,
+                rightVals,
+                COO
+            )
+
+    [<Benchmark>]
+    member this.EWiseAdditionCOOBool() =
+        let (ClContext context) = this.OclContext
+        leftCOO.EWiseAdd rightCOO None BooleanSemiring.anyAll
+        |> context.RunSync

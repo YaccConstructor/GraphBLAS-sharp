@@ -1,11 +1,32 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
-open BenchmarkDotNet.Configs
+open GraphBLAS.FSharp
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
-open BenchmarkDotNet.Filters
-open GraphBLAS.FSharp
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open OpenCL.Net
+
+type ClContext = ClContext of OpenCLEvaluationContext
+with
+    override this.ToString() =
+        let mutable e = ErrorCode.Unknown
+        let (ClContext context) = this
+        let device = context.Device
+        let deviceName = Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString()
+        if deviceName.Length < 20 then
+            sprintf "%s" deviceName
+        else
+            let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+            let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
+            let deviceType =
+                match Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>() with
+                | DeviceType.Cpu -> "CPU"
+                | DeviceType.Gpu -> "GPU"
+                | DeviceType.Accelerator -> "Accelerator"
+                | _ -> "another"
+
+            sprintf "%s, %s" platformName deviceType
 
 type InputMatrixFormat = {
     MatrixName: string
@@ -59,23 +80,3 @@ type TEPSColumn() =
         member this.Legend: string = "Traversed edges per second"
         member this.PriorityInCategory: int = 0
         member this.UnitType: UnitType = UnitType.Dimensionless
-
-type Config() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn("RowCount", fun matrix -> matrix.MatrixStructure.RowCount) :> IColumn,
-            MatrixShapeColumn("ColumnCount", fun matrix -> matrix.MatrixStructure.ColumnCount) :> IColumn,
-            MatrixShapeColumn("NNZ", fun matrix -> matrix.MatrixStructure.Values.Length) :> IColumn,
-            TEPSColumn() :> IColumn
-        )
-        |> ignore
-
-        base.AddFilter(
-            DisjunctionFilter(
-                // NameFilter(fun name -> name.Contains "MathNet") :> IFilter,
-                NameFilter(fun name -> name.Contains "COO") :> IFilter
-            )
-        )
-        |> ignore
