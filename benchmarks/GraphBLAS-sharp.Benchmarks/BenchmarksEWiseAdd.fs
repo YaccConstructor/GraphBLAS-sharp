@@ -96,7 +96,7 @@ type EWiseAddBenchmarks() =
         |> Seq.map
             (fun matrixFilename ->
                 let getFullPathToMatrix filename =
-                    Path.Join [|
+                    Path.Combine [|
                         __SOURCE_DIRECTORY__
                         "Datasets"
                         "EWiseAddDatasets"
