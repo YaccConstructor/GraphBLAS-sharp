@@ -15,18 +15,6 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-module Float32Monoid =
-    let add: Monoid<float32> = {
-        Zero = 0.f
-        Append = BinaryOp <@ (+) @>
-    }
-
-module Float32Semiring =
-    let addMult: Semiring<float32> = {
-        PlusMonoid = Float32Monoid.add
-        Times = BinaryOp <@ (*) @>
-    }
-
 type Config() =
     inherit ManualConfig()
 

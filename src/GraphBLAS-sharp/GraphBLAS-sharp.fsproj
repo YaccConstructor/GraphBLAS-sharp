@@ -2,7 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
@@ -23,6 +22,7 @@
     <Compile Include="Matrix.fs" />
     <Compile Include="Vector.fs" />
     <Compile Include="Predefined/Float.fs" />
+    <Compile Include="Predefined/Float32.fs" />
     <Compile Include="Predefined/Integer.fs" />
     <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Algorithms/BFS.fs" />

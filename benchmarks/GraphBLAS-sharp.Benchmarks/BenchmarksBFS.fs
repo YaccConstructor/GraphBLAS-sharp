@@ -31,5 +31,5 @@ type BFSBenchmark4CSRMatrix() =
     /// Sequence of paths to files where data for benchmarking will be taken from
     static member GraphPaths = seq {
         // Gets all mtx files from following directory
-        yield! Directory.EnumerateFiles(Path.Join [|"Datasets"; "1"|], "*.mtx")
+        yield! Directory.EnumerateFiles(Path.Combine [|"Datasets"; "1"|], "*.mtx")
     }
