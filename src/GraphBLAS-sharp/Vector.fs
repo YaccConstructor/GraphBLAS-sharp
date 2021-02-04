@@ -15,7 +15,6 @@ module VectorExtensions =
         static member ZeroSparse(length: int) : Vector<'T> =
             upcast SparseVector(length, Array.zeroCreate<int> 0, Array.zeroCreate<'T> 0)
 
-
         static member Dense(denseVector: 'T[], monoid: Monoid<'T>) : Vector<'T> =
             upcast DenseVector(denseVector, monoid)
 
@@ -24,7 +23,6 @@ module VectorExtensions =
 
         static member ZeroDense(length: int, monoid: Monoid<'T>) : Vector<'T> =
             upcast DenseVector(Array.create length monoid.Zero, monoid)
-
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =

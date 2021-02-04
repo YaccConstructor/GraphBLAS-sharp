@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
@@ -21,6 +22,7 @@
     <Compile Include="Matrix.fs" />
     <Compile Include="Vector.fs" />
     <Compile Include="Predefined/Float.fs" />
+    <Compile Include="Predefined/Float32.fs" />
     <Compile Include="Predefined/Integer.fs" />
     <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Algorithms/BFS.fs" />

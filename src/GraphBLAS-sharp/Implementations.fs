@@ -9,6 +9,14 @@ open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
+type COOFormat<'a> = {
+    Rows: int[]
+    Columns: int[]
+    Values: 'a[]
+    RowCount: int
+    ColumnCount: int
+}
+
 type CSRFormat<'a> = {
     Values: 'a[]
     Columns: int[]
@@ -114,7 +122,6 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Reduce a = failwith "Not Implemented"
     override this.Transpose () = failwith "Not Implemented"
     override this.Kronecker a b c = failwith "Not Implemented"
-
 
 and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
     inherit Matrix<'a>(rowCount, columnCount)
@@ -369,7 +376,6 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
     override this.Transpose () = failwith "Not Implemented"
     override this.Kronecker a b c = failwith "Not Implemented"
 
-
 and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[], values: 'a[]) =
     inherit Vector<'a>(size)
 
@@ -588,7 +594,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     override this.Apply a b = failwith "Not Implemented"
     override this.Prune a b = failwith "Not Implemented"
     override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"
-
 
 and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Monoid<'a>) =
     inherit Vector<'a>(vector.Length)
