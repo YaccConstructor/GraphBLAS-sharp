@@ -40,31 +40,31 @@ type EWiseAddBenchmarks() =
     member val FirstMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
     member val SecondMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
 
-    [<ParamsSource("InputMatricesProvider")>]
-    member val InputMatrix = Unchecked.defaultof<InputMatrixFormat> with get, set
+    // [<ParamsSource("InputMatricesProvider")>]
+    // member val InputMatrix = Unchecked.defaultof<InputMatrixFormat> with get, set
 
     [<ParamsSource("AvaliableContexts")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
 
-    [<GlobalSetup>]
-    member this.FormInputData() =
-        let transposeCOO (matrix: COOFormat<float32>) =
-            (matrix.Rows, matrix.Columns, matrix.Values)
-            |||> Array.zip3
-            |> Array.sortBy (fun (row, col, value) -> row)
-            |> Array.unzip3
-            |>
-                fun (rows, cols, values) ->
-                    {
-                        Rows = cols
-                        Columns = rows
-                        Values = values
-                        RowCount = matrix.ColumnCount
-                        ColumnCount = matrix.RowCount
-                    }
+    // [<GlobalSetup>]
+    // member this.FormInputData() =
+    //     let transposeCOO (matrix: COOFormat<float32>) =
+    //         (matrix.Rows, matrix.Columns, matrix.Values)
+    //         |||> Array.zip3
+    //         |> Array.sortBy (fun (row, col, value) -> row)
+    //         |> Array.unzip3
+    //         |>
+    //             fun (rows, cols, values) ->
+    //                 {
+    //                     Rows = cols
+    //                     Columns = rows
+    //                     Values = values
+    //                     RowCount = matrix.ColumnCount
+    //                     ColumnCount = matrix.RowCount
+    //                 }
 
-        this.FirstMatrix <- this.InputMatrix.MatrixStructure
-        this.SecondMatrix <- this.InputMatrix.MatrixStructure |> transposeCOO
+    //     this.FirstMatrix <- this.InputMatrix.MatrixStructure
+    //     this.SecondMatrix <- this.InputMatrix.MatrixStructure |> transposeCOO
 
     [<IterationCleanup>]
     member this.ClearBuffers() =
@@ -72,33 +72,33 @@ type EWiseAddBenchmarks() =
         context.Provider.CloseAllBuffers()
 
     /// Sequence of paths to files where data for benchmarking will be taken from
-    static member InputMatricesProvider =
-        let matricesFilenames =
-            seq {
-                "arc130.mtx"
-                "linux_call_graph.mtx"
-                "webbase-1M.mtx"
-            }
+    // static member InputMatricesProvider =
+    //     let matricesFilenames =
+    //         seq {
+    //             "arc130.mtx"
+    //             "linux_call_graph.mtx"
+    //             "webbase-1M.mtx"
+    //         }
 
-        matricesFilenames
-        |> Seq.map
-            (fun matrixFilename ->
-                let getFullPathToMatrix filename =
-                    Path.Combine [|
-                        __SOURCE_DIRECTORY__
-                        "Datasets"
-                        "EWiseAddDatasets"
-                        filename
-                    |]
+    //     matricesFilenames
+    //     |> Seq.map
+    //         (fun matrixFilename ->
+    //             let getFullPathToMatrix filename =
+    //                 Path.Combine [|
+    //                     __SOURCE_DIRECTORY__
+    //                     "Datasets"
+    //                     "EWiseAddDatasets"
+    //                     filename
+    //                 |]
 
-                let fullPath = getFullPathToMatrix matrixFilename
-                let matrixName = Path.GetFileNameWithoutExtension matrixFilename
-                let matrixStructure = GraphReader.readMtx fullPath
-                {
-                    MatrixName = matrixName
-                    MatrixStructure = matrixStructure
-                }
-            )
+    //             let fullPath = getFullPathToMatrix matrixFilename
+    //             let matrixName = Path.GetFileNameWithoutExtension matrixFilename
+    //             let matrixStructure = GraphReader.readMtx fullPath
+    //             {
+    //                 MatrixName = matrixName
+    //                 MatrixStructure = matrixStructure
+    //             }
+    //         )
 
     static member AvaliableContexts =
         let mutable e = ErrorCode.Unknown
@@ -160,6 +160,34 @@ type EWiseAddBenchmarks4Float32() =
         let (ClContext context) = this.OclContext
         leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
         |> context.RunSync
+
+    static member InputMatricesProvider =
+        let matricesFilenames =
+            seq {
+                "arc130.mtx"
+                "linux_call_graph.mtx"
+                "webbase-1M.mtx"
+            }
+
+        matricesFilenames
+        |> Seq.map
+            (fun matrixFilename ->
+                let getFullPathToMatrix filename =
+                    Path.Combine [|
+                        __SOURCE_DIRECTORY__
+                        "Datasets"
+                        "EWiseAddDatasets"
+                        filename
+                    |]
+
+                let fullPath = getFullPathToMatrix matrixFilename
+                let matrixName = Path.GetFileNameWithoutExtension matrixFilename
+                let matrixStructure = GraphReader.readMtx fullPath
+                {
+                    MatrixName = matrixName
+                    MatrixStructure = matrixStructure
+                }
+            )
 
 type EWiseAddBenchmarks4Bool() =
     inherit EWiseAddBenchmarks()

@@ -28,9 +28,9 @@ with
 
             sprintf "%s, %s" platformName deviceType
 
-type InputMatrixFormat = {
+type InputMatrixFormat<'a> = {
     MatrixName: string
-    MatrixStructure: COOFormat<float32>
+    MatrixStructure: COOFormat<'a>
 }
 with
     override this.ToString() =
