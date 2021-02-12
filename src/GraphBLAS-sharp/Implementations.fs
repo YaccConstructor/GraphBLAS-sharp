@@ -195,117 +195,16 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let allRows = Array.zeroCreate <| firstRows.Length + secondRows.Length
         let allColumns = Array.zeroCreate <| firstColumns.Length + secondColumns.Length
-        let allValues = Array.init (firstValues.Length + secondValues.Length) (fun _ -> zero)
+        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
 
         let longSide = firstRows.Length
         let shortSide = secondRows.Length
 
         let allRowsLength = allRows.Length
 
-        // let createSortedConcatenation =
-        //     <@
-        //         fun (ndRange: _1D)
-        //             (firstRowsBuffer: int[])
-        //             (firstColumnsBuffer: int[])
-        //             (firstValuesBuffer: 'a[])
-        //             (secondRowsBuffer: int[])
-        //             (secondColumnsBuffer: int[])
-        //             (secondValuesBuffer: 'a[])
-        //             (allRowsBuffer: int[])
-        //             (allColumnsBuffer: int[])
-        //             (allValuesBuffer: 'a[]) ->
-
-        //             let i = ndRange.GlobalID0
-
-        //             if i < allRowsLength then
-        //                 let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
-        //                 let mutable leftEdge = f i
-        //                     // if 0 > i + 1 - shortSide then 0 else i + 1 - shortSide
-
-        //                 let g n = if n > longSide - 1 then longSide - 1 else n
-        //                 let mutable rightEdge = g i
-        //                     // if i > longSide - 1 then longSide - 1 else i
-
-        //                 while leftEdge <= rightEdge do
-        //                     let middleIdx = (leftEdge + rightEdge) / 2
-        //                     let firstRow = firstRowsBuffer.[middleIdx]
-        //                     let firstColumn = firstColumnsBuffer.[middleIdx]
-        //                     let secondRow = secondRowsBuffer.[i - middleIdx]
-        //                     let secondColumn = secondColumnsBuffer.[i - middleIdx]
-        //                     if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-        //                 let boundaryX = rightEdge
-        //                 let boundaryY = i - leftEdge
-        //                 let firstRow = firstRowsBuffer.[boundaryX]
-        //                 let firstColumn = firstColumnsBuffer.[boundaryX]
-        //                 let secondRow = secondRowsBuffer.[boundaryY]
-        //                 let secondColumn = secondColumnsBuffer.[boundaryY]
-
-        //                 if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
-        //                     allRowsBuffer.[i] <- secondRowsBuffer.[boundaryY]
-        //                     allColumnsBuffer.[i] <- secondColumnsBuffer.[boundaryY]
-        //                     allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-        //                 else
-        //                     allRowsBuffer.[i] <- firstRowsBuffer.[boundaryX]
-        //                     allColumnsBuffer.[i] <- firstColumnsBuffer.[boundaryX]
-        //                     allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
-        //     @>
-
-        let knots = Array.zeroCreate <| (shortSide + longSide + workGroupSize - 1) / workGroupSize + 1
-        knots.[knots.Length - 1] <- longSide
-        let knotsLength = knots.Length
-
-        let prepareToCreateSortedConcatenation =
-            <@
-                fun (ndRange: _1D)
-                    (firstRowsBuffer: int[])
-                    (firstColumnsBuffer: int[])
-                    (secondRowsBuffer: int[])
-                    (secondColumnsBuffer: int[])
-                    (knotsBuffer: int[]) ->
-
-                    let i = ndRange.GlobalID0 + 1
-
-                    if i < knotsLength then
-                        let mutable x = i * workGroupSize - 1
-                        if x >= shortSide + longSide then x <- shortSide + longSide - 1
-                        let diagonalNumber = x
-
-                        let mutable leftEdge = 0
-                        if 0 <= diagonalNumber + 1 - shortSide then leftEdge <- diagonalNumber + 1 - shortSide
-
-                        let mutable rightEdge = diagonalNumber
-                        if diagonalNumber > longSide - 1 then rightEdge <- longSide - 1
-
-                        while leftEdge <= rightEdge do
-                            let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstRow = firstRowsBuffer.[middleIdx]
-                            let firstColumn = firstColumnsBuffer.[middleIdx]
-                            let secondRow = secondRowsBuffer.[diagonalNumber - middleIdx]
-                            let secondColumn = secondColumnsBuffer.[diagonalNumber - middleIdx]
-                            if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-                        knotsBuffer.[i] <- leftEdge
-            @>
-
-        let prepareToCreateSortedConcatenation =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(workSize (knotsLength - 1), workGroupSize)
-                    kernelP
-                        ndRange
-                        firstRows
-                        firstColumns
-                        secondRows
-                        secondColumns
-                        knots
-                do! RunCommand prepareToCreateSortedConcatenation binder
-            }
-
         let createSortedConcatenation =
             <@
                 fun (ndRange: _1D)
-                    (knotsBuffer: int[])
                     (firstRowsBuffer: int[])
                     (firstColumnsBuffer: int[])
                     (firstValuesBuffer: 'a[])
@@ -319,88 +218,35 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let i = ndRange.GlobalID0
 
                     if i < allRowsLength then
-                        let localID = ndRange.LocalID0
-                        let workGroupNumber = i / workGroupSize
-                        let beginIdx = knotsBuffer.[workGroupNumber]
-                        let endIdx = knotsBuffer.[workGroupNumber + 1]
-                        let firstLocalLength = endIdx - beginIdx
-                        let mutable x = workGroupSize - firstLocalLength
-                        if endIdx = longSide then x <- shortSide - i + localID + beginIdx
-                        let secondLocalLength = x
+                        let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
+                        let mutable leftEdge = f i
 
-                        let firstRowsLocalBuffer = localArray<int> workGroupSize
-                        let firstColumnsLocalBuffer = localArray<int> workGroupSize
-                        let secondRowsLocalBuffer = localArray<int> workGroupSize
-                        let secondColumnsLocalBuffer = localArray<int> workGroupSize
-
-                        if localID < firstLocalLength then
-                            firstRowsLocalBuffer.[localID] <- firstRowsBuffer.[beginIdx + localID]
-                            firstColumnsLocalBuffer.[localID] <- firstColumnsBuffer.[beginIdx + localID]
-                        if localID < secondLocalLength then
-                            secondRowsLocalBuffer.[localID] <- secondRowsBuffer.[i - beginIdx]
-                            secondColumnsLocalBuffer.[localID] <- secondColumnsBuffer.[i - beginIdx]
-
-                        barrier ()
-
-                        let mutable leftEdge = 0
-                        if 0 <= localID + 1 - secondLocalLength then leftEdge <- localID + 1 - secondLocalLength
-
-                        let mutable rightEdge = localID
-                        if localID > firstLocalLength - 1 then rightEdge <- firstLocalLength - 1
+                        let g n = if n > longSide - 1 then longSide - 1 else n
+                        let mutable rightEdge = g i
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstRow = firstRowsLocalBuffer.[middleIdx]
-                            let firstColumn = firstColumnsLocalBuffer.[middleIdx]
-                            let secondRow = secondRowsLocalBuffer.[localID - middleIdx]
-                            let secondColumn = secondColumnsLocalBuffer.[localID - middleIdx]
+                            let firstRow = firstRowsBuffer.[middleIdx]
+                            let firstColumn = firstColumnsBuffer.[middleIdx]
+                            let secondRow = secondRowsBuffer.[i - middleIdx]
+                            let secondColumn = secondColumnsBuffer.[i - middleIdx]
                             if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         let boundaryX = rightEdge
-                        let boundaryY = localID - leftEdge
-                        let firstRow = firstRowsLocalBuffer.[boundaryX]
-                        let firstColumn = firstColumnsLocalBuffer.[boundaryX]
-                        let secondRow = secondRowsLocalBuffer.[boundaryY]
-                        let secondColumn = secondColumnsLocalBuffer.[boundaryY]
+                        let boundaryY = i - leftEdge
+                        let firstRow = firstRowsBuffer.[boundaryX]
+                        let firstColumn = firstColumnsBuffer.[boundaryX]
+                        let secondRow = secondRowsBuffer.[boundaryY]
+                        let secondColumn = secondColumnsBuffer.[boundaryY]
 
                         if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
-                            allRowsBuffer.[i] <- secondRow
-                            allColumnsBuffer.[i] <- secondColumn
-                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                            allRowsBuffer.[i] <- secondRowsBuffer.[boundaryY]
+                            allColumnsBuffer.[i] <- secondColumnsBuffer.[boundaryY]
+                            allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
                         else
-                            allRowsBuffer.[i] <- firstRow
-                            allColumnsBuffer.[i] <- firstColumn
-                            allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-
-                        // let mutable leftEdge = 0
-                        // if 0 <= localID + 1 - secondLocalLength then leftEdge <- localID + 1 - secondLocalLength
-
-                        // let mutable rightEdge = localID
-                        // if localID > firstLocalLength - 1 then rightEdge <- firstLocalLength - 1
-
-                        // while leftEdge <= rightEdge do
-                        //     let middleIdx = (leftEdge + rightEdge) / 2
-                        //     let firstRow = firstRowsBuffer.[beginIdx + middleIdx]
-                        //     let firstColumn = firstColumnsBuffer.[beginIdx + middleIdx]
-                        //     let secondRow = secondRowsBuffer.[i - beginIdx - middleIdx]
-                        //     let secondColumn = secondColumnsBuffer.[i - beginIdx - middleIdx]
-                        //     if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-                        // let boundaryX = rightEdge
-                        // let boundaryY = localID - leftEdge
-                        // let firstRow = firstRowsBuffer.[beginIdx + boundaryX]
-                        // let firstColumn = firstColumnsBuffer.[beginIdx + boundaryX]
-                        // let secondRow = secondRowsBuffer.[i - localID - beginIdx + boundaryY]
-                        // let secondColumn = secondColumnsBuffer.[i - localID - beginIdx + boundaryY]
-
-                        // if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
-                        //     allRowsBuffer.[i] <- secondRow
-                        //     allColumnsBuffer.[i] <- secondColumn
-                        //     allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
-                        // else
-                        //     allRowsBuffer.[i] <- firstRow
-                        //     allColumnsBuffer.[i] <- firstColumn
-                        //     allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
+                            allRowsBuffer.[i] <- firstRowsBuffer.[boundaryX]
+                            allColumnsBuffer.[i] <- firstColumnsBuffer.[boundaryX]
+                            allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
         let createSortedConcatenation =
@@ -409,7 +255,6 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let ndRange = _1D(workSize allRows.Length, workGroupSize)
                     kernelP
                         ndRange
-                        knots
                         firstRows
                         firstColumns
                         firstValues
@@ -437,8 +282,8 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     if i < allRowsLength && allRowsBuffer.[i - 1] = allRowsBuffer.[i] && allColumnsBuffer.[i - 1] = allColumnsBuffer.[i] then
                         auxiliaryArrayBuffer.[i] <- 0
                         let localResultBuffer = (%plus) allValuesBuffer.[i - 1] allValuesBuffer.[i]
-                        //if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
-                        allValuesBuffer.[i - 1] <- localResultBuffer
+                        //Drop explicit zeroes
+                        if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
             @>
 
         let fillAuxiliaryArray =
@@ -480,11 +325,11 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let resultRows = Array.zeroCreate allRows.Length
         let resultColumns = Array.zeroCreate allColumns.Length
-        let resultValues = Array.init allValues.Length (fun _ -> zero)
+        let resultValues = Array.create allValues.Length zero
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum auxiliaryArray
+                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
@@ -501,11 +346,9 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
             }
 
         opencl {
-            do! prepareToCreateSortedConcatenation
             do! createSortedConcatenation
             do! filterThroughMask
             do! fillAuxiliaryArray
-            //do! Toolbox.EWiseAdd.dropExplicitZeroes zero allValues auxiliaryArray
             do! createUnion
 
             return upcast COOMatrix<'a>(this.RowCount, this.ColumnCount, resultRows, resultColumns, resultValues)
@@ -604,7 +447,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             }
 
         let allIndices = Array.zeroCreate <| firstIndices.Length + secondIndices.Length
-        let allValues = Array.init (firstValues.Length + secondValues.Length) (fun _ -> zero)
+        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
 
         let longSide = firstIndices.Length
         let shortSide = secondIndices.Length
@@ -625,11 +468,9 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                     if i < allIndicesLength then
                         let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
                         let mutable leftEdge = f i
-                            // if 0 > i + 1 - shortSide then 0 else i + 1 - shortSide
 
                         let g n = if n > longSide - 1 then longSide - 1 else n
                         let mutable rightEdge = g i
-                            // if i > longSide - 1 then longSide - 1 else i
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
@@ -660,7 +501,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                 do! RunCommand createSortedConcatenation binder
             }
 
-        let auxiliaryArray = Array.init allIndices.Length (fun _ -> 1)
+        let auxiliaryArray = Array.create allIndices.Length 1
 
         let fillAuxiliaryArray =
             <@
@@ -711,11 +552,11 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             @>
 
         let resultIndices = Array.zeroCreate allIndices.Length
-        let resultValues = Array.init allValues.Length (fun _ -> zero)
+        let resultValues = Array.create allValues.Length zero
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum auxiliaryArray
+                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
@@ -733,7 +574,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             do! createSortedConcatenation
             do! filterThroughMask
             do! fillAuxiliaryArray
-            //do! Toolbox.EWiseAdd.dropExplicitZeroes zero allValues auxiliaryArray
             do! createUnion
 
             return upcast SparseVector<'a>(this.Size, resultIndices, resultValues)

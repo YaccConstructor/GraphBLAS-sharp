@@ -106,33 +106,33 @@ module internal Toolbox =
     let internal prefixSum2
         (inputArray: int[]) =
 
-        let outputArray = Array.copy inputArray
-        let auxiliaryArray = Array.copy inputArray
-        let outputArrayLength = outputArray.Length
+        let firstIntermediateArray = Array.copy inputArray
+        let secondIntermediateArray = Array.copy inputArray
+        let outputArrayLength = firstIntermediateArray.Length
 
         let updateResult =
             <@
                 fun (ndRange: _1D)
                     (offset: int)
-                    (outputArrayBuffer: int[])
-                    (auxiliaryArrayBuffer: int[]) ->
+                    (firstIntermediateArrayBuffer: int[])
+                    (secondIntermediateArrayBuffer: int[]) ->
 
                     let i = ndRange.GlobalID0
                     if i < outputArrayLength then
-                        if i < offset then outputArrayBuffer.[i] <- auxiliaryArrayBuffer.[i]
-                        else outputArrayBuffer.[i] <- auxiliaryArrayBuffer.[i] + auxiliaryArrayBuffer.[i - offset]
+                        if i < offset then firstIntermediateArrayBuffer.[i] <- secondIntermediateArrayBuffer.[i]
+                        else firstIntermediateArrayBuffer.[i] <- secondIntermediateArrayBuffer.[i] + secondIntermediateArrayBuffer.[i - offset]
             @>
 
-        let binder offset outputArray auxiliaryArray kernelP =
+        let binder offset firstIntermediateArray secondIntermediateArray kernelP =
             let ndRange = _1D(workSize outputArrayLength, workGroupSize)
             kernelP
                 ndRange
                 offset
-                outputArray
-                auxiliaryArray
+                firstIntermediateArray
+                secondIntermediateArray
 
         let swap (a, b) = (b, a)
-        let mutable arrays = outputArray, auxiliaryArray
+        let mutable arrays = firstIntermediateArray, secondIntermediateArray
 
         opencl {
 
@@ -144,30 +144,3 @@ module internal Toolbox =
 
             return (fst arrays)
         }
-
-    module internal EWiseAdd =
-        let internal dropExplicitZeroes
-            (zero: 'a)
-            (allValues: 'a[])
-            (auxiliaryArray: int[]) =
-
-            let command =
-                <@
-                    fun (ndRange: _1D)
-                        (allValuesBuffer: 'a[])
-                        (auxiliaryArrayBuffer: int[]) ->
-
-                        let i = ndRange.GlobalID0
-                        if allValuesBuffer.[i] = zero then auxiliaryArrayBuffer.[i] <- 0
-                @>
-
-            let binder kernelP =
-                let ndRange = _1D(allValues.Length)
-                kernelP
-                    ndRange
-                    allValues
-                    auxiliaryArray
-
-            opencl {
-                do! RunCommand command binder
-            }
