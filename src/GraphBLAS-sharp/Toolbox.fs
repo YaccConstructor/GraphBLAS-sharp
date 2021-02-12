@@ -10,6 +10,12 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 module internal Toolbox =
+
+    let internal workGroupSize = 128
+    let internal workSize n =
+        let m = n - 1
+        m - m % workGroupSize + workGroupSize
+
     let rec internal prefixSum
         (inputArray: int[]) =
 
@@ -39,6 +45,7 @@ module internal Toolbox =
         else
             let intermediateArray = Array.zeroCreate ((inputArray.Length + 1) / 2)
             let inputArrayLength = inputArray.Length
+            let intermediateArrayLength = intermediateArray.Length
 
             let fillIntermediateArray =
                 <@
@@ -47,15 +54,16 @@ module internal Toolbox =
                         (intermediateArrayBuffer: int[]) ->
 
                         let i = ndRange.GlobalID0
-                        if 2 * i + 1 < inputArrayLength then
-                            intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i] + inputArrayBuffer.[2 * i + 1]
-                        else intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i]
+                        if i < intermediateArrayLength then
+                            if 2 * i + 1 < inputArrayLength then
+                                intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i] + inputArrayBuffer.[2 * i + 1]
+                            else intermediateArrayBuffer.[i] <- inputArrayBuffer.[2 * i]
                 @>
 
             let fillIntermediateArray =
                 opencl {
                     let binder kernelP =
-                        let ndRange = _1D(intermediateArray.Length)
+                        let ndRange = _1D(workSize intermediateArray.Length, workGroupSize)
                         kernelP
                             ndRange
                             inputArray
@@ -71,11 +79,12 @@ module internal Toolbox =
                         (outputArrayBuffer: int[]) ->
 
                         let i = ndRange.GlobalID0
-                        let j = (i - 1) / 2
-                        if i % 2 = 0 then
-                            if i = 0 then outputArrayBuffer.[i] <- inputArrayBuffer.[i]
-                            else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j] + inputArrayBuffer.[i]
-                        else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j]
+                        if i < inputArrayLength then
+                            let j = (i - 1) / 2
+                            if i % 2 = 0 then
+                                if i = 0 then outputArrayBuffer.[i] <- inputArrayBuffer.[i]
+                                else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j] + inputArrayBuffer.[i]
+                            else outputArrayBuffer.[i] <- auxiliaryPrefixSumArrayBuffer.[j]
                 @>
 
             opencl {
@@ -83,7 +92,7 @@ module internal Toolbox =
                 let! auxiliaryPrefixSumArray = prefixSum intermediateArray
 
                 let binder kernelP =
-                    let ndRange = _1D(inputArray.Length)
+                    let ndRange = _1D(workSize inputArray.Length, workGroupSize)
                     kernelP
                         ndRange
                         auxiliaryPrefixSumArray
@@ -94,29 +103,44 @@ module internal Toolbox =
                 return outputArray
             }
 
-    module internal EWiseAdd =
-        let internal dropExplicitZeroes
-            (zero: 'a)
-            (allValues: 'a[])
-            (auxiliaryArray: int[]) =
+    let internal prefixSum2
+        (inputArray: int[]) =
 
-            let command =
-                <@
-                    fun (ndRange: _1D)
-                        (allValuesBuffer: 'a[])
-                        (auxiliaryArrayBuffer: int[]) ->
+        let firstIntermediateArray = Array.copy inputArray
+        let secondIntermediateArray = Array.copy inputArray
+        let outputArrayLength = firstIntermediateArray.Length
 
-                        let i = ndRange.GlobalID0
-                        if allValuesBuffer.[i] = zero then auxiliaryArrayBuffer.[i] <- 0
-                @>
+        let updateResult =
+            <@
+                fun (ndRange: _1D)
+                    (offset: int)
+                    (firstIntermediateArrayBuffer: int[])
+                    (secondIntermediateArrayBuffer: int[]) ->
 
-            let binder kernelP =
-                let ndRange = _1D(allValues.Length)
-                kernelP
-                    ndRange
-                    allValues
-                    auxiliaryArray
+                    let i = ndRange.GlobalID0
+                    if i < outputArrayLength then
+                        if i < offset then firstIntermediateArrayBuffer.[i] <- secondIntermediateArrayBuffer.[i]
+                        else firstIntermediateArrayBuffer.[i] <- secondIntermediateArrayBuffer.[i] + secondIntermediateArrayBuffer.[i - offset]
+            @>
 
-            opencl {
-                do! RunCommand command binder
-            }
+        let binder offset firstIntermediateArray secondIntermediateArray kernelP =
+            let ndRange = _1D(workSize outputArrayLength, workGroupSize)
+            kernelP
+                ndRange
+                offset
+                firstIntermediateArray
+                secondIntermediateArray
+
+        let swap (a, b) = (b, a)
+        let mutable arrays = firstIntermediateArray, secondIntermediateArray
+
+        opencl {
+
+            let mutable offset = 1
+            while offset < outputArrayLength do
+                arrays <- swap arrays
+                do! RunCommand updateResult <| (binder offset <|| arrays)
+                offset <- offset * 2
+
+            return (fst arrays)
+        }

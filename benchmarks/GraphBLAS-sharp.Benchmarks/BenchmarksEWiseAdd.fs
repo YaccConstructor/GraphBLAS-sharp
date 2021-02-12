@@ -43,7 +43,7 @@ type BoolConfig = Config<bool>
 type EWiseAddBenchmarks() =
     [<ParamsSource("AvaliableContexts")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
-
+    
     [<IterationCleanup>]
     member this.ClearBuffers() =
         let (ClContext context) = this.OclContext

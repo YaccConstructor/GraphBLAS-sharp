@@ -8,6 +8,7 @@ open Helpers
 open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Toolbox
 
 type COOFormat<'a> = {
     Rows: int[]
@@ -175,6 +176,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
         (mask: Mask2D option)
         (semiring: Semiring<'a>) : OpenCLEvaluation<Matrix<'a>> =
 
+        let workGroupSize = Toolbox.workGroupSize
         let (BinaryOp append) = semiring.PlusMonoid.Append
         let zero = semiring.PlusMonoid.Zero
 
@@ -193,10 +195,12 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let allRows = Array.zeroCreate <| firstRows.Length + secondRows.Length
         let allColumns = Array.zeroCreate <| firstColumns.Length + secondColumns.Length
-        let allValues = Array.init (firstValues.Length + secondValues.Length) (fun _ -> zero)
+        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
 
         let longSide = firstRows.Length
         let shortSide = secondRows.Length
+
+        let allRowsLength = allRows.Length
 
         let createSortedConcatenation =
             <@
@@ -213,38 +217,42 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
                     let i = ndRange.GlobalID0
 
-                    let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
-                    let mutable leftEdge = f i
-                        // if 0 > i + 1 - shortSide then 0 else i + 1 - shortSide
+                    if i < allRowsLength then
+                        let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
+                        let mutable leftEdge = f i
 
-                    let g n = if n > longSide - 1 then longSide - 1 else n
-                    let mutable rightEdge = g i
-                        // if i > longSide - 1 then longSide - 1 else i
+                        let g n = if n > longSide - 1 then longSide - 1 else n
+                        let mutable rightEdge = g i
 
-                    while leftEdge <= rightEdge do
-                        let middleIdx = (leftEdge + rightEdge) / 2
-                        let firstRow, firstColumn = firstRowsBuffer.[middleIdx], firstColumnsBuffer.[middleIdx]
-                        let secondRow, secondColumn = secondRowsBuffer.[i - middleIdx], secondColumnsBuffer.[i - middleIdx]
-                        if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+                        while leftEdge <= rightEdge do
+                            let middleIdx = (leftEdge + rightEdge) / 2
+                            let firstRow = firstRowsBuffer.[middleIdx]
+                            let firstColumn = firstColumnsBuffer.[middleIdx]
+                            let secondRow = secondRowsBuffer.[i - middleIdx]
+                            let secondColumn = secondColumnsBuffer.[i - middleIdx]
+                            if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
-                    let boundaryX, boundaryY = rightEdge, i - leftEdge
-                    let firstRow, firstColumn = firstRowsBuffer.[boundaryX], firstColumnsBuffer.[boundaryX]
-                    let secondRow, secondColumn = secondRowsBuffer.[boundaryY], secondColumnsBuffer.[boundaryY]
+                        let boundaryX = rightEdge
+                        let boundaryY = i - leftEdge
+                        let firstRow = firstRowsBuffer.[boundaryX]
+                        let firstColumn = firstColumnsBuffer.[boundaryX]
+                        let secondRow = secondRowsBuffer.[boundaryY]
+                        let secondColumn = secondColumnsBuffer.[boundaryY]
 
-                    if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
-                        allRowsBuffer.[i] <- secondRowsBuffer.[boundaryY]
-                        allColumnsBuffer.[i] <- secondColumnsBuffer.[boundaryY]
-                        allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                    else
-                        allRowsBuffer.[i] <- firstRowsBuffer.[boundaryX]
-                        allColumnsBuffer.[i] <- firstColumnsBuffer.[boundaryX]
-                        allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                        if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
+                            allRowsBuffer.[i] <- secondRow
+                            allColumnsBuffer.[i] <- secondColumn
+                            allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
+                        else
+                            allRowsBuffer.[i] <- firstRow
+                            allColumnsBuffer.[i] <- firstColumn
+                            allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
         let createSortedConcatenation =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(allRows.Length)
+                    let ndRange = _1D(workSize allRows.Length, workGroupSize)
                     kernelP
                         ndRange
                         firstRows
@@ -259,7 +267,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                 do! RunCommand createSortedConcatenation binder
             }
 
-        let auxiliaryArray = Array.init allRows.Length (fun _ -> 1)
+        let auxiliaryArray = Array.create allRows.Length 1
 
         let fillAuxiliaryArray =
             <@
@@ -269,17 +277,19 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     (allValuesBuffer: 'a[])
                     (auxiliaryArrayBuffer: int[]) ->
 
-                    let i = ndRange.GlobalID0
+                    let i = ndRange.GlobalID0 + 1
 
-                    if allRowsBuffer.[i] = allRowsBuffer.[i + 1] && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1] then
-                        auxiliaryArrayBuffer.[i + 1] <- 0
-                        allValuesBuffer.[i] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                    if i < allRowsLength && allRowsBuffer.[i - 1] = allRowsBuffer.[i] && allColumnsBuffer.[i - 1] = allColumnsBuffer.[i] then
+                        auxiliaryArrayBuffer.[i] <- 0
+                        let localResultBuffer = (%plus) allValuesBuffer.[i - 1] allValuesBuffer.[i]
+                        //Drop explicit zeroes
+                        if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
             @>
 
         let fillAuxiliaryArray =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(allRows.Length - 1)
+                    let ndRange = _1D(workSize (allRows.Length - 1), workGroupSize)
                     kernelP
                         ndRange
                         allRows
@@ -288,6 +298,8 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                         auxiliaryArray
                 do! RunCommand fillAuxiliaryArray binder
             }
+
+        let auxiliaryArrayLength = auxiliaryArray.Length
 
         let createUnion =
             <@
@@ -303,7 +315,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
                     let i = ndRange.GlobalID0
 
-                    if auxiliaryArrayBuffer.[i] = 1 then
+                    if i < auxiliaryArrayLength && auxiliaryArrayBuffer.[i] = 1 then
                         let index = prefixSumArrayBuffer.[i] - 1
 
                         resultRowsBuffer.[index] <- allRowsBuffer.[i]
@@ -313,13 +325,13 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let resultRows = Array.zeroCreate allRows.Length
         let resultColumns = Array.zeroCreate allColumns.Length
-        let resultValues = Array.init allValues.Length (fun _ -> zero)
+        let resultValues = Array.create allValues.Length zero
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum auxiliaryArray
+                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
                 let binder kernelP =
-                    let ndRange = _1D(auxiliaryArray.Length)
+                    let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
                         ndRange
                         allRows
@@ -337,7 +349,6 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
             do! createSortedConcatenation
             do! filterThroughMask
             do! fillAuxiliaryArray
-            do! Toolbox.EWiseAdd.dropExplicitZeroes zero allValues auxiliaryArray
             do! createUnion
 
             return upcast COOMatrix<'a>(this.RowCount, this.ColumnCount, resultRows, resultColumns, resultValues)
@@ -436,10 +447,12 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             }
 
         let allIndices = Array.zeroCreate <| firstIndices.Length + secondIndices.Length
-        let allValues = Array.init (firstValues.Length + secondValues.Length) (fun _ -> zero)
+        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
 
         let longSide = firstIndices.Length
         let shortSide = secondIndices.Length
+
+        let allIndicesLength = allIndices.Length
 
         let createSortedConcatenation =
             <@
@@ -452,33 +465,33 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                     (allValuesBuffer: 'a[]) ->
 
                     let i = ndRange.GlobalID0
+                    if i < allIndicesLength then
+                        let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
+                        let mutable leftEdge = f i
 
-                    let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
-                    let mutable leftEdge = f i
-                        // if 0 > i + 1 - shortSide then 0 else i + 1 - shortSide
+                        let g n = if n > longSide - 1 then longSide - 1 else n
+                        let mutable rightEdge = g i
 
-                    let g n = if n > longSide - 1 then longSide - 1 else n
-                    let mutable rightEdge = g i
-                        // if i > longSide - 1 then longSide - 1 else i
+                        while leftEdge <= rightEdge do
+                            let middleIdx = (leftEdge + rightEdge) / 2
+                            if firstIndicesBuffer.[middleIdx] < secondIndicesBuffer.[i - middleIdx] then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
-                    while leftEdge <= rightEdge do
-                        let middleIdx = (leftEdge + rightEdge) / 2
-                        if firstIndicesBuffer.[middleIdx] < secondIndicesBuffer.[i - middleIdx] then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+                        let boundaryX, boundaryY = rightEdge, i - leftEdge
+                        let firstIndex = firstIndicesBuffer.[boundaryX]
+                        let secondIndex = secondIndicesBuffer.[boundaryY]
 
-                    let boundaryX, boundaryY = rightEdge, i - leftEdge
-
-                    if boundaryX < 0 || boundaryY >= 0 && firstIndicesBuffer.[boundaryX] < secondIndicesBuffer.[boundaryY] then
-                        allIndicesBuffer.[i] <- secondIndicesBuffer.[boundaryY]
-                        allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                    else
-                        allIndicesBuffer.[i] <- firstIndicesBuffer.[boundaryX]
-                        allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                        if boundaryX < 0 || boundaryY >= 0 && firstIndex < secondIndex then
+                            allIndicesBuffer.[i] <- secondIndex
+                            allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
+                        else
+                            allIndicesBuffer.[i] <- firstIndex
+                            allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
         let createSortedConcatenation =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(allIndices.Length)
+                    let ndRange = _1D(workSize allIndices.Length, workGroupSize)
                     kernelP
                         ndRange
                         firstIndices
@@ -490,7 +503,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                 do! RunCommand createSortedConcatenation binder
             }
 
-        let auxiliaryArray = Array.init allIndices.Length (fun _ -> 1)
+        let auxiliaryArray = Array.create allIndices.Length 1
 
         let fillAuxiliaryArray =
             <@
@@ -501,15 +514,16 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
                     let i = ndRange.GlobalID0
 
-                    if allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
+                    if i + 1 < allIndicesLength && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
                         auxiliaryArrayBuffer.[i + 1] <- 0
-                        allValuesBuffer.[i] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                        let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                        if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
             @>
 
         let fillAuxiliaryArray =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(allIndices.Length - 1)
+                    let ndRange = _1D(workSize (allIndices.Length - 1), workGroupSize)
                     kernelP
                         ndRange
                         allIndices
@@ -517,6 +531,8 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                         auxiliaryArray
                 do! RunCommand fillAuxiliaryArray binder
             }
+
+        let auxiliaryArrayLength = auxiliaryArray.Length
 
         let createUnion =
             <@
@@ -530,7 +546,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
                     let i = ndRange.GlobalID0
 
-                    if auxiliaryArrayBuffer.[i] = 1 then
+                    if i < auxiliaryArrayLength && auxiliaryArrayBuffer.[i] = 1 then
                         let index = prefixSumArrayBuffer.[i] - 1
 
                         resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
@@ -538,13 +554,13 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             @>
 
         let resultIndices = Array.zeroCreate allIndices.Length
-        let resultValues = Array.init allValues.Length (fun _ -> zero)
+        let resultValues = Array.create allValues.Length zero
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum auxiliaryArray
+                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
                 let binder kernelP =
-                    let ndRange = _1D(auxiliaryArray.Length)
+                    let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
                         ndRange
                         allIndices
@@ -560,7 +576,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
             do! createSortedConcatenation
             do! filterThroughMask
             do! fillAuxiliaryArray
-            do! Toolbox.EWiseAdd.dropExplicitZeroes zero allValues auxiliaryArray
             do! createUnion
 
             return upcast SparseVector<'a>(this.Size, resultIndices, resultValues)
