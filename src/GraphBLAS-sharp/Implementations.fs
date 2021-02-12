@@ -477,12 +477,14 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                             if firstIndicesBuffer.[middleIdx] < secondIndicesBuffer.[i - middleIdx] then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         let boundaryX, boundaryY = rightEdge, i - leftEdge
+                        let firstIndex = firstIndicesBuffer.[boundaryX]
+                        let secondIndex = secondIndicesBuffer.[boundaryY]
 
-                        if boundaryX < 0 || boundaryY >= 0 && firstIndicesBuffer.[boundaryX] < secondIndicesBuffer.[boundaryY] then
-                            allIndicesBuffer.[i] <- secondIndicesBuffer.[boundaryY]
+                        if boundaryX < 0 || boundaryY >= 0 && firstIndex < secondIndex then
+                            allIndicesBuffer.[i] <- secondIndex
                             allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
                         else
-                            allIndicesBuffer.[i] <- firstIndicesBuffer.[boundaryX]
+                            allIndicesBuffer.[i] <- firstIndex
                             allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
