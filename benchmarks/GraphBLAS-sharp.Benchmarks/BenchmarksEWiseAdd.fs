@@ -51,7 +51,7 @@ type EWiseAddBenchmarks() =
         let transposeCOO (matrix: COOFormat<float32>) =
             (matrix.Rows, matrix.Columns, matrix.Values)
             |||> Array.zip3
-            |> Array.sortBy (fun (row, col, value) -> row)
+            |> Array.sortBy (fun (row, col, value) -> col, row)
             |> Array.unzip3
             |>
                 fun (rows, cols, values) ->

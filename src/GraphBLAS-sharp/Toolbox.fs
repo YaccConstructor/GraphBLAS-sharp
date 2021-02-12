@@ -103,6 +103,48 @@ module internal Toolbox =
                 return outputArray
             }
 
+    let internal prefixSum2
+        (inputArray: int[]) =
+
+        let outputArray = Array.copy inputArray
+        let auxiliaryArray = Array.copy inputArray
+        let outputArrayLength = outputArray.Length
+
+        let updateResult =
+            <@
+                fun (ndRange: _1D)
+                    (offset: int)
+                    (outputArrayBuffer: int[])
+                    (auxiliaryArrayBuffer: int[]) ->
+
+                    let i = ndRange.GlobalID0
+                    if i < outputArrayLength then
+                        if i < offset then outputArrayBuffer.[i] <- auxiliaryArrayBuffer.[i]
+                        else outputArrayBuffer.[i] <- auxiliaryArrayBuffer.[i] + auxiliaryArrayBuffer.[i - offset]
+            @>
+
+        let binder offset outputArray auxiliaryArray kernelP =
+            let ndRange = _1D(workSize outputArrayLength, workGroupSize)
+            kernelP
+                ndRange
+                offset
+                outputArray
+                auxiliaryArray
+
+        let swap (a, b) = (b, a)
+        let mutable arrays = outputArray, auxiliaryArray
+
+        opencl {
+
+            let mutable offset = 1
+            while offset < outputArrayLength do
+                arrays <- swap arrays
+                do! RunCommand updateResult <| (binder offset <|| arrays)
+                offset <- offset * 2
+
+            return (fst arrays)
+        }
+
     module internal EWiseAdd =
         let internal dropExplicitZeroes
             (zero: 'a)

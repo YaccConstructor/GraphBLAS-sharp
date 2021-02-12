@@ -23,9 +23,9 @@ let main argv =
     //     let m = n - 1
     //     m - m % workGroupSize + workGroupSize
 
-    // let arr = [|5;4;3;2;1|]
+    // let arr = Array.init 1000000 (fun _ -> 1)
     // let arrLength = arr.Length
-    // let arr2 = [|6;7;8;9;10|]
+    // let arr2 = Array.copy arr
     // let command =
     //     <@
     //         fun (ndRange: _1D)
@@ -44,16 +44,6 @@ let main argv =
     //         ndRange
     //         arr
     //         arr2
-    // let wf =
-    //     opencl {
-    //         do! RunCommand command binder
-    //         let! _ = ToHost arr
-    //         let! _ = ToHost arr2
-    //         ()
-    //     }
-    // oclContext.RunSync wf |> ignore
-    // for i in 0 .. arr.Length - 1 do
-    //     printfn "%i, %i" arr.[i] arr2.[i]
 
     let readMatrix (fileName: string) =
         use streamReader = new StreamReader(fileName)
@@ -99,10 +89,10 @@ let main argv =
     //     COOMatrix<float>(100, 100,
     //         [|0;0;2|], [|0;1;2|], [|-1.1;5.72;-6.0|])
 
-    let rows, cols, values, nrows, ncols = readMatrix "matrix.mtx"
+    let rows, cols, values, nrows, ncols = readMatrix "webbase-1M.mtx"
     let leftMatrix = COOMatrix<float>(nrows, ncols, rows, cols, values)
 
-    let rows, cols, values, nrows, ncols = readMatrix "matrix2.mtx"
+    //let rows, cols, values, nrows, ncols = readMatrix "webbase-1M.mtx"
     let rightMatrix = COOMatrix<float>(nrows, ncols, rows, cols, values)
 
     let workflow =
@@ -113,17 +103,17 @@ let main argv =
 
     let resultMatrix : COOMatrix<float> = downcast oclContext.RunSync workflow
 
-    let rows = resultMatrix.Rows
-    let columns = resultMatrix.Columns
-    let values = resultMatrix.Values
+    // let rows = resultMatrix.Rows
+    // let columns = resultMatrix.Columns
+    // let values = resultMatrix.Values
 
     // for i in 0 .. values.Length - 1 do
     //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
 
-    for i in 0 .. values.Length / 2 - 1 do
-        printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
-    printfn "========================================"
-    for i in values.Length / 2 .. values.Length - 1 do
-        printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
+    // for i in 0 .. values.Length / 2 - 1 do
+    //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
+    // printfn "========================================"
+    // for i in values.Length / 2 .. values.Length - 1 do
+    //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
 
     0

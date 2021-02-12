@@ -23,7 +23,7 @@ module GraphReader =
                 streamReader.ReadLine().Split(' ')
                 |> (fun line -> int line.[0], int line.[1], float32 line.[2]))
         |> List.toArray
-        |> Array.sortBy (fun (row, _, _) -> row)
+        |> Array.sortBy (fun (row, col, _) -> row, col)
         |> Array.unzip3
         |>
             fun (rows, cols, values) ->
