@@ -43,7 +43,7 @@ type BoolConfig = Config<bool>
 type EWiseAddBenchmarks() =
     [<ParamsSource("AvaliableContexts")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
-    
+
     [<IterationCleanup>]
     member this.ClearBuffers() =
         let (ClContext context) = this.OclContext
@@ -115,9 +115,9 @@ type EWiseAddBenchmarks4Float32() =
             Matrix.Build<float32>(
                 this.FirstMatrix.RowCount,
                 this.FirstMatrix.ColumnCount,
-                this.FirstMatrix.Rows,
-                this.FirstMatrix.Columns,
-                this.FirstMatrix.Values,
+                leftRows,
+                leftCols,
+                leftVals,
                 COO
             )
 
@@ -132,9 +132,9 @@ type EWiseAddBenchmarks4Float32() =
             Matrix.Build<float32>(
                 this.SecondMatrix.RowCount,
                 this.SecondMatrix.ColumnCount,
-                this.SecondMatrix.Rows,
-                this.SecondMatrix.Columns,
-                this.SecondMatrix.Values,
+                rightRows,
+                rightCols,
+                rightVals,
                 COO
             )
 
@@ -195,6 +195,11 @@ type EWiseAddBenchmarks4Bool() =
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrix = Unchecked.defaultof<InputMatrixFormat<bool>> with get, set
 
+    [<GlobalSetup>]
+    member this.FormInputData() =
+        this.FirstMatrix <- this.InputMatrix.MatrixStructure
+        this.SecondMatrix <- this.InputMatrix.MatrixStructure |> Utils.transposeCOO
+
     [<IterationSetup>]
     member this.BuildCOO() =
         let leftRows = Array.zeroCreate<int> this.FirstMatrix.Rows.Length
@@ -207,9 +212,9 @@ type EWiseAddBenchmarks4Bool() =
             Matrix.Build<bool>(
                 this.FirstMatrix.RowCount,
                 this.FirstMatrix.ColumnCount,
-                this.FirstMatrix.Rows,
-                this.FirstMatrix.Columns,
-                this.FirstMatrix.Values,
+                leftRows,
+                leftCols,
+                leftVals,
                 COO
             )
 
@@ -223,9 +228,9 @@ type EWiseAddBenchmarks4Bool() =
             Matrix.Build<bool>(
                 this.SecondMatrix.RowCount,
                 this.SecondMatrix.ColumnCount,
-                this.SecondMatrix.Rows,
-                this.SecondMatrix.Columns,
-                this.SecondMatrix.Values,
+                rightRows,
+                rightCols,
+                rightVals,
                 COO
             )
 
