@@ -28,21 +28,21 @@ with
 
             sprintf "%s, %s" platformName deviceType
 
-type InputMatrixFormat = {
+type InputMatrixFormat<'a> = {
     MatrixName: string
-    MatrixStructure: COOFormat<float32>
+    MatrixStructure: COOFormat<'a>
 }
 with
     override this.ToString() =
         sprintf "%s" this.MatrixName
 
-type MatrixShapeColumn(columnName: string, getShape: InputMatrixFormat -> int) =
+type MatrixShapeColumn<'a>(columnName: string, getShape: InputMatrixFormat<'a> -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
         member this.ColumnName: string = columnName
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
             sprintf "%i" <| getShape inputMatrix
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
@@ -54,13 +54,13 @@ type MatrixShapeColumn(columnName: string, getShape: InputMatrixFormat -> int) =
         member this.PriorityInCategory: int = 1
         member this.UnitType: UnitType = UnitType.Size
 
-type TEPSColumn() =
+type TEPSColumn<'a>() =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Statistics
         member this.ColumnName: string = "TEPS"
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
             let (nrows, ncols, nnz) =
                 inputMatrix.MatrixStructure.RowCount,
                 inputMatrix.MatrixStructure.ColumnCount,
