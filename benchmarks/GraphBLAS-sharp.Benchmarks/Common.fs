@@ -28,21 +28,13 @@ with
 
             sprintf "%s, %s" platformName deviceType
 
-type InputMatrixFormat<'a> = {
-    MatrixName: string
-    MatrixStructure: COOFormat<'a>
-}
-with
-    override this.ToString() =
-        sprintf "%s" this.MatrixName
-
-type MatrixShapeColumn<'a>(columnName: string, getShape: InputMatrixFormat<'a> -> int) =
+type MatrixShapeColumn(columnName: string, getShape: MtxShape -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
         member this.ColumnName: string = columnName
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
             sprintf "%i" <| getShape inputMatrix
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
@@ -54,18 +46,18 @@ type MatrixShapeColumn<'a>(columnName: string, getShape: InputMatrixFormat<'a> -
         member this.PriorityInCategory: int = 1
         member this.UnitType: UnitType = UnitType.Size
 
-type TEPSColumn<'a>() =
+type TEPSColumn() =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Statistics
         member this.ColumnName: string = "TEPS"
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
-            let (nrows, ncols, nnz) =
-                inputMatrix.MatrixStructure.RowCount,
-                inputMatrix.MatrixStructure.ColumnCount,
-                inputMatrix.MatrixStructure.Values.Length
-            let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
+            let (nrows, ncols) =
+                inputMatrix.RowCount,
+                inputMatrix.ColumnCount
+            // !!!!!!!!!!!!
+            let (vertices, edges) = (ncols, nrows)
             if isNull summary.[benchmarkCase].ResultStatistics then
                 "NA"
             else

@@ -1,2 +1,2 @@
 Intel*
-All
+Cpu

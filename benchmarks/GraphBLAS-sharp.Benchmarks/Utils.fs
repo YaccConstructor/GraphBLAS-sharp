@@ -3,20 +3,53 @@ namespace GraphBLAS.FSharp.Benchmarks
 open System.IO
 open GraphBLAS.FSharp
 
-type MtxFormat = {
+type MtxShape = {
+    Filename: string
     Object: string
     Format: string
     Field: string
     Symmetry: string
     Size: int[]
-    Data: string[] list
 }
 with
     member this.RowCount = this.Size.[0]
     member this.ColumnCount = this.Size.[1]
+    override this.ToString() =
+        sprintf "%s" <| Path.GetFileNameWithoutExtension this.Filename
+
+type MtxFormat = {
+    Shape: MtxShape
+    Data: string[] list
+}
 
 module GraphReader =
+    let readShapeMtx (pathToGraph: string) =
+        use streamReader = new StreamReader(pathToGraph)
+
+        let header = streamReader.ReadLine().Split(' ')
+        let object = header.[1]
+        let format = header.[2]
+        let field = header.[3]
+        let symmetry = header.[4]
+
+        while streamReader.Peek() = int '%' do
+            streamReader.ReadLine() |> ignore
+
+        let size =
+            streamReader.ReadLine().Split(' ')
+            |> Array.map int
+
+        {
+            Filename = pathToGraph |> Path.GetFileName
+            Object = object
+            Format = format
+            Field = field
+            Symmetry = symmetry
+            Size = size
+        }
+
     let readMtx (pathToGraph: string) =
+        let meta = readShapeMtx pathToGraph
         use streamReader = new StreamReader(pathToGraph)
 
         let header = streamReader.ReadLine().Split(' ')
@@ -33,9 +66,9 @@ module GraphReader =
             |> Array.map int
 
         let len =
-            match format with
-            | "array" -> size.[0] * size.[1]
-            | "coordinate" -> size.[2]
+            match meta.Format with
+            | "array" -> meta.Size.[0] * meta.Size.[1]
+            | "coordinate" -> meta.Size.[2]
             | _ -> failwith "Unsupported matrix format"
 
         let data =
@@ -43,11 +76,7 @@ module GraphReader =
             |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
 
         {
-            Object = object
-            Format = format
-            Field = field
-            Symmetry = symmetry
-            Size = size
+            Shape = meta
             Data = data
         }
 
@@ -83,12 +112,13 @@ module Utils =
                 let c f x y = f y x
                 let rows = rows |> Array.map (c (-) 1)
                 let cols = cols |> Array.map (c (-) 1)
+                printfn "kek"
                 {
                     Rows = rows
                     Columns = cols
                     Values = values
-                    RowCount = mtx.RowCount
-                    ColumnCount = mtx.ColumnCount
+                    RowCount = mtx.Shape.RowCount
+                    ColumnCount = mtx.Shape.ColumnCount
                 }
 
     let transposeCOO (matrix: COOFormat<'a>) =
@@ -98,6 +128,7 @@ module Utils =
         |> Array.unzip3
         |>
             fun (rows, cols, values) ->
+                printfn "kek"
                 {
                     Rows = cols
                     Columns = rows
