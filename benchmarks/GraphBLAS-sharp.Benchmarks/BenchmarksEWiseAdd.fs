@@ -82,6 +82,7 @@ type EWiseAddBenchmarks() =
         Cl.GetPlatformIDs &e
         |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
         |> Seq.ofArray
+        |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
         |> Seq.filter
             (fun device ->
                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
