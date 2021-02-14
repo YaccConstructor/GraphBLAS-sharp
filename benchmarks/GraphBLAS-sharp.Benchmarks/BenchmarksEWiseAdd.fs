@@ -36,7 +36,8 @@ type Config() =
 
         base.AddFilter(
             DisjunctionFilter(
-                NameFilter(fun name -> name.Contains "COO") :> IFilter
+                NameFilter(fun name -> name.Contains "COO") :> IFilter,
+                NameFilter(fun name -> name.Contains "ToHost") :> IFilter
             )
         ) |> ignore
 
@@ -260,7 +261,9 @@ type ToHostBenchmarks4Float32() =
 
     [<Benchmark>]
     member this.ToHostFloat32() =
+        let (ClContext context) = this.OclContext
         resultCOO.ToHost()
+        |> context.RunSync
 
     static member InputMatricesProvider =
         let matricesFilenames =
