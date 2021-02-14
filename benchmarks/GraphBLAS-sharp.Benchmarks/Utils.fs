@@ -93,45 +93,65 @@ module Utils =
             matrixFilename
         |]
 
-    let makeCOO (mtx: MtxFormat) (valueProvider: ValueProvider<'a>) =
-        mtx.Data
-        |> List.map
-            (fun line ->
-                let value =
-                    match valueProvider with
-                    | FromUnit get -> get ()
-                    | FromString get -> get line.[2]
+    let pack x y = (uint64 x <<< 32) ||| (uint64 y)
+    let unpack x = (int ((x &&& 0xFFFFFFFF0000000UL) >>> 32)), (int (x &&& 0xFFFFFFFUL))
 
-                (int line.[0], int line.[1], value)
-            )
+    let makeCOO (mtx: MtxFormat) (valueProvider: ValueProvider<'a>) =
+        printfn "Start make COO"
+        mtx.Data
         |> List.toArray
-        |> Array.sortBy (fun (row, col, _) -> row, col)
-        |> Array.unzip3
+        |> Array.Parallel.map
+              (fun line ->
+                 let value =
+                     match valueProvider with
+                     | FromUnit get -> get ()
+                     | FromString get -> get line.[2]
+                 struct (pack (int line.[0]) (int line.[1]), value)
+              )
+        |> Array.sortBy (fun struct (p, _) -> p)
+        |> fun data ->
+               let rows = Array.zeroCreate data.Length
+               let cols = Array.zeroCreate data.Length
+               let values = Array.zeroCreate data.Length
+               data 
+               |> Array.Parallel.iteri 
+                      (fun i struct(p,v) -> 
+                          let r,c = unpack p
+                          rows.[i] <- r
+                          cols.[i] <- c
+                          values.[i] <- v
+                      )
+               let c f x y = f y x
+               let rows = rows |> Array.map (c (-) 1)
+               let cols = cols |> Array.map (c (-) 1)
+               printfn "kek"
+               {
+                   Rows = rows
+                   Columns = cols
+                   Values = values
+                   RowCount = mtx.Shape.RowCount
+                   ColumnCount = mtx.Shape.ColumnCount
+               }
+
+    let transposeCOO (matrix: COOFormat<'a>) =
+        printfn "Start transpose COO"
+        Array.map3 (fun c r v -> struct ((pack c r), v)) matrix.Columns matrix.Rows matrix.Values
+        |> Array.sortBy (fun struct (p, value) -> p)
         |>
-            fun (rows, cols, values) ->
-                let c f x y = f y x
-                let rows = rows |> Array.map (c (-) 1)
-                let cols = cols |> Array.map (c (-) 1)
-                printfn "kek"
+            fun data ->
+                let rows = Array.zeroCreate data.Length
+                let cols = Array.zeroCreate data.Length
+                let values = Array.zeroCreate data.Length
+                data 
+                |> Array.Parallel.iteri 
+                       (fun i struct(p, v) -> 
+                            let r,c = unpack p
+                            rows.[i] <- r
+                            cols.[i] <- c
+                            values.[i] <- v)
                 {
                     Rows = rows
                     Columns = cols
-                    Values = values
-                    RowCount = mtx.Shape.RowCount
-                    ColumnCount = mtx.Shape.ColumnCount
-                }
-
-    let transposeCOO (matrix: COOFormat<'a>) =
-        (matrix.Rows, matrix.Columns, matrix.Values)
-        |||> Array.zip3
-        |> Array.sortBy (fun (row, col, value) -> col, row)
-        |> Array.unzip3
-        |>
-            fun (rows, cols, values) ->
-                printfn "kek"
-                {
-                    Rows = cols
-                    Columns = rows
                     Values = values
                     RowCount = matrix.ColumnCount
                     ColumnCount = matrix.RowCount
