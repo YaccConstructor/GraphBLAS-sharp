@@ -137,7 +137,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
     new (rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
         let indices =
             [| for i in 0 .. rows.Length do
-                yield (uint64)rows.[i] <<< 32 ||| (uint64)columns.[i] |]
+                yield (uint64 rows.[i]) <<< 32 ||| (uint64 columns.[i]) |]
         COOMatrix(rowCount, columnCount, indices, values)
 
     override this.Clear () = failwith "Not Implemented"
@@ -159,8 +159,8 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let i = ndRange.GlobalID0
                     if i < indicesLength then
                         let doubleIndex = indicesBuffer.[i]
-                        rowsBuffer.[i] <- (int)(doubleIndex >>> 32)
-                        columnsBuffer.[i] <- (int)doubleIndex
+                        rowsBuffer.[i] <- (int doubleIndex) >>> 32
+                        columnsBuffer.[i] <- int doubleIndex
             @>
 
         let rows = Array.zeroCreate indicesLength
