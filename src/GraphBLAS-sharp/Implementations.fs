@@ -136,7 +136,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
     new (rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
         let indices =
-            [| for i in 0 .. rows.Length do
+            [| for i in 0 .. rows.Length - 1 do
                 yield (uint64 rows.[i]) <<< 32 ||| (uint64 columns.[i]) |]
         COOMatrix(rowCount, columnCount, indices, values)
 
