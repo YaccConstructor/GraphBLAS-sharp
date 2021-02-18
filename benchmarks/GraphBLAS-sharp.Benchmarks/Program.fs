@@ -8,7 +8,6 @@ let main argv =
     let benchmarks = BenchmarkSwitcher [|
         typeof<EWiseAddBenchmarks4Float32>
         typeof<EWiseAddBenchmarks4Bool>
-        typeof<ToHostBenchmarks4Float32>
     |]
 
     benchmarks.Run argv |> ignore

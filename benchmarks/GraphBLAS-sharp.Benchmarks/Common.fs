@@ -1,6 +1,5 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
-open GraphBLAS.FSharp
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
@@ -33,11 +32,14 @@ type MatrixShapeColumn(columnName: string, getShape: MtxShape -> int) =
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
         member this.ColumnName: string = columnName
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
             let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
             sprintf "%i" <| getShape inputMatrix
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
+
         member this.Id: string = sprintf "%s.%s" "MatrixShapeColumn" columnName
         member this.IsAvailable(summary: Summary): bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase): bool = false
@@ -51,20 +53,24 @@ type TEPSColumn() =
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Statistics
         member this.ColumnName: string = "TEPS"
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
             let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
-            let (nrows, ncols) =
-                inputMatrix.RowCount,
-                inputMatrix.ColumnCount
-            // !!!!!!!!!!!!
-            let (vertices, edges) = (ncols, nrows)
+            let (nrows, ncols) = inputMatrix.RowCount, inputMatrix.ColumnCount
+            let (vertices, edges) =
+                match inputMatrix.Format with
+                | "coordinate" -> if nrows = ncols then (nrows, inputMatrix.Size.[2]) else (ncols, nrows)
+                | _ -> failwith "Unsupported"
+
             if isNull summary.[benchmarkCase].ResultStatistics then
                 "NA"
             else
                 let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
                 sprintf "%f" <| float edges / (meanTime * 1e-6)
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
+
         member this.Id: string = "TEPSColumn"
         member this.IsAvailable(summary: Summary): bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase): bool = false

@@ -17,15 +17,13 @@ with
     override this.ToString() =
         sprintf "%s" <| Path.GetFileNameWithoutExtension this.Filename
 
-type MtxFormat = {
+type MtxMatrix = {
     Shape: MtxShape
     Data: string[] list
 }
 
-module GraphReader =
-    let readShapeMtx (pathToGraph: string) =
-        use streamReader = new StreamReader(pathToGraph)
-
+module MtxReader =
+    let readShapeWithReader (streamReader: StreamReader) (pathToGraph: string) =
         let header = streamReader.ReadLine().Split(' ')
         let object = header.[1]
         let format = header.[2]
@@ -48,22 +46,13 @@ module GraphReader =
             Size = size
         }
 
-    let readMtx (pathToGraph: string) =
-        let meta = readShapeMtx pathToGraph
+    let readShape (pathToGraph: string) =
         use streamReader = new StreamReader(pathToGraph)
+        readShapeWithReader streamReader pathToGraph
 
-        let header = streamReader.ReadLine().Split(' ')
-        let object = header.[1]
-        let format = header.[2]
-        let field = header.[3]
-        let symmetry = header.[4]
-
-        while streamReader.Peek() = int '%' do
-            streamReader.ReadLine() |> ignore
-
-        let size =
-            streamReader.ReadLine().Split(' ')
-            |> Array.map int
+    let readMtx (pathToGraph: string) =
+        use streamReader = new StreamReader(pathToGraph)
+        let meta = readShapeWithReader streamReader pathToGraph
 
         let len =
             match meta.Format with
@@ -96,59 +85,66 @@ module Utils =
     let pack x y = (uint64 x <<< 32) ||| (uint64 y)
     let unpack x = (int ((x &&& 0xFFFFFFFF0000000UL) >>> 32)), (int (x &&& 0xFFFFFFFUL))
 
-    let makeCOO (mtx: MtxFormat) (valueProvider: ValueProvider<'a>) =
+    let makeCOO (mtx: MtxMatrix) (valueProvider: ValueProvider<'a>) =
         printfn "Start make COO"
-        mtx.Data
-        |> List.toArray
-        |> Array.Parallel.map
-              (fun line ->
-                 let value =
-                     match valueProvider with
-                     | FromUnit get -> get ()
-                     | FromString get -> get line.[2]
-                 struct (pack (int line.[0]) (int line.[1]), value)
-              )
-        |> Array.sortBy (fun struct (p, _) -> p)
-        |> fun data ->
-               let rows = Array.zeroCreate data.Length
-               let cols = Array.zeroCreate data.Length
-               let values = Array.zeroCreate data.Length
-               data 
-               |> Array.Parallel.iteri 
-                      (fun i struct(p,v) -> 
-                          let r,c = unpack p
-                          rows.[i] <- r
-                          cols.[i] <- c
-                          values.[i] <- v
-                      )
-               let c f x y = f y x
-               let rows = rows |> Array.map (c (-) 1)
-               let cols = cols |> Array.map (c (-) 1)
-               printfn "kek"
-               {
-                   Rows = rows
-                   Columns = cols
-                   Values = values
-                   RowCount = mtx.Shape.RowCount
-                   ColumnCount = mtx.Shape.ColumnCount
-               }
 
-    let transposeCOO (matrix: COOFormat<'a>) =
-        printfn "Start transpose COO"
-        Array.map3 (fun c r v -> struct ((pack c r), v)) matrix.Columns matrix.Rows matrix.Values
-        |> Array.sortBy (fun struct (p, value) -> p)
+        mtx.Data
+        |> Array.ofList
+        |> Array.Parallel.map
+            (fun line ->
+                let value =
+                    match valueProvider with
+                    | FromUnit get -> get ()
+                    | FromString get -> get line.[2]
+
+                struct(pack <| int line.[0] <| int line.[1], value)
+            )
+        |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
         |>
             fun data ->
                 let rows = Array.zeroCreate data.Length
                 let cols = Array.zeroCreate data.Length
                 let values = Array.zeroCreate data.Length
-                data 
-                |> Array.Parallel.iteri 
-                       (fun i struct(p, v) -> 
-                            let r,c = unpack p
-                            rows.[i] <- r
-                            cols.[i] <- c
-                            values.[i] <- v)
+
+                Array.Parallel.iteri
+                    (fun i struct(packedIndex, value) ->
+                        let (rowIdx, columnIdx) = unpack packedIndex
+                        rows.[i] <- rowIdx
+                        cols.[i] <- columnIdx
+                        values.[i] <- value
+                    ) data
+
+                let flip f x y = f y x
+                let rows = rows |> Array.map (flip (-) 1)
+                let cols = cols |> Array.map (flip (-) 1)
+                {
+                    Rows = rows
+                    Columns = cols
+                    Values = values
+                    RowCount = mtx.Shape.RowCount
+                    ColumnCount = mtx.Shape.ColumnCount
+                }
+
+    let transposeCOO (matrix: COOFormat<'a>) =
+        printfn "Start transpose COO"
+
+        (matrix.Columns, matrix.Rows, matrix.Values)
+        |||> Array.map3 (fun colIdx rowIdx value -> struct(pack colIdx rowIdx, value))
+        |> Array.sortBy (fun struct(p, _) -> p)
+        |>
+            fun data ->
+                let rows = Array.zeroCreate data.Length
+                let cols = Array.zeroCreate data.Length
+                let values = Array.zeroCreate data.Length
+
+                Array.Parallel.iteri
+                    (fun i struct(packedIndex, value) ->
+                        let (rowIdx, columnIdx) = unpack packedIndex
+                        rows.[i] <- rowIdx
+                        cols.[i] <- columnIdx
+                        values.[i] <- value
+                    ) data
+
                 {
                     Rows = rows
                     Columns = cols
@@ -156,3 +152,17 @@ module Utils =
                     RowCount = matrix.ColumnCount
                     ColumnCount = matrix.RowCount
                 }
+
+    let getMatricesFilenames configFilename =
+        let getFullPathToConfig filename =
+            Path.Combine [|
+                __SOURCE_DIRECTORY__
+                "Configs"
+                filename
+            |] |> Path.GetFullPath
+
+        configFilename
+        |> getFullPathToConfig
+        |> File.ReadAllLines
+        |> Seq.ofArray
+        |> Seq.filter (fun line -> not <| line.StartsWith "!")

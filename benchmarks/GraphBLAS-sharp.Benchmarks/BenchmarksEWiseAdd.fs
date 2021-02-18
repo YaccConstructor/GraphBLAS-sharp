@@ -1,21 +1,17 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
+open System.Text.RegularExpressions
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp.MatrixBackend
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Engines
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Filters
-open BenchmarkDotNet.Jobs
-open BenchmarkDotNet.Order
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
-open Brahma.OpenCL
-open System.Text.RegularExpressions
 
 type Config() =
     inherit ManualConfig()
@@ -36,13 +32,12 @@ type Config() =
 
         base.AddFilter(
             DisjunctionFilter(
-                NameFilter(fun name -> name.Contains "COO") :> IFilter,
-                NameFilter(fun name -> name.Contains "ToHost") :> IFilter
+                NameFilter(fun name -> name.Contains "COO") :> IFilter
             )
         ) |> ignore
 
-[<IterationCount(1)>]
-[<WarmupCount(1)>]
+[<IterationCount(5)>]
+[<WarmupCount(3)>]
 [<Config(typeof<Config>)>]
 type EWiseAddBenchmarks() =
     [<ParamsSource("AvaliableContexts")>]
@@ -108,7 +103,7 @@ type EWiseAddBenchmarks4Float32() =
 
     [<GlobalSetup>]
     member this.FormInputData() =
-        let mtxFormat = GraphReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
+        let mtxFormat = MtxReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
         let cooMatrix =
             match mtxFormat.Shape.Format, mtxFormat.Shape.Field with
             | "coordinate", "real" -> Utils.makeCOO mtxFormat <| FromString float32
@@ -169,121 +164,12 @@ type EWiseAddBenchmarks4Float32() =
         |> context.RunSync
 
     static member InputMatricesProvider =
-        let matricesFilenames =
-            let pathToConfig =
-                Path.Combine [|
-                    __SOURCE_DIRECTORY__
-                    "Configs"
-                    "EWiseAddBenchmarks4Float32.txt"
-                |] |> Path.GetFullPath
-
-            File.ReadAllLines pathToConfig
-            |> Seq.ofArray
-            |> Seq.filter (fun line -> not <| line.StartsWith "!")
-
-        matricesFilenames
+        "EWiseAddBenchmarks4Float32.txt"
+        |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> GraphReader.readShapeMtx <| Utils.getFullPathToMatrix matrixFilename
-                | _ -> failwith "Unsupported matrix format"
-            )
-
-type ToHostBenchmarks4Float32() =
-    inherit EWiseAddBenchmarks()
-
-    let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
-    let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
-    let mutable resultCOO = Unchecked.defaultof<Matrix<float32>>
-
-    member val FirstMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
-    member val SecondMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
-
-    [<GlobalSetup>]
-    member this.FormInputData() =
-        let mtxFormat = GraphReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
-        let cooMatrix =
-            match mtxFormat.Shape.Format, mtxFormat.Shape.Field with
-            | "coordinate", "real" -> Utils.makeCOO mtxFormat <| FromString float32
-            | "coordinate", "integer" -> Utils.makeCOO mtxFormat <| FromString float32
-            | "coordinate", "pattern" ->
-                let rand = System.Random()
-                let nextSingle (random: System.Random) =
-                    let buffer = Array.zeroCreate<byte> 4
-                    random.NextBytes buffer
-                    System.BitConverter.ToSingle(buffer, 0)
-
-                Utils.makeCOO mtxFormat <| FromUnit (fun () -> nextSingle rand)
-            | _ -> failwith "Unsupported matrix format"
-
-        this.FirstMatrix <- cooMatrix
-        this.SecondMatrix <- cooMatrix |> Utils.transposeCOO
-
-    [<IterationSetup>]
-    member this.BuildCOO() =
-        let leftRows = Array.zeroCreate<int> this.FirstMatrix.Rows.Length
-        let leftCols = Array.zeroCreate<int> this.FirstMatrix.Columns.Length
-        let leftVals = Array.zeroCreate<float32> this.FirstMatrix.Values.Length
-        Array.blit this.FirstMatrix.Rows 0 leftRows 0 this.FirstMatrix.Rows.Length
-        Array.blit this.FirstMatrix.Columns 0 leftCols 0 this.FirstMatrix.Columns.Length
-        Array.blit this.FirstMatrix.Values 0 leftVals 0 this.FirstMatrix.Values.Length
-
-        leftCOO <-
-            Matrix.Build<float32>(
-                this.FirstMatrix.RowCount,
-                this.FirstMatrix.ColumnCount,
-                leftRows,
-                leftCols,
-                leftVals,
-                COO
-            )
-
-        let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
-        let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
-        let rightVals = Array.zeroCreate<float32> this.SecondMatrix.Values.Length
-        Array.blit this.SecondMatrix.Rows 0 rightRows 0 this.SecondMatrix.Rows.Length
-        Array.blit this.SecondMatrix.Columns 0 rightCols 0 this.SecondMatrix.Columns.Length
-        Array.blit this.SecondMatrix.Values 0 rightVals 0 this.SecondMatrix.Values.Length
-
-        rightCOO <-
-            Matrix.Build<float32>(
-                this.SecondMatrix.RowCount,
-                this.SecondMatrix.ColumnCount,
-                rightRows,
-                rightCols,
-                rightVals,
-                COO
-            )
-
-        let (ClContext context) = this.OclContext
-        resultCOO <-
-            leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
-            |> context.RunSync
-
-    [<Benchmark>]
-    member this.ToHostFloat32() =
-        let (ClContext context) = this.OclContext
-        resultCOO.ToHost()
-        |> context.RunSync
-
-    static member InputMatricesProvider =
-        let matricesFilenames =
-            let pathToConfig =
-                Path.Combine [|
-                    __SOURCE_DIRECTORY__
-                    "Configs"
-                    "EWiseAddBenchmarks4Float32.txt"
-                |] |> Path.GetFullPath
-
-            File.ReadAllLines pathToConfig
-            |> Seq.ofArray
-            |> Seq.filter (fun line -> not <| line.StartsWith "!")
-
-        matricesFilenames
-        |> Seq.map
-            (fun matrixFilename ->
-                match Path.GetExtension matrixFilename with
-                | ".mtx" -> GraphReader.readShapeMtx <| Utils.getFullPathToMatrix matrixFilename
+                | ".mtx" -> MtxReader.readShape <| Utils.getFullPathToMatrix matrixFilename
                 | _ -> failwith "Unsupported matrix format"
             )
 
@@ -298,7 +184,7 @@ type EWiseAddBenchmarks4Bool() =
 
     [<GlobalSetup>]
     member this.FormInputData() =
-        let mtxFormat = GraphReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
+        let mtxFormat = MtxReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
         let cooMatrix =
             match mtxFormat.Shape.Format, mtxFormat.Shape.Field with
             | "coordinate", "real" -> Utils.makeCOO mtxFormat <| FromString (fun _ -> true)
@@ -350,22 +236,11 @@ type EWiseAddBenchmarks4Bool() =
         |> context.RunSync
 
     static member InputMatricesProvider =
-        let matricesFilenames =
-            let pathToConfig =
-                Path.Combine [|
-                    __SOURCE_DIRECTORY__
-                    "Configs"
-                    "EWiseAddBenchmarks4Bool.txt"
-                |] |> Path.GetFullPath
-
-            File.ReadAllLines pathToConfig
-            |> Seq.ofArray
-            |> Seq.filter (fun line -> not <| line.StartsWith "!")
-
-        matricesFilenames
+        "EWiseAddBenchmarks4Bool.txt"
+        |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> GraphReader.readShapeMtx <| Utils.getFullPathToMatrix matrixFilename
+                | ".mtx" -> MtxReader.readShape <| Utils.getFullPathToMatrix matrixFilename
                 | _ -> failwith "Unsupported matrix format"
             )
