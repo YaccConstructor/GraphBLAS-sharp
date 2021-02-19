@@ -109,14 +109,12 @@ module Utils =
                 Array.Parallel.iteri
                     (fun i struct(packedIndex, value) ->
                         let (rowIdx, columnIdx) = unpack packedIndex
-                        rows.[i] <- rowIdx
-                        cols.[i] <- columnIdx
+                        // in mtx indecies start at 1
+                        rows.[i] <- rowIdx - 1
+                        cols.[i] <- columnIdx - 1
                         values.[i] <- value
                     ) data
 
-                let flip f x y = f y x
-                let rows = rows |> Array.map (flip (-) 1)
-                let cols = cols |> Array.map (flip (-) 1)
                 {
                     Rows = rows
                     Columns = cols
@@ -163,6 +161,5 @@ module Utils =
 
         configFilename
         |> getFullPathToConfig
-        |> File.ReadAllLines
-        |> Seq.ofArray
+        |> File.ReadLines
         |> Seq.filter (fun line -> not <| line.StartsWith "!")
