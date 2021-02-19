@@ -234,19 +234,28 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
                         let boundaryX = rightEdge
                         let boundaryY = i - leftEdge
-                        let firstRow = firstRowsBuffer.[boundaryX]
-                        let firstColumn = firstColumnsBuffer.[boundaryX]
-                        let secondRow = secondRowsBuffer.[boundaryY]
-                        let secondColumn = secondColumnsBuffer.[boundaryY]
 
-                        if boundaryX < 0 || boundaryY >= 0 && (firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn) then
-                            allRowsBuffer.[i] <- secondRow
-                            allColumnsBuffer.[i] <- secondColumn
+                        if boundaryX < 0 then
+                            allRowsBuffer.[i] <- secondRowsBuffer.[boundaryY]
+                            allColumnsBuffer.[i] <- secondColumnsBuffer.[boundaryY]
                             allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                        else
-                            allRowsBuffer.[i] <- firstRow
-                            allColumnsBuffer.[i] <- firstColumn
+                        elif boundaryY < 0 then
+                            allRowsBuffer.[i] <- firstRowsBuffer.[boundaryX]
+                            allColumnsBuffer.[i] <- firstColumnsBuffer.[boundaryX]
                             allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                        else
+                            let firstRow = firstRowsBuffer.[boundaryX]
+                            let firstColumn = firstColumnsBuffer.[boundaryX]
+                            let secondRow = secondRowsBuffer.[boundaryY]
+                            let secondColumn = secondColumnsBuffer.[boundaryY]
+                            if firstRow < secondRow || firstRow = secondRow && firstColumn < secondColumn then
+                                allRowsBuffer.[i] <- secondRow
+                                allColumnsBuffer.[i] <- secondColumn
+                                allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
+                            else
+                                allRowsBuffer.[i] <- firstRow
+                                allColumnsBuffer.[i] <- firstColumn
+                                allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
         let createSortedConcatenation =
@@ -477,15 +486,22 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
                             if firstIndicesBuffer.[middleIdx] < secondIndicesBuffer.[i - middleIdx] then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         let boundaryX, boundaryY = rightEdge, i - leftEdge
-                        let firstIndex = firstIndicesBuffer.[boundaryX]
-                        let secondIndex = secondIndicesBuffer.[boundaryY]
 
-                        if boundaryX < 0 || boundaryY >= 0 && firstIndex < secondIndex then
-                            allIndicesBuffer.[i] <- secondIndex
+                        if boundaryX < 0 then
+                            allIndicesBuffer.[i] <- secondIndicesBuffer.[boundaryY]
                             allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                        else
-                            allIndicesBuffer.[i] <- firstIndex
+                        elif boundaryY < 0 then
+                            allIndicesBuffer.[i] <- firstIndicesBuffer.[boundaryX]
                             allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                        else
+                            let firstIndex = firstIndicesBuffer.[boundaryX]
+                            let secondIndex = secondIndicesBuffer.[boundaryY]
+                            if firstIndex < secondIndex then
+                                allIndicesBuffer.[i] <- secondIndex
+                                allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
+                            else
+                                allIndicesBuffer.[i] <- firstIndex
+                                allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
             @>
 
         let createSortedConcatenation =

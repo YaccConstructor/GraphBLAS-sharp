@@ -1,7 +1,5 @@
-open BenchmarkDotNet.Running
 open GraphBLAS.FSharp.Benchmarks
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Order
+open BenchmarkDotNet.Running
 
 [<EntryPoint>]
 let main argv =

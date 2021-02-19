@@ -2,8 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
-    <AppConfig>app.config</AppConfig>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
@@ -30,6 +28,9 @@
     <Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/SSSP.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
+    <Content Include="YC.OpenCL.NET.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

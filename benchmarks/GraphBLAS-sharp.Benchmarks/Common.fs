@@ -1,6 +1,5 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
-open GraphBLAS.FSharp
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
@@ -28,24 +27,19 @@ with
 
             sprintf "%s, %s" platformName deviceType
 
-type InputMatrixFormat<'a> = {
-    MatrixName: string
-    MatrixStructure: COOFormat<'a>
-}
-with
-    override this.ToString() =
-        sprintf "%s" this.MatrixName
-
-type MatrixShapeColumn<'a>(columnName: string, getShape: InputMatrixFormat<'a> -> int) =
+type MatrixShapeColumn(columnName: string, getShape: MtxShape -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
         member this.ColumnName: string = columnName
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
             sprintf "%i" <| getShape inputMatrix
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
+
         member this.Id: string = sprintf "%s.%s" "MatrixShapeColumn" columnName
         member this.IsAvailable(summary: Summary): bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase): bool = false
@@ -54,25 +48,29 @@ type MatrixShapeColumn<'a>(columnName: string, getShape: InputMatrixFormat<'a> -
         member this.PriorityInCategory: int = 1
         member this.UnitType: UnitType = UnitType.Size
 
-type TEPSColumn<'a>() =
+type TEPSColumn() =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Statistics
         member this.ColumnName: string = "TEPS"
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> InputMatrixFormat<'a>
-            let (nrows, ncols, nnz) =
-                inputMatrix.MatrixStructure.RowCount,
-                inputMatrix.MatrixStructure.ColumnCount,
-                inputMatrix.MatrixStructure.Values.Length
-            let (vertices, edges) = if nrows = ncols then (nrows, nnz) else (ncols, nrows)
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
+            let (nrows, ncols) = inputMatrix.RowCount, inputMatrix.ColumnCount
+            let (vertices, edges) =
+                match inputMatrix.Format with
+                | "coordinate" -> if nrows = ncols then (nrows, inputMatrix.Size.[2]) else (ncols, nrows)
+                | _ -> failwith "Unsupported"
+
             if isNull summary.[benchmarkCase].ResultStatistics then
                 "NA"
             else
                 let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
                 sprintf "%f" <| float edges / (meanTime * 1e-6)
+
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
+
         member this.Id: string = "TEPSColumn"
         member this.IsAvailable(summary: Summary): bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase): bool = false
