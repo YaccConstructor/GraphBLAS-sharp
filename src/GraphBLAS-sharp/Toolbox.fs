@@ -1,24 +1,15 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.Core
-open Brahma.FSharp.OpenCL.Extensions
-open GlobalContext
-open Helpers
-open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 module internal Toolbox =
-
-    let internal workGroupSize = 128
-    let internal workSize n =
+    let workGroupSize = 128
+    let workSize n =
         let m = n - 1
         m - m % workGroupSize + workGroupSize
 
-    let rec internal prefixSum
-        (inputArray: int[]) =
-
+    let rec prefixSum (inputArray: int[]) =
         let outputArray = Array.zeroCreate inputArray.Length
 
         if inputArray.Length = 1 then
@@ -103,9 +94,7 @@ module internal Toolbox =
                 return outputArray
             }
 
-    let internal prefixSum2
-        (inputArray: int[]) =
-
+    let prefixSum2 (inputArray: int[]) =
         let firstIntermediateArray = Array.copy inputArray
         let secondIntermediateArray = Array.copy inputArray
         let outputArrayLength = firstIntermediateArray.Length
@@ -135,7 +124,6 @@ module internal Toolbox =
         let mutable arrays = firstIntermediateArray, secondIntermediateArray
 
         opencl {
-
             let mutable offset = 1
             while offset < outputArrayLength do
                 arrays <- swap arrays

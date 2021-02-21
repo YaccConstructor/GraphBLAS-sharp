@@ -26,7 +26,5 @@ module VectorExtensions =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
-    let toSeq (vector: Vector<'a>) = failwith "Not Implemented"
-
     let ofArray (denseVector: 'a[]) (zero: 'a) (vectorFormat : VectorBackendFormat) : Vector<'a> =
         failwith "Not Implemented"
