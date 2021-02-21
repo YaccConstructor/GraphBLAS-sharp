@@ -4,7 +4,6 @@ open System.IO
 open System.Text.RegularExpressions
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Predefined
-open GraphBLAS.FSharp.MatrixBackend
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
@@ -131,14 +130,13 @@ type EWiseAddBenchmarks4Float32() =
         Array.blit this.FirstMatrix.Values 0 leftVals 0 this.FirstMatrix.Values.Length
 
         leftCOO <-
-            Matrix.Build<float32>(
-                this.FirstMatrix.RowCount,
-                this.FirstMatrix.ColumnCount,
-                leftRows,
-                leftCols,
-                leftVals,
+            Matrix.build
+                this.FirstMatrix.RowCount
+                this.FirstMatrix.ColumnCount
+                leftRows
+                leftCols
+                leftVals
                 COO
-            )
 
         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
@@ -148,14 +146,13 @@ type EWiseAddBenchmarks4Float32() =
         Array.blit this.SecondMatrix.Values 0 rightVals 0 this.SecondMatrix.Values.Length
 
         rightCOO <-
-            Matrix.Build<float32>(
-                this.SecondMatrix.RowCount,
-                this.SecondMatrix.ColumnCount,
-                rightRows,
-                rightCols,
-                rightVals,
+            Matrix.build
+                this.SecondMatrix.RowCount
+                this.SecondMatrix.ColumnCount
+                rightRows
+                rightCols
+                rightVals
                 COO
-            )
 
     [<Benchmark>]
     member this.EWiseAdditionCOOFloat32() =
@@ -204,14 +201,13 @@ type EWiseAddBenchmarks4Bool() =
         Array.blit this.FirstMatrix.Columns 0 leftCols 0 this.FirstMatrix.Columns.Length
 
         leftCOO <-
-            Matrix.Build<bool>(
-                this.FirstMatrix.RowCount,
-                this.FirstMatrix.ColumnCount,
-                leftRows,
-                leftCols,
-                leftVals,
+            Matrix.build
+                this.FirstMatrix.RowCount
+                this.FirstMatrix.ColumnCount
+                leftRows
+                leftCols
+                leftVals
                 COO
-            )
 
         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
@@ -220,14 +216,13 @@ type EWiseAddBenchmarks4Bool() =
         Array.blit this.SecondMatrix.Columns 0 rightCols 0 this.SecondMatrix.Columns.Length
 
         rightCOO <-
-            Matrix.Build<bool>(
-                this.SecondMatrix.RowCount,
-                this.SecondMatrix.ColumnCount,
-                rightRows,
-                rightCols,
-                rightVals,
+            Matrix.build
+                this.SecondMatrix.RowCount
+                this.SecondMatrix.ColumnCount
+                rightRows
+                rightCols
+                rightVals
                 COO
-            )
 
     [<Benchmark>]
     member this.EWiseAdditionCOOBool() =

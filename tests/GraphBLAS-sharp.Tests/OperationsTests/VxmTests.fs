@@ -54,8 +54,6 @@ type MatrixMultiplicationPair =
         |> Arb.fromGen
 
 module VxmTests =
-    open MatrixBackend
-
     let config = {
         FsCheckConfig.defaultConfig with
             arbitrary = [ typeof<MatrixMultiplicationPair> ]
@@ -104,7 +102,7 @@ module VxmTests =
                 [
                     testPropertyWithConfig config "Dimensional mismatch should raise an exception" <|
                         fun matrixRowCount matrixColumnCount vectorSize ->
-                            let emptyMatrix = Matrix.ZeroCreate(matrixRowCount, matrixColumnCount, matrixBackend)
+                            let emptyMatrix = Matrix.zeroCreate matrixRowCount matrixColumnCount matrixBackend
                             let emptyVector = zeroVectorConstructor vectorSize
 
                             Expect.throwsT<System.ArgumentException>
@@ -119,7 +117,7 @@ module VxmTests =
 
                     testPropertyWithConfig config "Operation should have correct semantic" <|
                         fun (denseMatrix: float[,]) (denseVector: float[]) ->
-                            let matrix = Matrix.Build(denseMatrix, 0., matrixBackend)
+                            let matrix = Matrix.ofArray2D denseMatrix 0. matrixBackend
                             let vector = vectorConstructor denseVector
                             let result =
                                 opencl {

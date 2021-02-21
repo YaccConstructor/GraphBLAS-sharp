@@ -9,5 +9,9 @@ module GlobalContext =
         | COO
         | Dense
 
+    type VectorBackendFormat =
+        | Sparse
+        | Dense
+
     let mutable oclContext = OpenCLEvaluationContext()
     let mutable matrixBackendFormat = CSR

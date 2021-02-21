@@ -11,24 +11,24 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Toolbox
 
 type COOFormat<'a> = {
+    RowCount: int
+    ColumnCount: int
     Rows: int[]
     Columns: int[]
     Values: 'a[]
-    RowCount: int
-    ColumnCount: int
 }
 
 type CSRFormat<'a> = {
-    Values: 'a[]
-    Columns: int[]
-    RowPointers: int[]
     ColumnCount: int
+    RowPointers: int[]
+    ColumnIndices: int[]
+    Values: 'a[]
 }
 with
     static member CreateEmpty<'a>() = {
-        Values = Array.zeroCreate<'a> 0
-        Columns = Array.zeroCreate<int> 0
         RowPointers = Array.zeroCreate<int> 0
+        ColumnIndices = Array.zeroCreate<int> 0
+        Values = Array.zeroCreate<'a> 0
         ColumnCount = 0
     }
 
@@ -74,7 +74,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
                 ndRange
                 resultVector
                 csrTuples.Values
-                csrTuples.Columns
+                csrTuples.ColumnIndices
                 csrTuples.RowPointers
                 vector.Values
 
@@ -87,7 +87,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     new(rows: int[], columns: int[], values: 'a[]) = CSRMatrix(CSRFormat.CreateEmpty())
 
     member this.Values = csrTuples.Values
-    member this.Columns = csrTuples.Columns
+    member this.Columns = csrTuples.ColumnIndices
     member this.RowPointers = csrTuples.RowPointers
 
     override this.Clear () = failwith "Not Implemented"

@@ -7,7 +7,6 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open System.IO
 open System
-open MatrixBackend
 
 [<SimpleJob(targetCount=10)>]
 type BFSBenchmark4CSRMatrix() =
@@ -21,7 +20,7 @@ type BFSBenchmark4CSRMatrix() =
 
     [<GlobalSetup>]
     member this.BuildMatrix() =
-        matrix <- Matrix.Build<bool>(this.PathToGraph, CSR)
+        matrix <- Matrix.fromFile this.PathToGraph CSR
         source <- random.Next matrix.RowCount
 
     [<Benchmark>]
