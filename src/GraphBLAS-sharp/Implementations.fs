@@ -251,36 +251,75 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let i = ndRange.GlobalID0
 
                     if i < allIndicesLength then
-                        let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
-                        let mutable leftEdge = f i
+                        let knots = localArray<int> 2
+                        let localID = ndRange.LocalID0
+                        if localID < 2 then
+                            let mutable x = localID * (workGroupSize - 1) + i - 1
+                            if x >= shortSide + longSide then x <- shortSide + longSide - 1
+                            let diagonalNumber = x
 
-                        let g n = if n > longSide - 1 then longSide - 1 else n
-                        let mutable rightEdge = g i
+                            let mutable leftEdge = diagonalNumber + 1 - shortSide
+                            if leftEdge < 0 then leftEdge <- 0
+
+                            let mutable rightEdge = longSide - 1
+                            if rightEdge > diagonalNumber then rightEdge <- diagonalNumber
+
+                            while leftEdge <= rightEdge do
+                                let middleIdx = (leftEdge + rightEdge) / 2
+                                let firstIndex = firstIndicesBuffer.[middleIdx]
+                                let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
+                                if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+
+                            knots.[localID] <- leftEdge
+                        barrier ()
+
+                        let beginIdx = knots.[0] // BANK CONFLICTS?
+                        let endIdx = knots.[1]
+                        let firstLocalLength = endIdx - beginIdx
+                        let mutable x = workGroupSize - firstLocalLength
+                        if endIdx = longSide then x <- shortSide - i + localID + beginIdx
+                        let secondLocalLength = x
+
+                        //First indices are from 0 to firstLocalLength - 1 inclusive
+                        //Second indices are from firstLocalLength to firstLocalLength + secondLocalLength - 1 inclusive
+                        let localIndices = localArray<uint64> workGroupSize
+
+                        if localID < firstLocalLength then
+                            localIndices.[localID] <- firstIndicesBuffer.[beginIdx + localID]
+                        if localID < secondLocalLength then
+                            localIndices.[firstLocalLength + localID] <- secondIndicesBuffer.[i - beginIdx]
+                        barrier ()
+
+                        let mutable leftEdge = localID + 1 - secondLocalLength
+                        if leftEdge < 0 then leftEdge <- 0
+
+                        let mutable rightEdge = firstLocalLength - 1
+                        if rightEdge > localID then rightEdge <- localID
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex = firstIndicesBuffer.[middleIdx]
-                            let secondIndex = secondIndicesBuffer.[i - middleIdx]
+                            let firstIndex= localIndices.[middleIdx]
+                            let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
                             if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         let boundaryX = rightEdge
-                        let boundaryY = i - leftEdge
+                        let boundaryY = localID - leftEdge
 
-                        if boundaryX < 0 then
-                            allIndicesBuffer.[i] <- secondIndicesBuffer.[boundaryY]
-                            allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                        elif boundaryY < 0 then
-                            allIndicesBuffer.[i] <- firstIndicesBuffer.[boundaryX]
-                            allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                        let isValidX = boundaryX >= 0
+                        let isValidY = boundaryY >= 0
+
+                        let mutable fstIdx = uint64 0
+                        if isValidX then fstIdx <- localIndices.[boundaryX]
+
+                        let mutable sndIdx = uint64 0
+                        if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
+
+                        if not isValidX || isValidY && fstIdx < sndIdx then
+                            allIndicesBuffer.[i] <- sndIdx
+                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
                         else
-                            let firstIndex = firstIndicesBuffer.[boundaryX]
-                            let secondIndex = secondIndicesBuffer.[boundaryY]
-                            if firstIndex < secondIndex then
-                                allIndicesBuffer.[i] <- secondIndex
-                                allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                            else
-                                allIndicesBuffer.[i] <- firstIndex
-                                allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
+                            allIndicesBuffer.[i] <- fstIdx
+                            allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
             @>
 
         let createSortedConcatenation =
@@ -311,9 +350,13 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
                     if i < allIndicesLength - 1 && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
                         auxiliaryArrayBuffer.[i + 1] <- 0
-                        let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+
+                        //Do not drop explicit zeroes
+                        allValuesBuffer.[i] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+
                         //Drop explicit zeroes
-                        if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
+                        //let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                        //if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
             @>
 
         let fillAuxiliaryArray =
@@ -343,7 +386,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let i = ndRange.GlobalID0
 
                     if i < auxiliaryArrayLength && auxiliaryArrayBuffer.[i] = 1 then
-                        let index = prefixSumArrayBuffer.[i] - 1
+                        let index = prefixSumArrayBuffer.[i]
 
                         resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
                         resultValuesBuffer.[index] <- allValuesBuffer.[i]
@@ -354,7 +397,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
+                let! prefixSumArray = prefixSum3 auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP

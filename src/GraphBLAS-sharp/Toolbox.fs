@@ -9,9 +9,9 @@ open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-module internal Toolbox =
+module (*internal*) Toolbox =
 
-    let internal workGroupSize = 128
+    let internal workGroupSize = 256
     let internal workSize n =
         let m = n - 1
         m - m % workGroupSize + workGroupSize
@@ -143,4 +143,112 @@ module internal Toolbox =
                 offset <- offset * 2
 
             return (fst arrays)
+        }
+
+    let rec (*internal*) prefixSum3
+        (inputArray: int[]) =
+
+        let outputArray = Array.copy inputArray
+        let outputArrayLength = outputArray.Length
+        let workGroupSize = workGroupSize
+
+        let scan =
+            <@
+                fun (ndRange: _1D)
+                    (resultBuffer: int[])
+                    (resultLength: int)
+                    (verticesBuffer: int[]) ->
+
+                    let resultLocalBuffer = localArray<int> workGroupSize
+                    let i = ndRange.GlobalID0
+                    let localID = ndRange.LocalID0
+
+                    if i < resultLength then resultLocalBuffer.[localID] <-  resultBuffer.[i] else resultLocalBuffer.[localID] <- 0
+
+                    let mutable step = 2
+                    while step <= workGroupSize do
+                        barrier ()
+                        if localID < workGroupSize / step then
+                            let i = step * (localID + 1) - 1
+                            resultLocalBuffer.[i] <- resultLocalBuffer.[i] + resultLocalBuffer.[i - (step >>> 1)]
+                        step <- step <<< 1
+                    barrier ()
+
+                    if localID = workGroupSize - 1 then
+                        verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
+                        resultLocalBuffer.[localID] <- 0
+
+                    step <- workGroupSize
+                    while step > 1 do
+                        barrier ()
+                        if localID < workGroupSize / step then
+                            let i = step * (localID + 1) - 1
+                            let j = i - (step >>> 1)
+
+                            let tmp = resultLocalBuffer.[i]
+                            resultLocalBuffer.[i] <- resultLocalBuffer.[i] + resultLocalBuffer.[j]
+                            resultLocalBuffer.[j] <- tmp
+                        step <- step >>> 1
+                    barrier ()
+
+                    if i < resultLength then resultBuffer.[i] <- resultLocalBuffer.[localID]
+            @>
+
+        let scan array length vertices =
+            opencl {
+                let binder kernelP =
+                    let ndRange = _1D(workSize length, workGroupSize)
+                    kernelP
+                        ndRange
+                        array
+                        length
+                        vertices
+                do! RunCommand scan binder
+            }
+
+        let update =
+            <@
+                fun (ndRange: _1D)
+                    (resultBuffer: int[])
+                    (resultLength: int)
+                    (verticesBuffer: int[])
+                    (bunchLength: int) ->
+
+                    let i = ndRange.GlobalID0
+                    if i < resultLength then
+                        resultBuffer.[i] <- resultBuffer.[i] + verticesBuffer.[i / bunchLength]
+            @>
+
+        let update vertices depth =
+            opencl {
+                let binder kernelP =
+                    let ndRange = _1D(workSize outputArrayLength, workGroupSize)
+                    kernelP
+                        ndRange
+                        outputArray
+                        outputArrayLength
+                        vertices
+                        depth
+                do! RunCommand update binder
+            }
+
+        let firstVertices = Array.zeroCreate <| (workSize outputArrayLength) / workGroupSize
+        let secondVertices = Array.zeroCreate <| (workSize outputArrayLength) / workGroupSize
+        let mutable verticesArrays = firstVertices, secondVertices
+        let swap (a, b) = (b, a)
+
+        opencl {
+            do! scan outputArray outputArrayLength <| fst verticesArrays
+
+            let mutable verticesLength = (outputArrayLength - 1) / workGroupSize + 1
+            let mutable bunchLength = workGroupSize
+            while verticesLength > 1 do
+                do! scan (fst verticesArrays) verticesLength (snd verticesArrays)
+                do! update (fst verticesArrays) bunchLength
+
+                bunchLength <- bunchLength * workGroupSize
+                verticesArrays <- swap verticesArrays
+                verticesLength <- (verticesLength - 1) / workGroupSize + 1
+
+            return outputArray
         }
