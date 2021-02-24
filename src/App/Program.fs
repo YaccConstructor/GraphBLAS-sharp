@@ -14,8 +14,8 @@ open GraphBLAS.FSharp.Predefined
 
 [<EntryPoint>]
 let main argv =
-    let fstMatrix = COOMatrix(100, 100, [|0;1;2|], [|0;1;2|], [|1.;2.;3.|])
-    let sndMatrix = COOMatrix(100, 100, [|0;1;2|], [|0;1;2|], [|1.;2.;3.|])
+    let fstMatrix = COOMatrix(100, 100, [|0;1;2;5|], [|4;1;2;5|], [|1.0;2.0;3.0;6.0|])
+    let sndMatrix = COOMatrix(100, 100, [|0;1;2;5|], [|4;2;3;5|], [|-0.8;2.0;3.0;6.0|])
     let workflow =
         opencl {
             let! result = fstMatrix.EWiseAdd sndMatrix None FloatSemiring.addMult
@@ -29,7 +29,36 @@ let main argv =
 
     for i in 0 .. indices.Length - 1 do
         let index = indices.[i]
-        let i, j = int <| index >>> 32, int index
-        printfn "(%i, %i, %A)" i j values.[i]
+        let a = int (index >>> 32)
+        let b = int index
+        printfn "(%i, %i, %A)" a b values.[i]
+
+    // let allIndicesLength = 42
+    // let workGroupSize = 256
+    // let longSide = 72
+    // let shortSide = 27
+
+    // let command =
+    //     <@
+    //         fun (ndRange: _1D)
+    //             (arr: int[]) ->
+
+    //             arr.[ndRange.GlobalID0] <-
+    //                 if true then 41 else 42
+    //     @>
+
+    // let translate2opencl (provider: ComputeProvider) (command: Quotations.Expr<(_1D -> int[] -> unit)>) : string =
+    //     let options = ComputeProvider.DefaultOptions_p
+    //     let tOptions = []
+    //     provider.SetCompileOptions options
+
+    //     let kernel = System.Activator.CreateInstance<Kernel<_1D>>()
+    //     CLCodeGenerator.GenerateKernel(command, provider, kernel, tOptions) |> ignore
+    //     let code = (kernel :> ICLKernel).Source.ToString()
+    //     code
+
+    // let code = translate2opencl oclContext.Provider command
+
+    // printf "%s" code
 
     0

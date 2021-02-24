@@ -9,7 +9,7 @@ open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-module (*internal*) Toolbox =
+module internal Toolbox =
 
     let internal workGroupSize = 256
     let internal workSize n =
@@ -145,7 +145,7 @@ module (*internal*) Toolbox =
             return (fst arrays)
         }
 
-    let rec (*internal*) prefixSum3
+    let rec internal prefixSum3
         (inputArray: int[]) =
 
         let outputArray = Array.copy inputArray
