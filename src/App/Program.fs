@@ -1,21 +1,17 @@
 ﻿
-open System
-open GraphBLAS.FSharp
-
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
-open GlobalContext
-open Helpers
 open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Predefined
 
 [<EntryPoint>]
 let main argv =
-    let fstMatrix = COOMatrix(100, 100, [|0;1;2;5|], [|4;1;2;5|], [|1.0;2.0;3.0;6.0|])
-    let sndMatrix = COOMatrix(100, 100, [|0;1;2;5|], [|4;2;3;5|], [|-0.8;2.0;3.0;6.0|])
+    let fstMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;1;50;2;5|], [|1.0;2.0;76.0;3.0;6.0|])
+    let sndMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;2;50;3;5|], [|-0.8;2.0;-76.0;3.0;6.0|])
     let workflow =
         opencl {
             let! result = fstMatrix.EWiseAdd sndMatrix None FloatSemiring.addMult
@@ -25,7 +21,12 @@ let main argv =
     let res: COOMatrix<float> = downcast oclContext.RunSync workflow
 
     let indices = res.Indices
+    // let rows = res.Rows
+    // let columns = res.Columns
     let values = res.Values
+
+    // for i in 0 .. rows.Length - 1 do
+    //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
 
     for i in 0 .. indices.Length - 1 do
         let index = indices.[i]

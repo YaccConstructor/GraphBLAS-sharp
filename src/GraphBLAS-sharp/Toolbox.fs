@@ -145,10 +145,11 @@ module internal Toolbox =
             return (fst arrays)
         }
 
+    // Changes inputArray
     let rec internal prefixSum3
         (inputArray: int[]) =
 
-        let outputArray = Array.copy inputArray
+        let outputArray = inputArray
         let outputArrayLength = outputArray.Length
         let workGroupSize = workGroupSize
 
@@ -232,8 +233,8 @@ module internal Toolbox =
                 do! RunCommand update binder
             }
 
-        let firstVertices = Array.zeroCreate <| (workSize outputArrayLength) / workGroupSize
-        let secondVertices = Array.zeroCreate <| (workSize outputArrayLength) / workGroupSize
+        let firstVertices = Array.zeroCreate <| (outputArrayLength - 1) / workGroupSize + 1
+        let secondVertices = Array.zeroCreate <| (outputArrayLength - 1) / workGroupSize + 1
         let mutable verticesArrays = firstVertices, secondVertices
         let swap (a, b) = (b, a)
 
@@ -243,8 +244,10 @@ module internal Toolbox =
             let mutable verticesLength = (outputArrayLength - 1) / workGroupSize + 1
             let mutable bunchLength = workGroupSize
             while verticesLength > 1 do
-                do! scan (fst verticesArrays) verticesLength (snd verticesArrays)
-                do! update (fst verticesArrays) bunchLength
+                let fstVertices = fst verticesArrays
+                let sndVertices = snd verticesArrays
+                do! scan fstVertices verticesLength sndVertices
+                do! update fstVertices bunchLength
 
                 bunchLength <- bunchLength * workGroupSize
                 verticesArrays <- swap verticesArrays
