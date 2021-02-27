@@ -4,7 +4,7 @@ open FsCheck
 [<Tests>]
 let allTests =
     testList "All Tests" [
-
+        EWiseAddTests.checkGeneric EWiseAddTests.reflexivity
     ]
 
 [<EntryPoint>]

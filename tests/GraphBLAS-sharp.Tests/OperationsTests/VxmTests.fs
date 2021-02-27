@@ -6,10 +6,17 @@ open GraphBLAS.FSharp
 open MathNet.Numerics
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GlobalContext
+open GraphBLAS.FSharp.Tests
 
 // let config = {
 //     FsCheckConfig.defaultConfig with
 //         arbitrary = [ typeof<MatrixMultiplicationPair> ]
+// }
+
+// type OperationCase = {
+//     VectorCase: VectorBackendFormat
+//     MatrixCase: MatrixBackendFormat
+//     MaskCase: MaskFormat
 // }
 
 // let testCases =
@@ -29,9 +36,10 @@ open GlobalContext
 
 // let testsInStandardSemiring =
 //     let stdSemiring = Predefined.FloatSemiring.addMult
-//     ptestList "Float vector-matrix multiplication tests" (
-//         List.collect (fun case ->
-//             // добавить возможность пропускать некоторые случаи
+
+//     testCases
+//     |> List.collect
+//         (fun case ->
 //             let matrixBackend =
 //                 match case.MatrixCase with
 //                 | MatrixType.CSR -> CSR
@@ -93,5 +101,5 @@ open GlobalContext
 //                 ptestPropertyWithConfig config "Explicit zeroes after operation should be dropped" <|
 //                     fun a b -> a + b = b + a
 //             ]
-//         ) testCases
-//     )
+//         )
+//     |> ptestList "Float vector-matrix multiplication tests"

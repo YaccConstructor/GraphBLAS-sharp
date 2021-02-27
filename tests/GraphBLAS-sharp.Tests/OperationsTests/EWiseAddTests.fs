@@ -8,6 +8,50 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GlobalContext
 open TypeShape.Core
 open GraphBLAS.FSharp.Tests
+open System
+
+type OperationParameter =
+    | MatrixFormatParam of MatrixBackendFormat
+    | MaskTypeParam of MaskType
+
+type OperationCase = {
+    MatrixCase: MatrixBackendFormat
+    MaskCase: MaskType
+}
+
+let testCases =
+    [
+        Utils.listOfUnionCases<MatrixBackendFormat> |> List.map MatrixFormatParam
+        Utils.listOfUnionCases<MaskType> |> List.map MaskTypeParam
+    ]
+    |> Utils.cartesian
+    |> List.map
+        (fun list ->
+            let (MatrixFormatParam marixFormat) = list.[0]
+            let (MaskTypeParam maskType) = list.[1]
+            {
+                MatrixCase = marixFormat
+                MaskCase = maskType
+            }
+        )
+
+let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
+    match matrixFormat with
+    | CSR ->
+        Activator.CreateInstanceGeneric<CSRMatrix<_>>(
+            Array.singleton typeof<'a>, args
+        )
+        |> unbox<CSRMatrix<'a>>
+        :> Matrix<'a>
+    | COO ->
+        Activator.CreateInstanceGeneric<COOMatrix<_>>(
+            Array.singleton typeof<'a>, args
+        )
+        |> unbox<COOMatrix<'a>>
+        :> Matrix<'a>
+
+let createCSR<'a when 'a : struct and 'a : equality> = createMatrix<'a> CSR
+let createCOO<'a when 'a : struct and 'a : equality> = createMatrix<'a> COO
 
 type PrimitiveType =
     | Float32
@@ -17,8 +61,8 @@ type PairOfSparseMatrices =
     static member Float32Type() =
         Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
             Arb.generate<float32>
-            0f
-            ((=) 0f)
+            0.f
+            ((=) 0.f)
 
     static member BoolType() =
         Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
@@ -26,36 +70,64 @@ type PairOfSparseMatrices =
             false
             ((=) false)
 
-// type IPredicate =
-//     abstract Invoke : 'a -> bool
+let meaning primitiveType =
+    match primitiveType with
+    | Float32 -> typeof<float32>
+    | Bool -> typeof<bool>
 
-// let equals (a: 'a) (b: 'a) = true
+let printer primitiveType =
+    match primitiveType with
+    | Float32 -> "float32"
+    | Bool -> "bool"
 
-// let reflexivity = {
-//     new IPredicate with
-//         member this.Invoke item = equals item item
-// }
+let checkConcrete (testCase: OperationCase) (primitiveType: PrimitiveType) =
+    let config = { FsCheckConfig.defaultConfig with arbitrary = [typeof<PairOfSparseMatrices>] }
+    let systemType = meaning primitiveType
+    let prettyType = printer primitiveType
+    let shape = TypeShape.Create systemType
+    shape.Accept { new ITypeVisitor<Test> with
+        member this.Visit<'a>() =
+            testPropertyWithConfig config (sprintf "On type %s" prettyType) <|
+                fun (matrixA: 'a[,]) (matrixB: 'a[,]) ->
+                    // let sparseA = createMatrix<'a> testCase.MatrixCase [|
+                    //     box matrixA
+                    //     box ((=) 0.)
+                    // |]
+                    // let sparseB = createMatrix<'a> testCase.MatrixCase [|
+                    //     box matrixB
+                    //     box ((=) 0.)
+                    // |]
 
-// let conf = {
-//     Config.Verbose with
-//         Arbitrary = [typeof<Arbi>]
-// }
+                    let a = Matrix.ofArray2D matrixA ((=) 0.)
 
-// let meaning randomType =
-//     match randomType with
-//     | Float32 -> typeof<float32>
-//     | Bool -> typeof<bool>
+                    // let result =
+                    //     opencl {
+                    //         return! (sparseA + sparseB) mask stdSemiring
+                    //     } |> oclContext.RunSync
 
-// let check (predicate: IPredicate) (randomType: PrimitiveTypes) =
-//     let systemType = meaning randomType
-//     let shape = TypeShape.Create systemType
-//     shape.Accept {
-//         new ITypeVisitor<bool> with
-//             member this.Visit<'a>() =
-//                 Check.One<'a -> bool>(conf, predicate.Invoke)
-//                 true
-//     }
+                    ()
+                    // let a = LinearAlgebra.DenseMatrix.ofArray2 matrixA
+                    // let b = LinearAlgebra.DenseVector.ofArray matrixB
+                    // let c = b * a
+                    // let elementWiseDifference =
+                    //     (result |> Vector.toSeq, c.AsArray() |> Seq.ofArray)
+                    //     ||>  Seq.zip
+                    //     |> Seq.map (fun (a, b) -> a - b)
 
-// // генерится тип
-// let checkGeneric (predicate: IPredicate) =
-//     Check.Quick<PrimitiveTypes -> bool>(check predicate)
+                    // Expect.all
+                    //     elementWiseDifference
+                    //     (fun diff -> abs diff < Accuracy.medium.absolute)
+                    //     (sprintf "%A @ %A = %A\n case:\n %A" vector matrix result case)
+    }
+
+let testsI =
+    testCases
+    |> List.collect
+        (fun case ->
+            [
+                Utils.listOfUnionCases<PrimitiveType>
+                |> List.map (checkConcrete case)
+                |> testList "Operation correctness"
+            ]
+        )
+    |> testList "EWiseAdd Tests"

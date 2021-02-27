@@ -7,7 +7,6 @@ module GlobalContext =
     type MatrixBackendFormat =
         | CSR
         | COO
-        | Dense
 
     type VectorBackendFormat =
         | Sparse

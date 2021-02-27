@@ -2,25 +2,13 @@ namespace GraphBLAS.FSharp.Tests
 
 open FsCheck
 open System
-
-type VectorType =
-    | Sparse = 0
-    | Dense = 1
-
-type MatrixType =
-    | CSR = 0
-    | COO = 1
+open GraphBLAS.FSharp
+open Microsoft.FSharp.Reflection
 
 type MaskType =
-    | Regular = 0
-    | Complemented = 1
-    | None = 2
-
-type OperationCase = {
-    VectorCase: VectorType
-    MatrixCase: MatrixType
-    MaskCase: MaskType
-}
+    | Regular
+    | Complemented
+    | None
 
 module Generators =
     let dimension2DGenerator =
@@ -56,19 +44,16 @@ module Generators =
                 )
 
 module Utils =
-    let rec cartesian lstlst =
-        match lstlst with
-        | [x] ->
-            List.fold (fun acc elem -> [elem]::acc) [] x
+    let rec cartesian listOfLists =
+        match listOfLists with
+        | [x] -> List.fold (fun acc elem -> [elem]::acc) [] x
         | h::t ->
             List.fold (fun cacc celem ->
                 (List.fold (fun acc elem -> (elem::celem)::acc) [] h) @ cacc
-                ) [] (cartesian t)
+            ) [] (cartesian t)
         | _ -> []
 
-    /// Return all values for an enumeration type
-    let enumValues (enumType: Type) : int list =
-        let values = Enum.GetValues enumType
-        let lb = values.GetLowerBound 0
-        let ub = values.GetUpperBound 0
-        [lb .. ub] |> List.map (fun i -> values.GetValue i :?> int)
+    let listOfUnionCases<'a> =
+        FSharpType.GetUnionCases typeof<'a>
+        |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
+        |> List.ofArray
