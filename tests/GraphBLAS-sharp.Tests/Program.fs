@@ -3,8 +3,8 @@ open FsCheck
 
 [<Tests>]
 let allTests =
-    testList "All Tests" [
-        EWiseAddTests.checkGeneric EWiseAddTests.reflexivity
+    testList "All tests" [
+        EWiseAdd.tests
     ]
 
 [<EntryPoint>]

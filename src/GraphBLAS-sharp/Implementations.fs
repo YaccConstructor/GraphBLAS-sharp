@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
-open GlobalContext
 open Helpers
 open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
@@ -85,6 +84,7 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
 
     // Not Implemented
     new(rows: int[], columns: int[], values: 'a[]) = CSRMatrix(CSRFormat.CreateEmpty())
+    new(pathToMatrix: string) = CSRMatrix(CSRFormat.CreateEmpty())
 
     member this.Values = csrTuples.Values
     member this.Columns = csrTuples.ColumnIndices
@@ -128,6 +128,27 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
     inherit Matrix<'a>(rowCount, columnCount)
 
     let mutable rows, columns, values = rows, columns, values
+
+    new(array: 'a[,], isZero: 'a -> bool) =
+        let (rows, cols, vals) =
+            array
+            |> Seq.cast<'a>
+            |> Seq.mapi (fun idx v -> (idx / Array2D.length2 array, idx % Array2D.length2 array, v))
+            |> Seq.filter (fun (i, j, v) -> not <| isZero v)
+            |> Array.ofSeq
+            |> Array.unzip3
+
+        COOMatrix(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
+
+    override this.ToString() =
+        [
+            sprintf "COO Matrix %ix%i \n" rowCount columnCount
+            sprintf "RowIndices: %A \n" rows
+            sprintf "ColumnIndices: %A \n" columns
+            sprintf "Values: %A \n" values
+        ]
+        |> String.concat ""
+
     member this.Rows with get() = rows
     member this.Columns with get() = columns
     member this.Values with get() = values
@@ -138,23 +159,25 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
     override this.Resize a b = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
 
-    override this.GetTuples () =
-        opencl {
-            return {| Rows = this.Rows; Columns = this.Columns; Values = this.Values |}
+    override this.GetTuples() = opencl {
+        return {
+            RowIndices = this.Rows
+            ColumnIndices = this.Columns
+            Values = this.Values
         }
+    }
 
     override this.GetMask(?isComplemented: bool) =
         let isComplemented = defaultArg isComplemented false
         failwith "Not Implemented"
 
-    override this.ToHost () =
-        opencl {
-            let! _ = ToHost this.Rows
-            let! _ = ToHost this.Columns
-            let! _ = ToHost this.Values
+    override this.ToHost() = opencl {
+        let! _ = ToHost this.Rows
+        let! _ = ToHost this.Columns
+        let! _ = ToHost this.Values
 
-            return upcast this
-        }
+        return upcast this
+    }
 
     override this.Extract (mask: Mask2D option) : OpenCLEvaluation<Matrix<'a>> = failwith "Not Implemented"
     override this.Extract (colMask: Mask1D option * int) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"

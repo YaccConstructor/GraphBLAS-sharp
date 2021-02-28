@@ -1,6 +1,25 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+
+type MatrixTuples<'a when 'a : struct and 'a : equality> = {
+    RowIndices: int[]
+    ColumnIndices: int[]
+    Values: 'a[]
+}
+with
+    member this.ToHost() = opencl {
+        let! rows = ToHost this.RowIndices
+        let! cols = ToHost this.ColumnIndices
+        let! vals = ToHost this.Values
+
+        return {
+            RowIndices = rows
+            ColumnIndices = cols
+            Values = vals
+        }
+    }
 
 [<AbstractClass>]
 type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
@@ -13,7 +32,7 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract Copy: unit -> OpenCLEvaluation<Matrix<'a>>
     abstract Resize: int -> int -> OpenCLEvaluation<Matrix<'a>>
     abstract GetNNZ: unit -> OpenCLEvaluation<int>
-    abstract GetTuples: unit -> OpenCLEvaluation<{| Rows: int[]; Columns: int[]; Values: 'a[] |}>
+    abstract GetTuples: unit -> OpenCLEvaluation<MatrixTuples<'a>>
     abstract GetMask: ?isComplemented: bool -> OpenCLEvaluation<Mask2D option>
     abstract ToHost: unit -> OpenCLEvaluation<Matrix<'a>>
 
@@ -41,11 +60,6 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract Transpose: unit -> OpenCLEvaluation<Matrix<'a>>
     abstract Kronecker: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
 
-    static member inline (+) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseAdd y
-    static member inline (*) (x: Matrix<'a>, y: Matrix<'a>) = x.EWiseMult y
-    static member inline (@.) (x: Matrix<'a>, y: Matrix<'a>) = x.Mxm y
-    static member inline (@.) (x: Matrix<'a>, y: Vector<'a>) = x.Mxv y
-
 and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Size: int
     default this.Size = size
@@ -70,10 +84,6 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Apply: Mask1D option -> UnaryOp<'a, 'b> -> OpenCLEvaluation<Vector<'b>>
     abstract Prune: Mask1D option -> UnaryOp<'a, bool> -> OpenCLEvaluation<Vector<'a>>
     abstract Reduce: Monoid<'a> -> OpenCLEvaluation<Scalar<'a>>
-
-    static member inline (+) (x: Vector<'a>, y: Vector<'a>) = x.EWiseAdd y
-    static member inline (*) (x: Vector<'a>, y: Vector<'a>) = x.EWiseMult y
-    static member inline (@.) (x: Vector<'a>, y: Matrix<'a>) = x.Vxm y
 
 and Mask1D(indices: int[], size: int, isComplemented: bool) =
     member this.Indices = indices

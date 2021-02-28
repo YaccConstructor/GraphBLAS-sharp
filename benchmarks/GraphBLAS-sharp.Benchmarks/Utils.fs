@@ -106,14 +106,13 @@ module Utils =
                 let cols = Array.zeroCreate data.Length
                 let values = Array.zeroCreate data.Length
 
-                Array.Parallel.iteri
-                    (fun i struct(packedIndex, value) ->
-                        let (rowIdx, columnIdx) = unpack packedIndex
-                        // in mtx indecies start at 1
-                        rows.[i] <- rowIdx - 1
-                        cols.[i] <- columnIdx - 1
-                        values.[i] <- value
-                    ) data
+                Array.Parallel.iteri (fun i struct(packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    // in mtx indecies start at 1
+                    rows.[i] <- rowIdx - 1
+                    cols.[i] <- columnIdx - 1
+                    values.[i] <- value
+                ) data
 
                 {
                     Rows = rows
@@ -135,13 +134,12 @@ module Utils =
                 let cols = Array.zeroCreate data.Length
                 let values = Array.zeroCreate data.Length
 
-                Array.Parallel.iteri
-                    (fun i struct(packedIndex, value) ->
-                        let (rowIdx, columnIdx) = unpack packedIndex
-                        rows.[i] <- rowIdx
-                        cols.[i] <- columnIdx
-                        values.[i] <- value
-                    ) data
+                Array.Parallel.iteri (fun i struct(packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    rows.[i] <- rowIdx
+                    cols.[i] <- columnIdx
+                    values.[i] <- value
+                ) data
 
                 {
                     Rows = rows

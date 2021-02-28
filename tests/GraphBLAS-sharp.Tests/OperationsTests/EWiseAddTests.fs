@@ -1,14 +1,17 @@
-module EWiseAddTests
+module EWiseAdd
 
 open Expecto
 open FsCheck
 open GraphBLAS.FSharp
 open MathNet.Numerics
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open GlobalContext
-open TypeShape.Core
 open GraphBLAS.FSharp.Tests
 open System
+open GraphBLAS.FSharp.Predefined
+open TypeShape.Core
+open Expecto.Logging
+open Expecto.Logging.Message
+open BackendState
 
 type OperationParameter =
     | MatrixFormatParam of MatrixBackendFormat
@@ -35,6 +38,25 @@ let testCases =
             }
         )
 
+type PairOfSparseMatrices =
+    static member IntType() =
+        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
+            Arb.generate<int>
+            0
+            ((=) 0)
+
+    static member FloatType() =
+        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
+            (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            0.
+            (fun x -> abs x < Accuracy.medium.absolute)
+
+    static member BoolType() =
+        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
+            Arb.generate<bool>
+            false
+            ((=) false)
+
 let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
     match matrixFormat with
     | CSR ->
@@ -50,84 +72,157 @@ let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
         |> unbox<COOMatrix<'a>>
         :> Matrix<'a>
 
-let createCSR<'a when 'a : struct and 'a : equality> = createMatrix<'a> CSR
-let createCOO<'a when 'a : struct and 'a : equality> = createMatrix<'a> COO
+let logger = Log.create "Sample"
 
-type PrimitiveType =
-    | Float32
-    | Bool
+let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
+    (sum: 'a -> 'a -> 'a)
+    (diff: 'a -> 'a -> 'a)
+    (isZero: 'a -> bool)
+    (semiring: Semiring<'a>)
+    (case: OperationCase)
+    (matrixA: 'a[,], matrixB: 'a[,]) =
 
-type PairOfSparseMatrices =
-    static member Float32Type() =
-        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
-            Arb.generate<float32>
-            0.f
-            ((=) 0.f)
+    let eWiseAdd (matrixA: 'a[,]) (matrixB: 'a[,]) =
+        let l = matrixA |> Seq.cast<'a>
+        let r = matrixB |> Seq.cast<'a>
 
-    static member BoolType() =
-        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
-            Arb.generate<bool>
-            false
-            ((=) false)
+        (l, r)
+        ||> Seq.map2
+            (fun x y ->
+                if isZero x && isZero y then None
+                else Some <| sum x y
+            )
+        |> Seq.choose id
 
-let meaning primitiveType =
-    match primitiveType with
-    | Float32 -> typeof<float32>
-    | Bool -> typeof<bool>
+    let eWiseAddGb (matrixA: 'a[,]) (matrixB: 'a[,]) =
+        let l = createMatrix<'a> case.MatrixCase [|matrixA; isZero|]
+        let r = createMatrix<'a> case.MatrixCase [|matrixB; isZero|]
 
-let printer primitiveType =
-    match primitiveType with
-    | Float32 -> "float32"
-    | Bool -> "bool"
-
-let checkConcrete (testCase: OperationCase) (primitiveType: PrimitiveType) =
-    let config = { FsCheckConfig.defaultConfig with arbitrary = [typeof<PairOfSparseMatrices>] }
-    let systemType = meaning primitiveType
-    let prettyType = printer primitiveType
-    let shape = TypeShape.Create systemType
-    shape.Accept { new ITypeVisitor<Test> with
-        member this.Visit<'a>() =
-            testPropertyWithConfig config (sprintf "On type %s" prettyType) <|
-                fun (matrixA: 'a[,]) (matrixB: 'a[,]) ->
-                    // let sparseA = createMatrix<'a> testCase.MatrixCase [|
-                    //     box matrixA
-                    //     box ((=) 0.)
-                    // |]
-                    // let sparseB = createMatrix<'a> testCase.MatrixCase [|
-                    //     box matrixB
-                    //     box ((=) 0.)
-                    // |]
-
-                    let a = Matrix.ofArray2D matrixA ((=) 0.)
-
-                    // let result =
-                    //     opencl {
-                    //         return! (sparseA + sparseB) mask stdSemiring
-                    //     } |> oclContext.RunSync
-
-                    ()
-                    // let a = LinearAlgebra.DenseMatrix.ofArray2 matrixA
-                    // let b = LinearAlgebra.DenseVector.ofArray matrixB
-                    // let c = b * a
-                    // let elementWiseDifference =
-                    //     (result |> Vector.toSeq, c.AsArray() |> Seq.ofArray)
-                    //     ||>  Seq.zip
-                    //     |> Seq.map (fun (a, b) -> a - b)
-
-                    // Expect.all
-                    //     elementWiseDifference
-                    //     (fun diff -> abs diff < Accuracy.medium.absolute)
-                    //     (sprintf "%A @ %A = %A\n case:\n %A" vector matrix result case)
-    }
-
-let testsI =
-    testCases
-    |> List.collect
-        (fun case ->
-            [
-                Utils.listOfUnionCases<PrimitiveType>
-                |> List.map (checkConcrete case)
-                |> testList "Operation correctness"
-            ]
+        logger.info (
+            eventX "Left matrix is \n{matrix}"
+            >> setField "matrix" l
         )
-    |> testList "EWiseAdd Tests"
+
+        logger.info (
+            eventX "Right matrix is \n{matrix}"
+            >> setField "matrix" r
+        )
+
+        opencl {
+            let! result = l.EWiseAdd r None semiring
+            let! tuples = result.GetTuples()
+            return! tuples.ToHost()
+        }
+        |> oclContext.RunSync
+        |> (fun tuples -> tuples.Values)
+        |> Seq.ofArray
+
+    let expected = eWiseAdd matrixA matrixB
+    let actual = eWiseAddGb matrixA matrixB
+
+    logger.info (
+        eventX "Expected result is {matrix}"
+        >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
+    )
+
+    logger.info (
+        eventX "Actual result is {matrix}"
+        >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
+    )
+
+    "Length of expected and result seq should be equal"
+    |> Expect.hasLength actual (Seq.length expected)
+
+    let difference =
+        (expected, actual)
+        ||> Seq.map2 diff
+
+    "There should be no difference between expected and received values"
+    |> Expect.all difference isZero
+
+let correctnessOnBool (case: OperationCase) (matrixA: bool[,], matrixB: bool[,]) =
+    let eWiseAdd (matrixA: bool[,]) (matrixB: bool[,]) =
+        let l = matrixA |> Seq.cast<bool>
+        let r = matrixB |> Seq.cast<bool>
+
+        (l, r)
+        ||> Seq.map2 (||)
+
+    let eWiseAddGb (matrixA: bool[,]) (matrixB: bool[,]) =
+        let l = createMatrix<bool> case.MatrixCase [|matrixA; not|]
+        let r = createMatrix<bool> case.MatrixCase [|matrixB; not|]
+
+        logger.info (
+            eventX "Left matrix is \n{matrix}"
+            >> setField "matrix" l
+        )
+
+        logger.info (
+            eventX "Right matrix is \n{matrix}"
+            >> setField "matrix" r
+        )
+
+        opencl {
+            let! result = l.EWiseAdd r None AnyAll.bool
+            let! tuples = result.GetTuples()
+            return! tuples.ToHost()
+        }
+        |> oclContext.RunSync
+        |> (fun tuples -> tuples.Values)
+        |> Seq.ofArray
+
+    let expected = eWiseAdd matrixA matrixB
+    let actual = eWiseAddGb matrixA matrixB
+
+    logger.info (
+        eventX "Expected result is {matrix}"
+        >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
+    )
+
+    logger.info (
+        eventX "Actual result is {matrix}"
+        >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
+    )
+
+    "Length of expected and result seq should be equal"
+    |> Expect.hasLength actual (Seq.length expected)
+
+    let difference =
+        (expected, actual)
+        ||> Seq.map2 (<>)
+
+    logger.info (
+        eventX "Difference result is {matrix}"
+        >> setField "matrix" (sprintf "%A" <| List.ofSeq difference)
+    )
+
+    "There should be no difference between expected and received values"
+    |> Expect.all difference not
+
+let config = {
+    FsCheckConfig.defaultConfig with
+        arbitrary = [typeof<PairOfSparseMatrices>]
+        startSize = 10
+        maxTest = 10
+}
+
+// https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
+let testFixtures case = [
+    case
+    |> correctnessOnNumbers<int> (+) (-) ((=) 0) AddMult.int
+    |> ptestPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> correctnessOnNumbers<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
+    |> ptestPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> correctnessOnBool
+    |> testPropertyWithConfigStdGen (248983341, 296859677) config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
+]
+
+let tests =
+    testCases
+    |> List.filter (fun case -> case.MatrixCase = COO && case.MaskCase = NoMask)
+    |> List.collect testFixtures
+    |> testList "EWiseAdd tests"

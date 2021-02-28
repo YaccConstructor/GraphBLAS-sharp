@@ -13,7 +13,7 @@ module SSSP =
 
         opencl {
             for _ in 1 .. vertexCount - 1 do
-                let! step = (distance @. matrix) None FloatSemiring.minAdd
+                let! step = distance.Vxm matrix None FloatSemiring.minAdd
                 do! distance.Assign(None, step)
 
             return distance

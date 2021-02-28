@@ -24,7 +24,7 @@ module VectorExtensions =
         static member ZeroDense(length: int, monoid: Monoid<'T>) : Vector<'T> =
             upcast DenseVector(Array.create length monoid.Zero, monoid)
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Vector =
-    let ofArray (denseVector: 'a[]) (zero: 'a) (vectorFormat : VectorBackendFormat) : Vector<'a> =
-        failwith "Not Implemented"
+// [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+// module Vector =
+    // let ofArray (denseVector: 'a[]) (zero: 'a) (vectorFormat : VectorBackendFormat) : Vector<'a> =
+    //     failwith "Not Implemented"

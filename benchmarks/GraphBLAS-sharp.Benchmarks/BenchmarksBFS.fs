@@ -20,7 +20,7 @@ type BFSBenchmark4CSRMatrix() =
 
     [<GlobalSetup>]
     member this.BuildMatrix() =
-        matrix <- Matrix.fromFile this.PathToGraph CSR
+        matrix <- CSRMatrix(this.PathToGraph)
         source <- random.Next matrix.RowCount
 
     [<Benchmark>]
