@@ -82,11 +82,11 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
     (case: OperationCase)
     (matrixA: 'a[,], matrixB: 'a[,]) =
 
-    let eWiseAdd (matrixA: 'a[,]) (matrixB: 'a[,]) =
-        let l = matrixA |> Seq.cast<'a>
-        let r = matrixB |> Seq.cast<'a>
+    let eWiseAddNaive (matrixA: 'a[,]) (matrixB: 'a[,]) =
+        let left = matrixA |> Seq.cast<'a>
+        let right = matrixB |> Seq.cast<'a>
 
-        (l, r)
+        (left, right)
         ||> Seq.map2
             (fun x y ->
                 if isZero x && isZero y then None
@@ -94,38 +94,42 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
             )
         |> Seq.choose id
 
-    let eWiseAddGb (matrixA: 'a[,]) (matrixB: 'a[,]) =
-        let l = createMatrix<'a> case.MatrixCase [|matrixA; isZero|]
-        let r = createMatrix<'a> case.MatrixCase [|matrixB; isZero|]
+    let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
+        try
+            let left = createMatrix<'a> case.MatrixCase [|matrixA; isZero|]
+            let right = createMatrix<'a> case.MatrixCase [|matrixB; isZero|]
 
-        logger.info (
-            eventX "Left matrix is \n{matrix}"
-            >> setField "matrix" l
-        )
+            logger.debug (
+                eventX "Left matrix is \n{matrix}"
+                >> setField "matrix" left
+            )
 
-        logger.info (
-            eventX "Right matrix is \n{matrix}"
-            >> setField "matrix" r
-        )
+            logger.debug (
+                eventX "Right matrix is \n{matrix}"
+                >> setField "matrix" right
+            )
 
-        opencl {
-            let! result = l.EWiseAdd r None semiring
-            let! tuples = result.GetTuples()
-            return! tuples.ToHost()
-        }
-        |> oclContext.RunSync
-        |> (fun tuples -> tuples.Values)
-        |> Seq.ofArray
+            opencl {
+                let! result = left.EWiseAdd right None semiring
+                let! tuples = result.GetTuples()
+                return! tuples.ToHost()
+            }
+            |> oclContext.RunSync
+            |> (fun tuples -> tuples.Values)
+            |> Seq.ofArray
 
-    let expected = eWiseAdd matrixA matrixB
-    let actual = eWiseAddGb matrixA matrixB
+        finally
+            oclContext.Provider.CloseAllBuffers()
 
-    logger.info (
+    let expected = eWiseAddNaive matrixA matrixB
+    let actual = eWiseAddGB matrixA matrixB
+
+    logger.debug (
         eventX "Expected result is {matrix}"
         >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
     )
 
-    logger.info (
+    logger.debug (
         eventX "Actual result is {matrix}"
         >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
     )
@@ -141,45 +145,50 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
     |> Expect.all difference isZero
 
 let correctnessOnBool (case: OperationCase) (matrixA: bool[,], matrixB: bool[,]) =
-    let eWiseAdd (matrixA: bool[,]) (matrixB: bool[,]) =
-        let l = matrixA |> Seq.cast<bool>
-        let r = matrixB |> Seq.cast<bool>
+    let eWiseAddNaive (matrixA: bool[,]) (matrixB: bool[,]) =
+        let left = matrixA |> Seq.cast<bool>
+        let right = matrixB |> Seq.cast<bool>
 
-        (l, r)
+        (left, right)
         ||> Seq.map2 (||)
+        |> Seq.filter id
 
-    let eWiseAddGb (matrixA: bool[,]) (matrixB: bool[,]) =
-        let l = createMatrix<bool> case.MatrixCase [|matrixA; not|]
-        let r = createMatrix<bool> case.MatrixCase [|matrixB; not|]
+    let eWiseAddGB (matrixA: bool[,]) (matrixB: bool[,]) =
+        try
+            let left = createMatrix<bool> case.MatrixCase [|matrixA; not|]
+            let right = createMatrix<bool> case.MatrixCase [|matrixB; not|]
 
-        logger.info (
-            eventX "Left matrix is \n{matrix}"
-            >> setField "matrix" l
-        )
+            logger.debug (
+                eventX "Left matrix is \n{matrix}"
+                >> setField "matrix" left
+            )
 
-        logger.info (
-            eventX "Right matrix is \n{matrix}"
-            >> setField "matrix" r
-        )
+            logger.debug (
+                eventX "Right matrix is \n{matrix}"
+                >> setField "matrix" right
+            )
 
-        opencl {
-            let! result = l.EWiseAdd r None AnyAll.bool
-            let! tuples = result.GetTuples()
-            return! tuples.ToHost()
-        }
-        |> oclContext.RunSync
-        |> (fun tuples -> tuples.Values)
-        |> Seq.ofArray
+            opencl {
+                let! result = left.EWiseAdd right None AnyAll.bool
+                let! tuples = result.GetTuples()
+                return! tuples.ToHost()
+            }
+            |> oclContext.RunSync
+            |> (fun tuples -> tuples.Values)
+            |> Seq.ofArray
 
-    let expected = eWiseAdd matrixA matrixB
-    let actual = eWiseAddGb matrixA matrixB
+        finally
+            oclContext.Provider.CloseAllBuffers()
 
-    logger.info (
+    let expected = eWiseAddNaive matrixA matrixB
+    let actual = eWiseAddGB matrixA matrixB
+
+    logger.debug (
         eventX "Expected result is {matrix}"
         >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
     )
 
-    logger.info (
+    logger.debug (
         eventX "Actual result is {matrix}"
         >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
     )
@@ -191,7 +200,7 @@ let correctnessOnBool (case: OperationCase) (matrixA: bool[,], matrixB: bool[,])
         (expected, actual)
         ||> Seq.map2 (<>)
 
-    logger.info (
+    logger.debug (
         eventX "Difference result is {matrix}"
         >> setField "matrix" (sprintf "%A" <| List.ofSeq difference)
     )
@@ -202,7 +211,7 @@ let correctnessOnBool (case: OperationCase) (matrixA: bool[,], matrixB: bool[,])
 let config = {
     FsCheckConfig.defaultConfig with
         arbitrary = [typeof<PairOfSparseMatrices>]
-        startSize = 10
+        startSize = 0
         maxTest = 10
 }
 
@@ -210,15 +219,15 @@ let config = {
 let testFixtures case = [
     case
     |> correctnessOnNumbers<int> (+) (-) ((=) 0) AddMult.int
-    |> ptestPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
+    |> testPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
 
     case
     |> correctnessOnNumbers<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
-    |> ptestPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
+    |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
 
     case
     |> correctnessOnBool
-    |> testPropertyWithConfigStdGen (248983341, 296859677) config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
+    |> testPropertyWithConfig config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
 ]
 
 let tests =

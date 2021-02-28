@@ -37,52 +37,6 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     let rowCount = base.RowCount
     let columnCount = base.ColumnCount
 
-    // let spMV (vector: DenseVector<'a>) (mask: Mask1D) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
-    //     let csrMatrixRowCount = rowCount
-    //     let csrMatrixColumnCount = columnCount
-    //     let vectorLength = vector.Size
-    //     if csrMatrixColumnCount <> vectorLength then
-    //         invalidArg
-    //             "vector"
-    //             (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
-
-    //     let (BinaryOp plus) = semiring.PlusMonoid.Append
-    //     let (BinaryOp mult) = semiring.Times
-
-    //     let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
-    //     let command =
-    //         <@
-    //             fun (ndRange: _1D)
-    //                 (resultBuffer: 'a[])
-    //                 (csrValuesBuffer: 'a[])
-    //                 (csrColumnsBuffer: int[])
-    //                 (csrRowPointersBuffer: int[])
-    //                 (vectorBuffer: 'a[]) ->
-
-    //                 let i = ndRange.GlobalID0
-    //                 let mutable localResultBuffer = resultBuffer.[i]
-    //                 for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-    //                     localResultBuffer <- (%plus) localResultBuffer
-    //                         ((%mult) csrValuesBuffer.[k] vectorBuffer.[csrColumnsBuffer.[k]])
-    //                 resultBuffer.[i] <- localResultBuffer
-    //         @>
-
-    //     let ndRange = _1D(csrMatrixRowCount)
-    //     let binder = fun kernelPrepare ->
-    //         kernelPrepare
-    //             ndRange
-    //             resultVector
-    //             csrTuples.Values
-    //             csrTuples.ColumnIndices
-    //             csrTuples.RowPointers
-    //             vector.Values
-
-    //     opencl {
-    //         do! RunCommand command binder
-    //         return upcast DenseVector(resultVector, semiring.PlusMonoid)
-    //     }
-
-    // Not Implemented
     new(rows: int[], columns: int[], values: 'a[]) = CSRMatrix(CSRFormat.CreateEmpty())
     new(pathToMatrix: string) = CSRMatrix(CSRFormat.CreateEmpty())
 

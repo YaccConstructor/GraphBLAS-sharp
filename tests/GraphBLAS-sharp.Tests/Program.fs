@@ -7,7 +7,9 @@ let allTests =
         EWiseAdd.tests
     ]
 
+// sequenced test?
 [<EntryPoint>]
 let main argv =
     allTests
+    |> testSequenced
     |> runTestsWithCLIArgs [] argv
