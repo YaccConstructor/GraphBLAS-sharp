@@ -1,2 +1,2 @@
-NVIDIA*
-All
+Intel*
+Cpu
