@@ -306,7 +306,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex= localIndices.[middleIdx]
+                            let firstIndex = localIndices.[middleIdx]
                             let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
                             if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
