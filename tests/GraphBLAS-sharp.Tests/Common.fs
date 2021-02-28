@@ -12,7 +12,6 @@ type MatrixBackendFormat =
 
 type VectorBackendFormat =
     | Sparse
-    | Dense
 
 type MaskType =
     | Regular

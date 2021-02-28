@@ -9,7 +9,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 module SSSP =
     let SSSP (matrix: Matrix<float>) (source: int) : OpenCLEvaluation<Vector<float>> =
         let vertexCount = matrix.RowCount
-        let distance = Vector.Sparse(vertexCount, [source, 0.])
+        let distance = Vector.ofTuples vertexCount [source, 0.]
 
         opencl {
             for _ in 1 .. vertexCount - 1 do
