@@ -74,7 +74,7 @@ let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
 
 let logger = Log.create "Sample"
 
-let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
+let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     (sum: 'a -> 'a -> 'a)
     (diff: 'a -> 'a -> 'a)
     (isZero: 'a -> bool)
@@ -87,12 +87,25 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
         let right = matrixB |> Seq.cast<'a>
 
         (left, right)
-        ||> Seq.map2
-            (fun x y ->
+        ||> Seq.mapi2
+            (fun idx x y ->
+                let i = idx / Array2D.length2 matrixA
+                let j = idx % Array2D.length2 matrixA
+
                 if isZero x && isZero y then None
-                else Some <| sum x y
+                else Some (i, j, sum x y)
             )
         |> Seq.choose id
+        |> Array.ofSeq
+        |> Array.unzip3
+        |>
+            (fun (rows, cols, vals) ->
+                {
+                    RowIndices = rows
+                    ColumnIndices = cols
+                    Values = vals
+                }
+            )
 
     let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
         try
@@ -115,8 +128,6 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
                 return! tuples.ToHost()
             }
             |> oclContext.RunSync
-            |> (fun tuples -> tuples.Values)
-            |> Seq.ofArray
 
         finally
             oclContext.Provider.CloseAllBuffers()
@@ -126,87 +137,29 @@ let correctnessOnNumbers<'a when 'a : struct and 'a : equality>
 
     logger.debug (
         eventX "Expected result is {matrix}"
-        >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
+        >> setField "matrix" (sprintf "%A" expected.Values)
     )
 
     logger.debug (
         eventX "Actual result is {matrix}"
-        >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
+        >> setField "matrix" (sprintf "%A" actual.Values)
     )
 
-    "Length of expected and result seq should be equal"
-    |> Expect.hasLength actual (Seq.length expected)
+    let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
+    let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
+
+    "Indices of expected and result matrix must be the same"
+    |> Expect.sequenceEqual actualIndices expectedIndices
 
     let difference =
-        (expected, actual)
+        (expected.Values, actual.Values)
         ||> Seq.map2 diff
+
+    "Length of expected and result values should be equal"
+    |> Expect.hasLength actual.Values (Seq.length expected.Values)
 
     "There should be no difference between expected and received values"
     |> Expect.all difference isZero
-
-let correctnessOnBool (case: OperationCase) (matrixA: bool[,], matrixB: bool[,]) =
-    let eWiseAddNaive (matrixA: bool[,]) (matrixB: bool[,]) =
-        let left = matrixA |> Seq.cast<bool>
-        let right = matrixB |> Seq.cast<bool>
-
-        (left, right)
-        ||> Seq.map2 (||)
-        |> Seq.filter id
-
-    let eWiseAddGB (matrixA: bool[,]) (matrixB: bool[,]) =
-        try
-            let left = createMatrix<bool> case.MatrixCase [|matrixA; not|]
-            let right = createMatrix<bool> case.MatrixCase [|matrixB; not|]
-
-            logger.debug (
-                eventX "Left matrix is \n{matrix}"
-                >> setField "matrix" left
-            )
-
-            logger.debug (
-                eventX "Right matrix is \n{matrix}"
-                >> setField "matrix" right
-            )
-
-            opencl {
-                let! result = left.EWiseAdd right None AnyAll.bool
-                let! tuples = result.GetTuples()
-                return! tuples.ToHost()
-            }
-            |> oclContext.RunSync
-            |> (fun tuples -> tuples.Values)
-            |> Seq.ofArray
-
-        finally
-            oclContext.Provider.CloseAllBuffers()
-
-    let expected = eWiseAddNaive matrixA matrixB
-    let actual = eWiseAddGB matrixA matrixB
-
-    logger.debug (
-        eventX "Expected result is {matrix}"
-        >> setField "matrix" (sprintf "%A" <| List.ofSeq expected)
-    )
-
-    logger.debug (
-        eventX "Actual result is {matrix}"
-        >> setField "matrix" (sprintf "%A" <| List.ofSeq actual)
-    )
-
-    "Length of expected and result seq should be equal"
-    |> Expect.hasLength actual (Seq.length expected)
-
-    let difference =
-        (expected, actual)
-        ||> Seq.map2 (<>)
-
-    logger.debug (
-        eventX "Difference result is {matrix}"
-        >> setField "matrix" (sprintf "%A" <| List.ofSeq difference)
-    )
-
-    "There should be no difference between expected and received values"
-    |> Expect.all difference not
 
 let config = {
     FsCheckConfig.defaultConfig with
@@ -218,15 +171,15 @@ let config = {
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
 let testFixtures case = [
     case
-    |> correctnessOnNumbers<int> (+) (-) ((=) 0) AddMult.int
+    |> checkCorrectnessGeneric<int> (+) (-) ((=) 0) AddMult.int
     |> testPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
 
     case
-    |> correctnessOnNumbers<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
+    |> checkCorrectnessGeneric<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
     |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
 
     case
-    |> correctnessOnBool
+    |> checkCorrectnessGeneric<bool> (||) (<>) not AnyAll.bool
     |> testPropertyWithConfig config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
 ]
 
