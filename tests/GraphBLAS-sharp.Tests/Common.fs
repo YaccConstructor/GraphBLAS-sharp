@@ -33,28 +33,15 @@ module Generators =
             Gen.choose (1, size |> float |> sqrt |> int)
             |> Gen.three
 
-    // non-empty and nonzeroes exists
-    let pairOfSparseMatricesGenerator (valuesGenerator: Gen<'a>) (zero: 'a) (isZero: 'a -> bool) =
-        Gen.sized <| fun size ->
-            let sparseGenerator =
-                Gen.oneof [
-                    valuesGenerator
-                    Gen.constant zero
-                ]
-
-            gen {
-                // let! (rowsA, colsA, colsB) = dimension3DGenerator
-                let! (nrows, ncols) = dimension2DGenerator
-                let! matrixA = sparseGenerator |> Gen.array2DOfDim (nrows, ncols)
-                let! matrixB = sparseGenerator |> Gen.array2DOfDim (nrows, ncols)
-                return (matrixA, matrixB)
-            }
-            |> Gen.filter (fun (matrixA, matrixB) -> matrixA.Length <> 0 && matrixB.Length <> 0)
-            |> Gen.filter
-                (fun (matrixA, matrixB) ->
-                    matrixA |> Seq.cast<'a> |> Seq.exists (not << isZero) &&
-                    matrixB |> Seq.cast<'a> |> Seq.exists (not << isZero)
-                )
+    // generate non-empty matrices
+    let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
+        gen {
+            let! (nrows, ncols) = dimension2DGenerator
+            let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+            let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+            return (matrixA, matrixB)
+        }
+        |> Gen.filter (fun (matrixA, matrixB) -> matrixA.Length <> 0 && matrixB.Length <> 0)
 
 module Utils =
     let rec cartesian listOfLists =

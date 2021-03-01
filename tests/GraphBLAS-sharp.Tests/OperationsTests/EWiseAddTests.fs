@@ -38,24 +38,30 @@ let testCases =
             }
         )
 
-type PairOfSparseMatrices =
+type PairOfSparseMatricesOfEqualSize =
     static member IntType() =
-        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
-            Arb.generate<int>
-            0
-            ((=) 0)
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<int>
+                Gen.constant 0
+            ]
+        ) |> Arb.fromGen
 
     static member FloatType() =
-        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
-            (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-            0.
-            (fun x -> abs x < Accuracy.medium.absolute)
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+                Gen.constant 0.
+            ]
+        ) |> Arb.fromGen
 
     static member BoolType() =
-        Arb.fromGen <| Generators.pairOfSparseMatricesGenerator
-            Arb.generate<bool>
-            false
-            ((=) false)
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<bool>
+                Gen.constant false
+            ]
+        ) |> Arb.fromGen
 
 let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
     match matrixFormat with
@@ -163,7 +169,7 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
 
 let config = {
     FsCheckConfig.defaultConfig with
-        arbitrary = [typeof<PairOfSparseMatrices>]
+        arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
         startSize = 0
         maxTest = 10
 }
