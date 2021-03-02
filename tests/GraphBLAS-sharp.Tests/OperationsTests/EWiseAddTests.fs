@@ -55,6 +55,38 @@ type PairOfSparseMatricesOfEqualSize =
             ]
         ) |> Arb.fromGen
 
+    static member SByteType() =
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<sbyte>
+                Gen.constant 0y
+            ]
+        ) |> Arb.fromGen
+
+    static member ByteType() =
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<byte>
+                Gen.constant 0uy
+            ]
+        ) |> Arb.fromGen
+
+    static member Int16Type() =
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<int16>
+                Gen.constant 0s
+            ]
+        ) |> Arb.fromGen
+
+    static member UInt16Type() =
+        Generators.pairOfMatricesOfEqualSizeGenerator (
+            Gen.oneof [
+                Arb.generate<uint16>
+                Gen.constant 0us
+            ]
+        ) |> Arb.fromGen
+
     static member BoolType() =
         Generators.pairOfMatricesOfEqualSizeGenerator (
             Gen.oneof [
@@ -183,6 +215,22 @@ let testFixtures case = [
     case
     |> checkCorrectnessGeneric<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
     |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> checkCorrectnessGeneric<sbyte> (+) (-) ((=) 0y) AddMult.sbyte
+    |> testPropertyWithConfig config (sprintf "Correctness on sbyte, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> checkCorrectnessGeneric<byte> (+) (-) ((=) 0uy) AddMult.byte
+    |> testPropertyWithConfig config (sprintf "Correctness on byte, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> checkCorrectnessGeneric<int16> (+) (-) ((=) 0s) AddMult.int16
+    |> testPropertyWithConfig config (sprintf "Correctness on int16, %A, %A" case.MatrixCase case.MaskCase)
+
+    case
+    |> checkCorrectnessGeneric<uint16> (+) (-) ((=) 0us) AddMult.uint16
+    |> testPropertyWithConfig config (sprintf "Correctness on uint16, %A, %A" case.MatrixCase case.MaskCase)
 
     case
     |> checkCorrectnessGeneric<bool> (||) (<>) not AnyAll.bool
