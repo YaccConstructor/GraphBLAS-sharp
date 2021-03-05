@@ -14,9 +14,11 @@
     <Compile Include="Operators.fs" />
     <Compile Include="Monoid.fs" />
     <Compile Include="Semiring.fs" />
-    <Compile Include="Toolbox.fs" />
     <Compile Include="Scalar.fs" />
     <Compile Include="Abstracts.fs" />
+    <Compile Include="Backend/Common/Utils.fs" />
+    <Compile Include="Backend/Common/Scan.fs" />
+    <Compile Include="Backend//EWiseAdd.fs" />
     <Compile Include="Implementations.fs" />
     <Compile Include="Matrix.fs" />
     <Compile Include="Vector.fs" />

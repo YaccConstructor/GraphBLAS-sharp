@@ -96,3 +96,25 @@ and Mask2D(rowIndices: int[], columnIndices: int[], rowCount: int, columnCount: 
     member this.RowCount = rowCount
     member this.ColumnCount = columnCount
     member this.IsComplemented = isComplemented
+
+type COOFormat<'a> = {
+    RowCount: int
+    ColumnCount: int
+    Rows: int[]
+    Columns: int[]
+    Values: 'a[]
+}
+
+type CSRFormat<'a> = {
+    ColumnCount: int
+    RowPointers: int[]
+    ColumnIndices: int[]
+    Values: 'a[]
+}
+with
+    static member CreateEmpty<'a>() = {
+        RowPointers = Array.zeroCreate<int> 0
+        ColumnIndices = Array.zeroCreate<int> 0
+        Values = Array.zeroCreate<'a> 0
+        ColumnCount = 0
+    }
