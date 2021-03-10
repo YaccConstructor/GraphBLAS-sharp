@@ -1,36 +1,10 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.Core
-open Brahma.FSharp.OpenCL.Extensions
-open Helpers
-open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Backend.Common.Scan
-open Backend.Common.Utils
-
-type COOFormat<'a> = {
-    Rows: int[]
-    Columns: int[]
-    Values: 'a[]
-    RowCount: int
-    ColumnCount: int
-}
-
-type CSRFormat<'a> = {
-    Values: 'a[]
-    Columns: int[]
-    RowPointers: int[]
-    ColumnCount: int
-}
-with
-    static member CreateEmpty<'a>() = {
-        Values = Array.zeroCreate<'a> 0
-        Columns = Array.zeroCreate<int> 0
-        RowPointers = Array.zeroCreate<int> 0
-        ColumnCount = 0
-    }
+open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 
 type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) =
     inherit Matrix<'a>(csrTuples.RowPointers.Length - 1, csrTuples.ColumnCount)
@@ -38,56 +12,11 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     let rowCount = base.RowCount
     let columnCount = base.ColumnCount
 
-    let spMV (vector: DenseVector<'a>) (mask: Mask1D) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
-        let csrMatrixRowCount = rowCount
-        let csrMatrixColumnCount = columnCount
-        let vectorLength = vector.Size
-        if csrMatrixColumnCount <> vectorLength then
-            invalidArg
-                "vector"
-                (sprintf "Argument has invalid dimension. Need %i, but given %i" csrMatrixColumnCount vectorLength)
-
-        let (BinaryOp plus) = semiring.PlusMonoid.Append
-        let (BinaryOp mult) = semiring.Times
-
-        let resultVector = Array.zeroCreate<'a> csrMatrixRowCount
-        let command =
-            <@
-                fun (ndRange: _1D)
-                    (resultBuffer: 'a[])
-                    (csrValuesBuffer: 'a[])
-                    (csrColumnsBuffer: int[])
-                    (csrRowPointersBuffer: int[])
-                    (vectorBuffer: 'a[]) ->
-
-                    let i = ndRange.GlobalID0
-                    let mutable localResultBuffer = resultBuffer.[i]
-                    for k in csrRowPointersBuffer.[i] .. csrRowPointersBuffer.[i + 1] - 1 do
-                        localResultBuffer <- (%plus) localResultBuffer
-                            ((%mult) csrValuesBuffer.[k] vectorBuffer.[csrColumnsBuffer.[k]])
-                    resultBuffer.[i] <- localResultBuffer
-            @>
-
-        let ndRange = _1D(csrMatrixRowCount)
-        let binder = fun kernelPrepare ->
-            kernelPrepare
-                ndRange
-                resultVector
-                csrTuples.Values
-                csrTuples.Columns
-                csrTuples.RowPointers
-                vector.Values
-
-        opencl {
-            do! RunCommand command binder
-            return upcast DenseVector(resultVector, semiring.PlusMonoid)
-        }
-
-    // Not Implemented
     new(rows: int[], columns: int[], values: 'a[]) = CSRMatrix(CSRFormat.CreateEmpty())
+    new(pathToMatrix: string) = CSRMatrix(CSRFormat.CreateEmpty())
 
     member this.Values = csrTuples.Values
-    member this.Columns = csrTuples.Columns
+    member this.Columns = csrTuples.ColumnIndices
     member this.RowPointers = csrTuples.RowPointers
 
     override this.Clear () = failwith "Not Implemented"
@@ -124,94 +53,71 @@ type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) 
     override this.Transpose () = failwith "Not Implemented"
     override this.Kronecker a b c = failwith "Not Implemented"
 
-and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount: int, indices: uint64[], values: 'a[]) =
-    inherit Matrix<'a>(rowCount, columnCount)
+and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
+    inherit Matrix<'a>(cooFormat.RowCount, cooFormat.ColumnCount)
 
-    // let mutable rows: int[] = indices |> Array.map (fun i -> int (i >>> 32))
-    // let mutable columns: int[] = indices |> Array.map int
+    new(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
+        let cooFormat = {
+            RowCount = rowCount
+            ColumnCount = columnCount
+            Rows = rows
+            Columns = columns
+            Values = values
+        }
 
-    let mutable indices = indices
-    let mutable values = values
-    // member this.Rows with get() = rows
-    // member this.Columns with get() = columns
-    member this.Indices with get() = indices
-    member this.Values with get() = values
+        COOMatrix(cooFormat)
 
-    new (rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
-        let indices =
-            [| for i in 0 .. rows.Length - 1 do
-                yield (uint64 rows.[i]) <<< 32 ||| (uint64 columns.[i]) |]
-        COOMatrix(rowCount, columnCount, indices, values)
+    new(array: 'a[,], isZero: 'a -> bool) =
+        let (rows, cols, vals) =
+            array
+            |> Seq.cast<'a>
+            |> Seq.mapi (fun idx v -> (idx / Array2D.length2 array, idx % Array2D.length2 array, v))
+            |> Seq.filter (fun (i, j, v) -> not <| isZero v)
+            |> Array.ofSeq
+            |> Array.unzip3
+
+        COOMatrix(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
 
     override this.ToString() =
         [
-            sprintf "COO Matrix %ix%i \n" rowCount columnCount
-            sprintf "Indices: %A \n" indices
-            sprintf "Values: %A \n" values
+            sprintf "COO Matrix %ix%i \n" cooFormat.RowCount cooFormat.ColumnCount
+            sprintf "RowIndices:    %A \n" cooFormat.Rows
+            sprintf "ColumnIndices: %A \n" cooFormat.Columns
+            sprintf "Values:        %A \n" cooFormat.Values
         ]
         |> String.concat ""
+
+    member this.Storage = cooFormat
+
+    member this.Rows with get() = cooFormat.Rows
+    member this.Columns with get() = cooFormat.Columns
+    member this.Values with get() = cooFormat.Values
+    member this.Elements with get() = (cooFormat.Rows, cooFormat.Columns, cooFormat.Values) |||> Array.zip3
 
     override this.Clear () = failwith "Not Implemented"
     override this.Copy () = failwith "Not Implemented"
     override this.Resize a b = failwith "Not Implemented"
     override this.GetNNZ () = failwith "Not Implemented"
 
-    override this.GetTuples () =
-
-        let indicesLength = indices.Length
-
-        let unpack =
-            <@
-                fun (ndRange: _1D)
-                    (indicesBuffer: uint64[])
-                    (rowsBuffer: int[])
-                    (columnsBuffer: int[]) ->
-
-                    let i = ndRange.GlobalID0
-                    if i < indicesLength then
-                        let doubleIndex = indicesBuffer.[i]
-                        rowsBuffer.[i] <- int (doubleIndex >>> 32)
-                        columnsBuffer.[i] <- int doubleIndex
-            @>
-
-        let rows = Array.zeroCreate indicesLength
-        let columns = Array.zeroCreate indicesLength
-
-        let binder kernelP =
-            let ndRange = _1D(workSize indicesLength, workGroupSize)
-            kernelP
-                ndRange
-                indices
-                rows
-                columns
-
-        opencl {
-            do! RunCommand unpack binder
-            return {
-                RowIndices = rows
-                ColumnIndices = columns
-                Values = this.Values
-            }
+    override this.GetTuples() = opencl {
+        return {
+            RowIndices = this.Rows
+            ColumnIndices = this.Columns
+            Values = this.Values
         }
+    }
 
     override this.GetMask(?isComplemented: bool) =
         let isComplemented = defaultArg isComplemented false
         failwith "Not Implemented"
 
-    override this.ToHost () =
-        opencl {
-            //let! tuples = this.GetTuples ()
-            // let! _ = ToHost tuples.Rows
-            // let! _ = ToHost tuples.Columns
-            // let! _ = ToHost tuples.Values
+    override this.ToHost() = opencl {
+        let! _ = ToHost this.Rows
+        let! _ = ToHost this.Columns
+        let! _ = ToHost this.Values
 
-            // let! _ = ToHost this.Rows
-            // let! _ = ToHost this.Columns
-            let! _ = ToHost this.Indices
-            let! _ = ToHost this.Values
-
-            return upcast this
-        }
+        return upcast this
+    }
 
     override this.Extract (mask: Mask2D option) : OpenCLEvaluation<Matrix<'a>> = failwith "Not Implemented"
     override this.Extract (colMask: Mask1D option * int) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
@@ -227,215 +133,6 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
     override this.Mxm a b c = failwith "Not Implemented"
     override this.Mxv a b c = failwith "Not Implemented"
-
-    member internal this.EWiseAddCOO
-        (matrix: COOMatrix<'a>)
-        (mask: Mask2D option)
-        (semiring: Semiring<'a>) : OpenCLEvaluation<Matrix<'a>> =
-
-        let workGroupSize = workGroupSize
-        let (BinaryOp append) = semiring.PlusMonoid.Append
-        let zero = semiring.PlusMonoid.Zero
-
-        //It is useful to consider that the first array is longer than the second one
-        let firstIndices, firstValues, secondIndices, secondValues, plus =
-            if this.Indices.Length > matrix.Indices.Length then
-                this.Indices, this.Values, matrix.Indices, matrix.Values, append
-            else
-                matrix.Indices, matrix.Values, this.Indices, this.Values, <@ fun x y -> (%append) y x @>
-
-        let filterThroughMask =
-            opencl {
-                //TODO
-                ()
-            }
-
-        let allIndices = Array.zeroCreate <| firstIndices.Length + secondIndices.Length
-        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
-
-        let longSide = firstIndices.Length
-        let shortSide = secondIndices.Length
-
-        let allIndicesLength = allIndices.Length
-
-        let merge =
-            <@
-                fun (ndRange: _1D)
-                    (firstIndicesBuffer: uint64[])
-                    (firstValuesBuffer: 'a[])
-                    (secondIndicesBuffer: uint64[])
-                    (secondValuesBuffer: 'a[])
-                    (allIndicesBuffer: uint64[])
-                    (allValuesBuffer: 'a[]) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < allIndicesLength then
-                        let mutable beginIdxLocal = local ()
-                        let mutable endIdxLocal = local ()
-                        let localID = ndRange.LocalID0
-                        if localID < 2 then
-                            let mutable x = localID * (workGroupSize - 1) + i - 1
-                            if x >= shortSide + longSide then x <- shortSide + longSide - 1
-                            let diagonalNumber = x
-
-                            let mutable leftEdge = diagonalNumber + 1 - shortSide
-                            if leftEdge < 0 then leftEdge <- 0
-
-                            let mutable rightEdge = longSide - 1
-                            if rightEdge > diagonalNumber then rightEdge <- diagonalNumber
-
-                            while leftEdge <= rightEdge do
-                                let middleIdx = (leftEdge + rightEdge) / 2
-                                let firstIndex = firstIndicesBuffer.[middleIdx]
-                                let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
-                                if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-                            // Here localID equals either 0 or 1
-                            if localID = 0 then beginIdxLocal <- leftEdge else endIdxLocal <- leftEdge
-                        barrier ()
-
-                        let beginIdx = beginIdxLocal
-                        let endIdx = endIdxLocal
-                        let firstLocalLength = endIdx - beginIdx
-                        let mutable x = workGroupSize - firstLocalLength
-                        if endIdx = longSide then x <- shortSide - i + localID + beginIdx
-                        let secondLocalLength = x
-
-                        //First indices are from 0 to firstLocalLength - 1 inclusive
-                        //Second indices are from firstLocalLength to firstLocalLength + secondLocalLength - 1 inclusive
-                        let localIndices = localArray<uint64> workGroupSize
-
-                        if localID < firstLocalLength then
-                            localIndices.[localID] <- firstIndicesBuffer.[beginIdx + localID]
-                        if localID < secondLocalLength then
-                            localIndices.[firstLocalLength + localID] <- secondIndicesBuffer.[i - beginIdx]
-                        barrier ()
-
-                        let mutable leftEdge = localID + 1 - secondLocalLength
-                        if leftEdge < 0 then leftEdge <- 0
-
-                        let mutable rightEdge = firstLocalLength - 1
-                        if rightEdge > localID then rightEdge <- localID
-
-                        while leftEdge <= rightEdge do
-                            let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex = localIndices.[middleIdx]
-                            let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
-                            if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-                        let boundaryX = rightEdge
-                        let boundaryY = localID - leftEdge
-
-                        // boundaryX and boundaryY can't be off the right edge of array (only off the left edge)
-                        let isValidX = boundaryX >= 0
-                        let isValidY = boundaryY >= 0
-
-                        let mutable fstIdx = uint64 0
-                        if isValidX then fstIdx <- localIndices.[boundaryX]
-
-                        let mutable sndIdx = uint64 0
-                        if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
-
-                        if not isValidX || isValidY && fstIdx < sndIdx then
-                            allIndicesBuffer.[i] <- sndIdx
-                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
-                        else
-                            allIndicesBuffer.[i] <- fstIdx
-                            allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-            @>
-
-        let merge =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(workSize allIndices.Length, workGroupSize)
-                    kernelP
-                        ndRange
-                        firstIndices
-                        firstValues
-                        secondIndices
-                        secondValues
-                        allIndices
-                        allValues
-                do! RunCommand merge binder
-            }
-
-        let auxiliaryArray = Array.create allIndices.Length 1
-
-        let fillAuxiliaryArray =
-            <@
-                fun (ndRange: _1D)
-                    (allIndicesBuffer: uint64[])
-                    (allValuesBuffer: 'a[])
-                    (auxiliaryArrayBuffer: int[]) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < allIndicesLength - 1 && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
-                        auxiliaryArrayBuffer.[i] <- 0
-
-                        //Do not drop explicit zeroes
-                        allValuesBuffer.[i + 1] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-
-                        //Drop explicit zeroes
-                        // let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-                        // if localResultBuffer = zero then auxiliaryArrayBuffer.[i + 1] <- 0 else allValuesBuffer.[i + 1] <- localResultBuffer
-            @>
-
-        let fillAuxiliaryArray =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(workSize (allIndicesLength - 1), workGroupSize)
-                    kernelP
-                        ndRange
-                        allIndices
-                        allValues
-                        auxiliaryArray
-                do! RunCommand fillAuxiliaryArray binder
-            }
-
-        let prefixSumArrayLength = auxiliaryArray.Length
-
-        let createUnion =
-            <@
-                fun (ndRange: _1D)
-                    (allIndicesBuffer: uint64[])
-                    (allValuesBuffer: 'a[])
-                    (prefixSumArrayBuffer: int[])
-                    (resultIndicesBuffer: uint64[])
-                    (resultValuesBuffer: 'a[]) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i = prefixSumArrayLength - 1 || i < prefixSumArrayLength && prefixSumArrayBuffer.[i] <> prefixSumArrayBuffer.[i + 1] then
-                        let index = prefixSumArrayBuffer.[i]
-
-                        resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
-                        resultValuesBuffer.[index] <- allValuesBuffer.[i]
-            @>
-
-        opencl {
-            do! merge
-            do! filterThroughMask
-            do! fillAuxiliaryArray
-            let! prefixSumArray, resultLength = v0 auxiliaryArray
-            let! _ = ToHost resultLength
-            let resultLength = resultLength.[0]
-            let resultIndices = Array.zeroCreate resultLength
-            let resultValues = Array.create resultLength zero
-            let binder kernelP =
-                let ndRange = _1D(workSize prefixSumArray.Length, workGroupSize)
-                kernelP
-                    ndRange
-                    allIndices
-                    allValues
-                    prefixSumArray
-                    resultIndices
-                    resultValues
-            do! RunCommand createUnion binder
-
-            return upcast COOMatrix<'a>(this.RowCount, this.ColumnCount, resultIndices, resultValues)
-        }
 
     override this.EWiseAdd
         (matrix: Matrix<'a>)
@@ -458,7 +155,11 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
         //     | _ -> Mask2D(Array.empty, this.RowCount, this.ColumnCount, true) // Empty complemented mask is equal to none
 
         match matrix with
-        | :? COOMatrix<'a> -> this.EWiseAddCOO (downcast matrix) mask semiring
+        | :? COOMatrix<'a> as coo ->
+            opencl {
+                let! cooFormat = EWiseAdd.coo this.Storage coo.Storage mask semiring
+                return upcast COOMatrix(cooFormat)
+            }
         | _ -> failwith "Not Implemented"
 
     override this.EWiseMult a b c = failwith "Not Implemented"
@@ -513,6 +214,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         (mask: Mask1D option)
         (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
 
+        let workGroupSize = Utils.workGroupSize
         let (BinaryOp append) = semiring.PlusMonoid.Append
         let zero = semiring.PlusMonoid.Zero
 
@@ -581,7 +283,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         let createSortedConcatenation =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(workSize allIndices.Length, workGroupSize)
+                    let ndRange = _1D(Utils.workSize allIndices.Length, workGroupSize)
                     kernelP
                         ndRange
                         firstIndices
@@ -613,7 +315,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         let fillAuxiliaryArray =
             opencl {
                 let binder kernelP =
-                    let ndRange = _1D(workSize (allIndices.Length - 1), workGroupSize)
+                    let ndRange = _1D(Utils.workSize (allIndices.Length - 1), workGroupSize)
                     kernelP
                         ndRange
                         allIndices
@@ -645,12 +347,13 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
         let resultIndices = Array.zeroCreate allIndices.Length
         let resultValues = Array.create allValues.Length zero
+        let totalSum = Array.zeroCreate 1
 
         let createUnion =
             opencl {
-                let! prefixSumArray, _ = v0 auxiliaryArray
+                let! prefixSumArray, _ = Backend.Common.Scan.run auxiliaryArray totalSum
                 let binder kernelP =
-                    let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
+                    let ndRange = _1D(Utils.workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
                         ndRange
                         allIndices
@@ -695,35 +398,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         | :? SparseVector<'a> -> this.EWiseAddSparse (downcast vector) mask semiring
         | _ -> failwith "Not Implemented"
 
-    override this.EWiseMult a b c = failwith "Not Implemented"
-    override this.Apply a b = failwith "Not Implemented"
-    override this.Prune a b = failwith "Not Implemented"
-    override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"
-
-and DenseVector<'a when 'a : struct and 'a : equality>(vector: 'a[], monoid: Monoid<'a>) =
-    inherit Vector<'a>(vector.Length)
-
-    member this.Monoid = monoid
-    member this.Values: 'a[] = vector
-
-    override this.Clear () = failwith "Not Implemented"
-    override this.Copy () = failwith "Not Implemented"
-    override this.Resize a = failwith "Not Implemented"
-    override this.GetNNZ () = failwith "Not Implemented"
-    override this.GetTuples () = failwith "Not Implemented"
-    override this.GetMask(?isComplemented: bool) =
-        let isComplemented = defaultArg isComplemented false
-        failwith "Not Implemented"
-    override this.ToHost () = failwith "Not Implemented"
-
-    override this.Extract (mask: Mask1D option) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
-    override this.Extract (idx: int) : OpenCLEvaluation<Scalar<'a>> = failwith "Not Implemented"
-    override this.Assign (mask: Mask1D option, vector: Vector<'a>) : OpenCLEvaluation<unit> = failwith "Not Implemented"
-    override this.Assign (idx: int, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
-    override this.Assign (mask: Mask1D option, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
-
-    override this.Vxm a b c = failwith "Not Implemented"
-    override this.EWiseAdd a b c = failwith "Not Implemented"
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
     override this.Prune a b = failwith "Not Implemented"
