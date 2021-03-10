@@ -10,8 +10,8 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 module BFS =
     let levelBFS (matrix: Matrix<bool>) (source: int) : OpenCLEvaluation<Vector<int>> =
         let vertexCount = matrix.RowCount
-        let levels = Vector.Dense(Array.zeroCreate vertexCount, IntegerMonoid.add)
-        let frontier = Vector.Sparse(vertexCount, [source, true])
+        let levels = Vector.ofArray <| Array.zeroCreate vertexCount <| (=) 0
+        let frontier = Vector.ofTuples vertexCount [source, true]
 
         opencl {
             let mutable currentLevel = 1
@@ -19,7 +19,7 @@ module BFS =
                 let! frontierMask = frontier.GetMask()
                 do! levels.Assign(frontierMask, Scalar currentLevel)
                 let! levelsComplemented = levels.GetMask(isComplemented = true)
-                let! frontier = (frontier @. matrix) levelsComplemented BooleanSemiring.anyAll
+                let! frontier = frontier.Vxm matrix levelsComplemented BooleanSemiring.anyAll
                 currentLevel <- currentLevel + 1
 
             return levels

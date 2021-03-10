@@ -1,24 +1,14 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.Core
-open Brahma.FSharp.OpenCL.Extensions
-open GlobalContext
-open Helpers
-open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Utils
 
-module internal Toolbox =
-
-    let internal workGroupSize = 128
-    let internal workSize n =
-        let m = n - 1
-        m - m % workGroupSize + workGroupSize
-
-    let rec internal prefixSum
-        (inputArray: int[]) =
-
+// functions in mudule could be named run\get\if\it\t
+// like mentioned here https://www.reddit.com/r/fsharp/comments/5kvsyk/modules_or_namespaces/dbt0zf7?utm_source=share&utm_medium=web2x&context=3
+module internal Scan =
+    let rec v1 (inputArray: int[]) =
         let outputArray = Array.zeroCreate inputArray.Length
 
         if inputArray.Length = 1 then
@@ -89,7 +79,7 @@ module internal Toolbox =
 
             opencl {
                 do! fillIntermediateArray
-                let! auxiliaryPrefixSumArray = prefixSum intermediateArray
+                let! auxiliaryPrefixSumArray = v1 intermediateArray
 
                 let binder kernelP =
                     let ndRange = _1D(workSize inputArray.Length, workGroupSize)
@@ -103,9 +93,7 @@ module internal Toolbox =
                 return outputArray
             }
 
-    let internal prefixSum2
-        (inputArray: int[]) =
-
+    let v2 (inputArray: int[]) =
         let firstIntermediateArray = Array.copy inputArray
         let secondIntermediateArray = Array.copy inputArray
         let outputArrayLength = firstIntermediateArray.Length
@@ -135,7 +123,6 @@ module internal Toolbox =
         let mutable arrays = firstIntermediateArray, secondIntermediateArray
 
         opencl {
-
             let mutable offset = 1
             while offset < outputArrayLength do
                 arrays <- swap arrays

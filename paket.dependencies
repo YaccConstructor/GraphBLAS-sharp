@@ -22,6 +22,7 @@ nuget Brahma.FSharp.OpenCL.WorkflowBuilder 2.0.0-alpha5
 nuget BenchmarkDotNet
 nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64 2.5.0
+nuget TypeShape 9.0.0
 
 // [ FAKE GROUP ]
 group Build
