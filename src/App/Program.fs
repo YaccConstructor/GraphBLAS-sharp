@@ -10,56 +10,69 @@ open GraphBLAS.FSharp.Predefined
 
 [<EntryPoint>]
 let main argv =
-    let fstMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;1;50;2;5|], [|1.0;2.0;76.0;3.0;6.0|])
-    let sndMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;2;50;3;5|], [|-0.8;2.0;-76.0;3.0;6.0|])
-    let workflow =
-        opencl {
-            let! result = fstMatrix.EWiseAdd sndMatrix None FloatSemiring.addMult
-            let! _ = result.ToHost ()
-            return result
-        }
-    let res: COOMatrix<float> = downcast oclContext.RunSync workflow
+    // // let fstMatrix = COOMatrix(1, 2, [|0|], [|1|], [|true|])
+    // // let sndMatrix = COOMatrix(1, 2, [|0|], [|0|], [|true|])
+    // let fstMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;1;50;2;5|], [|1.0;2.0;76.0;3.0;6.0|])
+    // let sndMatrix = COOMatrix(100, 100, [|0;1;1;2;5|], [|4;2;50;3;5|], [|-0.8;2.0;-76.0;3.0;6.0|])
+    // let workflow =
+    //     opencl {
+    //         let! result = fstMatrix.EWiseAdd sndMatrix None FloatSemiring.addMult
+    //         let! _ = result.ToHost ()
+    //         return result
+    //     }
+    // let res: COOMatrix<float> = downcast oclContext.RunSync workflow
 
-    let indices = res.Indices
-    // let rows = res.Rows
-    // let columns = res.Columns
-    let values = res.Values
+    // let indices = res.Indices
+    // // let rows = res.Rows
+    // // let columns = res.Columns
+    // let values = res.Values
 
-    // for i in 0 .. rows.Length - 1 do
-    //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
+    // // for i in 0 .. rows.Length - 1 do
+    // //     printfn "(%i, %i, %A)" rows.[i] columns.[i] values.[i]
 
-    for i in 0 .. indices.Length - 1 do
-        let index = indices.[i]
-        let a = int (index >>> 32)
-        let b = int index
-        printfn "(%i, %i, %A)" a b values.[i]
+    // for i in 0 .. indices.Length - 1 do
+    //     let index = indices.[i]
+    //     let a = int (index >>> 32)
+    //     let b = int index
+    //     printfn "(%i, %i, %A)" a b values.[i]
 
     // let allIndicesLength = 42
-    // let workGroupSize = 256
-    // let longSide = 72
-    // let shortSide = 27
+    let workGroupSize = 256
+    let longSide = 72
+    let shortSide = 27
+    let defaultIdx = Unchecked.defaultof<int>
 
-    // let command =
-    //     <@
-    //         fun (ndRange: _1D)
-    //             (arr: int[]) ->
+    // let arrLength = 10
 
-    //             arr.[ndRange.GlobalID0] <-
-    //                 if true then 41 else 42
-    //     @>
+    let command =
+        <@
+            fun (ndRange: _1D)
+                (buf: int[]) ->
 
-    // let translate2opencl (provider: ComputeProvider) (command: Quotations.Expr<(_1D -> int[] -> unit)>) : string =
-    //     let options = ComputeProvider.DefaultOptions_p
-    //     let tOptions = []
-    //     provider.SetCompileOptions options
+                let i = ndRange.GlobalID0
+                let f a b =
+                    if a > b
+                    then
+                        let x = a * a
+                        if x > 42
+                        then x + b
+                        else a + x
+                    else a - b
+                buf.[i] <- f 2 3
+        @>
 
-    //     let kernel = System.Activator.CreateInstance<Kernel<_1D>>()
-    //     CLCodeGenerator.GenerateKernel(command, provider, kernel, tOptions) |> ignore
-    //     let code = (kernel :> ICLKernel).Source.ToString()
-    //     code
+    let translate2opencl (provider: ComputeProvider) (command: Quotations.Expr<(_1D -> int[] -> unit)>) : string =
+        let options = ComputeProvider.DefaultOptions_p
+        let tOptions = []
+        provider.SetCompileOptions options
 
-    // let code = translate2opencl oclContext.Provider command
+        let kernel = System.Activator.CreateInstance<Kernel<_1D>>()
+        CLCodeGenerator.GenerateKernel(command, provider, kernel, tOptions) |> ignore
+        let code = (kernel :> ICLKernel).Source.ToString()
+        code
 
-    // printf "%s" code
+    let code = translate2opencl oclContext.Provider command
+
+    printf "%s" code
 
     0

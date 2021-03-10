@@ -143,6 +143,14 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                 yield (uint64 rows.[i]) <<< 32 ||| (uint64 columns.[i]) |]
         COOMatrix(rowCount, columnCount, indices, values)
 
+    override this.ToString() =
+        [
+            sprintf "COO Matrix %ix%i \n" rowCount columnCount
+            sprintf "Indices: %A \n" indices
+            sprintf "Values: %A \n" values
+        ]
+        |> String.concat ""
+
     override this.Clear () = failwith "Not Implemented"
     override this.Copy () = failwith "Not Implemented"
     override this.Resize a b = failwith "Not Implemented"
@@ -246,7 +254,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         let allIndicesLength = allIndices.Length
 
-        let createSortedConcatenation =
+        let merge =
             <@
                 fun (ndRange: _1D)
                     (firstIndicesBuffer: uint64[])
@@ -259,7 +267,8 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                     let i = ndRange.GlobalID0
 
                     if i < allIndicesLength then
-                        let knots = localArray<int> 2
+                        let mutable beginIdxLocal = local ()
+                        let mutable endIdxLocal = local ()
                         let localID = ndRange.LocalID0
                         if localID < 2 then
                             let mutable x = localID * (workGroupSize - 1) + i - 1
@@ -278,11 +287,12 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                                 let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
                                 if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
-                            knots.[localID] <- leftEdge
+                            // Here localID equals either 0 or 1
+                            if localID = 0 then beginIdxLocal <- leftEdge else endIdxLocal <- leftEdge
                         barrier ()
 
-                        let beginIdx = knots.[0] // BANK CONFLICTS?
-                        let endIdx = knots.[1]
+                        let beginIdx = beginIdxLocal
+                        let endIdx = endIdxLocal
                         let firstLocalLength = endIdx - beginIdx
                         let mutable x = workGroupSize - firstLocalLength
                         if endIdx = longSide then x <- shortSide - i + localID + beginIdx
@@ -331,7 +341,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                             allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
             @>
 
-        let createSortedConcatenation =
+        let merge =
             opencl {
                 let binder kernelP =
                     let ndRange = _1D(workSize allIndices.Length, workGroupSize)
@@ -343,7 +353,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                         secondValues
                         allIndices
                         allValues
-                do! RunCommand createSortedConcatenation binder
+                do! RunCommand merge binder
             }
 
         let auxiliaryArray = Array.create allIndices.Length 1
@@ -400,29 +410,25 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
                         resultValuesBuffer.[index] <- allValuesBuffer.[i]
             @>
 
-        let resultIndices = Array.zeroCreate allIndices.Length
-        let resultValues = Array.create allValues.Length zero
-
-        let createUnion =
-            opencl {
-                let! prefixSumArray = prefixSum3 auxiliaryArray
-                let binder kernelP =
-                    let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
-                    kernelP
-                        ndRange
-                        allIndices
-                        allValues
-                        prefixSumArray
-                        resultIndices
-                        resultValues
-                do! RunCommand createUnion binder
-            }
-
         opencl {
-            do! createSortedConcatenation
+            do! merge
             do! filterThroughMask
             do! fillAuxiliaryArray
-            do! createUnion
+            let! prefixSumArray, resultLength = prefixSum auxiliaryArray
+            let! _ = ToHost resultLength
+            let resultLength = resultLength.[0]
+            let resultIndices = Array.zeroCreate resultLength
+            let resultValues = Array.create resultLength zero
+            let binder kernelP =
+                let ndRange = _1D(workSize prefixSumArray.Length, workGroupSize)
+                kernelP
+                    ndRange
+                    allIndices
+                    allValues
+                    prefixSumArray
+                    resultIndices
+                    resultValues
+            do! RunCommand createUnion binder
 
             return upcast COOMatrix<'a>(this.RowCount, this.ColumnCount, resultIndices, resultValues)
         }
@@ -638,7 +644,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
         let createUnion =
             opencl {
-                let! prefixSumArray = Toolbox.prefixSum2 auxiliaryArray
+                let! prefixSumArray, _ = prefixSum auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP
