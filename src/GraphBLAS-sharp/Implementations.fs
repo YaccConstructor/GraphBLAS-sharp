@@ -3,12 +3,12 @@ namespace GraphBLAS.FSharp
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.Core
 open Brahma.FSharp.OpenCL.Extensions
-open GlobalContext
 open Helpers
 open FSharp.Quotations.Evaluator
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Toolbox
+open Backend.Common.Scan
+open Backend.Common.Utils
 
 type COOFormat<'a> = {
     Rows: int[]
@@ -187,7 +187,11 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
 
         opencl {
             do! RunCommand unpack binder
-            return {| Rows = rows; Columns = columns; Values = this.Values |}
+            return {
+                RowIndices = rows
+                ColumnIndices = columns
+                Values = this.Values
+            }
         }
 
     override this.GetMask(?isComplemented: bool) =
@@ -229,7 +233,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
         (mask: Mask2D option)
         (semiring: Semiring<'a>) : OpenCLEvaluation<Matrix<'a>> =
 
-        let workGroupSize = Toolbox.workGroupSize
+        let workGroupSize = workGroupSize
         let (BinaryOp append) = semiring.PlusMonoid.Append
         let zero = semiring.PlusMonoid.Zero
 
@@ -414,7 +418,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(rowCount: int, columnCount:
             do! merge
             do! filterThroughMask
             do! fillAuxiliaryArray
-            let! prefixSumArray, resultLength = prefixSum auxiliaryArray
+            let! prefixSumArray, resultLength = v0 auxiliaryArray
             let! _ = ToHost resultLength
             let resultLength = resultLength.[0]
             let resultIndices = Array.zeroCreate resultLength
@@ -644,7 +648,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
         let createUnion =
             opencl {
-                let! prefixSumArray, _ = prefixSum auxiliaryArray
+                let! prefixSumArray, _ = v0 auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(workSize auxiliaryArray.Length, workGroupSize)
                     kernelP

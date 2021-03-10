@@ -17,6 +17,6 @@ module TriangleCounting =
             let! convertedMatrix = lowerTriangular.Apply None (UnaryOp <@ bool2int @>)
             let! convertedTransposed = convertedMatrix.Transpose()
             let! lowerTriangularMask = lowerTriangular.GetMask()
-            let! result = (convertedMatrix @. convertedTransposed) lowerTriangularMask IntegerSemiring.addMult
+            let! result = convertedMatrix.Mxm convertedTransposed lowerTriangularMask IntegerSemiring.addMult
             return! result.Reduce IntegerMonoid.add
         }

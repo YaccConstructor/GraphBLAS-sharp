@@ -920,6 +920,8 @@ NUGET
       System.Threading (>= 4.3) - restriction: || (&& (< monoandroid) (< monotouch) (< net45) (>= netstandard1.3) (< win8) (< wpa81) (< xamarinios) (< xamarinmac) (< xamarintvos) (< xamarinwatchos)) (>= netcoreapp5.0)
       System.Xml.ReaderWriter (>= 4.3) - restriction: || (&& (< monoandroid) (< monotouch) (< net45) (>= netstandard1.3) (< win8) (< wpa81) (< xamarinios) (< xamarinmac) (< xamarintvos) (< xamarinwatchos)) (&& (< monoandroid) (< net45) (>= netstandard1.0) (< netstandard1.3) (< win8) (< wp8) (< wpa81)) (>= netcoreapp5.0)
       System.Xml.XmlDocument (>= 4.3) - restriction: || (&& (< monoandroid) (< monotouch) (< net45) (>= netstandard1.3) (< win8) (< wpa81) (< xamarinios) (< xamarinmac) (< xamarintvos) (< xamarinwatchos)) (>= netcoreapp5.0)
+    TypeShape (9.0)
+      FSharp.Core (>= 4.3.2) - restriction: >= netstandard2.0
     YC.Brahma (2.0.0-alpha5) - restriction: || (>= net461) (>= netstandard2.1)
     YC.Brahma.OpenCL (2.0.0-alpha5) - restriction: || (>= net461) (>= netstandard2.1)
       YC.Brahma (>= 2.0.0-alpha5) - restriction: || (>= net461) (>= netstandard2.1)
