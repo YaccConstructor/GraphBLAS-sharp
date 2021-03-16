@@ -4,6 +4,22 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp.Backend
 
+type MatrixTuples<'a when 'a : struct and 'a : equality> =
+    {
+        RowIndices: int[]
+        ColumnIndices: int[]
+        Values: 'a[]
+    }
+
+    member this.ToHost() =
+        opencl {
+            let! _ = ToHost this.RowIndices
+            let! _ = ToHost this.ColumnIndices
+            let! _ = ToHost this.Values
+
+            return this
+        }
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Matrix =
 
@@ -34,17 +50,14 @@ module Matrix =
         operations
     *)
 
-    let eWiseAdd (matrix: Matrix<'a>) (cooFormat: COOFormat<'a>) (mask: Mask2D option) (sr: ISemiring<'a>) =
-        let s =
-            match matrix with
-            | :? COOMatrix<'a> as coo ->
+    let eWiseAdd (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) =
+        let operationResult =
+            match leftMatrix, rightMatrix with
+            | COOMatrix left, COOMatrix right ->
                 opencl {
-                    let! cooFormat = MatrixCOO.EWiseAdd.run cooFormat coo.Storage mask sr
-                    return COOMatrix(cooFormat) :> Matrix<'a>
+                    let! result = MatrixCOO.EWiseAdd.run left right mask semiring
+                    return COOMatrix(result)
                 }
             | _ -> failwith "Not Implemented"
 
-        graphblas {
-            let! m = EvalGB.liftCl s
-            return m
-        }
+        graphblas { return! EvalGB.liftCl operationResult }

@@ -34,6 +34,7 @@ type GraphblasBuilder() =
     // monad
     member this.Bind(x, f) = EvalGB.bind f x
     member this.Return x = EvalGB <| fun _ -> x
+    member this.ReturnFrom x = x
 
 [<AutoOpen>]
 module GraphblasBuilder =

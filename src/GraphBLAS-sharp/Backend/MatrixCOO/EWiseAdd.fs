@@ -7,7 +7,7 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 module internal EWiseAdd =
-    let run (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<COOFormat<'a>> =
+    let run (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<COOMatrix<'a>> =
         let workGroupSize = Utils.workGroupSize
         let (ClosedBinaryOp append) = semiring.Plus
         let zero = semiring.Zero
