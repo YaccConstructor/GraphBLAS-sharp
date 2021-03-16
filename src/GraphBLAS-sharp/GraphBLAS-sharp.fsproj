@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
@@ -11,15 +11,13 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Exceptions.fs" />
-    <Compile Include="Operators.fs" />
-    <Compile Include="Monoid.fs" />
-    <Compile Include="Semiring.fs" />
-    <Compile Include="Scalar.fs" />
-    <Compile Include="Abstracts.fs" />
+    <Compile Include="AlgebraicStructures.fs" />
+    <Compile Include="Abstract.fs" />
     <Compile Include="Backend/Common/Utils.fs" />
     <Compile Include="Backend/Common/Scan.fs" />
-    <Compile Include="Backend//EWiseAdd.fs" />
-    <Compile Include="Implementations.fs" />
+    <Compile Include="Backend/MatrixCOO/EWiseAdd.fs" />
+    <Compile Include="Concrete.fs" />
+    <Compile Include="GraphblasEvaluation.fs" />
     <Compile Include="Matrix.fs" />
     <Compile Include="Vector.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
@@ -28,10 +26,6 @@
     <Compile Include="Predefined/Semirings/AnyAll.fs" />
     <Compile Include="Predefined/Semirings/AddMult.fs" />
     <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <Compile Include="Predefined/Float.fs" />
-    <Compile Include="Predefined/Float32.fs" />
-    <Compile Include="Predefined/Integer.fs" />
-    <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/SSSP.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />

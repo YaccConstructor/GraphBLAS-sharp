@@ -19,7 +19,7 @@ module BFS =
                 let! frontierMask = frontier.GetMask()
                 do! levels.Assign(frontierMask, Scalar currentLevel)
                 let! levelsComplemented = levels.GetMask(isComplemented = true)
-                let! frontier = frontier.Vxm matrix levelsComplemented BooleanSemiring.anyAll
+                let! frontier = frontier.Vxm matrix levelsComplemented AnyAll.bool
                 currentLevel <- currentLevel + 1
 
             return levels

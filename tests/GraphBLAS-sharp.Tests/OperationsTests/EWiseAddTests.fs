@@ -12,31 +12,25 @@ open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
 open BackendState
+open GraphBLAS.FSharp.Helpers
 
-type OperationParameter =
-    | MatrixFormatParam of MatrixBackendFormat
-    | MaskTypeParam of MaskType
-
-type OperationCase = {
-    MatrixCase: MatrixBackendFormat
-    MaskCase: MaskType
-}
+type OperationCase =
+    {
+        MatrixCase: MatrixBackendFormat
+        MaskCase: MaskType
+    }
 
 let testCases =
     [
-        Utils.listOfUnionCases<MatrixBackendFormat> |> List.map MatrixFormatParam
-        Utils.listOfUnionCases<MaskType> |> List.map MaskTypeParam
+        Utils.listOfUnionCases<MatrixBackendFormat> |> List.map box
+        Utils.listOfUnionCases<MaskType> |> List.map box
     ]
     |> Utils.cartesian
-    |> List.map
-        (fun list ->
-            let (MatrixFormatParam marixFormat) = list.[0]
-            let (MaskTypeParam maskType) = list.[1]
-            {
-                MatrixCase = marixFormat
-                MaskCase = maskType
-            }
-        )
+    |> List.map ^fun list ->
+        {
+            MatrixCase = unbox list.[0]
+            MaskCase = unbox list.[1]
+        }
 
 type PairOfSparseMatricesOfEqualSize =
     static member IntType() =
@@ -116,7 +110,7 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     (sum: 'a -> 'a -> 'a)
     (diff: 'a -> 'a -> 'a)
     (isZero: 'a -> bool)
-    (semiring: Semiring<'a>)
+    (semiring: ISemiring<'a>)
     (case: OperationCase)
     (matrixA: 'a[,], matrixB: 'a[,]) =
 

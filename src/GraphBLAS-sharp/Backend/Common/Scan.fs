@@ -5,7 +5,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Utils
 
-// functions in mudule could be named run\get\if\it\t
+// functions in mudule could be named run\get\of\it\t
 // like mentioned here https://www.reddit.com/r/fsharp/comments/5kvsyk/modules_or_namespaces/dbt0zf7?utm_source=share&utm_medium=web2x&context=3
 module internal Scan =
     let rec v1 (inputArray: int[]) =
@@ -93,10 +93,8 @@ module internal Scan =
                 return outputArray
             }
 
-    let v2 (inputArray: int[]) =
-        let firstIntermediateArray = Array.copy inputArray
-        let secondIntermediateArray = Array.copy inputArray
-        let outputArrayLength = firstIntermediateArray.Length
+    let v2 (inputArray: int[]) = opencl {
+        let outputArrayLength = inputArray.Length
 
         let updateResult =
             <@
@@ -111,23 +109,24 @@ module internal Scan =
                         else firstIntermediateArrayBuffer.[i] <- secondIntermediateArrayBuffer.[i] + secondIntermediateArrayBuffer.[i - offset]
             @>
 
-        let binder offset firstIntermediateArray secondIntermediateArray kernelP =
-            let ndRange = _1D(workSize outputArrayLength, workGroupSize)
-            kernelP
-                ndRange
-                offset
-                firstIntermediateArray
-                secondIntermediateArray
-
+        let firstIntermediateArray = Array.copy inputArray
+        let secondIntermediateArray = Array.copy inputArray
         let swap (a, b) = (b, a)
+
         let mutable arrays = firstIntermediateArray, secondIntermediateArray
+        let mutable offset = 1
 
-        opencl {
-            let mutable offset = 1
-            while offset < outputArrayLength do
-                arrays <- swap arrays
-                do! RunCommand updateResult <| (binder offset <|| arrays)
-                offset <- offset * 2
+        while offset < outputArrayLength do
+            arrays <- swap arrays
+            do! RunCommand updateResult <| fun kernelPrepare ->
+                let ndRange = _1D(workSize outputArrayLength, workGroupSize)
+                kernelPrepare
+                    ndRange
+                    offset
+                    (fst arrays)
+                    (snd arrays)
 
-            return (fst arrays)
-        }
+            offset <- offset * 2
+
+        return (fst arrays)
+    }

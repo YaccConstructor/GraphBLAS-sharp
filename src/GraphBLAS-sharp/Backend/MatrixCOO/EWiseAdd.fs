@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.MatrixCOO
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
@@ -7,10 +7,10 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 module internal EWiseAdd =
-    let coo (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) (semiring: Semiring<'a>) : OpenCLEvaluation<COOFormat<'a>> =
+    let run (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<COOFormat<'a>> =
         let workGroupSize = Utils.workGroupSize
-        let (BinaryOp append) = semiring.PlusMonoid.Append
-        let zero = semiring.PlusMonoid.Zero
+        let (ClosedBinaryOp append) = semiring.Plus
+        let zero = semiring.Zero
 
         //It is useful to consider that the first array is longer than the second one
         let firstRows, firstColumns, firstValues, secondRows, secondColumns, secondValues, plus =

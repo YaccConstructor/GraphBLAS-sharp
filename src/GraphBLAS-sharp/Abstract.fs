@@ -3,23 +3,31 @@ namespace GraphBLAS.FSharp
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
-type MatrixTuples<'a when 'a : struct and 'a : equality> = {
-    RowIndices: int[]
-    ColumnIndices: int[]
-    Values: 'a[]
-}
-with
-    member this.ToHost() = opencl {
-        let! rows = ToHost this.RowIndices
-        let! cols = ToHost this.ColumnIndices
-        let! vals = ToHost this.Values
+// algebraic objects
 
-        return {
-            RowIndices = rows
-            ColumnIndices = cols
-            Values = vals
-        }
+type MatrixTuples<'a when 'a : struct and 'a : equality> =
+    {
+        RowIndices: int[]
+        ColumnIndices: int[]
+        Values: 'a[]
     }
+
+    member this.ToHost() =
+        opencl {
+            let! rows = ToHost this.RowIndices
+            let! cols = ToHost this.ColumnIndices
+            let! vals = ToHost this.Values
+
+            return {
+                RowIndices = rows
+                ColumnIndices = cols
+                Values = vals
+            }
+        }
+
+type Scalar<'a when 'a : struct and 'a : equality> = Scalar of 'a
+with
+    static member op_Implicit (Scalar source) = source
 
 [<AbstractClass>]
 type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
@@ -48,17 +56,17 @@ type Matrix<'a when 'a : struct and 'a : equality>(nrow: int, ncol: int) =
     abstract Assign: (Mask1D option * int) * Scalar<'a> -> OpenCLEvaluation<unit>
     abstract Assign: (int * Mask1D option) * Scalar<'a> -> OpenCLEvaluation<unit>
 
-    abstract Mxm: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
-    abstract Mxv: Vector<'a> -> Mask1D option -> Semiring<'a> -> OpenCLEvaluation<Vector<'a>>
-    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
-    abstract EWiseMult: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
+    abstract Mxm: Matrix<'a> -> Mask2D option -> ISemiring<'a> -> OpenCLEvaluation<Matrix<'a>>
+    abstract Mxv: Vector<'a> -> Mask1D option -> ISemiring<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract EWiseAdd: Matrix<'a> -> Mask2D option -> ISemiring<'a> -> OpenCLEvaluation<Matrix<'a>>
+    abstract EWiseMult: Matrix<'a> -> Mask2D option -> ISemiring<'a> -> OpenCLEvaluation<Matrix<'a>>
     abstract Apply: Mask2D option -> UnaryOp<'a, 'b> -> OpenCLEvaluation<Matrix<'b>>
     abstract Prune: Mask2D option -> UnaryOp<'a, bool> -> OpenCLEvaluation<Matrix<'a>>
-    abstract ReduceIn: Mask1D option -> Monoid<'a> -> OpenCLEvaluation<Vector<'a>>
-    abstract ReduceOut: Mask1D option -> Monoid<'a> -> OpenCLEvaluation<Vector<'a>>
-    abstract Reduce: Monoid<'a> -> OpenCLEvaluation<Scalar<'a>>
+    abstract ReduceIn: Mask1D option -> IMonoid<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract ReduceOut: Mask1D option -> IMonoid<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract Reduce: IMonoid<'a> -> OpenCLEvaluation<Scalar<'a>>
     abstract Transpose: unit -> OpenCLEvaluation<Matrix<'a>>
-    abstract Kronecker: Matrix<'a> -> Mask2D option -> Semiring<'a> -> OpenCLEvaluation<Matrix<'a>>
+    abstract Kronecker: Matrix<'a> -> Mask2D option -> ISemiring<'a> -> OpenCLEvaluation<Matrix<'a>>
 
 and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Size: int
@@ -78,12 +86,12 @@ and [<AbstractClass>] Vector<'a when 'a : struct and 'a : equality>(size: int) =
     abstract Assign: int * Scalar<'a> -> OpenCLEvaluation<unit>
     abstract Assign: Mask1D option * Scalar<'a> -> OpenCLEvaluation<unit>
 
-    abstract Vxm: Matrix<'a> -> Mask1D option -> Semiring<'a> -> OpenCLEvaluation<Vector<'a>>
-    abstract EWiseAdd: Vector<'a> -> Mask1D option -> Semiring<'a> -> OpenCLEvaluation<Vector<'a>>
-    abstract EWiseMult: Vector<'a> -> Mask1D option -> Semiring<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract Vxm: Matrix<'a> -> Mask1D option -> ISemiring<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract EWiseAdd: Vector<'a> -> Mask1D option -> ISemiring<'a> -> OpenCLEvaluation<Vector<'a>>
+    abstract EWiseMult: Vector<'a> -> Mask1D option -> ISemiring<'a> -> OpenCLEvaluation<Vector<'a>>
     abstract Apply: Mask1D option -> UnaryOp<'a, 'b> -> OpenCLEvaluation<Vector<'b>>
     abstract Prune: Mask1D option -> UnaryOp<'a, bool> -> OpenCLEvaluation<Vector<'a>>
-    abstract Reduce: Monoid<'a> -> OpenCLEvaluation<Scalar<'a>>
+    abstract Reduce: IMonoid<'a> -> OpenCLEvaluation<Scalar<'a>>
 
 and Mask1D(indices: int[], size: int, isComplemented: bool) =
     member this.Indices = indices
@@ -97,21 +105,23 @@ and Mask2D(rowIndices: int[], columnIndices: int[], rowCount: int, columnCount: 
     member this.ColumnCount = columnCount
     member this.IsComplemented = isComplemented
 
-type COOFormat<'a> = {
-    RowCount: int
-    ColumnCount: int
-    Rows: int[]
-    Columns: int[]
-    Values: 'a[]
-}
+type COOFormat<'a> =
+    {
+        RowCount: int
+        ColumnCount: int
+        Rows: int[]
+        Columns: int[]
+        Values: 'a[]
+    }
 
-type CSRFormat<'a> = {
-    ColumnCount: int
-    RowPointers: int[]
-    ColumnIndices: int[]
-    Values: 'a[]
-}
-with
+type CSRFormat<'a> =
+    {
+        ColumnCount: int
+        RowPointers: int[]
+        ColumnIndices: int[]
+        Values: 'a[]
+    }
+
     static member CreateEmpty<'a>() = {
         RowPointers = Array.zeroCreate<int> 0
         ColumnIndices = Array.zeroCreate<int> 0

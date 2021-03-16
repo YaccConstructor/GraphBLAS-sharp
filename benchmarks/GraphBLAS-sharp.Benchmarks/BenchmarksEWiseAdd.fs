@@ -157,7 +157,7 @@ type EWiseAddBenchmarks4Float32() =
     [<Benchmark>]
     member this.EWiseAdditionCOOFloat32() =
         let (ClContext context) = this.OclContext
-        leftCOO.EWiseAdd rightCOO None Float32Semiring.addMult
+        leftCOO.EWiseAdd rightCOO None AddMult.float32
         |> context.RunSync
 
     static member InputMatricesProvider =
@@ -227,7 +227,7 @@ type EWiseAddBenchmarks4Bool() =
     [<Benchmark>]
     member this.EWiseAdditionCOOBool() =
         let (ClContext context) = this.OclContext
-        leftCOO.EWiseAdd rightCOO None BooleanSemiring.anyAll
+        leftCOO.EWiseAdd rightCOO None AnyAll.bool
         |> context.RunSync
 
     static member InputMatricesProvider =

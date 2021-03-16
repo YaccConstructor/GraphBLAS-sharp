@@ -6,6 +6,8 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend
 
+// storageFormats (concrete implementation)
+
 type CSRMatrix<'a when 'a : struct and 'a : equality>(csrTuples: CSRFormat<'a>) =
     inherit Matrix<'a>(csrTuples.RowPointers.Length - 1, csrTuples.ColumnCount)
 
@@ -137,7 +139,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
     override this.EWiseAdd
         (matrix: Matrix<'a>)
         (mask: Mask2D option)
-        (semiring: Semiring<'a>) =
+        (semiring: ISemiring<'a>) =
 
         if (this.RowCount, this.ColumnCount) <> (matrix.RowCount, matrix.ColumnCount) then
             invalidArg
@@ -157,7 +159,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
         match matrix with
         | :? COOMatrix<'a> as coo ->
             opencl {
-                let! cooFormat = EWiseAdd.coo cooFormat coo.Storage mask semiring
+                let! cooFormat = MatrixCOO.EWiseAdd.run cooFormat coo.Storage mask semiring
                 return upcast COOMatrix(cooFormat)
             }
         | _ -> failwith "Not Implemented"
@@ -207,15 +209,15 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     override this.Assign (idx: int, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
     override this.Assign (mask: Mask1D option, Scalar (value: 'a)) : OpenCLEvaluation<unit> = failwith "Not Implemented"
 
-    override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
+    override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
 
     member internal this.EWiseAddSparse
         (vector: SparseVector<'a>)
         (mask: Mask1D option)
-        (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
+        (semiring: ISemiring<'a>) : OpenCLEvaluation<Vector<'a>> =
 
-        let (BinaryOp append) = semiring.PlusMonoid.Append
-        let zero = semiring.PlusMonoid.Zero
+        let (ClosedBinaryOp append) = semiring.Plus
+        let zero = semiring.Zero
 
         //It is useful to consider that the first array is longer than the second one
         let firstIndices, firstValues, secondIndices, secondValues, plus =
@@ -375,7 +377,7 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     override this.EWiseAdd
         (vector: Vector<'a>)
         (mask: Mask1D option)
-        (semiring: Semiring<'a>) =
+        (semiring: ISemiring<'a>) =
 
         if vector.Size <> this.Size then
             invalidArg
@@ -399,4 +401,4 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
     override this.EWiseMult a b c = failwith "Not Implemented"
     override this.Apply a b = failwith "Not Implemented"
     override this.Prune a b = failwith "Not Implemented"
-    override this.Reduce (monoid: Monoid<'a>) = failwith "Not Implemented"
+    override this.Reduce (monoid: IMonoid<'a>) = failwith "Not Implemented"
