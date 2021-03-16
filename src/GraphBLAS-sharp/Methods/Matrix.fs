@@ -53,10 +53,10 @@ module Matrix =
     let eWiseAdd (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) =
         let operationResult =
             match leftMatrix, rightMatrix with
-            | COOMatrix left, COOMatrix right ->
+            | MatrixCOO left, MatrixCOO right ->
                 opencl {
-                    let! result = MatrixCOO.EWiseAdd.run left right mask semiring
-                    return COOMatrix(result)
+                    let! result = COOMatrix.EWiseAdd.run left right mask semiring
+                    return MatrixCOO result
                 }
             | _ -> failwith "Not Implemented"
 

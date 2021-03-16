@@ -19,9 +19,9 @@
     <Compile Include="Objects/Masks.fs" />
     <Compile Include="Backend/Common/Utils.fs" />
     <Compile Include="Backend/Common/Scan.fs" />
-    <Compile Include="Backend/MatrixCOO/EWiseAdd.fs" />
-    <Compile Include="Methods/MatrixMethods.fs" />
-    <Compile Include="Methods/VectorMethods.fs" />
+    <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
+    <Compile Include="Methods/Matrix.fs" />
+    <Compile Include="Methods/Vector.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
     <Compile Include="Predefined/Monoids/Add.fs" />
     <Compile Include="Predefined/Monoids/Min.fs" />

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.MatrixCOO
+namespace GraphBLAS.FSharp.Backend.COOMatrix
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic

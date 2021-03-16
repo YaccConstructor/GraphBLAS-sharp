@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp
 
 type Matrix<'a> =
-    | CSRMatrix of CSRMatrix<'a>
-    | COOMatrix of COOMatrix<'a>
+    | MatrixCSR of CSRMatrix<'a>
+    | MatrixCOO of COOMatrix<'a>
 
 and CSRMatrix<'a> =
     {
