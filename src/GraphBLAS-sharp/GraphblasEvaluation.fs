@@ -24,17 +24,43 @@ module EvalGB =
             let x = run env reader
             run env (f x)
 
+    let ret x =
+        EvalGB <| fun _ -> x
+
     // EvalGB.liftCl x === liftM EvalGB x
     let liftCl clEvaluation =
         EvalGB <| fun env ->
-            clEvaluation
-            |> runCl env.ClContext
+            runCl env.ClContext clEvaluation
+
+    let runWithClContext clContext (EvalGB action) =
+        action { ClContext = clContext }
 
 type GraphblasBuilder() =
-    // monad
     member this.Bind(x, f) = EvalGB.bind f x
-    member this.Return x = EvalGB <| fun _ -> x
+    member this.Return x = EvalGB.ret x
     member this.ReturnFrom x = x
+
+    member this.Zero() =
+        EvalGB.ret ()
+
+    member this.Combine(m1, m2) =
+        EvalGB <| fun env ->
+            EvalGB.run env m1
+            EvalGB.run env m2
+
+    member this.Delay rest =
+        EvalGB <| fun env ->
+            EvalGB.run env <| rest ()
+
+    member this.While(predicate, body) =
+        EvalGB <| fun env ->
+            while predicate () do
+                EvalGB.run env body
+
+    member this.For(sequence, f) =
+        EvalGB <| fun env ->
+            for elem in sequence do
+                EvalGB.run env (f elem)
 
 [<AutoOpen>]
 module GraphblasBuilder =

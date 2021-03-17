@@ -7,14 +7,14 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 [<AutoOpen>]
 module SSSP =
-    let SSSP (matrix: Matrix<float>) (source: int) : OpenCLEvaluation<Vector<float>> =
-        let vertexCount = matrix.RowCount
+    let SSSP (matrix: Matrix<float>) (source: int) : GraphblasEvaluation<Vector<float>> =
+        let vertexCount = Matrix.rowCount matrix
         let distance = Vector.ofTuples vertexCount [source, 0.]
 
-        opencl {
+        graphblas {
             for _ in 1 .. vertexCount - 1 do
-                let! step = distance.Vxm matrix None MinAdd.float
-                do! distance.Assign(None, step)
+                let! step = Vector.vxm MinAdd.float None distance matrix
+                do! distance |> Vector.assignSubVector None step
 
             return distance
         }

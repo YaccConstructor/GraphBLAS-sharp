@@ -8,18 +8,18 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 [<AutoOpen>]
 module BFS =
-    let levelBFS (matrix: Matrix<bool>) (source: int) : OpenCLEvaluation<Vector<int>> =
-        let vertexCount = matrix.RowCount
+    let levelBFS (matrix: Matrix<bool>) (source: int) : GraphblasEvaluation<Vector<int>> =
+        let vertexCount = Matrix.rowCount matrix
         let levels = Vector.ofArray <| Array.zeroCreate vertexCount <| (=) 0
         let frontier = Vector.ofTuples vertexCount [source, true]
 
-        opencl {
+        graphblas {
             let mutable currentLevel = 1
             while currentLevel < vertexCount do
-                let! frontierMask = frontier.GetMask()
-                do! levels.Assign(frontierMask, Scalar currentLevel)
-                let! levelsComplemented = levels.GetMask(isComplemented = true)
-                let! frontier = frontier.Vxm matrix levelsComplemented AnyAll.bool
+                let! frontierMask = Vector.mask frontier
+                do! Vector.fillSubVector frontierMask (Scalar currentLevel) levels
+                let! levelsComplemented = Vector.complemented levels
+                let! frontier = Vector.vxm AnyAll.bool levelsComplemented frontier matrix
                 currentLevel <- currentLevel + 1
 
             return levels

@@ -89,22 +89,7 @@ type PairOfSparseMatricesOfEqualSize =
             ]
         ) |> Arb.fromGen
 
-let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
-    match matrixFormat with
-    | CSR ->
-        Activator.CreateInstanceGeneric<CSRMatrix<_>>(
-            Array.singleton typeof<'a>, args
-        )
-        |> unbox<CSRMatrix<'a>>
-        :> Matrix<'a>
-    | COO ->
-        Activator.CreateInstanceGeneric<COOMatrix<_>>(
-            Array.singleton typeof<'a>, args
-        )
-        |> unbox<COOMatrix<'a>>
-        :> Matrix<'a>
-
-let logger = Log.create "Sample"
+let logger = Log.create "eWiseAddTests"
 
 let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     (sum: 'a -> 'a -> 'a)
@@ -113,6 +98,11 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     (semiring: ISemiring<'a>)
     (case: OperationCase)
     (matrixA: 'a[,], matrixB: 'a[,]) =
+
+    let createMatrixFromArray2D matrixFormat array isZero =
+        match matrixFormat with
+        | CSR -> failwith "Not implemented"
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
 
     let eWiseAddNaive (matrixA: 'a[,]) (matrixB: 'a[,]) =
         let left = matrixA |> Seq.cast<'a>
@@ -141,8 +131,8 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
 
     let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
         try
-            let left = createMatrix<'a> case.MatrixCase [|matrixA; isZero|]
-            let right = createMatrix<'a> case.MatrixCase [|matrixB; isZero|]
+            let left = createMatrixFromArray2D case.MatrixCase matrixA isZero
+            let right = createMatrixFromArray2D case.MatrixCase matrixB isZero
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"
@@ -154,12 +144,12 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
                 >> setField "matrix" right
             )
 
-            opencl {
-                let! result = left.EWiseAdd right None semiring
-                let! tuples = result.GetTuples()
-                return! tuples.ToHost()
+            graphblas {
+                let! result = Matrix.eWiseAdd semiring None left right
+                let! tuples = Matrix.tuples result
+                return! EvalGB.liftCl <| tuples.ToHost()
             }
-            |> oclContext.RunSync
+            |> EvalGB.runWithClContext oclContext
 
         finally
             oclContext.Provider.CloseAllBuffers()
@@ -196,8 +186,9 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
 let config = {
     FsCheckConfig.defaultConfig with
         arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
+        maxTest = 50
         startSize = 0
-        maxTest = 10
+        endSize = 1_000_000
 }
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types

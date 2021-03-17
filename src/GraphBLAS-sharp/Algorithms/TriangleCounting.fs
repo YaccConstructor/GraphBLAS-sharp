@@ -7,16 +7,16 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 [<AutoOpen>]
 module TriangleCounting =
-    // скорее всего, тут не скаляр возвращать нужно, а инт
-    let sandiaTriangleCount (lowerTriangular: Matrix<bool>) : OpenCLEvaluation<Scalar<int>> =
+    let sandiaTriangleCount (lowerTriangular: Matrix<bool>) : GraphblasEvaluation<int> =
         let bool2int = function
             | true -> 1
             | false -> 0
 
-        opencl {
-            let! convertedMatrix = lowerTriangular.Apply None (UnaryOp <@ bool2int @>)
-            let! convertedTransposed = convertedMatrix.Transpose()
-            let! lowerTriangularMask = lowerTriangular.GetMask()
-            let! result = convertedMatrix.Mxm convertedTransposed lowerTriangularMask AddMult.int
-            return! result.Reduce Add.int
+        graphblas {
+            let! convertedMatrix = lowerTriangular |> Matrix.apply (UnaryOp <@ bool2int @>) None
+            let! convertedTransposed = convertedMatrix |> Matrix.transpose
+            let! lowerTriangularMask = lowerTriangular |> Matrix.mask
+            let! result = Matrix.mxm AddMult.int lowerTriangularMask convertedMatrix convertedTransposed
+            let! (Scalar count) = result |> Matrix.reduce Add.int
+            return count
         }

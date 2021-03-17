@@ -4,7 +4,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp.Backend
 
-type MatrixTuples<'a when 'a : struct and 'a : equality> =
+type MatrixTuples<'a> =
     {
         RowIndices: int[]
         ColumnIndices: int[]
@@ -46,11 +46,41 @@ module Matrix =
         methods
     *)
 
+    let rowCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
+    let columnCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
+    let clear (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let copy (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
+    let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> = failwith "Not Implemented yet"
+    let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D option> = failwith "Not Implemented yet"
+    let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D option> = failwith "Not Implemented yet"
+    // let finish \ eval \ toHost
+
+    (*
+        assignment, extraction and filling
+    *)
+
+    let extractSubMatrix (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let extractSubRow (rowIdx: int) (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let extractSubCol (colIdx: int) (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let extractElement (rowIdx: int) (colIdx: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+    let assignSubMatrix (mask: Mask2D option) (source: Matrix<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let assignSubRow (rowIdx: int) (mask: Mask2D option) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let assignSubCol (colIdx: int) (mask: Mask2D option) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let assignElement (rowIdx: int) (colIdx: int) (source: Scalar<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let fillSubMatrix (mask: Mask2D option) (filler: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let fillSubRow (rowIdx: int) (mask: Mask2D option) (filler: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    let fillSubCol (colIdx: int) (mask: Mask2D option) (filler: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
     (*
         operations
     *)
 
-    let eWiseAdd (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) =
+    let mxm (semiring: ISemiring<'a>) (mask: Mask2D option) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let mxv (semiring: ISemiring<'a>) (mask: Mask1D option) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+
+    let eWiseAdd (semiring: ISemiring<'a>) (mask: Mask2D option) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         let operationResult =
             match leftMatrix, rightMatrix with
             | MatrixCOO left, MatrixCOO right ->
@@ -61,3 +91,12 @@ module Matrix =
             | _ -> failwith "Not Implemented"
 
         graphblas { return! EvalGB.liftCl operationResult }
+
+    let eWiseMult (semiring: ISemiring<'a>) (mask: Mask2D option) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let apply (mapper: UnaryOp<'a, 'b>) (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
+    let prune (predicate: UnaryOp<'a, bool>) (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let reduceRows (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let reduceCols (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let reduce (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+    let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
+    let kronecker (semiring: ISemiring<'a>) (mask: Mask2D option) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
