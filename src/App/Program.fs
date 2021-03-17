@@ -14,9 +14,9 @@ open GraphBLAS.FSharp
 [<EntryPoint>]
 let main argv =
 
-    // let mutable oclContext = OpenCLEvaluationContext()
+    // let mutable oclContext = OpenCLEvaluationContext(platform_name = "*")
 
-    // let xs = [||]
+    // let xs = [|6|]
     // let command =
     //     <@
     //         fun (ndRange: _1D)
@@ -43,10 +43,10 @@ let main argv =
         let m = n - 1
         m - m % workGroupSize + workGroupSize
 
-    //let leftMatrix = COOMatrix(100, 100, [|0;1;2;3;4;7|], [|1;7;5;6;0;1|], [|1.;2.;-4.;4.;5.;6.|])
-    //let rightMatrix = COOMatrix(100, 100, [|0;0;1;2;3;4;7|], [|1;5;4;5;7;0;1|], [|1.;2.;-4.;4.;5.;6.;7.|])
-    let leftMatrix = COOMatrix(100, 100, [||], [||], [||])
-    let rightMatrix = COOMatrix(100, 100, [||], [||], [||])
+    let leftMatrix = COOMatrix(100, 100, [|0;1;2;3;4;7|], [|1;7;5;6;0;1|], [|1.;2.;-4.;4.;5.;6.|])
+    let rightMatrix = COOMatrix(100, 100, [|0;0;1;2;3;4;7|], [|1;5;4;5;7;0;1|], [|1.;2.;-4.;4.;5.;6.;7.|])
+    // let leftMatrix = COOMatrix(100, 100, [||], [||], [||])
+    // let rightMatrix = COOMatrix(100, 100, [||], [||], [||])
 
     let workflow =
         opencl {
