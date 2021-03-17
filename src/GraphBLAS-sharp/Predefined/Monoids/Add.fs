@@ -47,7 +47,7 @@ module Add =
 
     let monoidicFloat =
         { new IMonoid<MonoidicType<float>> with
-            member this.Zero = Just 0.
+            member this.Zero = Zero
             member this.Plus =
                 <@
                     fun x y ->
