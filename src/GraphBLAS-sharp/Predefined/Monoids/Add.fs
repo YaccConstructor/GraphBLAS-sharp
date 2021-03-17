@@ -44,3 +44,19 @@ module Add =
             member this.Zero = 0us
             member this.Plus = ClosedBinaryOp <@ (+) @>
         }
+
+    let monoidicFloat =
+        { new IMonoid<MonoidicType<float>> with
+            member this.Zero = Just 0.
+            member this.Plus =
+                <@
+                    fun x y ->
+                        match x, y with
+                        | Just x, Just y ->
+                            let result = x + y
+                            if abs result < 1e-16 then Zero else Just result
+                        | Just x, Zero -> Just x
+                        | Zero, Just y -> Just y
+                        | Zero, Zero -> Zero
+                @> |> ClosedBinaryOp
+        }
