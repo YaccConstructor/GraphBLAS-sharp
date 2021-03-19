@@ -10,13 +10,14 @@ type VectorTuples<'a> =
         Values: 'a[]
     }
 
-    member this.ToHost() =
+module VectorTuples =
+    let synchronize (vectorTuples: VectorTuples<'a>) =
         opencl {
-            let! _ = ToHost this.Indices
-            let! _ = ToHost this.Values
-
-            return this
+            let! _ = ToHost vectorTuples.Indices
+            let! _ = ToHost vectorTuples.Values
+            return ()
         }
+        |> EvalGB.fromCl
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
@@ -28,19 +29,18 @@ module Vector =
     let build (size: int) (indices: int[]) (values: int[]) : Vector<'a> =
         failwith "Not Implemented yet"
 
-    // ambiguous name (tuples = коллекция троек или 3 коллекции)
-    let ofTuples (size: int) (elements: (int * 'a) list) : Vector<'a> =
+    let ofList (size: int) (elements: (int * 'a) list) : Vector<'a> =
         failwith "Not Implemented yet"
 
-    let ofArray (array: 'a[]) (isZero: 'a -> bool) : Vector<'a> =
+    let ofArray (isZero: 'a -> bool) (array: 'a[]) : Vector<'a> =
         failwith "Not Implemented yet"
 
     let init (size: int) (initializer: int -> 'a) : Vector<'a> =
         failwith "Not Implemented yet"
 
+    // обоснован ли этот метод или можно просто create x использовать
     let zeroCreate (size: int) : Vector<'a> =
         failwith "Not Implemented yet"
-
 
     (*
         methods
@@ -52,9 +52,10 @@ module Vector =
     let resize (size: int) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let nnz (vector: Vector<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
     let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
+    // возвращается option, чтобы потом можно было бы сразу передавать её в методы (тк они option принимают)
     let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D option> = failwith "Not Implemented yet"
     let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D option> = failwith "Not Implemented yet"
-    // let finish \ eval \ toHost
+    let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*
         assignment, extraction and filling

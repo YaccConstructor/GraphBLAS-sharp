@@ -17,7 +17,7 @@ module Add =
 
     let float32 =
         { new IMonoid<float32> with
-            member this.Zero = 0f
+            member this.Zero = 0.f
             member this.Plus = ClosedBinaryOp <@ (+) @>
         }
 

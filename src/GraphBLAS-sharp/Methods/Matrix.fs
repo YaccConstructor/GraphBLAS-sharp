@@ -11,14 +11,17 @@ type MatrixTuples<'a> =
         Values: 'a[]
     }
 
-    member this.ToHost() =
+// ждём тайпклассов чтобы можно было вызывать synchronize для всех объектов,
+// для которых он реализован, не привязывая реализацию к классу (как стратегия)
+module MatrixTuples =
+    let synchronize (matrixTuples: MatrixTuples<'a>) =
         opencl {
-            let! _ = ToHost this.RowIndices
-            let! _ = ToHost this.ColumnIndices
-            let! _ = ToHost this.Values
-
-            return this
+            let! _ = ToHost matrixTuples.RowIndices
+            let! _ = ToHost matrixTuples.ColumnIndices
+            let! _ = ToHost matrixTuples.Values
+            return ()
         }
+        |> EvalGB.fromCl
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Matrix =
@@ -30,7 +33,7 @@ module Matrix =
     let build (rowCount: int) (columnCount: int) (rows: int[]) (columns: int[]) (values: 'a[]) : Matrix<'a> =
         failwith "Not Implemented yet"
 
-    let ofArray2D (array: 'a[,]) (isZero: 'a -> bool) : Matrix<'a> =
+    let ofArray2D (isZero: 'a -> bool) (array: 'a[,]) : Matrix<'a> =
         failwith "Not Implemented yet"
 
     let fromFile (pathToMatrix: string) : Matrix<'a> =
@@ -55,7 +58,7 @@ module Matrix =
     let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> = failwith "Not Implemented yet"
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D option> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D option> = failwith "Not Implemented yet"
-    // let finish \ eval \ toHost
+    let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*
         assignment, extraction and filling
@@ -90,7 +93,7 @@ module Matrix =
                 }
             | _ -> failwith "Not Implemented"
 
-        graphblas { return! EvalGB.liftCl operationResult }
+        graphblas { return! EvalGB.fromCl operationResult }
 
     let eWiseMult (semiring: ISemiring<'a>) (mask: Mask2D option) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let apply (mapper: UnaryOp<'a, 'b>) (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"

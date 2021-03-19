@@ -10,8 +10,8 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 module BFS =
     let levelBFS (matrix: Matrix<bool>) (source: int) : GraphblasEvaluation<Vector<int>> =
         let vertexCount = Matrix.rowCount matrix
-        let levels = Vector.ofArray <| Array.zeroCreate vertexCount <| (=) 0
-        let frontier = Vector.ofTuples vertexCount [source, true]
+        let levels = Vector.ofArray <| (=) 0 <| Array.zeroCreate vertexCount
+        let frontier = Vector.ofList vertexCount [source, true]
 
         graphblas {
             let mutable currentLevel = 1

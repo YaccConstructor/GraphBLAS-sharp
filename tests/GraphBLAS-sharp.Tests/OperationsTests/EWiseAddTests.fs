@@ -147,7 +147,8 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
             graphblas {
                 let! result = Matrix.eWiseAdd semiring None left right
                 let! tuples = Matrix.tuples result
-                return! EvalGB.liftCl <| tuples.ToHost()
+                do! MatrixTuples.synchronize tuples
+                return tuples
             }
             |> EvalGB.runWithClContext oclContext
 

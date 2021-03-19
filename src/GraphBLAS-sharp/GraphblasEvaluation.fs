@@ -24,11 +24,10 @@ module EvalGB =
             let x = run env reader
             run env (f x)
 
-    let ret x =
+    let return' x =
         EvalGB <| fun _ -> x
 
-    // EvalGB.liftCl x === liftM EvalGB x
-    let liftCl clEvaluation =
+    let fromCl clEvaluation =
         EvalGB <| fun env ->
             runCl env.ClContext clEvaluation
 
@@ -37,11 +36,11 @@ module EvalGB =
 
 type GraphblasBuilder() =
     member this.Bind(x, f) = EvalGB.bind f x
-    member this.Return x = EvalGB.ret x
+    member this.Return x = EvalGB.return' x
     member this.ReturnFrom x = x
 
     member this.Zero() =
-        EvalGB.ret ()
+        EvalGB.return' ()
 
     member this.Combine(m1, m2) =
         EvalGB <| fun env ->

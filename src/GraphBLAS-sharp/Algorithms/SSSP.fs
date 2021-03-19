@@ -9,7 +9,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 module SSSP =
     let SSSP (matrix: Matrix<float>) (source: int) : GraphblasEvaluation<Vector<float>> =
         let vertexCount = Matrix.rowCount matrix
-        let distance = Vector.ofTuples vertexCount [source, 0.]
+        let distance = Vector.ofList vertexCount [source, 0.]
 
         graphblas {
             for _ in 1 .. vertexCount - 1 do

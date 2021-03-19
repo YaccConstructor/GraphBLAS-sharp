@@ -6,10 +6,9 @@ let allTests =
     testList "All tests" [
         EWiseAdd.tests
     ]
+    |> testSequenced
 
-// sequenced test?
 [<EntryPoint>]
 let main argv =
     allTests
-    |> testSequenced
     |> runTestsWithCLIArgs [] argv
