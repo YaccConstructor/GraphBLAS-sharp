@@ -204,7 +204,7 @@ let config = {
         arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
         startSize = 0
         maxTest = 10
-        endSize = 1000000
+        endSize = 10000
 }
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types

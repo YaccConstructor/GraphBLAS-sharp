@@ -351,7 +351,8 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
         let createUnion =
             opencl {
-                let! prefixSumArray, _ = Backend.Common.Scan.run auxiliaryArray totalSum
+                do! Backend.Common.PrefixSum.run auxiliaryArray totalSum
+                let prefixSumArray = auxiliaryArray
                 let binder kernelP =
                     let ndRange = _1D(Utils.workSize auxiliaryArray.Length, workGroupSize)
                     kernelP

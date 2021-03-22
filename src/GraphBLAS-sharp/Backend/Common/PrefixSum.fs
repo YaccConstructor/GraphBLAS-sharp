@@ -3,31 +3,25 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Utils
 
 // functions in mudule could be named run\get\if\it\t
 // like mentioned here https://www.reddit.com/r/fsharp/comments/5kvsyk/modules_or_namespaces/dbt0zf7?utm_source=share&utm_medium=web2x&context=3
-module internal Scan =
-    // Changes inputArray
-    let run (inputArray: int[]) (totalSum: int[]) =
-        let outputArray = inputArray
-        let outputArrayLength = outputArray.Length
-        let workGroupSize = workGroupSize
+module internal PrefixSum =
+    let scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) : OpenCLEvaluation<unit> = opencl {
+        let workGroupSize = Utils.workGroupSize
 
         let scan =
             <@
                 fun (ndRange: _1D)
                     (resultBuffer: int[])
-                    (resultLength: int)
                     (verticesBuffer: int[])
-                    (verticesLength: int)
                     (totalSumBuffer: int[]) ->
 
                     let resultLocalBuffer = localArray<int> workGroupSize
                     let i = ndRange.GlobalID0
                     let localID = ndRange.LocalID0
 
-                    if i < resultLength then resultLocalBuffer.[localID] <- resultBuffer.[i] else resultLocalBuffer.[localID] <- 0
+                    if i < inputArrayLength then resultLocalBuffer.[localID] <- resultBuffer.[i] else resultLocalBuffer.[localID] <- 0
 
                     let mutable step = 2
                     while step <= workGroupSize do
@@ -56,71 +50,63 @@ module internal Scan =
                         step <- step >>> 1
                     barrier ()
 
-                    if i < resultLength then resultBuffer.[i] <- resultLocalBuffer.[localID]
+                    if i < inputArrayLength then resultBuffer.[i] <- resultLocalBuffer.[localID]
             @>
 
-        let scan array length vertices verticesLength =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(workSize length, workGroupSize)
-                    kernelP
-                        ndRange
-                        array
-                        length
-                        vertices
-                        verticesLength
-                        totalSum
-                do! RunCommand scan binder
-            }
+        do! RunCommand scan <| fun kernelPrepare ->
+            let ndRange = _1D(Utils.workSize inputArrayLength, workGroupSize)
+            kernelPrepare
+                ndRange
+                inputArray
+                vertices
+                totalSum
+    }
+
+    let update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) : OpenCLEvaluation<unit> = opencl {
+        let workGroupSize = Utils.workGroupSize
 
         let update =
             <@
                 fun (ndRange: _1D)
                     (resultBuffer: int[])
-                    (resultLength: int)
-                    (verticesBuffer: int[])
-                    (bunchLength: int) ->
+                    (verticesBuffer: int[]) ->
 
                     let i = ndRange.GlobalID0 + bunchLength
-                    if i < resultLength then
+                    if i < inputArrayLength then
                         resultBuffer.[i] <- resultBuffer.[i] + verticesBuffer.[i / bunchLength]
             @>
 
-        let update vertices depth =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(workSize outputArrayLength - depth, workGroupSize)
-                    kernelP
-                        ndRange
-                        outputArray
-                        outputArrayLength
-                        vertices
-                        depth
-                do! RunCommand update binder
-            }
+        do! RunCommand update <| fun kernelPrepare ->
+            let ndRange = _1D(Utils.workSize inputArrayLength - bunchLength, workGroupSize)
+            kernelPrepare
+                ndRange
+                inputArray
+                vertices
+    }
 
-        let firstVertices = Array.zeroCreate <| (outputArrayLength - 1) / workGroupSize + 1
+    // Changes received arrays
+    let run (inputArray: int[]) (totalSum: int[]) = opencl {
+        let workGroupSize = Utils.workGroupSize
+
+        let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
         let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
         let mutable verticesArrays = firstVertices, secondVertices
         let swap (a, b) = (b, a)
 
-        opencl {
-            let mutable verticesLength = (outputArrayLength - 1) / workGroupSize + 1
-            let mutable bunchLength = workGroupSize
+        let mutable verticesLength = (inputArray.Length - 1) / workGroupSize + 1
+        let mutable bunchLength = workGroupSize
 
-            do! scan outputArray outputArrayLength <| fst verticesArrays <| verticesLength
-            while verticesLength > 1 do
-                let fstVertices = fst verticesArrays
-                let sndVertices = snd verticesArrays
-                do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1)
-                do! update fstVertices bunchLength
+        do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
+        while verticesLength > 1 do
+            let fstVertices = fst verticesArrays
+            let sndVertices = snd verticesArrays
+            do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1) totalSum
+            do! update inputArray inputArray.Length fstVertices bunchLength
 
-                bunchLength <- bunchLength * workGroupSize
-                verticesArrays <- swap verticesArrays
-                verticesLength <- (verticesLength - 1) / workGroupSize + 1
-
-            return outputArray, totalSum
-        }
+            bunchLength <- bunchLength * workGroupSize
+            verticesArrays <- swap verticesArrays
+            verticesLength <- (verticesLength - 1) / workGroupSize + 1
+    }
 
     // let rec v1 (inputArray: int[]) =
     //     let outputArray = Array.zeroCreate inputArray.Length

@@ -24,14 +24,16 @@ let main argv =
     let mutable oclContext = OpenCLEvaluationContext("Intel*", DeviceType.Gpu)
     // let mutable oclContext = OpenCLEvaluationContext("NVIDIA*")
 
-    let leftMatrix = COOMatrix(100, 100, [|0;1;2;3;4;7|], [|1;7;5;6;0;1|], [|1.;2.;-4.;4.;5.;6.|])
-    let rightMatrix = COOMatrix(100, 100, [|0;0;1;2;3;4;7|], [|1;5;4;5;7;0;1|], [|1.;2.;-4.;4.;5.;6.;7.|])
-    // let leftMatrix = COOMatrix(100, 100, [||], [||], [||])
-    // let rightMatrix = COOMatrix(100, 100, [||], [||], [||])
+    // let leftMatrix = COOMatrix(100, 100, [|0;1;2;3;4;7|], [|1;7;5;6;0;1|], [|1.;2.;-4.;4.;5.;6.|])
+    // let rightMatrix = COOMatrix(100, 100, [|0;0;1;2;3;4;7|], [|1;5;4;5;7;0;1|], [|1.;2.;-4.;4.;5.;6.;7.|])
+    // let leftMatrix = COOMatrix(100, 100, [|0;0|], [|0;1|], [|true;true|])
+    // let rightMatrix = COOMatrix(100, 100, [|0;1|], [|0;0|], [|true;true|])
+    let leftMatrix = COOMatrix(300, 300, Array.init 500 (fun i -> 10 + i / 300), Array.init 500 (fun i -> i % 300), Array.create 500 true)
+    let rightMatrix = COOMatrix(300, 300, Array.init 600 (fun i -> i / 300), Array.init 600 (fun i -> i % 300), Array.create 600 true)
 
     let workflow =
         opencl {
-            let! resultMatrix = leftMatrix.EWiseAdd rightMatrix None FloatSemiring.addMult
+            let! resultMatrix = leftMatrix.EWiseAdd rightMatrix None BooleanSemiring.anyAll//FloatSemiring.addMult
             let! tuples = resultMatrix.GetTuples()
             return! tuples.ToHost()
             //return! resultMatrix.ToHost()
@@ -41,9 +43,12 @@ let main argv =
     // printfn "%O" resultMatrix
     let res = oclContext.RunSync workflow
 
-    printfn "%A" res.RowIndices
-    printfn "%A" res.ColumnIndices
-    printfn "%A" res.Values
+    for i in 0 .. res.Values.Length - 1 do
+        printf "(%A, %A, %A); " res.RowIndices.[i] res.ColumnIndices.[i] res.Values.[i]
+
+    // printfn "%A" res.RowIndices
+    // printfn "%A" res.ColumnIndices
+    // printfn "%A" res.Values
 
 
 

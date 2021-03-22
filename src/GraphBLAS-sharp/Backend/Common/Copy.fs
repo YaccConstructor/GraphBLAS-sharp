@@ -2,12 +2,10 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Utils
 
 module internal Copy =
-    let runNotEmpty (inputArray: 'a[]) =
-        let outputArray = Array.zeroCreate inputArray.Length
+    let runNotEmpty (inputArray: 'a[]) = opencl {
         let inputArrayLength = inputArray.Length
         let copy =
             <@
@@ -19,12 +17,13 @@ module internal Copy =
                     if i < inputArrayLength then
                         outputArrayBuffer.[i] <- inputArrayBuffer.[i]
             @>
-        let binder kernelP =
+
+        let outputArray = Array.zeroCreate inputArray.Length
+
+        do! RunCommand copy <| fun kernelPrepare ->
             let ndRange = _1D(workSize inputArray.Length, workGroupSize)
-            kernelP ndRange inputArray outputArray
-        opencl {
-            do! RunCommand copy binder
-            return outputArray
-        }
+            kernelPrepare ndRange inputArray outputArray
+        return outputArray
+    }
 
     let run (inputArray: 'a[]) = if inputArray.Length = 0 then opencl { return [||] } else runNotEmpty inputArray
