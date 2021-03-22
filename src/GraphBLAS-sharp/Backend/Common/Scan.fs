@@ -112,7 +112,7 @@ module internal Scan =
             while verticesLength > 1 do
                 let fstVertices = fst verticesArrays
                 let sndVertices = snd verticesArrays
-                do! scan fstVertices verticesLength sndVertices verticesLength
+                do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1)
                 do! update fstVertices bunchLength
 
                 bunchLength <- bunchLength * workGroupSize
