@@ -6,24 +6,24 @@ open GraphBLAS.FSharp
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-[<AutoOpen>]
 module BFS =
-    let levelBFS (matrix: Matrix<bool>) (source: int) : GraphblasEvaluation<Vector<int>> =
+    let level (matrix: Matrix<bool>) (source: int) = graphblas {
         let vertexCount = Matrix.rowCount matrix
-        let levels = Vector.ofArray <| (=) 0 <| Array.zeroCreate vertexCount
+        let levels = Vector.zeroCreate vertexCount 0
         let frontier = Vector.ofList vertexCount [source, true]
 
-        graphblas {
-            let mutable currentLevel = 1
-            while currentLevel < vertexCount do
-                let! frontierMask = Vector.mask frontier
-                do! Vector.fillSubVector frontierMask (Scalar currentLevel) levels
-                let! levelsComplemented = Vector.complemented levels
-                let! frontier = Vector.vxm AnyAll.bool levelsComplemented frontier matrix
-                currentLevel <- currentLevel + 1
+        let mutable currentLevel = 1
+        while currentLevel < vertexCount do
+            let! frontierMask = Vector.mask frontier
+            do! levels |> Vector.fillSubVector frontierMask (Scalar currentLevel)
 
-            return levels
-        }
+            let! levelsComplemented = Vector.complemented levels
+            let! frontier = (frontier, matrix) ||> Vector.vxmWithMask AnyAll.bool levelsComplemented
+
+            currentLevel <- currentLevel + 1
+
+        return levels
+    }
 
     // let parentBFS (matrix: Matrix<bool>) (source: int) : Vector<int> =
     //     let vertexCount = matrix.RowCount

@@ -38,9 +38,17 @@ module Vector =
     let init (size: int) (initializer: int -> 'a) : Vector<'a> =
         failwith "Not Implemented yet"
 
-    // обоснован ли этот метод или можно просто create x использовать
-    let zeroCreate (size: int) : Vector<'a> =
+    // Можно сделать явный метод makeSparse isZero, который бы делал плотные векторы разреженными
+    let create (size: int) (value: 'a) : Vector<'a> =
         failwith "Not Implemented yet"
+
+    // можно не указывать явный ноль, тк 'a -- структура, для которого есть unchecked.defaultof,
+    // а массивы с с помощью zeroCreate создать
+    let zeroCreate (size: int) (zero: 'a) : Vector<'a> =
+        failwith "Not Implemented yet"
+
+    // let makeSparse (isZero: 'a -> bool) (vector: Vector<'a>) : Vector<'a> =
+    //     failwith "Not Implemented yet"
 
     (*
         methods
@@ -52,29 +60,47 @@ module Vector =
     let resize (size: int) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let nnz (vector: Vector<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
     let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
-    // возвращается option, чтобы потом можно было бы сразу передавать её в методы (тк они option принимают)
-    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D option> = failwith "Not Implemented yet"
-    let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D option> = failwith "Not Implemented yet"
+    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
+    let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
     let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*
         assignment, extraction and filling
     *)
 
-    // добавить функции, чтобы разделить поведение при наличии и отсутствии маски (assignSubVector и assignVector)
-    let extractSubVector (mask: Mask1D option) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let extractElement (idx: int) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
-    let assignSubVector (mask: Mask1D option) (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
-    let assignElement (idx: int) (source: Scalar<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
-    let fillSubVector (mask: Mask1D option) (filler: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    /// vec.[mask]
+    let extractSubVector (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+
+    /// vec.[idx]
+    let extractValue (idx: int) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+
+    /// t <- vec
+    let assignVector (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    /// t.[mask] <- vec
+    let assignSubVector (mask: Mask1D) (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    /// t.[idx] <- value
+    let assignValue (idx: int) (value: Scalar<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    /// vec.[*] <- value
+    let fillVector (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    /// vec.[mask] <- value
+    let fillSubVector (mask: Mask1D) (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*
         operations
     *)
 
-    let vxm (semiring: ISemiring<'a>) (mask: Mask1D option) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let eWiseAdd (semiring: ISemiring<'a>) (mask: Mask1D option) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let eWiseMult (semiring: ISemiring<'a>) (mask: Mask2D option) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let apply (mapper: UnaryOp<'a, 'b>) (mask: Mask1D option) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"
-    let prune (predicate: UnaryOp<'a, bool>) (mask: Mask1D option) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let eWiseMult (semiring: ISemiring<'a>) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let apply (mapper: UnaryOp<'a, 'b>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"
+    let prune (predicate: UnaryOp<'a, bool>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduce (monoid: IMonoid<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+
+    let vxmWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let eWiseAddWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"
+    let pruneWithMask (predicate: UnaryOp<'a, bool>) (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"

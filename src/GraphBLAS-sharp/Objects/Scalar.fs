@@ -1,5 +1,4 @@
 namespace GraphBLAS.FSharp
 
-type Scalar<'a when 'a : struct and 'a : equality> =
+type Scalar<'a> =
     | Scalar of 'a
-    static member op_Implicit (Scalar source) = source
