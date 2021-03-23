@@ -14,7 +14,7 @@ module TriangleCounting =
         let! convertedMatrix = lowerTriangular |> Matrix.apply (UnaryOp <@ bool2int @>)
         let! convertedTransposed = convertedMatrix |> Matrix.transpose
         let! lowerTriangularMask = lowerTriangular |> Matrix.mask
-        let! result = Matrix.mxmWithMask AddMult.int lowerTriangularMask convertedMatrix convertedTransposed
+        let! result = (convertedMatrix, convertedTransposed) ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
         let! (Scalar count) = result |> Matrix.reduce Add.int
         return count
     }

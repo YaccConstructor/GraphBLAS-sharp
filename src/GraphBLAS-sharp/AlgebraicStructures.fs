@@ -2,17 +2,11 @@ namespace GraphBLAS.FSharp
 
 open Microsoft.FSharp.Quotations
 
-type UnaryOp<'a, 'b> =
-    | UnaryOp of Expr<'a -> 'b>
+type UnaryOp<'a, 'b> = UnaryOp of Expr<'a -> 'b>
+type BinaryOp<'a, 'b, 'c> = BinaryOp of Expr<'a -> 'b -> 'c>
 
-type BinaryOp<'a, 'b, 'c> =
-    | BinaryOp of Expr<'a -> 'b -> 'c>
-
-type ClosedUnaryOp<'a> =
-    | ClosedUnaryOp of Expr<'a -> 'a>
-
-type ClosedBinaryOp<'a> =
-    | ClosedBinaryOp of Expr<'a -> 'a -> 'a>
+type ClosedUnaryOp<'a> = ClosedUnaryOp of Expr<'a -> 'a>
+type ClosedBinaryOp<'a> = ClosedBinaryOp of Expr<'a -> 'a -> 'a>
 
 // associative closed bin op (magma with associative)
 type ISemigroup<'a> =

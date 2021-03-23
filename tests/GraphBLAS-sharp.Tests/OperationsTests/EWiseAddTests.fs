@@ -3,16 +3,15 @@ module EWiseAdd
 open Expecto
 open FsCheck
 open GraphBLAS.FSharp
-open MathNet.Numerics
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Tests
-open System
 open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
 open BackendState
 open GraphBLAS.FSharp.Helpers
+
+let logger = Log.create "EWiseAddTests"
 
 type OperationCase =
     {
@@ -32,64 +31,97 @@ let testCases =
             MaskCase = unbox list.[1]
         }
 
-type PairOfSparseMatricesOfEqualSize =
+type PairOfSparseMatricesOfEqualSize() =
+    static let MaxSparcity = 100
+    static let SparsityGen = Gen.choose (0, MaxSparcity)
+    static let GenericSparseGen valueGenProvider =
+        gen {
+            let! sparsity = SparsityGen
+            logger.debug (
+                eventX "Sparcity is {sp} of {ms}"
+                >> setField "sp" sparsity
+                >> setField "ms" MaxSparcity
+            )
+
+            return! valueGenProvider sparsity
+        }
+
     static member IntType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<int>
-                Gen.constant 0
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<int>)
+                    (sparsity, Gen.constant 0)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member FloatType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-                Gen.constant 0.
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+             Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+                    (sparsity, Gen.constant 0.)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member SByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<sbyte>
-                Gen.constant 0y
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<sbyte>)
+                    (sparsity, Gen.constant 0y)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member ByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<byte>
-                Gen.constant 0uy
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<byte>)
+                    (sparsity, Gen.constant 0uy)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member Int16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<int16>
-                Gen.constant 0s
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<int16>)
+                    (sparsity, Gen.constant 0s)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member UInt16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<uint16>
-                Gen.constant 0us
-            ]
-        ) |> Arb.fromGen
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<uint16>)
+                    (sparsity, Gen.constant 0us)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
     static member BoolType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<bool>
-                Gen.constant false
-            ]
-        ) |> Arb.fromGen
-
-let logger = Log.create "eWiseAddTests"
+        fun sparsity ->
+            Generators.pairOfMatricesOfEqualSizeGenerator (
+                Gen.frequency [
+                    (MaxSparcity - sparsity, Arb.generate<bool>)
+                    (sparsity, Gen.constant false)
+                ]
+            )
+        |> GenericSparseGen
+        |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     (sum: 'a -> 'a -> 'a)
