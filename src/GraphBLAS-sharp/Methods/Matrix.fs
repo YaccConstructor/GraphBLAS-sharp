@@ -3,25 +3,6 @@ namespace GraphBLAS.FSharp
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend
 
-type MatrixTuples<'a> =
-    {
-        RowIndices: int[]
-        ColumnIndices: int[]
-        Values: 'a[]
-    }
-
-// ждём тайпклассов чтобы можно было вызывать synchronize для всех объектов,
-// для которых он реализован, не привязывая реализацию к классу (как стратегия)
-module MatrixTuples =
-    let synchronize (matrixTuples: MatrixTuples<'a>) =
-        opencl {
-            let! _ = ToHost matrixTuples.RowIndices
-            let! _ = ToHost matrixTuples.ColumnIndices
-            let! _ = ToHost matrixTuples.Values
-            return ()
-        }
-        |> EvalGB.fromCl
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Matrix =
 
@@ -54,7 +35,15 @@ module Matrix =
     let copy (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
-    let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> = failwith "Not Implemented yet"
+
+    let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> =
+        let matrixTuples =
+            match matrix with
+            | MatrixCOO coo -> COOMatrix.GetTuples.from coo
+            | _ -> failwith "Not Implemented"
+
+        graphblas { return! EvalGB.fromCl matrixTuples }
+
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
