@@ -12,6 +12,9 @@ and CSRMatrix<'a> =
         Values: 'a[]
     }
 
+    static member FromFile(pathToMatrix: string) : CSRMatrix<'a> =
+        failwith "Not Implemented yet"
+
 and COOMatrix<'a> =
     {
         RowCount: int
@@ -40,3 +43,10 @@ and COOMatrix<'a> =
             |> Array.unzip3
 
         COOMatrix.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
+
+type MatrixTuples<'a> =
+    {
+        RowIndices: int[]
+        ColumnIndices: int[]
+        Values: 'a[]
+    }

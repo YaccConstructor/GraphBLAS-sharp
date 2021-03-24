@@ -1,5 +1,7 @@
 namespace GraphBLAS.FSharp
 
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
 
@@ -85,3 +87,13 @@ module Vector =
     let eWiseAddWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"
     let pruneWithMask (predicate: UnaryOp<'a, bool>) (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module VectorTuples =
+    let synchronize (vectorTuples: VectorTuples<'a>) =
+        opencl {
+            let! _ = ToHost vectorTuples.Indices
+            let! _ = ToHost vectorTuples.Values
+            return ()
+        }
+        |> EvalGB.fromCl

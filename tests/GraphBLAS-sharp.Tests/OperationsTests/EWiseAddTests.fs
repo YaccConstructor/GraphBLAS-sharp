@@ -8,27 +8,30 @@ open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open BackendState
-open GraphBLAS.FSharp.Helpers
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 let logger = Log.create "EWiseAddTests"
 
 type OperationCase =
     {
+        ClContext: OpenCLEvaluationContext
         MatrixCase: MatrixBackendFormat
         MaskCase: MaskType
     }
 
 let testCases =
     [
-        Utils.listOfUnionCases<MatrixBackendFormat> |> List.map box
-        Utils.listOfUnionCases<MaskType> |> List.map box
+        Utils.avaliableContexts "*" |> Seq.map box
+        Utils.listOfUnionCases<MatrixBackendFormat> |> Seq.map box
+        Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
+    |> List.map List.ofSeq
     |> Utils.cartesian
     |> List.map ^fun list ->
         {
-            MatrixCase = unbox list.[0]
-            MaskCase = unbox list.[1]
+            ClContext = unbox list.[0]
+            MatrixCase = unbox list.[1]
+            MaskCase = unbox list.[2]
         }
 
 type PairOfSparseMatricesOfEqualSize() =
@@ -124,6 +127,7 @@ type PairOfSparseMatricesOfEqualSize() =
         |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
+    (oclContext: OpenCLEvaluationContext)
     (sum: 'a -> 'a -> 'a)
     (diff: 'a -> 'a -> 'a)
     (isZero: 'a -> bool)
@@ -182,7 +186,8 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
                 do! MatrixTuples.synchronize tuples
                 return tuples
             }
-            |> EvalGB.runWithClContext oclContext
+            |> EvalGB.withClContext oclContext
+            |> EvalGB.runSync
 
         finally
             oclContext.Provider.CloseAllBuffers()
@@ -226,33 +231,35 @@ let config = {
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
 let testFixtures case = [
-    case
-    |> checkCorrectnessGeneric<int> (+) (-) ((=) 0) AddMult.int
-    |> testPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
+    let getTestName datatype = sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.MaskCase
 
     case
-    |> checkCorrectnessGeneric<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
-    |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<int> case.ClContext (+) (-) ((=) 0) AddMult.int
+    |> testPropertyWithConfig config (getTestName "int")
 
     case
-    |> checkCorrectnessGeneric<sbyte> (+) (-) ((=) 0y) AddMult.sbyte
-    |> testPropertyWithConfig config (sprintf "Correctness on sbyte, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<float> case.ClContext (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
+    |> testPropertyWithConfig config (getTestName "float")
 
     case
-    |> checkCorrectnessGeneric<byte> (+) (-) ((=) 0uy) AddMult.byte
-    |> testPropertyWithConfig config (sprintf "Correctness on byte, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<sbyte> case.ClContext (+) (-) ((=) 0y) AddMult.sbyte
+    |> testPropertyWithConfig config (getTestName "sbyte")
 
     case
-    |> checkCorrectnessGeneric<int16> (+) (-) ((=) 0s) AddMult.int16
-    |> testPropertyWithConfig config (sprintf "Correctness on int16, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<byte> case.ClContext (+) (-) ((=) 0uy) AddMult.byte
+    |> testPropertyWithConfig config (getTestName "byte")
 
     case
-    |> checkCorrectnessGeneric<uint16> (+) (-) ((=) 0us) AddMult.uint16
-    |> testPropertyWithConfig config (sprintf "Correctness on uint16, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<int16> case.ClContext (+) (-) ((=) 0s) AddMult.int16
+    |> testPropertyWithConfig config (getTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<bool> (||) (<>) not AnyAll.bool
-    |> testPropertyWithConfig config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<uint16> case.ClContext (+) (-) ((=) 0us) AddMult.uint16
+    |> testPropertyWithConfig config (getTestName "uint16")
+
+    case
+    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> testPropertyWithConfig config (getTestName "bool")
 ]
 
 let tests =

@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open GraphBLAS.FSharp.Helpers
 
 type GraphblasContext =
     {
@@ -11,6 +12,10 @@ type GraphblasContext =
 type GraphblasEvaluation<'a> = EvalGB of (GraphblasContext -> 'a)
 
 module EvalGB =
+    let defaultEnv = {
+        ClContext = OpenCLEvaluationContext()
+    }
+
     let private runCl env (OpenCLEvaluation f) = f env
 
     let run env (EvalGB action) = action env
@@ -24,15 +29,25 @@ module EvalGB =
             let x = run env reader
             run env (f x)
 
+    let (>>=) x f = bind f x
+
     let return' x =
         EvalGB <| fun _ -> x
+
+    let returnFrom x = x
 
     let fromCl clEvaluation =
         EvalGB <| fun env ->
             runCl env.ClContext clEvaluation
 
-    let runWithClContext clContext (EvalGB action) =
-        action { ClContext = clContext }
+    let withClContext clContext (EvalGB action) =
+        ask >>= fun env ->
+        return' ^ action { env with ClContext = clContext }
+
+    let runSync (EvalGB action) =
+        let result = action defaultEnv
+        defaultEnv.ClContext.CommandQueue.Finish() |> ignore
+        result
 
 type GraphblasBuilder() =
     member this.Bind(x, f) = EvalGB.bind f x

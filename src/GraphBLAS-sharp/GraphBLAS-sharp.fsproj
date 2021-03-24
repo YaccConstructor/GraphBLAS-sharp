@@ -14,15 +14,14 @@
     <Compile Include="AlgebraicStructures.fs" />
     <Compile Include="GraphblasEvaluation.fs" />
     <Compile Include="Objects/Matrix.fs" />
-    <Compile Include="Objects\MatrixTuples.fs" />
     <Compile Include="Objects/Vector.fs" />
-    <Compile Include="Objects\VectorTuples.fs" />
     <Compile Include="Objects/Scalar.fs" />
     <Compile Include="Objects/Masks.fs" />
     <Compile Include="Backend/Common/Utils.fs" />
     <Compile Include="Backend/Common/Scan.fs" />
     <Compile Include="Backend\COOMatrix\GetTuples.fs" />
     <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
+    <Compile Include="IO/MtxReader.fs" />
     <Compile Include="Methods/Matrix.fs" />
     <Compile Include="Methods/Vector.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />

@@ -47,6 +47,7 @@ module Matrix =
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+    // let convert<'a when 'a :> Matrix<'a>>() = ()
 
     (*
         assignment, extraction and filling
@@ -165,3 +166,16 @@ module Matrix =
     let reduceRowsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduceColsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let kroneckerWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+
+// ждём тайпклассов чтобы можно было вызывать synchronize для всех объектов,
+// для которых он реализован, не привязывая реализацию к классу (как стратегия)
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module MatrixTuples =
+    let synchronize (matrixTuples: MatrixTuples<'a>) =
+        opencl {
+            let! _ = ToHost matrixTuples.RowIndices
+            let! _ = ToHost matrixTuples.ColumnIndices
+            let! _ = ToHost matrixTuples.Values
+            return ()
+        }
+        |> EvalGB.fromCl

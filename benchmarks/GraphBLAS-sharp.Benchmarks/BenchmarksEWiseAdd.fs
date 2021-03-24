@@ -97,8 +97,8 @@ type EWiseAddBenchmarks4Float32() =
     let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
     let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
 
-    member val FirstMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
-    member val SecondMatrix = Unchecked.defaultof<COOFormat<float32>> with get, set
+    member val FirstMatrix = Unchecked.defaultof<COOMatrix<float32>> with get, set
+    member val SecondMatrix = Unchecked.defaultof<COOMatrix<float32>> with get, set
 
     [<GlobalSetup>]
     member this.FormInputData() =
@@ -130,13 +130,13 @@ type EWiseAddBenchmarks4Float32() =
         Array.blit this.FirstMatrix.Values 0 leftVals 0 this.FirstMatrix.Values.Length
 
         leftCOO <-
-            COOMatrix(
+            COOMatrix.FromTuples(
                 this.FirstMatrix.RowCount,
                 this.FirstMatrix.ColumnCount,
                 leftRows,
                 leftCols,
                 leftVals
-            ) :> Matrix<float32>
+            ) |> MatrixCOO
 
         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
@@ -146,19 +146,19 @@ type EWiseAddBenchmarks4Float32() =
         Array.blit this.SecondMatrix.Values 0 rightVals 0 this.SecondMatrix.Values.Length
 
         rightCOO <-
-            COOMatrix(
+            COOMatrix.FromTuples(
                 this.SecondMatrix.RowCount,
                 this.SecondMatrix.ColumnCount,
                 rightRows,
                 rightCols,
                 rightVals
-            ) :> Matrix<float32>
+            ) |> MatrixCOO
 
     [<Benchmark>]
     member this.EWiseAdditionCOOFloat32() =
         let (ClContext context) = this.OclContext
-        leftCOO.EWiseAdd rightCOO None AddMult.float32
-        |> context.RunSync
+        (leftCOO, rightCOO) ||> Matrix.eWiseAdd AddMult.float32
+        |> EvalGB.runWithClContext context
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Float32.txt"
@@ -176,8 +176,8 @@ type EWiseAddBenchmarks4Bool() =
     let mutable leftCOO = Unchecked.defaultof<Matrix<bool>>
     let mutable rightCOO = Unchecked.defaultof<Matrix<bool>>
 
-    member val FirstMatrix = Unchecked.defaultof<COOFormat<bool>> with get, set
-    member val SecondMatrix = Unchecked.defaultof<COOFormat<bool>> with get, set
+    member val FirstMatrix = Unchecked.defaultof<COOMatrix<bool>> with get, set
+    member val SecondMatrix = Unchecked.defaultof<COOMatrix<bool>> with get, set
 
     [<GlobalSetup>]
     member this.FormInputData() =
@@ -201,13 +201,13 @@ type EWiseAddBenchmarks4Bool() =
         Array.blit this.FirstMatrix.Columns 0 leftCols 0 this.FirstMatrix.Columns.Length
 
         leftCOO <-
-            COOMatrix(
+            COOMatrix.FromTuples(
                 this.FirstMatrix.RowCount,
                 this.FirstMatrix.ColumnCount,
                 leftRows,
                 leftCols,
                 leftVals
-            ) :> Matrix<bool>
+            ) |> MatrixCOO
 
         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
@@ -216,19 +216,19 @@ type EWiseAddBenchmarks4Bool() =
         Array.blit this.SecondMatrix.Columns 0 rightCols 0 this.SecondMatrix.Columns.Length
 
         rightCOO <-
-            COOMatrix(
+            COOMatrix.FromTuples(
                 this.SecondMatrix.RowCount,
                 this.SecondMatrix.ColumnCount,
                 rightRows,
                 rightCols,
                 rightVals
-            ) :> Matrix<bool>
+            ) |> MatrixCOO
 
     [<Benchmark>]
     member this.EWiseAdditionCOOBool() =
         let (ClContext context) = this.OclContext
-        leftCOO.EWiseAdd rightCOO None AnyAll.bool
-        |> context.RunSync
+        (leftCOO, rightCOO) ||> Matrix.eWiseAdd AnyAll.bool
+        |> EvalGB.runWithClContext context
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Bool.txt"

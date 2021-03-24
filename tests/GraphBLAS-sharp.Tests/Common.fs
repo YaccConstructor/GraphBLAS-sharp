@@ -18,10 +18,6 @@ type MaskType =
     | Complemented
     | NoMask
 
-module BackendState =
-    let mutable oclContext = OpenCLEvaluationContext()
-    let mutable matrixBackendFormat = CSR
-
 module Generators =
     let dimension2DGenerator =
         Gen.sized <| fun size ->

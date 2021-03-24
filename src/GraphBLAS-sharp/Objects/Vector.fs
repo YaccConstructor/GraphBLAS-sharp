@@ -15,3 +15,9 @@ and ArrayVector<'a> =
     {
         Values: 'a[]
     }
+
+type VectorTuples<'a> =
+    {
+        Indices: int[]
+        Values: 'a[]
+    }
