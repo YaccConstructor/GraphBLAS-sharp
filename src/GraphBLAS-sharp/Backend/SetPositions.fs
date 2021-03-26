@@ -6,7 +6,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp.Backend.Common
 
 module internal SetPositions =
-    let runM (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (positions: int[]) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
+    let runForMatrix (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (positions: int[]) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
         let prefixSumArrayLength = positions.Length
 
         let setPositions =
@@ -55,7 +55,7 @@ module internal SetPositions =
         return resultRows, resultColumns, resultValues
     }
 
-    let runV (allIndices: int[]) (allValues: 'a[]) (positions: int[]) : OpenCLEvaluation<int[] * 'a[]> = opencl {
+    let runForVector (allIndices: int[]) (allValues: 'a[]) (positions: int[]) : OpenCLEvaluation<int[] * 'a[]> = opencl {
         let prefixSumArrayLength = positions.Length
 
         let setPositions =

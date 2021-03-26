@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module internal PreparePositions =
-    let runM (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) : OpenCLEvaluation<int[]> = opencl {
+    let runForMatrix (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) : OpenCLEvaluation<int[]> = opencl {
         let length = allValues.Length
 
         let preparePositions =
@@ -45,7 +45,7 @@ module internal PreparePositions =
         return rawPositions
     }
 
-    let runV (allIndices: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) : OpenCLEvaluation<int[]> = opencl {
+    let runForVector (allIndices: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) : OpenCLEvaluation<int[]> = opencl {
         let length = allValues.Length
 
         let preparePositions =

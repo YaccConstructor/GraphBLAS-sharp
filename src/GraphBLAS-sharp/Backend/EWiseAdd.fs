@@ -7,12 +7,12 @@ open GraphBLAS.FSharp.Backend.Common
 
 module internal EWiseAdd =
     let cooNotEmpty (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) (semiring: Semiring<'a>) : OpenCLEvaluation<COOFormat<'a>> = opencl {
-        let! allRows, allColumns, allValues = Merge.runM matrixLeft matrixRight mask
+        let! allRows, allColumns, allValues = Merge.runForMatrix matrixLeft matrixRight mask
 
         let (BinaryOp append) = semiring.PlusMonoid.Append
-        let! rawPositions = PreparePositions.runM allRows allColumns allValues append
+        let! rawPositions = PreparePositions.runForMatrix allRows allColumns allValues append
 
-        let! resultRows, resultColumns, resultValues = SetPositions.runM allRows allColumns allValues rawPositions
+        let! resultRows, resultColumns, resultValues = SetPositions.runForMatrix allRows allColumns allValues rawPositions
 
         return {
             RowCount = matrixLeft.RowCount
@@ -55,12 +55,12 @@ module internal EWiseAdd =
         else cooNotEmpty matrixLeft matrixRight mask semiring
 
     let sparseNotEmpty (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: Semiring<'a>) : OpenCLEvaluation<int[] * 'a[]> = opencl {
-        let! allIndices, allValues = Merge.runV leftIndices leftValues rightIndices rightValues mask
+        let! allIndices, allValues = Merge.runForVector leftIndices leftValues rightIndices rightValues mask
 
         let (BinaryOp append) = semiring.PlusMonoid.Append
-        let! rawPositions = PreparePositions.runV allIndices allValues append
+        let! rawPositions = PreparePositions.runForVector allIndices allValues append
 
-        return! SetPositions.runV allIndices allValues rawPositions
+        return! SetPositions.runForVector allIndices allValues rawPositions
     }
 
     let sparse (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: Semiring<'a>) : OpenCLEvaluation<int[] * 'a[]> =

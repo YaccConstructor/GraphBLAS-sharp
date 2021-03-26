@@ -7,7 +7,7 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 module internal Merge =
-    let runM (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
+    let runForMatrix (matrixLeft: COOFormat<'a>) (matrixRight: COOFormat<'a>) (mask: Mask2D option) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
         let workGroupSize = Utils.workGroupSize
         let firstSide = matrixLeft.Values.Length
         let secondSide = matrixRight.Values.Length
@@ -126,7 +126,7 @@ module internal Merge =
         return allRows, allColumns, allValues
     }
 
-    let runV (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) : OpenCLEvaluation<int[] * 'a[]> = opencl {
+    let runForVector (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) : OpenCLEvaluation<int[] * 'a[]> = opencl {
         let workGroupSize = Utils.workGroupSize
         let firstSide = leftValues.Length
         let secondSide = rightValues.Length
