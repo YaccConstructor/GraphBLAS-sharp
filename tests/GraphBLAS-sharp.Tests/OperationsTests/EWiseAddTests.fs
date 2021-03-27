@@ -9,6 +9,7 @@ open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open OpenCL.Net
 
 let logger = Log.create "EWiseAddTests"
 
@@ -21,7 +22,7 @@ type OperationCase =
 
 let testCases =
     [
-        Utils.avaliableContexts "*" |> Seq.map box
+        Utils.avaliableContexts "" |> Seq.map box
         Utils.listOfUnionCases<MatrixType> |> Seq.map box
         Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
@@ -224,9 +225,9 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
 let config = {
     FsCheckConfig.defaultConfig with
         arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
-        maxTest = 50
+        maxTest = 10
         startSize = 0
-        endSize = 1_000_000
+        // endSize = 1_000_000
 }
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
@@ -260,10 +261,22 @@ let testFixtures case = [
     case
     |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
     |> testPropertyWithConfig config (getTestName "bool")
+
+    case
+    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> testPropertyWithConfigStdGen (355610228, 296870493) config "Correctness on both empty matrices"
 ]
 
 let tests =
     testCases
     |> List.filter (fun case -> case.MatrixCase = COO && case.MaskCase = NoMask)
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.Device
+            // let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+            let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
+            deviceType = DeviceType.Cpu
+        )
     |> List.collect testFixtures
     |> testList "EWiseAdd tests"

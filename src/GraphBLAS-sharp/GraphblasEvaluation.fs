@@ -76,6 +76,14 @@ type GraphblasBuilder() =
             for elem in sequence do
                 EvalGB.run env (f elem)
 
+    member this.TryWith(tryBlock, handler) =
+        EvalGB <| fun env ->
+            try
+                EvalGB.run env tryBlock
+            with
+            | e ->
+                EvalGB.run env (handler e)
+
 [<AutoOpen>]
 module GraphblasBuilder =
     let graphblas = GraphblasBuilder()
