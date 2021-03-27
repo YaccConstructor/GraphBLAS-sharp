@@ -10,9 +10,9 @@ type MatrixTuples<'a when 'a : struct and 'a : equality> = {
 }
 with
     member this.ToHost() = opencl {
-        let! rows = ToHost this.RowIndices
-        let! cols = ToHost this.ColumnIndices
-        let! vals = ToHost this.Values
+        let! rows = if this.RowIndices.Length = 0 then opencl { return [||] } else ToHost this.RowIndices
+        let! cols = if this.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost this.ColumnIndices
+        let! vals = if this.Values.Length = 0 then opencl { return [||] } else ToHost this.Values
 
         return {
             RowIndices = rows

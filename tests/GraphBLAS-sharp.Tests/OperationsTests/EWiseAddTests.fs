@@ -216,9 +216,9 @@ let testFixtures case = [
     |> checkCorrectnessGeneric<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
     |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
 
-    case
-    |> checkCorrectnessGeneric<sbyte> (+) (-) ((=) 0y) AddMult.sbyte
-    |> testPropertyWithConfig config (sprintf "Correctness on sbyte, %A, %A" case.MatrixCase case.MaskCase)
+    // case
+    // |> checkCorrectnessGeneric<sbyte> (+) (-) ((=) 0y) AddMult.sbyte
+    // |> testPropertyWithConfig config (sprintf "Correctness on sbyte, %A, %A" case.MatrixCase case.MaskCase)
 
     case
     |> checkCorrectnessGeneric<byte> (+) (-) ((=) 0uy) AddMult.byte

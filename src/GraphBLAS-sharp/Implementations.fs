@@ -81,9 +81,9 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
     override this.ToString() =
         [
             sprintf "COO Matrix %ix%i \n" cooFormat.RowCount cooFormat.ColumnCount
-            sprintf "RowIndices: %A \n" cooFormat.Rows
+            sprintf "RowIndices:    %A \n" cooFormat.Rows
             sprintf "ColumnIndices: %A \n" cooFormat.Columns
-            sprintf "Values: %A \n" cooFormat.Values
+            sprintf "Values:        %A \n" cooFormat.Values
         ]
         |> String.concat ""
 
@@ -157,7 +157,7 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
         match matrix with
         | :? COOMatrix<'a> as coo ->
             opencl {
-                let! cooFormat = EWiseAdd.coo cooFormat coo.Storage mask semiring
+                let! cooFormat = EWiseAdd.coo this.Storage coo.Storage mask semiring
                 return upcast COOMatrix(cooFormat)
             }
         | _ -> failwith "Not Implemented"
@@ -174,7 +174,18 @@ and COOMatrix<'a when 'a : struct and 'a : equality>(cooFormat: COOFormat<'a>) =
 and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[], values: 'a[]) =
     inherit Vector<'a>(size)
 
-    let mutable indices, values = indices, values
+    let mutable indices = indices
+    let mutable values = values
+
+    override this.ToString() =
+        [
+            sprintf "Sparse Vector\n"
+            sprintf "Size: %i\n" this.Size
+            sprintf "Indices: %A \n" this.Indices
+            sprintf "Values:  %A \n" this.Values
+        ]
+        |> String.concat ""
+
     member this.Values with get() = values
     member this.Indices with get() = indices
     member this.Elements with get() = (indices, values) ||> Array.zip
@@ -209,169 +220,6 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
 
     override this.Vxm (matrix: Matrix<'a>) (mask: Mask1D option) (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> = failwith "Not Implemented"
 
-    member internal this.EWiseAddSparse
-        (vector: SparseVector<'a>)
-        (mask: Mask1D option)
-        (semiring: Semiring<'a>) : OpenCLEvaluation<Vector<'a>> =
-
-        let (BinaryOp append) = semiring.PlusMonoid.Append
-        let zero = semiring.PlusMonoid.Zero
-
-        //It is useful to consider that the first array is longer than the second one
-        let firstIndices, firstValues, secondIndices, secondValues, plus =
-            if this.Indices.Length > vector.Indices.Length then
-                this.Indices, this.Values, vector.Indices, vector.Values, append
-            else
-                vector.Indices, vector.Values, this.Indices, this.Values, <@ fun x y -> (%append) y x @>
-
-        let filterThroughMask =
-            opencl {
-                //TODO
-                ()
-            }
-
-        let allIndices = Array.zeroCreate <| firstIndices.Length + secondIndices.Length
-        let allValues = Array.create (firstValues.Length + secondValues.Length) zero
-
-        let longSide = firstIndices.Length
-        let shortSide = secondIndices.Length
-
-        let allIndicesLength = allIndices.Length
-
-        let createSortedConcatenation =
-            <@
-                fun (ndRange: _1D)
-                    (firstIndicesBuffer: int[])
-                    (firstValuesBuffer: 'a[])
-                    (secondIndicesBuffer: int[])
-                    (secondValuesBuffer: 'a[])
-                    (allIndicesBuffer: int[])
-                    (allValuesBuffer: 'a[]) ->
-
-                    let i = ndRange.GlobalID0
-                    if i < allIndicesLength then
-                        let f n = if 0 > n + 1 - shortSide then 0 else n + 1 - shortSide
-                        let mutable leftEdge = f i
-
-                        let g n = if n > longSide - 1 then longSide - 1 else n
-                        let mutable rightEdge = g i
-
-                        while leftEdge <= rightEdge do
-                            let middleIdx = (leftEdge + rightEdge) / 2
-                            if firstIndicesBuffer.[middleIdx] < secondIndicesBuffer.[i - middleIdx] then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
-
-                        let boundaryX, boundaryY = rightEdge, i - leftEdge
-
-                        if boundaryX < 0 then
-                            allIndicesBuffer.[i] <- secondIndicesBuffer.[boundaryY]
-                            allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                        elif boundaryY < 0 then
-                            allIndicesBuffer.[i] <- firstIndicesBuffer.[boundaryX]
-                            allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
-                        else
-                            let firstIndex = firstIndicesBuffer.[boundaryX]
-                            let secondIndex = secondIndicesBuffer.[boundaryY]
-                            if firstIndex < secondIndex then
-                                allIndicesBuffer.[i] <- secondIndex
-                                allValuesBuffer.[i] <- secondValuesBuffer.[boundaryY]
-                            else
-                                allIndicesBuffer.[i] <- firstIndex
-                                allValuesBuffer.[i] <- firstValuesBuffer.[boundaryX]
-            @>
-
-        let createSortedConcatenation =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(Utils.workSize allIndices.Length, Utils.workGroupSize)
-                    kernelP
-                        ndRange
-                        firstIndices
-                        firstValues
-                        secondIndices
-                        secondValues
-                        allIndices
-                        allValues
-                do! RunCommand createSortedConcatenation binder
-            }
-
-        let auxiliaryArray = Array.create allIndices.Length 1
-
-        let fillAuxiliaryArray =
-            <@
-                fun (ndRange: _1D)
-                    (allIndicesBuffer: int[])
-                    (allValuesBuffer: 'a[])
-                    (auxiliaryArrayBuffer: int[]) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i + 1 < allIndicesLength && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
-                        auxiliaryArrayBuffer.[i + 1] <- 0
-                        let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-                        if localResultBuffer = zero then auxiliaryArrayBuffer.[i] <- 0 else allValuesBuffer.[i] <- localResultBuffer
-            @>
-
-        let fillAuxiliaryArray =
-            opencl {
-                let binder kernelP =
-                    let ndRange = _1D(Utils.workSize (allIndices.Length - 1), Utils.workGroupSize)
-                    kernelP
-                        ndRange
-                        allIndices
-                        allValues
-                        auxiliaryArray
-                do! RunCommand fillAuxiliaryArray binder
-            }
-
-        let auxiliaryArrayLength = auxiliaryArray.Length
-
-        let createUnion =
-            <@
-                fun (ndRange: _1D)
-                    (allIndicesBuffer: int[])
-                    (allValuesBuffer: 'a[])
-                    (auxiliaryArrayBuffer: int[])
-                    (prefixSumArrayBuffer: int[])
-                    (resultIndicesBuffer: int[])
-                    (resultValuesBuffer: 'a[]) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < auxiliaryArrayLength && auxiliaryArrayBuffer.[i] = 1 then
-                        let index = prefixSumArrayBuffer.[i] - 1
-
-                        resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
-                        resultValuesBuffer.[index] <- allValuesBuffer.[i]
-            @>
-
-        let resultIndices = Array.zeroCreate allIndices.Length
-        let resultValues = Array.create allValues.Length zero
-
-        let createUnion =
-            opencl {
-                let! prefixSumArray = Scan.v2 auxiliaryArray
-                let binder kernelP =
-                    let ndRange = _1D(Utils.workSize auxiliaryArray.Length, Utils.workGroupSize)
-                    kernelP
-                        ndRange
-                        allIndices
-                        allValues
-                        auxiliaryArray
-                        prefixSumArray
-                        resultIndices
-                        resultValues
-                do! RunCommand createUnion binder
-            }
-
-        opencl {
-            do! createSortedConcatenation
-            do! filterThroughMask
-            do! fillAuxiliaryArray
-            do! createUnion
-
-            return upcast SparseVector<'a>(this.Size, resultIndices, resultValues)
-        }
-
     override this.EWiseAdd
         (vector: Vector<'a>)
         (mask: Mask1D option)
@@ -393,7 +241,11 @@ and SparseVector<'a when 'a : struct and 'a : equality>(size: int, indices: int[
         //     | _ -> Mask1D(Array.empty, this.Size, true) // Empty complemented mask is equal to none
 
         match vector with
-        | :? SparseVector<'a> -> this.EWiseAddSparse (downcast vector) mask semiring
+        | :? SparseVector<'a> as sparse ->
+            opencl {
+                let! resultIndices, resultValues = EWiseAdd.sparse this.Indices this.Values sparse.Indices sparse.Values mask semiring
+                return upcast SparseVector(this.Size, resultIndices, resultValues)
+            }
         | _ -> failwith "Not Implemented"
 
     override this.EWiseMult a b c = failwith "Not Implemented"
