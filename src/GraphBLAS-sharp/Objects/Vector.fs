@@ -1,5 +1,9 @@
 namespace GraphBLAS.FSharp
 
+type VectorType =
+    | COO
+    | Dense
+
 type Vector<'a> =
     | VectorCOO of COOVector<'a>
     | VectorDense of ArrayVector<'a>

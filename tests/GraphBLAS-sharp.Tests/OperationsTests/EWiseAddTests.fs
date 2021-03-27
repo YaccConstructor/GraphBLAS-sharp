@@ -15,14 +15,14 @@ let logger = Log.create "EWiseAddTests"
 type OperationCase =
     {
         ClContext: OpenCLEvaluationContext
-        MatrixCase: MatrixBackendFormat
+        MatrixCase: MatrixType
         MaskCase: MaskType
     }
 
 let testCases =
     [
         Utils.avaliableContexts "*" |> Seq.map box
-        Utils.listOfUnionCases<MatrixBackendFormat> |> Seq.map box
+        Utils.listOfUnionCases<MatrixType> |> Seq.map box
         Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
     |> List.map List.ofSeq

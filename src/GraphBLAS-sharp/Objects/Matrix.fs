@@ -1,5 +1,10 @@
 namespace GraphBLAS.FSharp
 
+// matrixFormat
+type MatrixType =
+    | CSR
+    | COO
+
 type Matrix<'a> =
     | MatrixCSR of CSRMatrix<'a>
     | MatrixCOO of COOMatrix<'a>

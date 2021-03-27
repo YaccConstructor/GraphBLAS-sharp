@@ -6,18 +6,6 @@ open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-type MatrixBackendFormat =
-    | CSR
-    | COO
-
-type VectorBackendFormat =
-    | Sparse
-
-type MaskType =
-    | Regular
-    | Complemented
-    | NoMask
-
 module Generators =
     let dimension2DGenerator =
         Gen.sized <| fun size ->

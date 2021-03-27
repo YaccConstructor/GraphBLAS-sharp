@@ -2,19 +2,16 @@ namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
 module TriangleCounting =
-    let sandia (lowerTriangular: Matrix<bool>) = graphblas {
-        let bool2int = function
-            | true -> 1
-            | false -> 0
+    let sandia (matrix: Matrix<bool>) = graphblas {
+        let! lowerTriangular = matrix |> Matrix.select (UnaryOp <@ fun (i, j, _) -> i <= j @>)
+        let! matrix' = lowerTriangular |> Matrix.apply (UnaryOp <@ function | true -> 1 | false -> 0 @>)
+        let! transposed = matrix' |> Matrix.transpose
 
-        let! convertedMatrix = lowerTriangular |> Matrix.apply (UnaryOp <@ bool2int @>)
-        let! convertedTransposed = convertedMatrix |> Matrix.transpose
         let! lowerTriangularMask = lowerTriangular |> Matrix.mask
-        let! result = (convertedMatrix, convertedTransposed) ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
+        let! result = (matrix', transposed) ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
         let! (Scalar count) = result |> Matrix.reduce Add.int
+
         return count
     }

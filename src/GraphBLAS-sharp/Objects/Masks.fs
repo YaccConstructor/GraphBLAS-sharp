@@ -1,5 +1,10 @@
 namespace GraphBLAS.FSharp
 
+type MaskType =
+    | Regular
+    | Complemented
+    | NoMask
+
 type Mask1D(indices: int[], size: int, isComplemented: bool) =
     member this.Indices = indices
     member this.Size = size
