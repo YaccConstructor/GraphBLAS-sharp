@@ -24,6 +24,15 @@
     <Compile Include="IO/MtxReader.fs" />
     <Compile Include="Methods/Matrix.fs" />
     <Compile Include="Methods/Vector.fs" />
+    <Compile Include="Backend/Common/Copy.fs" />
+    <Compile Include="Backend/Common/PrefixSum.fs" />
+    <Compile Include="Backend//Merge.fs" />
+    <Compile Include="Backend//PreparePositions.fs" />
+    <Compile Include="Backend//SetPositions.fs" />
+    <Compile Include="Backend//EWiseAdd.fs" />
+    <Compile Include="Implementations.fs" />
+    <Compile Include="Matrix.fs" />
+    <Compile Include="Vector.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
     <Compile Include="Predefined/Monoids/Add.fs" />
     <Compile Include="Predefined/Monoids/Min.fs" />

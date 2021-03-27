@@ -243,7 +243,7 @@ let testFixtures case = [
 
     case
     |> checkCorrectnessGeneric<sbyte> case.ClContext (+) (-) ((=) 0y) AddMult.sbyte
-    |> testPropertyWithConfig config (getTestName "sbyte")
+    |> ptestPropertyWithConfig config (getTestName "sbyte")
 
     case
     |> checkCorrectnessGeneric<byte> case.ClContext (+) (-) ((=) 0uy) AddMult.byte
