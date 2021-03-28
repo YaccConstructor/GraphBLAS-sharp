@@ -30,6 +30,15 @@ and COOMatrix<'a> =
         Values: 'a[]
     }
 
+    override this.ToString() =
+        [
+            sprintf "COO Matrix     %ix%i \n" this.RowCount this.ColumnCount
+            sprintf "RowIndices:    %A \n" this.Rows
+            sprintf "ColumnIndices: %A \n" this.Columns
+            sprintf "Values:        %A \n" this.Values
+        ]
+        |> String.concat ""
+
     static member FromTuples(rowCount: int, columnCount: int, rows: int[], columns: int[], values: 'a[]) =
         {
             RowCount = rowCount
@@ -44,7 +53,7 @@ and COOMatrix<'a> =
             array
             |> Seq.cast<'a>
             |> Seq.mapi (fun idx v -> (idx / Array2D.length2 array, idx % Array2D.length2 array, v))
-            |> Seq.filter (fun (i, j, v) -> not <| isZero v)
+            |> Seq.filter (fun (_, _, v) -> not <| isZero v)
             |> Array.ofSeq
             |> Array.unzip3
 

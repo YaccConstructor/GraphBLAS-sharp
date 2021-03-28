@@ -7,7 +7,7 @@ module internal RemoveDuplicates =
     let run (array: 'a[]) = opencl {
         let inputLength = array.Length
 
-        let isUniqueBitmap =
+        let getUniqueBitmap =
             <@
                 fun (ndRange: _1D)
                     (inputArray: 'a[])
@@ -32,9 +32,9 @@ module internal RemoveDuplicates =
             @>
 
         let bitmap = Array.create inputLength 1
-        do! RunCommand isUniqueBitmap <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputLength, Utils.workGroupSize)
-            kernelPrepare ndRange array bitmap
+        do! RunCommand getUniqueBitmap <| fun kernelPrepare ->
+            let range = _1D(Utils.workSize inputLength, Utils.workGroupSize)
+            kernelPrepare range array bitmap
 
         let resultLength = Array.zeroCreate 1
         do! PrefixSum.runInplace bitmap resultLength
@@ -43,8 +43,8 @@ module internal RemoveDuplicates =
 
         let outputArray = Array.zeroCreate resultLength
         do! RunCommand setPositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputLength, Utils.workGroupSize)
-            kernelPrepare ndRange array bitmap outputArray
+            let range = _1D(Utils.workSize inputLength, Utils.workGroupSize)
+            kernelPrepare range array bitmap outputArray
 
         return outputArray
     }

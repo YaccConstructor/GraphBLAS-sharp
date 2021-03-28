@@ -48,7 +48,7 @@ module Matrix =
     let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> =
         let matrixTuples =
             match matrix with
-            | MatrixCOO coo -> COOMatrix.GetTuples.from coo
+            | MatrixCOO matrix -> COOMatrix.GetTuples.from matrix
             | _ -> failwith "Not Implemented"
 
         graphblas { return! EvalGB.fromCl matrixTuples }
@@ -200,9 +200,10 @@ module Matrix =
 module MatrixTuples =
     let synchronize (matrixTuples: MatrixTuples<'a>) =
         opencl {
-            let! _ = ToHost matrixTuples.RowIndices
-            let! _ = ToHost matrixTuples.ColumnIndices
-            let! _ = ToHost matrixTuples.Values
+            let! rows = if matrixTuples.RowIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.RowIndices
+            let! cols = if matrixTuples.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.ColumnIndices
+            let! vals = if matrixTuples.Values.Length = 0 then opencl { return [||] } else ToHost matrixTuples.Values
+
             return ()
         }
         |> EvalGB.fromCl

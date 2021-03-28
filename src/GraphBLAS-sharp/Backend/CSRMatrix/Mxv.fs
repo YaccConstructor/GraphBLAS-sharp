@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 
 module internal Mxv =
+    // not finished
     let pcsr (matrix: CSRMatrix<'a>) (vector: BitmapVector<'a>) mask (semiring: ISemiring<'a>) = opencl {
         let (ClosedBinaryOp plus) = semiring.Plus
         let (ClosedBinaryOp times) = semiring.Times
