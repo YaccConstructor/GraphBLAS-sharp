@@ -12,9 +12,7 @@ type GraphblasContext =
 type GraphblasEvaluation<'a> = EvalGB of (GraphblasContext -> 'a)
 
 module EvalGB =
-    let defaultEnv = {
-        ClContext = OpenCLEvaluationContext()
-    }
+    let defaultEnv = { ClContext = OpenCLEvaluationContext() }
 
     let private runCl env (OpenCLEvaluation f) = f env
 

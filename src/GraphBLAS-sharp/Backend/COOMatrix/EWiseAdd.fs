@@ -6,10 +6,10 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOMatrix.Utilities
 
 module internal EWiseAdd =
-    let private runNonEmpty (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) = opencl {
+    let private runNonEmpty (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (monoid: IMonoid<'a>) = opencl {
         let! allRows, allColumns, allValues = merge matrixLeft matrixRight mask
 
-        let (ClosedBinaryOp plus) = semiring.Plus
+        let (ClosedBinaryOp plus) = monoid.Plus
         let! rawPositions = preparePositions allRows allColumns allValues plus
         let! resultRows, resultColumns, resultValues = setPositions allRows allColumns allValues rawPositions
 
@@ -22,7 +22,7 @@ module internal EWiseAdd =
         }
     }
 
-    let run (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (semiring: ISemiring<'a>) =
+    let run (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (monoid: IMonoid<'a>) =
         if matrixLeft.Values.Length = 0 then
             opencl {
                 let! resultRows = Copy.run matrixRight.Rows
@@ -54,4 +54,4 @@ module internal EWiseAdd =
             }
 
         else
-            runNonEmpty matrixLeft matrixRight mask semiring
+            runNonEmpty matrixLeft matrixRight mask monoid

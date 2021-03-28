@@ -11,6 +11,7 @@ type Matrix<'a when 'a : struct> =
 
 and CSRMatrix<'a> =
     {
+        RowCount: int
         ColumnCount: int
         RowPointers: int[]
         ColumnIndices: int[]

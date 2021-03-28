@@ -37,7 +37,7 @@ module internal RemoveDuplicates =
             kernelPrepare ndRange array bitmap
 
         let resultLength = Array.zeroCreate 1
-        do! PrefixSum.run bitmap resultLength
+        do! PrefixSum.runInplace bitmap resultLength
         let! _ = ToHost resultLength
         let resultLength = resultLength.[0]
 

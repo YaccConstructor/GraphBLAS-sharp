@@ -36,103 +36,47 @@ let testCases =
         }
 
 type PairOfSparseMatricesOfEqualSize() =
-    static let MaxSparcity = 100
-    static let SparsityGen = Gen.choose (0, MaxSparcity)
-    static let GenericSparseGen valueGenProvider =
-        gen {
-            let! sparsity = SparsityGen
-            logger.debug (
-                eventX "Sparcity is {sp} of {ms}"
-                >> setField "sp" sparsity
-                >> setField "ms" MaxSparcity
-            )
-
-            return! valueGenProvider sparsity
-        }
-
     static member IntType() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<int>)
-                    (sparsity, Gen.constant 0)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0 Arb.generate<int>
         |> Arb.fromGen
 
     static member FloatType() =
-        fun sparsity ->
-             Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-                    (sparsity, Gen.constant 0.)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
         |> Arb.fromGen
 
     static member SByteType() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<sbyte>)
-                    (sparsity, Gen.constant 0y)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0y Arb.generate<sbyte>
         |> Arb.fromGen
 
     static member ByteType() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<byte>)
-                    (sparsity, Gen.constant 0uy)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0uy Arb.generate<byte>
         |> Arb.fromGen
 
     static member Int16Type() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<int16>)
-                    (sparsity, Gen.constant 0s)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0s Arb.generate<int16>
         |> Arb.fromGen
 
     static member UInt16Type() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<uint16>)
-                    (sparsity, Gen.constant 0us)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0us Arb.generate<uint16>
         |> Arb.fromGen
 
     static member BoolType() =
-        fun sparsity ->
-            Generators.pairOfMatricesOfEqualSizeGenerator (
-                Gen.frequency [
-                    (MaxSparcity - sparsity, Arb.generate<bool>)
-                    (sparsity, Gen.constant false)
-                ]
-            )
-        |> GenericSparseGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator false Arb.generate<bool>
         |> Arb.fromGen
 
-let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
+let checkCorrectnessGeneric<'a when 'a : struct>
     (oclContext: OpenCLEvaluationContext)
     (sum: 'a -> 'a -> 'a)
     (diff: 'a -> 'a -> 'a)
     (isZero: 'a -> bool)
-    (semiring: ISemiring<'a>)
+    (monoid: IMonoid<'a>)
     (case: OperationCase)
     (matrixA: 'a[,], matrixB: 'a[,]) =
 
@@ -182,7 +126,7 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
             )
 
             graphblas {
-                let! result = Matrix.eWiseAdd semiring left right
+                let! result = Matrix.eWiseAdd monoid left right
                 let! tuples = Matrix.tuples result
                 do! MatrixTuples.synchronize tuples
                 return tuples
@@ -222,13 +166,13 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     "There should be no difference between expected and received values"
     |> Expect.all difference isZero
 
-let config = {
-    FsCheckConfig.defaultConfig with
+let config =
+    { FsCheckConfig.defaultConfig with
         arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
         maxTest = 10
         startSize = 0
         // endSize = 1_000_000
-}
+    }
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
 let testFixtures case = [

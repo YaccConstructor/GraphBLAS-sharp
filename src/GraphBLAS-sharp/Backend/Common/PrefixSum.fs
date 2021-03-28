@@ -2,12 +2,32 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 
-// functions in mudule could be named run\get\if\it\t
-// like mentioned here https://www.reddit.com/r/fsharp/comments/5kvsyk/modules_or_namespaces/dbt0zf7?utm_source=share&utm_medium=web2x&context=3
-module internal PrefixSum =
-    let scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {
+module internal rec PrefixSum =
+    let runInplace (inputArray: int[]) (totalSum: int[]) = opencl {
+        let workGroupSize = Utils.workGroupSize
+
+        let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
+        let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
+        let mutable verticesArrays = firstVertices, secondVertices
+        let swap (a, b) = (b, a)
+
+        let mutable verticesLength = (inputArray.Length - 1) / workGroupSize + 1
+        let mutable bunchLength = workGroupSize
+
+        do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
+        while verticesLength > 1 do
+            let fstVertices = fst verticesArrays
+            let sndVertices = snd verticesArrays
+            do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1) totalSum
+            do! update inputArray inputArray.Length fstVertices bunchLength
+
+            bunchLength <- bunchLength * workGroupSize
+            verticesArrays <- swap verticesArrays
+            verticesLength <- (verticesLength - 1) / workGroupSize + 1
+    }
+
+    let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {
         let workGroupSize = Utils.workGroupSize
 
         let scan =
@@ -62,7 +82,7 @@ module internal PrefixSum =
                 totalSum
     }
 
-    let update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) = opencl {
+    let private update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) = opencl {
         let workGroupSize = Utils.workGroupSize
 
         let update =
@@ -83,30 +103,3 @@ module internal PrefixSum =
                 inputArray
                 vertices
     }
-
-    // Changes received arrays
-    let run (inputArray: int[]) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.workGroupSize
-
-        let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
-        let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
-        let mutable verticesArrays = firstVertices, secondVertices
-        let swap (a, b) = (b, a)
-
-        let mutable verticesLength = (inputArray.Length - 1) / workGroupSize + 1
-        let mutable bunchLength = workGroupSize
-
-        do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
-        while verticesLength > 1 do
-            let fstVertices = fst verticesArrays
-            let sndVertices = snd verticesArrays
-            do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1) totalSum
-            do! update inputArray inputArray.Length fstVertices bunchLength
-
-            bunchLength <- bunchLength * workGroupSize
-            verticesArrays <- swap verticesArrays
-            verticesLength <- (verticesLength - 1) / workGroupSize + 1
-    }
-
-    // сделать не inplace prefixSum
-    // если функции вспомогательные, то лучше сделат их private

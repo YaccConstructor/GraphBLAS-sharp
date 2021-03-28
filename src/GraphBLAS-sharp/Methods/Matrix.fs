@@ -144,14 +144,25 @@ module Matrix =
     *)
 
     let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
 
-    let eWiseAdd (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
+        let operationResult =
+            match matrix, vector with
+            | MatrixCSR matrix, VectorBitmap vector ->
+                opencl {
+                    let! result = CSRMatrix.Mxv.pcsr matrix vector None semiring
+                    return VectorBitmap result
+                }
+            | _ -> failwith "Not Implemented"
+
+        graphblas { return! EvalGB.fromCl operationResult }
+
+    let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         let operationResult =
             match leftMatrix, rightMatrix with
             | MatrixCOO left, MatrixCOO right ->
                 opencl {
-                    let! result = COOMatrix.EWiseAdd.run left right None semiring
+                    let! result = COOMatrix.EWiseAdd.run left right None monoid
                     return MatrixCOO result
                 }
             | _ -> failwith "Not Implemented"
@@ -169,7 +180,7 @@ module Matrix =
 
     let mxmWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let mxvWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let eWiseAddWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let eWiseAddWithMask (monoid: IMonoid<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let eWiseMultWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
     let selectWithMask (predicate: UnaryOp<int * int * 'a, bool>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
