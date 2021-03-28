@@ -2,11 +2,11 @@ namespace GraphBLAS.FSharp
 
 type VectorType =
     | COO
-    | Dense
+    | Bitmap
 
-type Vector<'a> =
+type Vector<'a when 'a : struct> =
     | VectorCOO of COOVector<'a>
-    | VectorDense of ArrayVector<'a>
+    | VectorBitmap of BitmapVector<'a>
 
 and COOVector<'a> =
     {
@@ -15,8 +15,9 @@ and COOVector<'a> =
         Values: 'a[]
     }
 
-and ArrayVector<'a> =
+and BitmapVector<'a> =
     {
+        Bitmap: bool[]
         Values: 'a[]
     }
 

@@ -5,7 +5,7 @@ type MatrixType =
     | CSR
     | COO
 
-type Matrix<'a> =
+type Matrix<'a when 'a : struct> =
     | MatrixCSR of CSRMatrix<'a>
     | MatrixCOO of COOMatrix<'a>
 

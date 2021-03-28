@@ -158,7 +158,8 @@ type EWiseAddBenchmarks4Float32() =
     member this.EWiseAdditionCOOFloat32() =
         let (ClContext context) = this.OclContext
         (leftCOO, rightCOO) ||> Matrix.eWiseAdd AddMult.float32
-        |> EvalGB.runWithClContext context
+        |> EvalGB.withClContext context
+        |> EvalGB.runSync
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Float32.txt"
@@ -228,7 +229,8 @@ type EWiseAddBenchmarks4Bool() =
     member this.EWiseAdditionCOOBool() =
         let (ClContext context) = this.OclContext
         (leftCOO, rightCOO) ||> Matrix.eWiseAdd AnyAll.bool
-        |> EvalGB.runWithClContext context
+        |> EvalGB.withClContext context
+        |> EvalGB.runSync
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Bool.txt"

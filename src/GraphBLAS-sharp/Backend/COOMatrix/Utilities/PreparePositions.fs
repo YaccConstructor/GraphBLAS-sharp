@@ -8,7 +8,7 @@ open Microsoft.FSharp.Quotations
 
 [<AutoOpen>]
 module internal PreparePositions =
-    let preparePositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) : OpenCLEvaluation<int[]> = opencl {
+    let preparePositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) = opencl {
         let length = allValues.Length
 
         let preparePositions =
@@ -21,10 +21,11 @@ module internal PreparePositions =
 
                     let i = ndRange.GlobalID0
 
-                    if i < length - 1 && allRowsBuffer.[i] = allRowsBuffer.[i + 1] && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1] then
+                    if i < length - 1
+                    && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
+                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]
+                    then
                         rawPositionsBuffer.[i] <- 0
-
-                        //Do not drop explicit zeroes
                         allValuesBuffer.[i + 1] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
 
                         //Drop explicit zeroes

@@ -11,7 +11,6 @@ module internal EWiseAdd =
 
         let (ClosedBinaryOp plus) = semiring.Plus
         let! rawPositions = preparePositions allRows allColumns allValues plus
-
         let! resultRows, resultColumns, resultValues = setPositions allRows allColumns allValues rawPositions
 
         return {

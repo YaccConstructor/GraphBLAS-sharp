@@ -9,29 +9,26 @@ module Vector =
         constructors
     *)
 
-    let build (size: int) (indices: int[]) (values: int[]) : Vector<'a> =
+    let build (size: int) (indices: int[]) (values: int[]) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    let ofList (size: int) (elements: (int * 'a) list) : Vector<'a> =
+    let ofTuples (size: int) (tuples: VectorTuples<'a>) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    let ofArray (isZero: 'a -> bool) (array: 'a[]) : Vector<'a> =
+    let ofList (size: int) (elements: (int * 'a) list) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    let init (size: int) (initializer: int -> 'a) : Vector<'a> =
+    let ofArray (array: 'a[]) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    // Можно сделать явный метод makeSparse isZero, который бы делал плотные векторы разреженными
-    let create (size: int) (value: 'a) : Vector<'a> =
+    let init (size: int) (initializer: int -> 'a) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    // можно не указывать явный ноль, тк 'a -- структура, для которого есть unchecked.defaultof,
-    // а массивы с с помощью zeroCreate создать
-    let zeroCreate (size: int) (zero: 'a) : Vector<'a> =
+    let create (size: int) (value: 'a) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    // let makeSparse (isZero: 'a -> bool) (vector: Vector<'a>) : Vector<'a> =
-    //     failwith "Not Implemented yet"
+    let zeroCreate (size: int) : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
 
     (*
         methods
@@ -45,7 +42,8 @@ module Vector =
     let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
     let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
     let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
-    let switchTo (vectorType: VectorType) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let thin (isZero: 'a -> bool) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let switch (vectorType: VectorType) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*

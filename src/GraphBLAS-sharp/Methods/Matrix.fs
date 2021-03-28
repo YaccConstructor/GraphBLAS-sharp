@@ -10,19 +10,28 @@ module Matrix =
         constructors
     *)
 
-    let build (rowCount: int) (columnCount: int) (rows: int[]) (columns: int[]) (values: 'a[]) : Matrix<'a> =
+    let build (rowCount: int) (columnCount: int) (rows: int[]) (columns: int[]) (values: 'a[]) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let ofArray2D (isZero: 'a -> bool) (array: 'a[,]) : Matrix<'a> =
+    let ofTuples (rowCount: int) (columnCount: int) (tuples: MatrixTuples<'a>) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let fromFile (pathToMatrix: string) : Matrix<'a> =
+    let ofList (rowCount: int) (columnCount: int) (elements: (int * int * 'a) list) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let init (rowCount: int) (columnCount: int) (initializer: int -> int -> 'a) : Matrix<'a> =
+    let ofArray2D (array: 'a[,]) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let zeroCreate (rowCount: int) (columnCount: int) : Matrix<'a> =
+    let init (rowCount: int) (columnCount: int) (initializer: int -> int -> 'a) : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let create (rowCount: int) (columnCount: int) (value: 'a) : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let zeroCreate (rowCount: int) (columnCount: int) : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let fromFile (pathToMatrix: string) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
     (*
@@ -46,7 +55,8 @@ module Matrix =
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
-    let switchTo (matrixType: MatrixType) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let thin (isZero: 'a -> bool) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let switch (matrixType: MatrixType) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     (*
@@ -130,7 +140,7 @@ module Matrix =
         failwith "Not Implemented yet"
 
     (*
-        operations
+        closed operations
     *)
 
     let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
@@ -166,6 +176,12 @@ module Matrix =
     let reduceRowsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduceColsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let kroneckerWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+
+    (*
+        unclosed operations
+    *)
+
+    // Должны принимать либо BinaryOp, либо {|BinaryOp; BinaryOp|} с соответствующей семантикой
 
 // ждём тайпклассов чтобы можно было вызывать synchronize для всех объектов,
 // для которых он реализован, не привязывая реализацию к классу (как стратегия)

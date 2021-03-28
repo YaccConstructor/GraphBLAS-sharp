@@ -264,7 +264,14 @@ let testFixtures case = [
 
     case
     |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
-    |> testPropertyWithConfigStdGen (355610228, 296870493) config "Correctness on both empty matrices"
+    |> testPropertyWithConfigStdGen
+        (355610228, 296870493)
+        { FsCheckConfig.defaultConfig with
+            arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
+            maxTest = 10
+            startSize = 0
+        }
+        "Correctness on both empty matrices"
 ]
 
 let tests =

@@ -6,8 +6,8 @@ open GraphBLAS.FSharp
 module BFS =
     let levelSingleSource (matrix: Matrix<bool>) (source: int) = graphblas {
         let vertexCount = Matrix.rowCount matrix
-        let levels = Vector.zeroCreate vertexCount 0
-        let frontier = Vector.ofList vertexCount [source, true]
+        let! levels = Vector.zeroCreate vertexCount
+        let! frontier = Vector.ofList vertexCount [source, true]
 
         let mutable currentLevel = 1
         while currentLevel < vertexCount do

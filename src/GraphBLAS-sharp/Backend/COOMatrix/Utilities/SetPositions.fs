@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal SetPositions =
-    let setPositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (positions: int[]) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
+    let setPositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (positions: int[]) = opencl {
         let prefixSumArrayLength = positions.Length
 
         let setPositions =
@@ -23,7 +23,10 @@ module internal SetPositions =
 
                     let i = ndRange.GlobalID0
 
-                    if i = prefixSumArrayLength - 1 || i < prefixSumArrayLength && prefixSumArrayBuffer.[i] <> prefixSumArrayBuffer.[i + 1] then
+                    if i = prefixSumArrayLength - 1
+                    || i < prefixSumArrayLength
+                    && prefixSumArrayBuffer.[i] <> prefixSumArrayBuffer.[i + 1]
+                    then
                         let index = prefixSumArrayBuffer.[i]
 
                         resultRowsBuffer.[index] <- allRowsBuffer.[i]
