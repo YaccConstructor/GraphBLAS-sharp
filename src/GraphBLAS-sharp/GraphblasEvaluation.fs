@@ -85,3 +85,5 @@ type GraphblasBuilder() =
 [<AutoOpen>]
 module GraphblasBuilder =
     let graphblas = GraphblasBuilder()
+
+    let (>>=) x f = EvalGB.bind f x

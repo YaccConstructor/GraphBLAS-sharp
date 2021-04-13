@@ -2,11 +2,11 @@ namespace GraphBLAS.FSharp
 
 type VectorType =
     | COO
-    | Bitmap
+    // | Bitmap
 
 type Vector<'a when 'a : struct> =
     | VectorCOO of COOVector<'a>
-    | VectorBitmap of BitmapVector<'a>
+    // | VectorBitmap of BitmapVector<'a>
 
 and COOVector<'a> =
     {
@@ -24,11 +24,11 @@ and COOVector<'a> =
         ]
         |> String.concat ""
 
-and BitmapVector<'a> =
-    {
-        Bitmap: bool[]
-        Values: 'a[]
-    }
+// and BitmapVector<'a> =
+//     {
+//         Bitmap: bool[]
+//         Values: 'a[]
+//     }
 
 type VectorTuples<'a> =
     {

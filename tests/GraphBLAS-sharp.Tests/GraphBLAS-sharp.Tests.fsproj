@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Common.fs" />
-    <Compile Include="OperationsTests\MxvTests.fs" />
+    <Compile Include="OperationsTests/MxvTests.fs" />
     <Compile Include="OperationsTests/EWiseAddTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -19,8 +19,10 @@ module Matrix =
     let ofList (rowCount: int) (columnCount: int) (elements: (int * int * 'a) list) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let ofArray2D (array: 'a[,]) : GraphblasEvaluation<Matrix<'a>> =
-        failwith "Not Implemented yet"
+    // можно оставить, но с условием, что будет создаваться full matrix,
+    // которую можно будет проредить потом (но вообще это initом эмулируется)
+    // let ofArray2D (array: 'a[,]) : GraphblasEvaluation<Matrix<'a>> =
+    //     failwith "Not Implemented yet""
 
     let init (rowCount: int) (columnCount: int) (initializer: int -> int -> 'a) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
@@ -28,10 +30,7 @@ module Matrix =
     let create (rowCount: int) (columnCount: int) (value: 'a) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let zeroCreate (rowCount: int) (columnCount: int) : GraphblasEvaluation<Matrix<'a>> =
-        failwith "Not Implemented yet"
-
-    let fromFile (pathToMatrix: string) : GraphblasEvaluation<Matrix<'a>> =
+    let zeroCreate<'a when 'a : struct> (rowCount: int) (columnCount: int) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
     (*
@@ -146,16 +145,7 @@ module Matrix =
     let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
-        let operationResult =
-            match matrix, vector with
-            | MatrixCSR matrix, VectorBitmap vector ->
-                opencl {
-                    let! result = CSRMatrix.Mxv.pcsr matrix vector None semiring
-                    return VectorBitmap result
-                }
-            | _ -> failwith "Not Implemented"
-
-        graphblas { return! EvalGB.fromCl operationResult }
+        failwith "Not Implemented"
 
     let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         let operationResult =

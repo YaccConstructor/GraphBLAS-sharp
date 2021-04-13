@@ -59,20 +59,3 @@ type Semiring<'a> =
         member this.Times = this.TimesSemigroup.AssociativeOp
         member this.Zero = this.PlusMonoid.Identity
         member this.Plus = this.PlusMonoid.AssociativeOp
-
-(*
-    мотивация:
-    хотим, чтобы ноль был нулем (даже если он явно в матрице хранится)
-    и все моноиды, определенные над MonoidicType 'a имели корректную семантику
-    (если получился 0 и мы сменили моноид, то этот элемент все еще будет нулем в другом моноиде)
-*)
-
-[<Struct>]
-type MonoidicType<'a> =
-    | Just of 'a
-    | Zero
-
-module MonoidicType =
-    let wrap (isZero: 'a -> bool) x =
-        if isZero x then Zero
-        else Just x

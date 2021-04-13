@@ -9,7 +9,7 @@ module Vector =
         constructors
     *)
 
-    let build (size: int) (indices: int[]) (values: int[]) : GraphblasEvaluation<Vector<'a>> =
+    let build (size: int) (indices: int[]) (values: 'a[]) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     let ofTuples (size: int) (tuples: VectorTuples<'a>) : GraphblasEvaluation<Vector<'a>> =
@@ -18,8 +18,9 @@ module Vector =
     let ofList (size: int) (elements: (int * 'a) list) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    let ofArray (array: 'a[]) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented yet"
+    // можно оставить, но с условием, что будет создаваться full vector
+    // let ofArray (array: 'a[]) : GraphblasEvaluation<Vector<'a>> =
+    //     failwith "Not Implemented yet"
 
     let init (size: int) (initializer: int -> 'a) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
@@ -27,7 +28,7 @@ module Vector =
     let create (size: int) (value: 'a) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
-    let zeroCreate (size: int) : GraphblasEvaluation<Vector<'a>> =
+    let zeroCreate<'a when 'a : struct> (size: int) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     (*

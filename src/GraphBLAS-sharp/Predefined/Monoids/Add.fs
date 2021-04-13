@@ -44,20 +44,3 @@ module Add =
             AssociativeOp = ClosedBinaryOp <@ (+) @>
             Identity = 0us
         }
-
-    let monoidicFloat: Monoid<MonoidicType<float>> =
-        {
-            AssociativeOp =
-                <@
-                    fun x y ->
-                        match x, y with
-                        | Just x, Just y ->
-                            let result = x + y
-                            if abs result < 1e-16 then Zero else Just result
-                        | Just x, Zero -> Just x
-                        | Zero, Just y -> Just y
-                        | Zero, Zero -> Zero
-                @> |> ClosedBinaryOp
-
-            Identity = Zero
-        }
