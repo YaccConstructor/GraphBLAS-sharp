@@ -1,3 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
@@ -10,33 +11,37 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
     <Compile Include="Exceptions.fs" />
-    <Compile Include="Operators.fs" />
-    <Compile Include="Monoid.fs" />
-    <Compile Include="Semiring.fs" />
-    <Compile Include="Scalar.fs" />
-    <Compile Include="Abstracts.fs" />
+    <Compile Include="AlgebraicStructures.fs" />
+    <Compile Include="GraphblasEvaluation.fs" />
+    <Compile Include="Objects/Matrix.fs" />
+    <Compile Include="Objects/Vector.fs" />
+    <Compile Include="Objects/Scalar.fs" />
+    <Compile Include="Objects/Masks.fs" />
     <Compile Include="Backend/Common/Utils.fs" />
     <Compile Include="Backend/Common/Copy.fs" />
     <Compile Include="Backend/Common/PrefixSum.fs" />
-    <Compile Include="Backend//Merge.fs" />
-    <Compile Include="Backend//PreparePositions.fs" />
-    <Compile Include="Backend//SetPositions.fs" />
-    <Compile Include="Backend//EWiseAdd.fs" />
-    <Compile Include="Implementations.fs" />
-    <Compile Include="Matrix.fs" />
-    <Compile Include="Vector.fs" />
+    <Compile Include="Backend/Common/RemoveDuplicates.fs" />
+    <Compile Include="Backend/CSRMatrix/Mxv.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/SetPositions.fs" />
+    <Compile Include="Backend/COOMatrix/GetTuples.fs" />
+    <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
+    <Compile Include="Backend/COOVector/Utilities/Merge.fs" />
+    <Compile Include="Backend/COOVector/Utilities/PreparePositions.fs" />
+    <Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
+    <Compile Include="Backend/COOVector/EWiseAdd.fs" />
+    <Compile Include="IO/MtxReader.fs" />
+    <Compile Include="Methods/Matrix.fs" />
+    <Compile Include="Methods/Vector.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
     <Compile Include="Predefined/Monoids/Add.fs" />
     <Compile Include="Predefined/Monoids/Min.fs" />
     <Compile Include="Predefined/Semirings/AnyAll.fs" />
     <Compile Include="Predefined/Semirings/AddMult.fs" />
     <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <Compile Include="Predefined/Float.fs" />
-    <Compile Include="Predefined/Float32.fs" />
-    <Compile Include="Predefined/Integer.fs" />
-    <Compile Include="Predefined/Boolean.fs" />
     <Compile Include="Algorithms/BFS.fs" />
-    <Compile Include="Algorithms/SSSP.fs" />
+    <Compile Include="Algorithms/ShortestPath.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
     <Content Include="YC.OpenCL.NET.dll.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

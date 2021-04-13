@@ -3,7 +3,8 @@ namespace GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
 
 module Any =
-    let bool: Monoid<bool> = {
-        Zero = false
-        Append = BinaryOp <@ (||) @>
-    }
+    let bool: Monoid<bool> =
+        {
+            AssociativeOp = ClosedBinaryOp <@ (||) @>
+            Identity = false
+        }

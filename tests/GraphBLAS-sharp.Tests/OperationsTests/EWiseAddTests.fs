@@ -3,122 +3,87 @@ module EWiseAdd
 open Expecto
 open FsCheck
 open GraphBLAS.FSharp
-open MathNet.Numerics
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Tests
-open System
 open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open BackendState
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open OpenCL.Net
 
-type OperationParameter =
-    | MatrixFormatParam of MatrixBackendFormat
-    | MaskTypeParam of MaskType
+let logger = Log.create "EWiseAddTests"
 
-type OperationCase = {
-    MatrixCase: MatrixBackendFormat
-    MaskCase: MaskType
-}
+type OperationCase =
+    {
+        ClContext: OpenCLEvaluationContext
+        MatrixCase: MatrixType
+        MaskCase: MaskType
+    }
 
 let testCases =
     [
-        Utils.listOfUnionCases<MatrixBackendFormat> |> List.map MatrixFormatParam
-        Utils.listOfUnionCases<MaskType> |> List.map MaskTypeParam
+        Utils.avaliableContexts "" |> Seq.map box
+        Utils.listOfUnionCases<MatrixType> |> Seq.map box
+        Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
+    |> List.map List.ofSeq
     |> Utils.cartesian
-    |> List.map
-        (fun list ->
-            let (MatrixFormatParam marixFormat) = list.[0]
-            let (MaskTypeParam maskType) = list.[1]
-            {
-                MatrixCase = marixFormat
-                MaskCase = maskType
-            }
-        )
+    |> List.map ^fun list ->
+        {
+            ClContext = unbox list.[0]
+            MatrixCase = unbox list.[1]
+            MaskCase = unbox list.[2]
+        }
 
-type PairOfSparseMatricesOfEqualSize =
+type PairOfSparseMatricesOfEqualSize() =
     static member IntType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<int>
-                Gen.constant 0
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0 Arb.generate<int>
+        |> Arb.fromGen
 
     static member FloatType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-                Gen.constant 0.
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+        |> Arb.fromGen
 
     static member SByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<sbyte>
-                Gen.constant 0y
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0y Arb.generate<sbyte>
+        |> Arb.fromGen
 
     static member ByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<byte>
-                Gen.constant 0uy
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0uy Arb.generate<byte>
+        |> Arb.fromGen
 
     static member Int16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<int16>
-                Gen.constant 0s
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0s Arb.generate<int16>
+        |> Arb.fromGen
 
     static member UInt16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<uint16>
-                Gen.constant 0us
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator 0us Arb.generate<uint16>
+        |> Arb.fromGen
 
     static member BoolType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator (
-            Gen.oneof [
-                Arb.generate<bool>
-                Gen.constant false
-            ]
-        ) |> Arb.fromGen
+        Generators.pairOfMatricesOfEqualSizeGenerator
+        |> Generators.genericSparseGenerator false Arb.generate<bool>
+        |> Arb.fromGen
 
-let createMatrix<'a when 'a : struct and 'a : equality> matrixFormat args =
-    match matrixFormat with
-    | CSR ->
-        Activator.CreateInstanceGeneric<CSRMatrix<_>>(
-            Array.singleton typeof<'a>, args
-        )
-        |> unbox<CSRMatrix<'a>>
-        :> Matrix<'a>
-    | COO ->
-        Activator.CreateInstanceGeneric<COOMatrix<_>>(
-            Array.singleton typeof<'a>, args
-        )
-        |> unbox<COOMatrix<'a>>
-        :> Matrix<'a>
-
-let logger = Log.create "Sample"
-
-let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
+let checkCorrectnessGeneric<'a when 'a : struct>
+    (oclContext: OpenCLEvaluationContext)
     (sum: 'a -> 'a -> 'a)
     (diff: 'a -> 'a -> 'a)
     (isZero: 'a -> bool)
-    (semiring: Semiring<'a>)
+    (monoid: IMonoid<'a>)
     (case: OperationCase)
     (matrixA: 'a[,], matrixB: 'a[,]) =
+
+    let createMatrixFromArray2D matrixFormat array isZero =
+        match matrixFormat with
+        | CSR -> failwith "Not implemented"
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
 
     let eWiseAddNaive (matrixA: 'a[,]) (matrixB: 'a[,]) =
         let left = matrixA |> Seq.cast<'a>
@@ -147,8 +112,8 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
 
     let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
         try
-            let left = createMatrix<'a> case.MatrixCase [|matrixA; isZero|]
-            let right = createMatrix<'a> case.MatrixCase [|matrixB; isZero|]
+            let left = createMatrixFromArray2D case.MatrixCase matrixA isZero
+            let right = createMatrixFromArray2D case.MatrixCase matrixB isZero
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"
@@ -160,12 +125,14 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
                 >> setField "matrix" right
             )
 
-            opencl {
-                let! result = left.EWiseAdd right None semiring
-                let! tuples = result.GetTuples()
-                return! tuples.ToHost()
+            graphblas {
+                let! result = Matrix.eWiseAdd monoid left right
+                let! tuples = Matrix.tuples result
+                do! MatrixTuples.synchronize tuples
+                return tuples
             }
-            |> oclContext.RunSync
+            |> EvalGB.withClContext oclContext
+            |> EvalGB.runSync
 
         finally
             oclContext.Provider.CloseAllBuffers()
@@ -199,46 +166,68 @@ let checkCorrectnessGeneric<'a when 'a : struct and 'a : equality>
     "There should be no difference between expected and received values"
     |> Expect.all difference isZero
 
-let config = {
-    FsCheckConfig.defaultConfig with
+let config =
+    { FsCheckConfig.defaultConfig with
         arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
-        startSize = 0
         maxTest = 10
-}
+        startSize = 0
+        // endSize = 1_000_000
+    }
 
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
 let testFixtures case = [
-    case
-    |> checkCorrectnessGeneric<int> (+) (-) ((=) 0) AddMult.int
-    |> testPropertyWithConfig config (sprintf "Correctness on int, %A, %A" case.MatrixCase case.MaskCase)
+    let getTestName datatype = sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.MaskCase
 
     case
-    |> checkCorrectnessGeneric<float> (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
-    |> testPropertyWithConfig config (sprintf "Correctness on float, %A, %A" case.MatrixCase case.MaskCase)
-
-    // case
-    // |> checkCorrectnessGeneric<sbyte> (+) (-) ((=) 0y) AddMult.sbyte
-    // |> testPropertyWithConfig config (sprintf "Correctness on sbyte, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<int> case.ClContext (+) (-) ((=) 0) AddMult.int
+    |> testPropertyWithConfig config (getTestName "int")
 
     case
-    |> checkCorrectnessGeneric<byte> (+) (-) ((=) 0uy) AddMult.byte
-    |> testPropertyWithConfig config (sprintf "Correctness on byte, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<float> case.ClContext (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
+    |> testPropertyWithConfig config (getTestName "float")
 
     case
-    |> checkCorrectnessGeneric<int16> (+) (-) ((=) 0s) AddMult.int16
-    |> testPropertyWithConfig config (sprintf "Correctness on int16, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<sbyte> case.ClContext (+) (-) ((=) 0y) AddMult.sbyte
+    |> ptestPropertyWithConfig config (getTestName "sbyte")
 
     case
-    |> checkCorrectnessGeneric<uint16> (+) (-) ((=) 0us) AddMult.uint16
-    |> testPropertyWithConfig config (sprintf "Correctness on uint16, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<byte> case.ClContext (+) (-) ((=) 0uy) AddMult.byte
+    |> testPropertyWithConfig config (getTestName "byte")
 
     case
-    |> checkCorrectnessGeneric<bool> (||) (<>) not AnyAll.bool
-    |> testPropertyWithConfig config (sprintf "Correctness on bool, %A, %A" case.MatrixCase case.MaskCase)
+    |> checkCorrectnessGeneric<int16> case.ClContext (+) (-) ((=) 0s) AddMult.int16
+    |> testPropertyWithConfig config (getTestName "int16")
+
+    case
+    |> checkCorrectnessGeneric<uint16> case.ClContext (+) (-) ((=) 0us) AddMult.uint16
+    |> testPropertyWithConfig config (getTestName "uint16")
+
+    case
+    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> testPropertyWithConfig config (getTestName "bool")
+
+    case
+    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> testPropertyWithConfigStdGen
+        (355610228, 296870493)
+        { FsCheckConfig.defaultConfig with
+            arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
+            maxTest = 10
+            startSize = 0
+        }
+        "Correctness on both empty matrices"
 ]
 
 let tests =
     testCases
     |> List.filter (fun case -> case.MatrixCase = COO && case.MaskCase = NoMask)
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.Device
+            // let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+            let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
+            deviceType = DeviceType.Cpu
+        )
     |> List.collect testFixtures
     |> testList "EWiseAdd tests"

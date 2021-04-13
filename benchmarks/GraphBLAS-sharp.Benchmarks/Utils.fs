@@ -122,7 +122,7 @@ module Utils =
                     ColumnCount = mtx.Shape.ColumnCount
                 }
 
-    let transposeCOO (matrix: COOFormat<'a>) =
+    let transposeCOO (matrix: COOMatrix<'a>) =
         printfn "Start transpose COO"
 
         (matrix.Columns, matrix.Rows, matrix.Values)

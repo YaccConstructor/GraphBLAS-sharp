@@ -20,12 +20,12 @@ type BFSBenchmark4CSRMatrix() =
 
     [<GlobalSetup>]
     member this.BuildMatrix() =
-        matrix <- CSRMatrix(this.PathToGraph)
-        source <- random.Next matrix.RowCount
+        matrix <- MatrixCSR <| CSRMatrix.FromFile this.PathToGraph
+        source <- random.Next <| Matrix.rowCount matrix
 
     [<Benchmark>]
     member this.LevelBFS() =
-        levelBFS matrix source
+        BFS.levelSingleSource matrix source
 
     /// Sequence of paths to files where data for benchmarking will be taken from
     static member GraphPaths = seq {

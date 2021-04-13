@@ -8,7 +8,6 @@ let allTests =
     ]
     |> testSequenced
 
-// sequenced test?
 [<EntryPoint>]
 let main argv =
     allTests
