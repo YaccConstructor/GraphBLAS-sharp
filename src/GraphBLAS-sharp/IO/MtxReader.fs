@@ -1,105 +1,125 @@
 namespace GraphBLAS.FSharp.IO
 
-// open System.IO
-// open GraphBLAS.FSharp
-// open System
+open System.IO
+open GraphBLAS.FSharp
+open System
 
-// type MtxShape =
-//     {
-//         Filename: string
-//         Object: string
-//         Format: string
-//         Field: string
-//         Symmetry: string
-//         Size: int[]
-//     }
+type MtxReader(pathToFile: string) =
+    let mutable object = Matrix
+    let mutable format = Coordinate
+    let mutable field = Real
+    let mutable symmetry = General
 
-//     member this.RowCount = this.Size.[0]
-//     member this.ColumnCount = this.Size.[1]
+    do
+        use streamReader = new StreamReader(pathToFile)
+        let header = streamReader.ReadLine().Split(' ')
+        object <- MtxObject.FromString header.[1]
+        format <- MtxFormat.FromString header.[2]
+        field <- MtxField.FromString header.[3]
+        symmetry <- MtxSymmetry.FromString header.[4]
 
-//     override this.ToString() =
-//         sprintf "%s" <| Path.GetFileNameWithoutExtension this.Filename
+    member this.ReadMatrixReal() : GraphblasEvaluation<Matrix<float32>> =
+        if object <> Matrix then failwith "Object is not matrix"
+        if field <> Real then failwith "Field is not real"
 
-// module MtxReader =
-//     let private readShapeWithReader (streamReader: StreamReader) (pathToFile: string) =
-//         let shape = streamReader.ReadLine().Split(' ')
-//         let object = shape.[1]
-//         let format = shape.[2]
-//         let field = shape.[3]
-//         let symmetry = shape.[4]
+        use streamReader = new StreamReader(pathToFile)
+        while streamReader.Peek() = int '%' do
+            streamReader.ReadLine() |> ignore
 
-//         while streamReader.Peek() = int '%' do
-//             streamReader.ReadLine() |> ignore
+        graphblas {
+            let ifCoordinate () =
+                let size =
+                    streamReader.ReadLine().Split(' ')
+                    |> Array.map int
 
-//         let size =
-//             streamReader.ReadLine().Split(' ')
-//             |> Array.map int
+                let mutable n = size.[0]
+                let mutable m = size.[1]
+                let mutable nnz = size.[2]
 
-//         {
-//             Filename = pathToFile |> Path.GetFileName
-//             Object = object
-//             Format = format
-//             Field = field
-//             Symmetry = symmetry
-//             Size = size
-//         }
+                let pack x y = (uint64 x <<< 32) ||| (uint64 y)
+                let unpack x = int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
 
-//     let readShapeFromFile (pathToFile: string) =
-//         use streamReader = new StreamReader(pathToFile)
-//         readShapeWithReader streamReader pathToFile
+                let sortedData =
+                    [0 .. nnz - 1]
+                    |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
+                    |> Array.ofList
+                    |> Array.Parallel.map
+                        (fun line ->
+                            let i = int line.[0]
+                            let j = int line.[1]
+                            let v = float32 line.[2]
+                            struct(pack i j, v)
+                        )
+                    |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
 
-//     let private readGenericMatrixFromFile (pathToFile: string) : Matrix<'a> =
-//         use streamReader = new StreamReader(pathToFile)
-//         let shape = readShapeWithReader streamReader pathToFile
+                let rows = Array.zeroCreate sortedData.Length
+                let cols = Array.zeroCreate sortedData.Length
+                let values = Array.zeroCreate sortedData.Length
 
-//         let len =
-//             match shape.Format with
-//             | "array" -> shape.Size.[0] * shape.Size.[1]
-//             | "coordinate" -> shape.Size.[2]
-//             | _ -> failwith "Unsupported matrix format"
+                Array.Parallel.iteri (fun i struct(packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    // in mtx indecies start at 1
+                    rows.[i] <- rowIdx - 1
+                    cols.[i] <- columnIdx - 1
+                    values.[i] <- value
+                ) sortedData
 
-//         let data =
-//             [0 .. len - 1]
-//             |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
+                MatrixCOO {
+                    Rows = rows
+                    Columns = cols
+                    Values = values
+                    RowCount = n
+                    ColumnCount = m
+                }
 
-//         let makeCOO () =
-//             let pack x y = (uint64 x <<< 32) ||| (uint64 y)
-//             let unpack x = (int ((x &&& 0xFFFFFFFF0000000UL) >>> 32)), (int (x &&& 0xFFFFFFFUL))
+            return
+                match format with
+                | Coordinate -> ifCoordinate ()
+                | Array -> failwith "Unsupported matrix format"
+        }
 
-//             data
-//             |> Array.ofList
-//             |> Array.Parallel.map
-//                 (fun line ->
-//                     let value = Convert.ChangeType(line.[2], typeof<'a>) |> unbox<'a>
-//                     struct(pack <| int line.[0] <| int line.[1], value)
-//                 )
-//             |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
-//             |>
-//                 fun data ->
-//                     let rows = Array.zeroCreate data.Length
-//                     let cols = Array.zeroCreate data.Length
-//                     let values = Array.zeroCreate data.Length
+and private MtxObject =
+    | Matrix
+    | Vector
+    static member FromString str =
+        match str with
+        | "matrix" -> Matrix
+        | "vector" -> Vector
+        | _ -> failwithf "Unsupported mtx object %s" str
 
-//                     Array.Parallel.iteri (fun i struct(packedIndex, value) ->
-//                         let (rowIdx, columnIdx) = unpack packedIndex
-//                         // in mtx indecies start at 1
-//                         rows.[i] <- rowIdx - 1
-//                         cols.[i] <- columnIdx - 1
-//                         values.[i] <- value
-//                     ) data
+and private MtxFormat =
+    | Coordinate
+    | Array
+    static member FromString str =
+        match str with
+        | "coordinate" -> Coordinate
+        | "array" -> Array
+        | _ -> failwithf "Unsupported mtx format %s" str
 
-//                     {
-//                         Rows = rows
-//                         Columns = cols
-//                         Values = values
-//                         RowCount = shape.RowCount
-//                         ColumnCount = shape.ColumnCount
-//                     }
+and private MtxField =
+    | Real
+    | Double
+    | Complex
+    | Integer
+    | Pattern
+    static member FromString str =
+        match str with
+        | "real" -> Real
+        | "double" -> Double
+        | "complex" -> Complex
+        | "integer" -> Integer
+        | "pattern" -> Pattern
+        | _ -> failwithf "Unsupported mtx field %s" str
 
-
-//         match shape.Format with
-//         | "array" -> failwith "Unsupported matrix format"
-//         | "coordinate" -> MatrixCOO <| makeCOO ()
-
-//     let readRealMatrix (pathToFile: string) : Matrix<float32> =
-//         readGenericMatrixFromFile pathToFile
+and private MtxSymmetry =
+    | General
+    | Symmetric
+    | SkewSymmetric
+    | Hermitian
+    static member FromString str =
+        match str with
+        | "general" -> General
+        | "symmetric" -> Symmetric
+        | "skew-symmetric" -> SkewSymmetric
+        | "hermitian" -> Hermitian
+        | _ -> failwithf "Unsupported mtx symmetry %s" str

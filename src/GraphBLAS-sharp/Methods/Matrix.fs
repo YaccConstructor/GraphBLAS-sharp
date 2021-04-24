@@ -63,55 +63,51 @@ module Matrix =
     *)
 
     /// mat.[mask]
-    let extractSubMatrix (mask: Mask2D option) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let extractSubMatrix (matrix: Matrix<'a>) (mask: Mask2D) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[rowIdx. *]
-    let extractRow (rowIdx: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let extractRow (matrix: Matrix<'a>) (rowIdx: int) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[rowIdx, mask]
-    let extractSubRow (rowIdx: int) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let extractSubRow (matrix: Matrix<'a>) (rowIdx: int) (mask: Mask2D) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[*, colIdx]
-    let extractCol (colIdx: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let extractCol (matrix: Matrix<'a>) (colIdx: int) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[mask. colIdx]
-    let extractSubCol (colIdx: int) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let extractSubCol (matrix: Matrix<'a>) (mask: Mask2D) (colIdx: int) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[rowIdx, colIdx]
-    let extractValue (rowIdx: int) (colIdx: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> =
+    let extractValue (matrix: Matrix<'a>) (rowIdx: int) (colIdx: int) : GraphblasEvaluation<Scalar<'a>> =
         failwith "Not Implemented yet"
 
     /// t <- s
-    let assignMatrix (source: Matrix<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignMatrix (target: Matrix<'a>) (source: Matrix<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[mask] <- s
-    let assignSubMatrix (mask: Mask2D) (source: Matrix<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignSubMatrix (target: Matrix<'a>) (mask: Mask2D) (source: Matrix<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[rowIdx, *] <- s
-    let assignRow (rowIdx: int) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignRow (target: Matrix<'a>) (rowIdx: int) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[rowIdx, mask] <- s
-    let assignSubRow (rowIdx: int) (mask: Mask1D) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignSubRow (target: Matrix<'a>) (rowIdx: int) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[*, colIdx] <- s
-    let assignCol (colIdx: int) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignCol (target: Matrix<'a>) (colIdx: int) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[mask, colIdx] <- s
-    let assignSubCol (colIdx: int) (mask: Mask1D) (source: Vector<'a>) (target: Matrix<'a>) : GraphblasEvaluation<unit> =
-        failwith "Not Implemented yet"
-
-    /// mat.[i, j] <- value
-    let assignValue (rowIdx: int) (colIdx: int) (value: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> =
+    let assignSubCol (target: Matrix<'a>) (colIdx: int) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// mat.[*, *] <- value
@@ -190,9 +186,9 @@ module Matrix =
 module MatrixTuples =
     let synchronize (matrixTuples: MatrixTuples<'a>) =
         opencl {
-            let! rows = if matrixTuples.RowIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.RowIndices
-            let! cols = if matrixTuples.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.ColumnIndices
-            let! vals = if matrixTuples.Values.Length = 0 then opencl { return [||] } else ToHost matrixTuples.Values
+            let! _ = if matrixTuples.RowIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.RowIndices
+            let! _ = if matrixTuples.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.ColumnIndices
+            let! _ = if matrixTuples.Values.Length = 0 then opencl { return [||] } else ToHost matrixTuples.Values
 
             return ()
         }

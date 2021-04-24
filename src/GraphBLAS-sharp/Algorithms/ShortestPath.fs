@@ -10,9 +10,10 @@ module ShortestPath =
         let vertexCount = Matrix.rowCount matrix
         let! distance = Vector.ofList vertexCount [source, 0.]
 
+        // TODO terminate earlier if we reach a fixed point
         for _ = 1 to vertexCount - 1 do
-            let! step = (distance, matrix) ||> Vector.vxm MinAdd.float
-            do! distance |> Vector.assignVector step
+            do! Vector.vxm MinAdd.float distance matrix
+            >>= Vector.assignVector distance
 
         return distance
     }

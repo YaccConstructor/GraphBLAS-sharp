@@ -28,12 +28,12 @@ let testCases =
     ]
     |> List.map List.ofSeq
     |> Utils.cartesian
-    |> List.map ^fun list ->
-        {
+    |> List.map
+        (fun list -> {
             ClContext = unbox list.[0]
             MatrixCase = unbox list.[1]
             MaskCase = unbox list.[2]
-        }
+        })
 
 type PairOfSparseMatricesOfEqualSize() =
     static member IntType() =
@@ -101,14 +101,12 @@ let checkCorrectnessGeneric<'a when 'a : struct>
         |> Seq.choose id
         |> Array.ofSeq
         |> Array.unzip3
-        |>
-            (fun (rows, cols, vals) ->
-                {
-                    RowIndices = rows
-                    ColumnIndices = cols
-                    Values = vals
-                }
-            )
+        |> fun (rows, cols, vals) ->
+            {
+                RowIndices = rows
+                ColumnIndices = cols
+                Values = vals
+            }
 
     let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
         try
@@ -220,14 +218,15 @@ let testFixtures case = [
 
 let tests =
     testCases
-    |> List.filter (fun case -> case.MatrixCase = COO && case.MaskCase = NoMask)
     |> List.filter
         (fun case ->
             let mutable e = ErrorCode.Unknown
             let device = case.ClContext.Device
-            // let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
             let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
-            deviceType = DeviceType.Cpu
+
+            deviceType = DeviceType.Cpu &&
+            case.MatrixCase = COO &&
+            case.MaskCase = NoMask
         )
     |> List.collect testFixtures
     |> testList "EWiseAdd tests"

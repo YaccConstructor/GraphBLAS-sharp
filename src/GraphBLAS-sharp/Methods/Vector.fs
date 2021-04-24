@@ -52,31 +52,31 @@ module Vector =
     *)
 
     /// vec.[mask]
-    let extractSubVector (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let extractSubVector (vector: Vector<'a>) (mask: Mask1D) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// vec.[idx]
-    let extractValue (idx: int) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> =
+    let extractValue (vector: Vector<'a>) (idx: int) : GraphblasEvaluation<Scalar<'a>> =
         failwith "Not Implemented yet"
 
     /// t <- vec
-    let assignVector (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> =
+    let assignVector (target: Vector<'a>) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[mask] <- vec
-    let assignSubVector (mask: Mask1D) (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> =
+    let assignSubVector (target: Vector<'a>) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[idx] <- value
-    let assignValue (idx: int) (value: Scalar<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> =
+    let assignValue (target: Vector<'a>) (idx: int) (value: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// vec.[*] <- value
-    let fillVector (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> =
+    let fillVector (vector: Vector<'a>) (value: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// vec.[mask] <- value
-    let fillSubVector (mask: Mask1D) (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> =
+    let fillSubVector (vector: Vector<'a>) (mask: Mask1D) (value: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     (*

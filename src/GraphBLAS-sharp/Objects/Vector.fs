@@ -24,6 +24,9 @@ and COOVector<'a> =
         ]
         |> String.concat ""
 
+    static member FromArray(array: 'a[,], isZero: 'a -> bool) =
+        failwith "Not Implemented yet"
+
 // and BitmapVector<'a> =
 //     {
 //         Bitmap: bool[]

@@ -5,3 +5,4 @@ module internal Utils =
     let workSize n =
         let m = n - 1
         m - m % workGroupSize + workGroupSize
+        // (n + workGroupSize - 1) / workGroupSize * workGroupSize

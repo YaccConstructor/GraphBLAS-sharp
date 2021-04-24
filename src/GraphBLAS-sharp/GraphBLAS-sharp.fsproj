@@ -9,7 +9,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Helpers.fs" />
     <Compile Include="Exceptions.fs" />
     <Compile Include="AlgebraicStructures.fs" />
     <Compile Include="GraphblasEvaluation.fs" />
@@ -21,6 +20,7 @@
     <Compile Include="Backend/Common/Copy.fs" />
     <Compile Include="Backend/Common/PrefixSum.fs" />
     <Compile Include="Backend/Common/RemoveDuplicates.fs" />
+    <Compile Include="Backend\CSRMatrix\Mxm.fs" />
     <Compile Include="Backend/CSRMatrix/Mxv.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />

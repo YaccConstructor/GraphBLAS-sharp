@@ -9,6 +9,16 @@ type Matrix<'a when 'a : struct> =
     | MatrixCSR of CSRMatrix<'a>
     | MatrixCOO of COOMatrix<'a>
 
+    member this.RowCount =
+        match this with
+        | MatrixCSR matrix -> matrix.RowCount
+        | MatrixCOO matrix -> matrix.RowCount
+
+    member this.ColumnCount =
+        match this with
+        | MatrixCSR matrix -> matrix.ColumnCount
+        | MatrixCOO matrix -> matrix.ColumnCount
+
 and CSRMatrix<'a> =
     {
         RowCount: int

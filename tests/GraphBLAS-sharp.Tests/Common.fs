@@ -26,18 +26,17 @@ module Generators =
     let genericSparseGenerator zero valuesGen handler =
         let maxSparsity = 100
         let sparsityGen = Gen.choose (0, maxSparsity)
-        let genWithSparsity sparseValuesGenProvider =
-            gen {
-                let! sparsity = sparsityGen
+        let genWithSparsity sparseValuesGenProvider = gen {
+            let! sparsity = sparsityGen
 
-                logger.debug (
-                    eventX "Sparcity is {sp} of {ms}"
-                    >> setField "sp" sparsity
-                    >> setField "ms" maxSparsity
-                )
+            logger.debug (
+                eventX "Sparcity is {sp} of {ms}"
+                >> setField "sp" sparsity
+                >> setField "ms" maxSparsity
+            )
 
-                return! sparseValuesGenProvider sparsity
-            }
+            return! sparseValuesGenProvider sparsity
+        }
 
         genWithSparsity <| fun sparsity ->
             [
@@ -47,24 +46,27 @@ module Generators =
             |> Gen.frequency
             |> handler
 
-    // generate non-empty matrices
-    let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
-        gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            return (matrixA, matrixB)
-        }
-        |> Gen.filter (fun (matrixA, matrixB) -> matrixA.Length <> 0 && matrixB.Length <> 0)
+    let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) = gen {
+        let! (nrows, ncols) = dimension2DGenerator
+        let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+        let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+        return (matrixA, matrixB)
+    }
 
-    let pairOfMatrixAndVectorOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
-        gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! vector = valuesGenerator |> Gen.arrayOfLength ncols
-            return (matrix, vector)
-        }
-        |> Gen.filter (fun (matrix, vector) -> matrix.Length <> 0 && vector.Length <> 0)
+    let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) = gen {
+        let! (nrows, ncols) = dimension2DGenerator
+        let! vector = valuesGenerator |> Gen.arrayOfLength nrows
+        let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+        let! mask = Arb.generate<bool> |> Gen.arrayOfLength ncols
+        return (vector, matrix, mask)
+    }
+
+    let pairOfMatricesOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) = gen {
+        let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+        let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrowsA, ncolsA)
+        let! matrixB = valuesGenerator |> Gen.array2DOfDim (ncolsA, ncolsB)
+        return (matrixA, matrixB)
+    }
 
 module Utils =
     let rec cartesian listOfLists =

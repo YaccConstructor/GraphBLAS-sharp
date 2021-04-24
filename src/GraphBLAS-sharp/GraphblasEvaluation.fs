@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open GraphBLAS.FSharp.Helpers
 
 type GraphblasContext =
     {
@@ -40,7 +39,7 @@ module EvalGB =
 
     let withClContext clContext (EvalGB action) =
         ask >>= fun env ->
-        return' ^ action { env with ClContext = clContext }
+        return' <| action { env with ClContext = clContext }
 
     let runSync (EvalGB action) =
         let result = action defaultEnv

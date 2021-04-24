@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
@@ -9,7 +9,8 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Common.fs" />
-    <Compile Include="OperationsTests/MxvTests.fs" />
+    <Compile Include="OperationsTests/MxmTests.fs" />
+    <Compile Include="OperationsTests/VxmTests.fs" />
     <Compile Include="OperationsTests/EWiseAddTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
