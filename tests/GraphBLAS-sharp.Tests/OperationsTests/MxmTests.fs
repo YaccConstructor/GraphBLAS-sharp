@@ -74,97 +74,109 @@ type PairOfMatricesOfCompatibleSize() =
         |> Generators.genericSparseGenerator false Arb.generate<bool>
         |> Arb.fromGen
 
-// let checkCorrectnessGeneric<'a when 'a : struct>
-//     (oclContext: OpenCLEvaluationContext)
-//     (sum: 'a -> 'a -> 'a)
-//     (diff: 'a -> 'a -> 'a)
-//     (isZero: 'a -> bool)
-//     (semiring: ISemiring<'a>)
-//     (case: OperationCase)
-//     (matrixA: 'a[,], matrixB: 'a[,]) =
+let checkCorrectnessGeneric<'a when 'a : struct>
+    (isEqual: 'a -> 'a -> bool)
+    (semiring: ISemiring<'a>)
+    (case: OperationCase)
+    (leftMatrix: 'a[,], rightMatrix: 'a[,]) =
 
-//     let createMatrixFromArray2D matrixFormat array isZero =
-//         match matrixFormat with
-//         | CSR -> failwith "Not implemented"
-//         | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+    let isZero = isEqual semiring.Zero
 
-//     let mxmNaive (matrixA: 'a[,]) (matrixB: 'a[,]) =
-//         let output = Array2D.zeroCreate<'a> (Array2D.length1 matrixA) (Array2D.length2 matrixB)
+    let createMatrixFromArray2D matrixFormat array isZero =
+        match matrixFormat with
+        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
 
-//         (left, right)
-//         ||> Seq.mapi2
-//             (fun idx x y ->
-//                 let i = idx / Array2D.length2 matrixA
-//                 let j = idx % Array2D.length2 matrixA
+    let mxmNaive (leftMatrix: 'a[,]) (rightMatrix: 'a[,]) =
+        let resultRowCount = Array2D.length1 leftMatrix
+        let resultColCount = Array2D.length2 rightMatrix
+        let resultMatrix = Array2D.zeroCreate<'a> resultRowCount resultColCount
 
-//                 if isZero x && isZero y then None
-//                 else Some (i, j, sum x y)
-//             )
-//         |> Seq.choose id
-//         |> Array.ofSeq
-//         |> Array.unzip3
-//         |> fun (rows, cols, vals) ->
-//             {
-//                 RowIndices = rows
-//                 ColumnIndices = cols
-//                 Values = vals
-//             }
+        for idx = 0 to resultRowCount * resultColCount - 1 do
+            let i = idx / resultColCount
+            let j = idx % resultColCount
+            let leftRow = leftMatrix.[i, *]
+            let rightCol = rightMatrix.[*, j]
 
-//     let mxmGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
-//         try
-//             let left = createMatrixFromArray2D case.LeftMatrixCase matrixA isZero
-//             let right = createMatrixFromArray2D case.RightMatrixCase matrixB isZero
+            resultMatrix.[i, j] <-
+                leftRow
+                |> Array.mapi (fun i v -> semiring.Times.Eval v rightCol.[i])
+                |> Array.reduce (fun x y -> semiring.Times.Eval x y)
 
-//             logger.debug (
-//                 eventX "Left matrix is \n{matrix}"
-//                 >> setField "matrix" left
-//             )
+        resultMatrix
+        |> Seq.cast<'a>
+        |> Seq.mapi
+            (fun idx v ->
+                let i = idx / Array2D.length2 leftMatrix
+                let j = idx % Array2D.length2 leftMatrix
 
-//             logger.debug (
-//                 eventX "Right matrix is \n{matrix}"
-//                 >> setField "matrix" right
-//             )
+                (i, j, v)
+            )
+        |> Seq.filter (fun (_, _, v) -> not <| isZero v)
+        |> Array.ofSeq
+        |> Array.unzip3
+        |> fun (rows, cols, vals) ->
+            {
+                RowIndices = rows
+                ColumnIndices = cols
+                Values = vals
+            }
 
-//             graphblas {
-//                 let! result = Matrix.mxm semiring left right
-//                 let! tuples = Matrix.tuples result
-//                 do! MatrixTuples.synchronize tuples
-//                 return tuples
-//             }
-//             |> EvalGB.withClContext oclContext
-//             |> EvalGB.runSync
+    let mxmGB (leftMatrix: 'a[,]) (rightMatrix: 'a[,]) =
+        try
+            let left = createMatrixFromArray2D case.LeftMatrixCase leftMatrix isZero
+            let right = createMatrixFromArray2D case.RightMatrixCase rightMatrix isZero
 
-//         finally
-//             oclContext.Provider.CloseAllBuffers()
+            logger.debug (
+                eventX "Left matrix is \n{matrix}"
+                >> setField "matrix" left
+            )
 
-//     let expected = mxmNaive matrixA matrixB
-//     let actual = mxmGB matrixA matrixB
+            logger.debug (
+                eventX "Right matrix is \n{matrix}"
+                >> setField "matrix" right
+            )
 
-//     logger.debug (
-//         eventX "Expected result is {matrix}"
-//         >> setField "matrix" (sprintf "%A" expected.Values)
-//     )
+            graphblas {
+                let! result = Matrix.mxm semiring left right
+                let! tuples = Matrix.tuples result
+                do! MatrixTuples.synchronize tuples
+                return tuples
+            }
+            |> EvalGB.withClContext case.ClContext
+            |> EvalGB.runSync
 
-//     logger.debug (
-//         eventX "Actual result is {matrix}"
-//         >> setField "matrix" (sprintf "%A" actual.Values)
-//     )
+        finally
+            case.ClContext.Provider.CloseAllBuffers()
 
-//     let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
-//     let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
+    let expected = mxmNaive leftMatrix rightMatrix
+    let actual = mxmGB leftMatrix rightMatrix
 
-//     "Indices of expected and result matrix must be the same"
-//     |> Expect.sequenceEqual actualIndices expectedIndices
+    logger.debug (
+        eventX "Expected result is {matrix}"
+        >> setField "matrix" (sprintf "%A" expected.Values)
+    )
 
-//     let difference =
-//         (expected.Values, actual.Values)
-//         ||> Seq.map2 diff
+    logger.debug (
+        eventX "Actual result is {matrix}"
+        >> setField "matrix" (sprintf "%A" actual.Values)
+    )
 
-//     "Length of expected and result values should be equal"
-//     |> Expect.hasLength actual.Values (Seq.length expected.Values)
+    let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
+    let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
 
-//     "There should be no difference between expected and received values"
-//     |> Expect.all difference isZero
+    "Indices of expected and result matrix must be the same"
+    |> Expect.sequenceEqual actualIndices expectedIndices
+
+    let equality =
+        (expected.Values, actual.Values)
+        ||> Seq.map2 isEqual
+
+    "Length of expected and result values should be equal"
+    |> Expect.hasLength actual.Values (Seq.length expected.Values)
+
+    "There should be no difference between expected and received values"
+    |> Expect.allEqual equality true
 
 let config =
     { FsCheckConfig.defaultConfig with
@@ -174,7 +186,43 @@ let config =
         // endSize = 1_000_000
     }
 
-let testFixtures case = []
+let testFixtures case = [
+    let getTestName datatype =
+        sprintf "Correctness on %s, %A, %A, %A, %O"
+            datatype
+            case.LeftMatrixCase
+            case.RightMatrixCase
+            case.MaskCase
+            case.ClContext
+
+    case
+    |> checkCorrectnessGeneric<int> (=) AddMult.int
+    |> testPropertyWithConfig config (getTestName "int")
+
+    case
+    |> checkCorrectnessGeneric<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) AddMult.float
+    |> testPropertyWithConfig config (getTestName "float")
+
+    case
+    |> checkCorrectnessGeneric<sbyte> (=) AddMult.sbyte
+    |> ptestPropertyWithConfig config (getTestName "sbyte")
+
+    case
+    |> checkCorrectnessGeneric<byte> (=) AddMult.byte
+    |> testPropertyWithConfig config (getTestName "byte")
+
+    case
+    |> checkCorrectnessGeneric<int16> (=) AddMult.int16
+    |> testPropertyWithConfig config (getTestName "int16")
+
+    case
+    |> checkCorrectnessGeneric<uint16> (=) AddMult.uint16
+    |> testPropertyWithConfig config (getTestName "uint16")
+
+    case
+    |> checkCorrectnessGeneric<bool> (=) AnyAll.bool
+    |> testPropertyWithConfig config (getTestName "bool")
+]
 
 let tests =
     testCases

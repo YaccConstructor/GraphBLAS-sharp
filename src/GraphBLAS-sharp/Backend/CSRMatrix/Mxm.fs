@@ -29,14 +29,14 @@ module internal rec Mxm =
         // (4) Set row pointers of output matrix to store in CSR by scan
         let nnz = [| 0 |]
         // let! outputPointers = PrefixSum.runInplace nnzEstimation nnz
-        let outputPointers = [|1|]
+        do! PrefixSum.runInplace nnzEstimation nnz
         let! _ = ToHost nnz
 
         // (5) Memory allocation of output matrix
         let outputColumns = Array.zeroCreate<int> nnz.[0]
         let outputValues = Array.zeroCreate<'a> nnz.[0]
         let output = {
-            RowPointers = outputPointers
+            RowPointers = nnzEstimation
             ColumnIndices = outputColumns
             Values = outputValues
             RowCount = leftMatrix.RowCount
@@ -46,8 +46,9 @@ module internal rec Mxm =
         // (6) Divide the rows into groups by the number of nnz
 
         // (7) Calc the output matrix (calc values and column indices -> shrink table -> sort)
+        do! calculateResult leftMatrix rightMatrix semiring flatBins binsPointers globalTableOffsets globalTableMemorySize output
 
-        return ()
+        return output
     }
 
     let private getNumberOfIntermediateProducts (leftMatrix: CSRMatrix<'a>) (rightMatrix: CSRMatrix<'a>) = opencl {
@@ -562,13 +563,13 @@ module internal rec Mxm =
                                     while not break' do
                                         if table.[localOffset + hash] = key then
                                             // TODO make it arbitrary (not atomic add but plus)
-                                            localValues.[localOffset + hash] <!+ (%times) aVal bVal
+                                            localValues.[localOffset + hash] <- (%plus) localValues.[localOffset + hash] ((%times) aVal bVal)
                                             break' <- true
                                         elif table.[hash] = -1 then
                                             let old = aCompExchR table.[localOffset + hash] (-1) key
                                             if old = -1 then
                                                 // TODO make it arbitrary (not atomic add but plus)
-                                                localValues.[localOffset + hash] <!+ (%times) aVal bVal
+                                                localValues.[localOffset + hash] <- (%plus) localValues.[localOffset + hash] ((%times) aVal bVal)
                                                 break' <- true
                                         else
                                             hash <- (hash + 1) % tableSize
@@ -676,13 +677,13 @@ module internal rec Mxm =
                                 while not break' do
                                     if table.[hash] = key then
                                         // TODO make it arbitrary (not atomic add but plus)
-                                        localValues.[hash] <!+ (%times) aVal bVal
+                                        localValues.[hash] <- (%plus) localValues.[hash] ((%times) aVal bVal)
                                         break' <- true
                                     elif table.[hash] = -1 then
                                         let old = aCompExchR table.[hash] (-1) key
                                         if old = -1 then
                                             // TODO make it arbitrary (not atomic add but plus)
-                                            localValues.[hash] <!+ (%times) aVal bVal
+                                            localValues.[hash] <- (%plus) localValues.[hash] ((%times) aVal bVal)
                                             break' <- true
                                     else
                                         hash <- (hash + 1) % tableSize
@@ -727,5 +728,18 @@ module internal rec Mxm =
                 <| outputMatrix.Values
         }
 
-        return ()
+        // nnz of each row in c
+        let nnzEstimation = Array.zeroCreate<int> flatBins.Length // count of rows (M)
+
+        for binId = 0 to BinsCount - 1 do
+            if getBinLen binId binsPointers = 0 then () // bin_size[i]
+
+            if binId = 0 then
+                do! numericPW nnzEstimation
+            elif binId <> MaxBinId then
+                do! numericWG binId nnzEstimation
+            // else
+                // let globalTable = Array.zeroCreate<int> globalTableMemorySize
+                // do! symbolicGlobal globalTable globalTableOffsets nnzEstimation
+                //printfn "ololo"
     }

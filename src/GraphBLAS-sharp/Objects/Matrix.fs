@@ -28,6 +28,29 @@ and CSRMatrix<'a> =
         Values: 'a[]
     }
 
+    static member FromArray2D(array: 'a[,], isZero: 'a -> bool) =
+        let rowsCount = array |> Array2D.length1
+        let columnsCount = array |> Array2D.length2
+
+        let convertedMatrix =
+            [for i in 0 .. rowsCount - 1 -> array.[i, *] |> List.ofArray]
+            |> List.map
+                (fun row ->
+                    row
+                    |> List.mapi (fun i x -> (x, i))
+                    |> List.filter (fun pair -> not <| isZero (fst pair))
+                )
+            |> List.fold (fun (rowPtrs, valueInx) row ->
+                ((rowPtrs.Head + row.Length) :: rowPtrs), valueInx @ row) ([0], [])
+
+        {
+            Values = convertedMatrix |> (snd >> List.unzip >> fst) |> List.toArray
+            ColumnIndices = convertedMatrix |> (snd >> List.unzip >> snd) |> List.toArray
+            RowPointers = convertedMatrix |> fst |> List.rev |> List.toArray
+            RowCount = rowsCount
+            ColumnCount = columnsCount
+        }
+
     static member FromFile(pathToMatrix: string) : CSRMatrix<'a> =
         failwith "Not Implemented yet"
 

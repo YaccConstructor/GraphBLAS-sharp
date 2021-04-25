@@ -9,6 +9,14 @@ open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message
 open System.Text.RegularExpressions
+open FSharp.Quotations.Evaluator
+
+[<AutoOpen>]
+module Extensions =
+    type ClosedBinaryOp<'a> with
+        member this.Eval =
+            let (ClosedBinaryOp f) = this
+            QuotationEvaluator.Evaluate f
 
 module Generators =
     let logger = Log.create "Generators"

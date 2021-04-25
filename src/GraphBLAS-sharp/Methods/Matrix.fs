@@ -138,7 +138,15 @@ module Matrix =
         closed operations
     *)
 
-    let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        match leftMatrix, rightMatrix with
+        | MatrixCSR left, MatrixCSR right ->
+            opencl {
+                let! result = CSRMatrix.Mxm.run left right semiring
+                return MatrixCSR result
+            }
+        | _ -> failwith "Not Implemented"
+        |> EvalGB.fromCl
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented"

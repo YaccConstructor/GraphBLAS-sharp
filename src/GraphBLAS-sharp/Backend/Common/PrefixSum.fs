@@ -3,7 +3,20 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
-module internal rec PrefixSum =
+module rec PrefixSum =
+    /// <summary>
+    /// Exclude inplace prefix sum
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 2; 3 |]
+    /// let sum = [| 0 |]
+    /// opencl { do! runInplace arr sum }
+    /// ...
+    /// > val arr = [| 0; 1; 3 |]
+    /// > val sum = [| 6 |]
+    /// </code>
+    /// </example>
     let runInplace (inputArray: int[]) (totalSum: int[]) = opencl {
         let workGroupSize = Utils.workGroupSize
 
