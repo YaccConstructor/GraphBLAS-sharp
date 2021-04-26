@@ -24,6 +24,13 @@ and COOVector<'a> =
         ]
         |> String.concat ""
 
+    static member FromTuples(size: int, indices: int[], values: 'a[]) =
+        {
+            Size = size
+            Indices = indices
+            Values = values
+        }
+
 // and BitmapVector<'a> =
 //     {
 //         Bitmap: bool[]

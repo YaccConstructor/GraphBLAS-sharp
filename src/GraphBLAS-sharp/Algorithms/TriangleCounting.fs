@@ -11,7 +11,9 @@ module TriangleCounting =
 
         let! lowerTriangularMask = lowerTriangular |> Matrix.mask
         let! result = (matrix', transposed) ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
-        let! (Scalar count) = result |> Matrix.reduce Add.int
+        let! count = result |> Matrix.reduce Add.int
 
-        return count
+        do! Scalar.synchronize count
+
+        return! (Scalar.extractValue count)
     }

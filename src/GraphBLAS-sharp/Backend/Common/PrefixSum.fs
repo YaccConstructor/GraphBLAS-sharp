@@ -12,7 +12,7 @@ module internal rec PrefixSum =
         let mutable verticesArrays = firstVertices, secondVertices
         let swap (a, b) = (b, a)
 
-        let mutable verticesLength = (inputArray.Length - 1) / workGroupSize + 1
+        let mutable verticesLength = firstVertices.Length
         let mutable bunchLength = workGroupSize
 
         do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
