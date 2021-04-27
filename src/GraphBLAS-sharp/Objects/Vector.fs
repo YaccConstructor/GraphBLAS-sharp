@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp
 
-type VectorType =
+type VectorFormat =
     | COO
     // | Bitmap
 
@@ -24,8 +24,23 @@ and COOVector<'a> =
         ]
         |> String.concat ""
 
-    static member FromArray(array: 'a[,], isZero: 'a -> bool) =
-        failwith "Not Implemented yet"
+    static member FromTuples(size: int, indices: int[], values: 'a[]) =
+        {
+            Size = size
+            Indices = indices
+            Values = values
+        }
+
+    static member FromArray(array: 'a[], isZero: 'a -> bool) =
+        let (indices, vals) =
+            array
+            |> Seq.cast<'a>
+            |> Seq.mapi (fun idx v -> (idx, v))
+            |> Seq.filter (fun (_, v) -> not (isZero v))
+            |> Array.ofSeq
+            |> Array.unzip
+
+        COOVector.FromTuples(array.Length, indices, vals)
 
 // and BitmapVector<'a> =
 //     {

@@ -16,16 +16,16 @@ let logger = Log.create "VxmTests"
 type OperationCase =
     {
         ClContext: OpenCLEvaluationContext
-        VectorCase: VectorType
-        MatrixCase: MatrixType
+        VectorCase: VectorFormat
+        MatrixCase: MatrixFromat
         MaskCase: MaskType
     }
 
 let testCases =
     [
         Utils.avaliableContexts "" |> Seq.map box
-        Utils.listOfUnionCases<VectorType> |> Seq.map box
-        Utils.listOfUnionCases<MatrixType> |> Seq.map box
+        Utils.listOfUnionCases<VectorFormat> |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
         Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
     |> List.map List.ofSeq
@@ -74,102 +74,106 @@ type PairOfSparseVectorAndMatrixOfCompatibleSize() =
         |> Generators.genericSparseGenerator false Arb.generate<bool>
         |> Arb.fromGen
 
-// let checkCorrectnessGeneric<'a when 'a : struct>
-//     (oclContext: OpenCLEvaluationContext)
-//     (sum: 'a -> 'a -> 'a)
-//     (diff: 'a -> 'a -> 'a)
-//     (isZero: 'a -> bool)
-//     (semiring: ISemiring<'a>)
-//     (case: OperationCase)
-//     (matrixA: 'a[,], matrixB: 'a[,], mask: bool[,]) =
+let checkCorrectnessGeneric<'a when 'a : struct>
+    (semiring: ISemiring<'a>)
+    (isEqual: 'a -> 'a -> bool)
+    (case: OperationCase)
+    (vector: 'a[], matrix: 'a[,], mask: bool[]) =
 
-//     let createMatrixFromArray2D array isZero =
-//         match case.MatrixCase with
-//         | CSR -> failwith "Not implemented"
-//         | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+    let isZero = isEqual semiring.Zero
 
-//     let createVectorFromArray array isZero =
-//         match case.VectorCase with
-//         | VectorType.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
+    let expected =
+        let resultSize = Array2D.length2 matrix
+        let resultVector = Array.zeroCreate<'a> resultSize
 
-//     let vxmNaive (vector: 'a[]) (matrix: 'a[,]) =
-//         let left = matrixA |> Seq.cast<'a>
-//         let right = matrixB |> Seq.cast<'a>
+        for i = 0 to resultSize - 1 do
+            let col = matrix.[*, i]
+            resultVector.[i] <-
+                vector
+                |> Array.mapi (fun i v -> semiring.Times.Invoke v col.[i])
+                |> Array.reduce (fun x y -> semiring.Plus.Invoke x y)
 
-//         (left, right)
-//         ||> Seq.mapi2
-//             (fun idx x y ->
-//                 let i = idx / Array2D.length2 matrixA
-//                 let j = idx % Array2D.length2 matrixA
+        resultVector
+        |> Seq.cast<'a>
+        |> Seq.mapi (fun i v -> (i, v))
+        |> Seq.filter
+            (fun (i, v) ->
+                not (isZero v) &&
+                match case.MaskCase with
+                | NoMask -> true
+                | Regular -> mask.[i]
+                | Complemented -> not mask.[i]
+            )
+        |> Array.ofSeq
+        |> Array.unzip
+        |> fun (cols, vals) ->
+            {
+                Indices = cols
+                Values = vals
+            }
 
-//                 if isZero x && isZero y then None
-//                 else Some (i, j, sum x y)
-//             )
-//         |> Seq.choose id
-//         |> Array.ofSeq
-//         |> Array.unzip3
-//         |> fun (rows, cols, vals) ->
-//             {
-//                 RowIndices = rows
-//                 ColumnIndices = cols
-//                 Values = vals
-//             }
+    let actual =
+        try
+            let vector = Utils.createVectorFromArray case.VectorCase vector isZero
+            let matrix = Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
+            let mask = Utils.createVectorFromArray VectorFormat.COO mask not
 
-//     let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
-//         try
-//             let left = createMatrixFromArray2D matrixA isZero
-//             let right = createMatrixFromArray2D matrixB isZero
+            logger.debug (
+                eventX "Vector is \n{vector}"
+                >> setField "vector" vector
+            )
 
-//             logger.debug (
-//                 eventX "Left matrix is \n{matrix}"
-//                 >> setField "matrix" left
-//             )
+            logger.debug (
+                eventX "Matrix is \n{matrix}"
+                >> setField "matrix" matrix
+            )
 
-//             logger.debug (
-//                 eventX "Right matrix is \n{matrix}"
-//                 >> setField "matrix" right
-//             )
+            graphblas {
+                let! result =
+                    match case.MaskCase with
+                    | NoMask -> Vector.vxm semiring vector matrix
+                    | Regular ->
+                        Vector.mask mask
+                        >>= fun mask -> Vector.vxmWithMask semiring mask vector matrix
+                    | Complemented ->
+                        Vector.complemented mask
+                        >>= fun mask -> Vector.vxmWithMask semiring mask vector matrix
 
-//             graphblas {
-//                 let! result = Vector.vxm semiring left right
-//                 let! tuples = Matrix.tuples result
-//                 do! MatrixTuples.synchronize tuples
-//                 return tuples
-//             }
-//             |> EvalGB.withClContext oclContext
-//             |> EvalGB.runSync
+                let! tuples = Vector.tuples result
+                do! VectorTuples.synchronize tuples
+                return tuples
+            }
+            |> EvalGB.withClContext case.ClContext
+            |> EvalGB.runSync
 
-//         finally
-//             oclContext.Provider.CloseAllBuffers()
+        finally
+            case.ClContext.Provider.CloseAllBuffers()
 
-//     let expected = eWiseAddNaive matrixA matrixB
-//     let actual = eWiseAddGB matrixA matrixB
+    logger.debug (
+        eventX "Expected result is {expected}"
+        >> setField "expected" (sprintf "%A" expected.Values)
+    )
 
-//     logger.debug (
-//         eventX "Expected result is {matrix}"
-//         >> setField "matrix" (sprintf "%A" expected.Values)
-//     )
+    logger.debug (
+        eventX "Actual result is {actual}"
+        >> setField "actual" (sprintf "%A" actual.Values)
+    )
 
-//     logger.debug (
-//         eventX "Actual result is {matrix}"
-//         >> setField "matrix" (sprintf "%A" actual.Values)
-//     )
+    let actualIndices = actual.Indices
+    let expectedIndices = expected.Indices
 
-//     let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
-//     let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
+    "Indices of expected and result vector must be the same"
+    |> Expect.sequenceEqual actualIndices expectedIndices
 
-//     "Indices of expected and result matrix must be the same"
-//     |> Expect.sequenceEqual actualIndices expectedIndices
+    let equality =
+        (expected.Values, actual.Values)
+        ||> Seq.map2 isEqual
 
-//     let difference =
-//         (expected.Values, actual.Values)
-//         ||> Seq.map2 diff
+    "Length of expected and result values should be equal"
+    |> Expect.hasLength actual.Values (Seq.length expected.Values)
 
-//     "Length of expected and result values should be equal"
-//     |> Expect.hasLength actual.Values (Seq.length expected.Values)
-
-//     "There should be no difference between expected and received values"
-//     |> Expect.all difference isZero
+    "There should be no difference between expected and received values"
+    |> Expect.allEqual equality true
 
 let config =
     { FsCheckConfig.defaultConfig with
@@ -179,7 +183,43 @@ let config =
         // endSize = 1_000_000
     }
 
-let testFixtures case = []
+let testFixtures case = [
+    let getTestName datatype =
+        sprintf "Correctness on %s, %A, %A, %A, %O"
+            datatype
+            case.VectorCase
+            case.MatrixCase
+            case.MaskCase
+            case.ClContext
+
+    case
+    |> checkCorrectnessGeneric<int> AddMult.int (=)
+    |> ftestPropertyWithConfig config (getTestName "int")
+
+    case
+    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+    |> ftestPropertyWithConfig config (getTestName "float")
+
+    case
+    |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
+    |> ptestPropertyWithConfig config (getTestName "sbyte")
+
+    case
+    |> checkCorrectnessGeneric<byte> AddMult.byte (=)
+    |> ptestPropertyWithConfig config (getTestName "byte")
+
+    case
+    |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
+    |> testPropertyWithConfig config (getTestName "int16")
+
+    case
+    |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
+    |> testPropertyWithConfig config (getTestName "uint16")
+
+    case
+    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
+    |> testPropertyWithConfig config (getTestName "bool")
+]
 
 let tests =
     testCases
@@ -190,9 +230,9 @@ let tests =
             let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
             deviceType = DeviceType.Cpu &&
-            case.VectorCase = VectorType.COO &&
+            case.VectorCase = VectorFormat.COO &&
             case.MatrixCase = CSR &&
-            case.MaskCase <> Complemented
+            case.MaskCase = NoMask
         )
     |> List.collect testFixtures
     |> testList "Vxm tests"

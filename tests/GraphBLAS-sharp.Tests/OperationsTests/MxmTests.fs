@@ -16,16 +16,16 @@ let logger = Log.create "MxmTests"
 type OperationCase =
     {
         ClContext: OpenCLEvaluationContext
-        LeftMatrixCase: MatrixType
-        RightMatrixCase: MatrixType
+        LeftMatrixCase: MatrixFromat
+        RightMatrixCase: MatrixFromat
         MaskCase: MaskType
     }
 
 let testCases =
     [
         Utils.avaliableContexts "" |> Seq.map box
-        Utils.listOfUnionCases<MatrixType> |> Seq.map box
-        Utils.listOfUnionCases<MatrixType> |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
         Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
     |> List.map List.ofSeq
@@ -75,19 +75,19 @@ type PairOfMatricesOfCompatibleSize() =
         |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct>
-    (isEqual: 'a -> 'a -> bool)
     (semiring: ISemiring<'a>)
+    (isEqual: 'a -> 'a -> bool)
     (case: OperationCase)
     (leftMatrix: 'a[,], rightMatrix: 'a[,]) =
 
     let isZero = isEqual semiring.Zero
 
-    let createMatrixFromArray2D matrixFormat array isZero =
+    let createMatrixFromArray2D matrixFormat array =
         match matrixFormat with
         | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
         | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
 
-    let mxmNaive (leftMatrix: 'a[,]) (rightMatrix: 'a[,]) =
+    let expected =
         let resultRowCount = Array2D.length1 leftMatrix
         let resultColCount = Array2D.length2 rightMatrix
         let resultMatrix = Array2D.zeroCreate<'a> resultRowCount resultColCount
@@ -100,8 +100,8 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
             resultMatrix.[i, j] <-
                 leftRow
-                |> Array.mapi (fun i v -> semiring.Times.Eval v rightCol.[i])
-                |> Array.reduce (fun x y -> semiring.Times.Eval x y)
+                |> Array.mapi (fun i v -> semiring.Times.Invoke v rightCol.[i])
+                |> Array.reduce (fun x y -> semiring.Plus.Invoke x y)
 
         resultMatrix
         |> Seq.cast<'a>
@@ -122,10 +122,10 @@ let checkCorrectnessGeneric<'a when 'a : struct>
                 Values = vals
             }
 
-    let mxmGB (leftMatrix: 'a[,]) (rightMatrix: 'a[,]) =
+    let actual =
         try
-            let left = createMatrixFromArray2D case.LeftMatrixCase leftMatrix isZero
-            let right = createMatrixFromArray2D case.RightMatrixCase rightMatrix isZero
+            let left = createMatrixFromArray2D case.LeftMatrixCase leftMatrix
+            let right = createMatrixFromArray2D case.RightMatrixCase rightMatrix
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"
@@ -148,9 +148,6 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
         finally
             case.ClContext.Provider.CloseAllBuffers()
-
-    let expected = mxmNaive leftMatrix rightMatrix
-    let actual = mxmGB leftMatrix rightMatrix
 
     logger.debug (
         eventX "Expected result is {matrix}"
@@ -196,31 +193,31 @@ let testFixtures case = [
             case.ClContext
 
     case
-    |> checkCorrectnessGeneric<int> (=) AddMult.int
-    |> testPropertyWithConfig config (getTestName "int")
+    |> checkCorrectnessGeneric<int> AddMult.int (=)
+    |> ftestPropertyWithConfig config (getTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) AddMult.float
-    |> testPropertyWithConfig config (getTestName "float")
+    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+    |> ftestPropertyWithConfig config (getTestName "float")
 
     case
-    |> checkCorrectnessGeneric<sbyte> (=) AddMult.sbyte
+    |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
     |> ptestPropertyWithConfig config (getTestName "sbyte")
 
     case
-    |> checkCorrectnessGeneric<byte> (=) AddMult.byte
-    |> testPropertyWithConfig config (getTestName "byte")
+    |> checkCorrectnessGeneric<byte> AddMult.byte (=)
+    |> ptestPropertyWithConfig config (getTestName "byte")
 
     case
-    |> checkCorrectnessGeneric<int16> (=) AddMult.int16
+    |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
     |> testPropertyWithConfig config (getTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<uint16> (=) AddMult.uint16
+    |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
     |> testPropertyWithConfig config (getTestName "uint16")
 
     case
-    |> checkCorrectnessGeneric<bool> (=) AnyAll.bool
+    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
     |> testPropertyWithConfig config (getTestName "bool")
 ]
 

@@ -14,7 +14,7 @@ open FSharp.Quotations.Evaluator
 [<AutoOpen>]
 module Extensions =
     type ClosedBinaryOp<'a> with
-        member this.Eval =
+        member this.Invoke =
             let (ClosedBinaryOp f) = this
             QuotationEvaluator.Evaluate f
 
@@ -110,3 +110,12 @@ module Utils =
                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
                 OpenCLEvaluationContext(platformName, deviceType)
             )
+
+    let createMatrixFromArray2D matrixCase array isZero =
+        match matrixCase with
+        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+
+    let createVectorFromArray vectorCase array isZero =
+        match vectorCase with
+        | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)

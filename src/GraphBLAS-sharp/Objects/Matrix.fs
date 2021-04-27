@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp
 
-// matrixFormat
-type MatrixType =
+type MatrixFromat =
     | CSR
     | COO
 

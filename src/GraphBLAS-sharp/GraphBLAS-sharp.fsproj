@@ -20,7 +20,7 @@
     <Compile Include="Backend/Common/Copy.fs" />
     <Compile Include="Backend/Common/PrefixSum.fs" />
     <Compile Include="Backend/Common/RemoveDuplicates.fs" />
-    <Compile Include="Backend\CSRMatrix\Mxm.fs" />
+    <Compile Include="Backend/CSRMatrix/Mxm.fs" />
     <Compile Include="Backend/CSRMatrix/Mxv.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />
@@ -43,6 +43,7 @@
     <Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/ShortestPath.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
+    <Compile Include="Algorithms/BetweennessCentrality.fs" />
     <Content Include="YC.OpenCL.NET.dll.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

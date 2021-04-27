@@ -14,7 +14,7 @@ module BFS =
         while not break' do
             currentLevel <- currentLevel + 1
 
-            // XXX mask application is ugly
+            // NOTE mask application is ugly
             let! frontierMask = Vector.mask frontier
             do! Scalar currentLevel |> Vector.fillSubVector levels frontierMask // v[q] = d
 

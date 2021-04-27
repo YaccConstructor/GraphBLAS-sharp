@@ -6,7 +6,7 @@ let allTests =
     testList "All tests" [
         //EWiseAdd.tests
         Mxm.tests
-        // Vxm.tests
+        Vxm.tests
     ]
     |> testSequenced
 

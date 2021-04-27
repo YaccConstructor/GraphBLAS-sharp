@@ -14,6 +14,7 @@ module internal rec Mxm =
     let [<Literal>] Pwarp = 4
     let [<Literal>] HashScale = 107
 
+    // TODO добавить корректную обработку нулевых матриц
     let run (leftMatrix: CSRMatrix<'a>) (rightMatrix: CSRMatrix<'a>) (semiring: ISemiring<'a>) = opencl {
         // (1) Count the number of intermediate products of each row
         let! numberOfIntermediateProducts = getNumberOfIntermediateProducts leftMatrix rightMatrix
@@ -21,7 +22,7 @@ module internal rec Mxm =
 
         // (2) Divide the rows into groups by the number of intermediate products
         let (bins, globalTableOffsets, globalTableMemorySize) = divideIntoBins numberOfIntermediateProducts
-        let (flatBins, binsPointers) = flattenBins 0 bins
+        let (flatBins, binsPointers) = flattenBins leftMatrix.RowCount bins
 
         // (3) Count the number of non-zero elements of each row of output matrix for all bins
         let! nnzEstimation = getNnzEstimation leftMatrix rightMatrix flatBins binsPointers globalTableOffsets globalTableMemorySize
@@ -63,14 +64,14 @@ module internal rec Mxm =
                     (numberOfIntermediateProducts: int[]) ->
 
                     let i = ndRange.GlobalID0
-                    if i >= leftRowCount then ()
 
-                    let mutable acc = 0
-                    for j = leftPointers.[i] to leftPointers.[i + 1] do
-                        let col = leftColumns.[j]
-                        acc <- acc + (rightPointers.[col + 1] - rightPointers.[col])
+                    if i < leftRowCount then
+                        let mutable acc = 0
+                        for j = leftPointers.[i] to leftPointers.[i + 1] do
+                            let col = leftColumns.[j]
+                            acc <- acc + (rightPointers.[col + 1] - rightPointers.[col])
 
-                    numberOfIntermediateProducts.[i] <- acc
+                        numberOfIntermediateProducts.[i] <- acc
             @>
 
         let numberOfIntermediateProducts = Array.zeroCreate<int> leftRowCount
@@ -121,7 +122,7 @@ module internal rec Mxm =
         let mutable globalTableMemorySize = 0
         let mutable preNnz = 0
         for rowIdx = 0 to rowCount - 1 do
-            let current = numberOfIntermediateProducts.[rowCount]
+            let current = numberOfIntermediateProducts.[rowIdx]
             let bin = getBinId current
             // TODO: need to optimize
             bins.[bin] <- bins.[bin] @ [rowIdx]
@@ -136,14 +137,14 @@ module internal rec Mxm =
     let flattenBins (rowCount: int) (bins: int list []) =
         let flatBins = Array.zeroCreate<int> rowCount
         let binsPointers = Array.zeroCreate<int> (BinsCount + 1)
-        let mutable binLength = 0
+        let mutable binOffset = 0
         for binId = 0 to BinsCount - 1 do
             let bin = bins.[binId]
-            binsPointers.[binId] <- binLength
-            Array.blit (Array.ofList bin) 0 flatBins binLength bin.Length
-            binLength <- binLength + bin.Length
+            binsPointers.[binId] <- binOffset
+            Array.blit (Array.ofList bin) 0 flatBins binOffset bin.Length
+            binOffset <- binOffset + bin.Length
 
-        binsPointers.[BinsCount] <- binLength
+        binsPointers.[BinsCount] <- binOffset
 
         (flatBins, binsPointers)
 
@@ -164,6 +165,8 @@ module internal rec Mxm =
             let wgSize = getWorkGroupSize binId
             let tableSize = getTableSize binId
             let pwarpsInWG = wgSize / Pwarp
+
+            let localTableSizePW = pwarpsInWG * tableSize
 
             let kernel =
                 <@
@@ -190,7 +193,7 @@ module internal rec Mxm =
                         let rowIdx = flatBins.[binId]
 
                         // хеш-таблица в локальной памяти и индекс для конкретной строки левой матрицы
-                        let table = localArray<int> (pwarpsInWG * tableSize)
+                        let table = localArray<int> localTableSizePW
                         let pwarpTableIdx = tableSize * localPwarpId
                         for i in pwarpLocalId .. Pwarp .. tableSize - 1 do
                             table.[pwarpTableIdx + i] <- -1
@@ -223,18 +226,18 @@ module internal rec Mxm =
 
                         barrier ()
 
-                        if binId >= binOffset + binLength then ()
-                        if pwarpLocalId = 0 then
-                            nnzEstimation.[rowIdx] <-
-                                nnzBuffer.[threadNnzBufferIdx] +
-                                nnzBuffer.[threadNnzBufferIdx + 1] +
-                                nnzBuffer.[threadNnzBufferIdx + 2] +
-                                nnzBuffer.[threadNnzBufferIdx + 3]
+                        if binId < binOffset + binLength then
+                            if pwarpLocalId = 0 then
+                                nnzEstimation.[rowIdx] <-
+                                    nnzBuffer.[threadNnzBufferIdx] +
+                                    nnzBuffer.[threadNnzBufferIdx + 1] +
+                                    nnzBuffer.[threadNnzBufferIdx + 2] +
+                                    nnzBuffer.[threadNnzBufferIdx + 3]
                 @>
 
             do! RunCommand kernel <| fun kernelPrepare ->
                 kernelPrepare
-                <| _1D(binLength * Pwarp |> Utils.workSize, wgSize)
+                <| _1D(binLength * Pwarp |> Utils.getValidGlobalSize wgSize, wgSize)
                 <| flatBins
                 <| binsPointers.[binId]
                 <| binLength
@@ -469,15 +472,16 @@ module internal rec Mxm =
         let nnzEstimation = Array.zeroCreate<int> flatBins.Length // count of rows (M)
 
         for binId = 0 to BinsCount - 1 do
-            if getBinLen binId binsPointers = 0 then () // bin_size[i]
-
-            if binId = 0 then
-                do! symbolicPW nnzEstimation
-            elif binId <> MaxBinId then
-                do! symbolicWG binId nnzEstimation
-            else
-                let globalTable = Array.zeroCreate<int> globalTableMemorySize
-                do! symbolicGlobal globalTable globalTableOffsets nnzEstimation
+            if getBinLen binId binsPointers <> 0 then // bin_size[i]
+                if binId = 0 then
+                    do! symbolicPW nnzEstimation
+                else
+                    failwith "kekw"
+                // elif binId <> MaxBinId then
+                //     do! symbolicWG binId nnzEstimation
+                // else
+                //     let globalTable = Array.zeroCreate<int> globalTableMemorySize
+                //     do! symbolicGlobal globalTable globalTableOffsets nnzEstimation
 
         return nnzEstimation
     }
@@ -502,6 +506,8 @@ module internal rec Mxm =
             let wgSize = getWorkGroupSize binId
             let tableSize = getTableSize binId
             let pwarpsInWG = wgSize / Pwarp
+
+            let localTableSizePW = pwarpsInWG * tableSize
 
             let kernel =
                 <@
@@ -532,11 +538,14 @@ module internal rec Mxm =
                         let localOffset = tableSize * localPwarpId
 
                         // хеш-таблица в локальной памяти и индекс для конкретной строки левой матрицы
-                        let table = localArray<int> (pwarpsInWG * tableSize)
-                        let localValues = localArray<'a> (pwarpsInWG * tableSize)
+                        let table = localArray<int> localTableSizePW
+                        let localValues = localArray<'a> localTableSizePW
                         for i in pwarpLocalId .. Pwarp .. tableSize - 1 do
                             table.[localOffset + i] <- -1
                             localValues.[localOffset + i] <- zero
+
+                        let localNz = localArray<int> pwarpsInWG
+                        if pwarpLocalId = 0 then localNz.[pwarpLocalId] <- 0
 
                         // if pwarpId >= binLength then ()
                         // индекс в массиве бинов
@@ -579,23 +588,22 @@ module internal rec Mxm =
                         if binId < binOffset + binLength then
                             for i in pwarpLocalId .. Pwarp .. tableSize - 1 do
                                 if table.[localOffset + i] <> -1 then
-                                    let idx = glNz.[rowIdx] <!+> 1
+                                    let idx = localNz.[localPwarpId] <!+> 1
                                     table.[localOffset + idx] <- table.[localOffset + i]
                                     localValues.[localOffset + idx] <- localValues.[localOffset + i]
 
                         barrier ()
 
-                        if binId >= binOffset + binLength then ()
-
-                        let nz = glNz.[rowIdx]
-                        let globalColumnsIdx = outputPointers.[rowIdx]
-                        for i in pwarpLocalId .. Pwarp .. nz - 1 do
-                            let target = table.[localOffset + i]
-                            let mutable count = 0
-                            for k = 0 to nz - 1 do
-                                count <- int (uint32 (table.[localOffset + k]  - target) >>> 31)
-                            outputColumns.[globalColumnsIdx + count] <- table.[localOffset + i]
-                            outputValues.[globalColumnsIdx + count] <- localValues.[localOffset + i]
+                        if binId < binOffset + binLength then
+                            let nz = localNz.[localPwarpId]
+                            let globalColumnsIdx = outputPointers.[rowIdx]
+                            for i in pwarpLocalId .. Pwarp .. nz - 1 do
+                                let target = table.[localOffset + i]
+                                let mutable count = 0
+                                for k = 0 to nz - 1 do
+                                    count <- int (uint32 (table.[localOffset + k]  - target) >>> 31)
+                                outputColumns.[globalColumnsIdx + count] <- table.[localOffset + i]
+                                outputValues.[globalColumnsIdx + count] <- localValues.[localOffset + i]
                 @>
 
             do! RunCommand kernel <| fun kernelPrepare ->
@@ -712,7 +720,7 @@ module internal rec Mxm =
 
             do! RunCommand kernel <| fun kernelPrepare ->
                 kernelPrepare
-                <| _1D(binLength * Pwarp |> Utils.workSize, wgSize)
+                <| _1D(binLength * Pwarp |> Utils.getValidGlobalSize wgSize, wgSize)
                 <| flatBins
                 <| binsPointers.[binId]
                 <| binLength
@@ -732,14 +740,14 @@ module internal rec Mxm =
         let nnzEstimation = Array.zeroCreate<int> flatBins.Length // count of rows (M)
 
         for binId = 0 to BinsCount - 1 do
-            if getBinLen binId binsPointers = 0 then () // bin_size[i]
-
-            if binId = 0 then
-                do! numericPW nnzEstimation
-            elif binId <> MaxBinId then
-                do! numericWG binId nnzEstimation
-            // else
-                // let globalTable = Array.zeroCreate<int> globalTableMemorySize
-                // do! symbolicGlobal globalTable globalTableOffsets nnzEstimation
-                //printfn "ololo"
+            if getBinLen binId binsPointers <> 0 then // bin_size[i]
+                if binId = 0 then
+                    do! numericPW nnzEstimation
+                else
+                    failwith "kekw2"
+                // elif binId <> MaxBinId then
+                //     do! numericWG binId nnzEstimation
+                // else
+                //     // global
+                //     ()
     }

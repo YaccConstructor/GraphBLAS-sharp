@@ -16,14 +16,14 @@ let logger = Log.create "EWiseAddTests"
 type OperationCase =
     {
         ClContext: OpenCLEvaluationContext
-        MatrixCase: MatrixType
+        MatrixCase: MatrixFromat
         MaskCase: MaskType
     }
 
 let testCases =
     [
         Utils.avaliableContexts "" |> Seq.map box
-        Utils.listOfUnionCases<MatrixType> |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
         Utils.listOfUnionCases<MaskType> |> Seq.map box
     ]
     |> List.map List.ofSeq
@@ -72,31 +72,30 @@ type PairOfSparseMatricesOfEqualSize() =
         |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct>
-    (oclContext: OpenCLEvaluationContext)
-    (sum: 'a -> 'a -> 'a)
-    (diff: 'a -> 'a -> 'a)
-    (isZero: 'a -> bool)
     (monoid: IMonoid<'a>)
+    (isEqual: 'a -> 'a -> bool)
     (case: OperationCase)
-    (matrixA: 'a[,], matrixB: 'a[,]) =
+    (leftMatrix: 'a[,], rightMatrix: 'a[,]) =
 
-    let createMatrixFromArray2D matrixFormat array isZero =
+    let isZero = isEqual monoid.Zero
+
+    let createMatrixFromArray2D matrixFormat array =
         match matrixFormat with
         | CSR -> failwith "Not implemented"
         | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
 
-    let eWiseAddNaive (matrixA: 'a[,]) (matrixB: 'a[,]) =
-        let left = matrixA |> Seq.cast<'a>
-        let right = matrixB |> Seq.cast<'a>
+    let expected =
+        let left = leftMatrix |> Seq.cast<'a>
+        let right = rightMatrix |> Seq.cast<'a>
 
         (left, right)
         ||> Seq.mapi2
             (fun idx x y ->
-                let i = idx / Array2D.length2 matrixA
-                let j = idx % Array2D.length2 matrixA
+                let i = idx / Array2D.length2 leftMatrix
+                let j = idx % Array2D.length2 leftMatrix
 
                 if isZero x && isZero y then None
-                else Some (i, j, sum x y)
+                else Some (i, j, monoid.Plus.Invoke x y)
             )
         |> Seq.choose id
         |> Array.ofSeq
@@ -108,10 +107,10 @@ let checkCorrectnessGeneric<'a when 'a : struct>
                 Values = vals
             }
 
-    let eWiseAddGB (matrixA: 'a[,]) (matrixB: 'a[,]) =
+    let actual =
         try
-            let left = createMatrixFromArray2D case.MatrixCase matrixA isZero
-            let right = createMatrixFromArray2D case.MatrixCase matrixB isZero
+            let left = createMatrixFromArray2D case.MatrixCase leftMatrix
+            let right = createMatrixFromArray2D case.MatrixCase rightMatrix
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"
@@ -129,14 +128,11 @@ let checkCorrectnessGeneric<'a when 'a : struct>
                 do! MatrixTuples.synchronize tuples
                 return tuples
             }
-            |> EvalGB.withClContext oclContext
+            |> EvalGB.withClContext case.ClContext
             |> EvalGB.runSync
 
         finally
-            oclContext.Provider.CloseAllBuffers()
-
-    let expected = eWiseAddNaive matrixA matrixB
-    let actual = eWiseAddGB matrixA matrixB
+            case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
         eventX "Expected result is {matrix}"
@@ -154,15 +150,15 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     "Indices of expected and result matrix must be the same"
     |> Expect.sequenceEqual actualIndices expectedIndices
 
-    let difference =
+    let equality =
         (expected.Values, actual.Values)
-        ||> Seq.map2 diff
+        ||> Seq.map2 isEqual
 
     "Length of expected and result values should be equal"
     |> Expect.hasLength actual.Values (Seq.length expected.Values)
 
     "There should be no difference between expected and received values"
-    |> Expect.all difference isZero
+    |> Expect.allEqual equality true
 
 let config =
     { FsCheckConfig.defaultConfig with
@@ -177,35 +173,35 @@ let testFixtures case = [
     let getTestName datatype = sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.MaskCase
 
     case
-    |> checkCorrectnessGeneric<int> case.ClContext (+) (-) ((=) 0) AddMult.int
+    |> checkCorrectnessGeneric<int> AddMult.int (=)
     |> testPropertyWithConfig config (getTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> case.ClContext (+) (-) (fun x -> abs x < Accuracy.medium.absolute) AddMult.float
+    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
     |> testPropertyWithConfig config (getTestName "float")
 
     case
-    |> checkCorrectnessGeneric<sbyte> case.ClContext (+) (-) ((=) 0y) AddMult.sbyte
+    |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
     |> ptestPropertyWithConfig config (getTestName "sbyte")
 
     case
-    |> checkCorrectnessGeneric<byte> case.ClContext (+) (-) ((=) 0uy) AddMult.byte
+    |> checkCorrectnessGeneric<byte> AddMult.byte (=)
     |> testPropertyWithConfig config (getTestName "byte")
 
     case
-    |> checkCorrectnessGeneric<int16> case.ClContext (+) (-) ((=) 0s) AddMult.int16
+    |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
     |> testPropertyWithConfig config (getTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<uint16> case.ClContext (+) (-) ((=) 0us) AddMult.uint16
+    |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
     |> testPropertyWithConfig config (getTestName "uint16")
 
     case
-    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
     |> testPropertyWithConfig config (getTestName "bool")
 
     case
-    |> checkCorrectnessGeneric<bool> case.ClContext (||) (<>) not AnyAll.bool
+    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
     |> testPropertyWithConfigStdGen
         (355610228, 296870493)
         { FsCheckConfig.defaultConfig with
