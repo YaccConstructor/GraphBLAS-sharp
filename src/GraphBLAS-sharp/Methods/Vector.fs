@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.COOVector
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
@@ -42,11 +43,35 @@ module Vector =
     let resize (size: int) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let nnz (vector: Vector<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
     let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
-    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
-    let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
+
+    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> =
+        match vector with
+        | VectorCOO v ->
+            graphblas {
+                let! resultIndices = Copy.run v.Indices |> EvalGB.fromCl
+                return Mask1D(resultIndices, v.Size, false)
+            }
+
+    let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> =
+        match vector with
+        | VectorCOO v ->
+            graphblas {
+                let! resultIndices = Copy.run v.Indices |> EvalGB.fromCl
+                return Mask1D(resultIndices, v.Size, true)
+            }
+
     let thin (isZero: 'a -> bool) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let switch (vectorType: VectorType) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> =
+        match vector with
+        | VectorCOO v ->
+            opencl {
+                let! _ = ToHost v.Indices
+                let! _ = ToHost v.Values
+                return ()
+            }
+            |> EvalGB.fromCl
 
     (*
         assignment, extraction and filling
@@ -78,7 +103,15 @@ module Vector =
 
     /// vec.[mask] <- value
     let fillSubVector (mask: Mask1D) (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> =
-        failwith "Not Implemented yet"
+        match vector with
+        | VectorCOO v ->
+            if mask.IsComplemented then failwith "Not Implemented yet" else
+                graphblas {
+                    let! s = Scalar.extractArray value
+                    let! resultIndices, resultValues = FillSubVector.run v.Indices v.Values mask.Indices s |> EvalGB.fromCl
+                    v.Indices <- resultIndices
+                    v.Values <- resultValues
+                }
 
     (*
         operations

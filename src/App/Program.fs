@@ -23,13 +23,23 @@ let main argv =
 
     let mutable oclContext = OpenCLEvaluationContext()
 
-    let len = 16777217
+    let subLen = 128
+    let modulo = 3
+    let len = subLen * modulo
     let vector = COOVector.FromTuples(len + 5, Array.init len id, Array.create len 1)
+    let maskVector = COOVector.FromTuples(len, Array.init subLen (fun i -> modulo * i), Array.create subLen true)
+    // let len = 100
+    // let vector = COOVector.FromTuples(len, [|0;1;2;3;4;5|], [|10;20;30;50;80;130|])
+    // let maskVector = COOVector.FromTuples(len, [|1;5;7|], [|true;true;true|])
 
     let workflow = graphblas {
-        let! scalar = Vector.reduce Add.int (VectorCOO vector)
-        do! Scalar.synchronize scalar
-        return! (Scalar.extractValue scalar)
+        let! mask = Vector.mask (VectorCOO maskVector)
+        let! value = Scalar.create 0
+        do! Vector.fillSubVector mask value (VectorCOO vector)
+
+        do! Vector.synchronize (VectorCOO vector)
+
+        return vector
     }
 
     let result =
@@ -37,12 +47,12 @@ let main argv =
         |> EvalGB.withClContext oclContext
         |> EvalGB.runSync
 
-    printfn "Result: %A" result
+    // printfn "Result: %A" result
 
-    // let indices = resultVector.Indices
-    // let values = resultVector.Values
+    let indices = result.Indices
+    let values = result.Values
 
-    // for i in 0 .. indices.Length - 1 do
-    //     printfn "(%i, %A)" indices.[i] values.[i]
+    for i in 0 .. indices.Length - 1 do
+        printfn "(%i, %A)" indices.[i] values.[i]
 
     0
