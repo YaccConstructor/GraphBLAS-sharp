@@ -45,7 +45,7 @@ module internal SetPositions =
         let resultValues = Array.create resultLength Unchecked.defaultof<'a>
 
         do! RunCommand setPositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize positions.Length, Utils.workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
             kernelPrepare
                 ndRange
                 allRows

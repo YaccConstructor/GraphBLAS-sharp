@@ -1,4 +1,4 @@
-module EWiseAdd
+module Matrix.EWiseAdd
 
 open Expecto
 open FsCheck
@@ -34,42 +34,6 @@ let testCases =
             MatrixCase = unbox list.[1]
             MaskCase = unbox list.[2]
         })
-
-type PairOfSparseMatricesOfEqualSize() =
-    static member IntType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0 Arb.generate<int>
-        |> Arb.fromGen
-
-    static member FloatType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-        |> Arb.fromGen
-
-    static member SByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0y Arb.generate<sbyte>
-        |> Arb.fromGen
-
-    static member ByteType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0uy Arb.generate<byte>
-        |> Arb.fromGen
-
-    static member Int16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0s Arb.generate<int16>
-        |> Arb.fromGen
-
-    static member UInt16Type() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator 0us Arb.generate<uint16>
-        |> Arb.fromGen
-
-    static member BoolType() =
-        Generators.pairOfMatricesOfEqualSizeGenerator
-        |> Generators.genericSparseGenerator false Arb.generate<bool>
-        |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct>
     (monoid: IMonoid<'a>)
@@ -160,56 +124,37 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     "There should be no difference between expected and received values"
     |> Expect.allEqual equality true
 
-let config =
-    { FsCheckConfig.defaultConfig with
-        arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
-        maxTest = 10
-        startSize = 0
-        // endSize = 1_000_000
-    }
-
 // https://docs.microsoft.com/ru-ru/dotnet/csharp/language-reference/language-specification/types#value-types
 let testFixtures case = [
     let getTestName datatype = sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.MaskCase
 
     case
     |> checkCorrectnessGeneric<int> AddMult.int (=)
-    |> testPropertyWithConfig config (getTestName "int")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int")
 
     case
     |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> testPropertyWithConfig config (getTestName "float")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "float")
 
     case
     |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
-    |> ptestPropertyWithConfig config (getTestName "sbyte")
+    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
 
     case
     |> checkCorrectnessGeneric<byte> AddMult.byte (=)
-    |> testPropertyWithConfig config (getTestName "byte")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "byte")
 
     case
     |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig config (getTestName "int16")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
 
     case
     |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig config (getTestName "uint16")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
 
     case
     |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig config (getTestName "bool")
-
-    case
-    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfigStdGen
-        (355610228, 296870493)
-        { FsCheckConfig.defaultConfig with
-            arbitrary = [typeof<PairOfSparseMatricesOfEqualSize>]
-            maxTest = 10
-            startSize = 0
-        }
-        "Correctness on both empty matrices"
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
 ]
 
 let tests =

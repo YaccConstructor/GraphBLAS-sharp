@@ -13,7 +13,7 @@ module BetweennessCentrality =
         let! p = Vector.copy q
 
         let! pMask = Vector.complemented p
-        do! Vector.vxmWithMask AddMult.int pMask q matrix
+        do! Matrix.vxmWithMask AddMult.int pMask q matrix
         >>= Vector.assignVector q
 
         let mutable d = 0
@@ -29,7 +29,7 @@ module BetweennessCentrality =
             >>= Vector.assignVector p // ?
 
             let! pMask = Vector.complemented p
-            do! Vector.vxmWithMask AddMult.int pMask q matrix
+            do! Matrix.vxmWithMask AddMult.int pMask q matrix
             >>= Vector.assignVector q
 
             do! Vector.reduce Add.int q

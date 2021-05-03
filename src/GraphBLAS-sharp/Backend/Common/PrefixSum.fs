@@ -2,8 +2,9 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open GraphBLAS.FSharp.Backend.Common
 
-module rec PrefixSum =
+module internal rec PrefixSum =
     /// <summary>
     /// Exclude inplace prefix sum
     /// </summary>
@@ -18,7 +19,7 @@ module rec PrefixSum =
     /// </code>
     /// </example>
     let runInplace (inputArray: int[]) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
         let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
@@ -40,8 +41,44 @@ module rec PrefixSum =
             verticesLength <- (verticesLength - 1) / workGroupSize + 1
     }
 
+    let run (inputArray: int[]) = opencl {
+        let! copiedArray = Copy.copyArray inputArray
+
+        let totalSum = [| 0 |]
+        do! runInplace copiedArray totalSum
+
+        let wgSize = Utils.defaultWorkGroupSize
+        let n = inputArray.Length
+
+        let kernel =
+            <@
+                fun (range: _1D)
+                    (array: int[])
+                    (totalSum: int[])
+                    (outputArray: int[]) ->
+
+                    let gid = range.GlobalID0
+
+                    if gid < n - 1 then
+                        outputArray.[gid] <- array.[gid + 1]
+                    elif gid = n - 1 then
+                        outputArray.[gid] <- totalSum.[0]
+            @>
+
+        let arr = Array.zeroCreate n
+
+        do! RunCommand kernel <| fun kernelPrepare ->
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize n, wgSize)
+            <| copiedArray
+            <| totalSum
+            <| arr
+
+        return arr, totalSum
+    }
+
     let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let scan =
             <@
@@ -87,7 +124,7 @@ module rec PrefixSum =
             @>
 
         do! RunCommand scan <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArrayLength, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
             kernelPrepare
                 ndRange
                 inputArray
@@ -96,7 +133,7 @@ module rec PrefixSum =
     }
 
     let private update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let update =
             <@
@@ -110,7 +147,7 @@ module rec PrefixSum =
             @>
 
         do! RunCommand update <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArrayLength - bunchLength, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength - bunchLength, workGroupSize)
             kernelPrepare
                 ndRange
                 inputArray

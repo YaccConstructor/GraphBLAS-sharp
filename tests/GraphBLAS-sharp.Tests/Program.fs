@@ -1,12 +1,13 @@
 open Expecto
-open FsCheck
 
 [<Tests>]
 let allTests =
     testList "All tests" [
-        //EWiseAdd.tests
-        Mxm.tests
-        Vxm.tests
+        Backend.PrefixSum.tests
+        Backend.BitonicSort.tests
+        Backend.RemoveDuplicates.tests
+        Matrix.Mxv.tests
+        Matrix.Transpose.tests
     ]
     |> testSequenced
 

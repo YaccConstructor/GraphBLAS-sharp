@@ -46,12 +46,10 @@ module Matrix =
     let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
 
     let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> =
-        let matrixTuples =
-            match matrix with
-            | MatrixCOO matrix -> COOMatrix.GetTuples.from matrix
-            | _ -> failwith "Not Implemented"
-
-        graphblas { return! EvalGB.fromCl matrixTuples }
+        match matrix with
+        | MatrixCOO matrix -> COOMatrix.GetTuples(matrix).Invoke()
+        | MatrixCSR matrix -> CSRMatrix.GetTuples(matrix).Invoke()
+        |> EvalGB.fromCl
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
@@ -139,30 +137,62 @@ module Matrix =
         closed operations
     *)
 
-    let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let inline mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        // match leftMatrix, rightMatrix with
+        // | MatrixCSR left, MatrixCSR right ->
+        //     opencl {
+        //         let! result = CSRMatrix.Mxm.run left right semiring
+        //         return MatrixCSR result
+        //     }
+        // | _ -> failwith "Not Implemented"
+        // |> EvalGB.fromCl
+        failwith "Not Implemented"
+
+    let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
+        // match matrix, vector with
+        // | MatrixCSR mat, VectorCOO vec ->
+        //     opencl {
+        //         let! result = CSRMatrix.SpMSpV(mat, vec, semiring).Invoke()
+        //         return result
+        //     }
+        // | _ -> failwith "Not Implemented"
+        // |> EvalGB.fromCl
+        failwith "Not Implemented"
+
+    // TODO seg fault
+    let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+        // match vector, matrix with
+        // | VectorCOO vector, MatrixCSR matrix ->
+        //     opencl {
+        //         let matrix1D = {
+        //             RowCount = 1
+        //             ColumnCount = vector.Size
+        //             RowPointers = [| 0; vector.Size |]
+        //             ColumnIndices = vector.Indices
+        //             Values = vector.Values
+        //         }
+
+        //         let! result = CSRMatrix.Mxm.run matrix1D matrix semiring
+        //         return VectorCOO {
+        //             Size = matrix.ColumnCount
+        //             Indices = result.ColumnIndices
+        //             Values = result.Values
+        //         }
+        //     }
+        // | _ -> failwith "Not Implemented"
+        // |> EvalGB.fromCl
+        failwith "Not Implemented"
+
+
+    let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         match leftMatrix, rightMatrix with
-        | MatrixCSR left, MatrixCSR right ->
+        | MatrixCOO left, MatrixCOO right ->
             opencl {
-                let! result = CSRMatrix.Mxm.run left right semiring
-                return MatrixCSR result
+                let! result = COOMatrix.EWiseAdd.run left right None monoid
+                return MatrixCOO result
             }
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
-
-    let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented"
-
-    let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
-        let operationResult =
-            match leftMatrix, rightMatrix with
-            | MatrixCOO left, MatrixCOO right ->
-                opencl {
-                    let! result = COOMatrix.EWiseAdd.run left right None monoid
-                    return MatrixCOO result
-                }
-            | _ -> failwith "Not Implemented"
-
-        graphblas { return! EvalGB.fromCl operationResult }
 
     let eWiseMult (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let apply (mapper: UnaryOp<'a, 'b>) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
@@ -175,6 +205,7 @@ module Matrix =
 
     let mxmWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let mxvWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+    let vxmWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let eWiseAddWithMask (monoid: IMonoid<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let eWiseMultWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"

@@ -34,7 +34,7 @@ module internal PreparePositions =
         let rawPositions = Array.create length 1
 
         do! RunCommand preparePositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize (length - 1), Utils.workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
             kernelPrepare
                 ndRange
                 allIndices

@@ -12,7 +12,7 @@ module ShortestPath =
 
         // TODO terminate earlier if we reach a fixed point
         for _ = 1 to vertexCount - 1 do
-            do! Vector.vxm MinAdd.float distance matrix
+            do! Matrix.vxm MinAdd.float distance matrix
             >>= Vector.assignVector distance
 
         return distance

@@ -1,15 +1,11 @@
-namespace GraphBLAS.FSharp.Backend.CSRMatrix
+namespace rec GraphBLAS.FSharp.Backend.CSRMatrix
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 
-module internal Mxv =
-    ()
-    // not finished
-    // let pcsr (matrix: CSRMatrix<'a>) (vector: BitmapVector<'a>) mask (semiring: ISemiring<'a>) = opencl {
+// let pcsr (matrix: CSRMatrix<'a>) (vector: BitmapVector<'a>) mask (semiring: ISemiring<'a>) = opencl {
     //     let (ClosedBinaryOp plus) = semiring.Plus
     //     let (ClosedBinaryOp times) = semiring.Times
 
@@ -41,16 +37,16 @@ module internal Mxv =
     //                 let gid = ndRange.GlobalID0
     //                 let lid = ndRange.LocalID0
 
-    //                 let localPtr = localArray<int> (Utils.workGroupSize + 1)
+    //                 let localPtr = localArray<int> (Utils.defaultWorkGroupSize + 1)
     //                 localPtr.[lid] <- matrixPtr.[gid]
     //                 if lid = 0 then
-    //                     localPtr.[Utils.workGroupSize] <- matrixPtr.[gid + Utils.workGroupSize]
+    //                     localPtr.[Utils.defaultWorkGroupSize] <- matrixPtr.[gid + Utils.defaultWorkGroupSize]
     //                 barrier ()
     //         @>
 
     //     let intermediateArray = Array.zeroCreate<'a> matrixLength
     //     do! RunCommand kernel1 <| fun kernelPrepare ->
-    //         let range = _1D(Utils.workSize matrixLength, Utils.workGroupSize)
+    //         let range = _1D(Utils.getDefaultGlobalSize matrixLength, Utils.defaultWorkGroupSize)
     //         kernelPrepare
     //             range
     //             matrix.ColumnIndices
@@ -61,7 +57,7 @@ module internal Mxv =
 
     //     let outputVector = Array.zeroCreate<'a> matrix.RowCount
     //     do! RunCommand kernel2 <| fun kernelPrepare ->
-    //         let range = _1D(Utils.workSize matrixLength, Utils.workGroupSize)
+    //         let range = _1D(Utils.getDefaultGlobalSize matrixLength, Utils.defaultWorkGroupSize)
     //         kernelPrepare
     //             range
     //             intermediateArray

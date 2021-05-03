@@ -1,4 +1,4 @@
-module Vxm
+module Matrix.Vxm
 
 open Expecto
 open FsCheck
@@ -37,42 +37,6 @@ let testCases =
             MatrixCase = unbox list.[2]
             MaskCase = unbox list.[3]
         })
-
-type PairOfSparseVectorAndMatrixOfCompatibleSize() =
-    static member IntType() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0 Arb.generate<int>
-        |> Arb.fromGen
-
-    static member FloatType() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
-        |> Arb.fromGen
-
-    static member SByteType() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0y Arb.generate<sbyte>
-        |> Arb.fromGen
-
-    static member ByteType() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0uy Arb.generate<byte>
-        |> Arb.fromGen
-
-    static member Int16Type() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0s Arb.generate<int16>
-        |> Arb.fromGen
-
-    static member UInt16Type() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator 0us Arb.generate<uint16>
-        |> Arb.fromGen
-
-    static member BoolType() =
-        Generators.pairOfVectorAndMatrixOfCompatibleSizeGenerator
-        |> Generators.genericSparseGenerator false Arb.generate<bool>
-        |> Arb.fromGen
 
 let checkCorrectnessGeneric<'a when 'a : struct>
     (semiring: ISemiring<'a>)
@@ -131,13 +95,13 @@ let checkCorrectnessGeneric<'a when 'a : struct>
             graphblas {
                 let! result =
                     match case.MaskCase with
-                    | NoMask -> Vector.vxm semiring vector matrix
+                    | NoMask -> Matrix.vxm semiring vector matrix
                     | Regular ->
                         Vector.mask mask
-                        >>= fun mask -> Vector.vxmWithMask semiring mask vector matrix
+                        >>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
                     | Complemented ->
                         Vector.complemented mask
-                        >>= fun mask -> Vector.vxmWithMask semiring mask vector matrix
+                        >>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
 
                 let! tuples = Vector.tuples result
                 do! VectorTuples.synchronize tuples
@@ -175,14 +139,6 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     "There should be no difference between expected and received values"
     |> Expect.allEqual equality true
 
-let config =
-    { FsCheckConfig.defaultConfig with
-        arbitrary = [typeof<PairOfSparseVectorAndMatrixOfCompatibleSize>]
-        maxTest = 10
-        startSize = 0
-        // endSize = 1_000_000
-    }
-
 let testFixtures case = [
     let getTestName datatype =
         sprintf "Correctness on %s, %A, %A, %A, %O"
@@ -194,31 +150,31 @@ let testFixtures case = [
 
     case
     |> checkCorrectnessGeneric<int> AddMult.int (=)
-    |> ftestPropertyWithConfig config (getTestName "int")
+    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "int")
 
     case
     |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> ftestPropertyWithConfig config (getTestName "float")
+    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "float")
 
     case
     |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
-    |> ptestPropertyWithConfig config (getTestName "sbyte")
+    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
 
     case
     |> checkCorrectnessGeneric<byte> AddMult.byte (=)
-    |> ptestPropertyWithConfig config (getTestName "byte")
+    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "byte")
 
     case
     |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig config (getTestName "int16")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
 
     case
     |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig config (getTestName "uint16")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
 
     case
     |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig config (getTestName "bool")
+    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
 ]
 
 let tests =

@@ -43,8 +43,18 @@ module Vector =
     // NOTE int cant be sync
     let nnz (vector: Vector<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
     let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
+
+    // let mask (vector: Vector<'a>) : Mask1D =
+    //     match vector with
+    //     | VectorCOO coo -> MaskCOO <| ({ Size = coo.Size; Indices = coo.Indices }, false)
+
+    // let complemented (vector: Vector<'a>) : Mask1D =
+    //     match vector with
+    //     | VectorCOO coo -> MaskCOO <| ({ Size = coo.Size; Indices = coo.Indices }, true)
+
     let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
     let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
+
     //let thin (isZero: 'a -> bool) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let switch (vectorFormat: VectorFormat) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
@@ -85,36 +95,12 @@ module Vector =
         operations
     *)
 
-    // TODO seg fault
-    let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
-        match vector, matrix with
-        | VectorCOO vector, MatrixCSR matrix ->
-            opencl {
-                let matrix1D = {
-                    RowCount = 1
-                    ColumnCount = vector.Size
-                    RowPointers = [| 0; vector.Size |]
-                    ColumnIndices = vector.Indices
-                    Values = vector.Values
-                }
-
-                let! result = CSRMatrix.Mxm.run matrix1D matrix semiring
-                return VectorCOO {
-                    Size = matrix.ColumnCount
-                    Indices = result.ColumnIndices
-                    Values = result.Values
-                }
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
-
     let eWiseAdd (monoid: IMonoid<'a>) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let eWiseMult (semiring: ISemiring<'a>) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let apply (mapper: UnaryOp<'a, 'b>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"
     let select (predicate: UnaryOp<'a, bool>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduce (monoid: IMonoid<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
 
-    let vxmWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let eWiseAddWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let eWiseMultWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (leftVector: Vector<'a>) (rightVector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask1D) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'b>> = failwith "Not Implemented yet"

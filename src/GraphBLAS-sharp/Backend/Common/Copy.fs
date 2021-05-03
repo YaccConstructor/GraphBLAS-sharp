@@ -4,13 +4,13 @@ open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 module internal rec Copy =
-    let run (inputArray: 'a[]) =
+    let copyArray (inputArray: 'a[]) =
         if inputArray.Length = 0 then
             opencl { return [||] }
         else
-            runNotEmpty inputArray
+            copyNonEmpty inputArray
 
-    let private runNotEmpty (inputArray: 'a[]) = opencl {
+    let private copyNonEmpty (inputArray: 'a[]) = opencl {
         let inputArrayLength = inputArray.Length
         let copy =
             <@
@@ -26,7 +26,8 @@ module internal rec Copy =
         let outputArray = Array.zeroCreate inputArray.Length
 
         do! RunCommand copy <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArray.Length, Utils.workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArray.Length, Utils.defaultWorkGroupSize)
             kernelPrepare ndRange inputArray outputArray
+
         return outputArray
     }

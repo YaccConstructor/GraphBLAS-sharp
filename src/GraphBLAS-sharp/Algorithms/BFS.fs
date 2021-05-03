@@ -9,6 +9,8 @@ module BFS =
         let! levels = Vector.zeroCreate vertexCount // v
         let! frontier = Vector.ofList vertexCount [source, true] // q[s] = true
 
+        let! transposed = Matrix.transpose matrix // A'
+
         let mutable currentLevel = 0
         let mutable break' = false
         while not break' do
@@ -16,14 +18,14 @@ module BFS =
 
             // NOTE mask application is ugly
             let! frontierMask = Vector.mask frontier
-            do! Scalar currentLevel |> Vector.fillSubVector levels frontierMask // v[q] = d
+            do! Vector.fillSubVector levels frontierMask (Scalar currentLevel) // v[q] = d
 
             let! levelsComplemented = Vector.complemented levels
-            do! (frontier, matrix) ||> Vector.vxmWithMask AnyAll.bool levelsComplemented // q[!v] = q ||.&& A -- replace + comp
+            do! Matrix.mxvWithMask AnyAll.bool levelsComplemented transposed frontier // q[!v] = (A' ||.&& q)' = q' ||.&& A -- replace + comp
             >>= Vector.assignVector frontier
 
             // TODO need export or sync for scalar
-            let! (Scalar succ) = frontier |> Vector.reduce AnyAll.bool
+            let! (Scalar succ) = Vector.reduce AnyAll.bool frontier
             break' <- not succ
 
         return levels
