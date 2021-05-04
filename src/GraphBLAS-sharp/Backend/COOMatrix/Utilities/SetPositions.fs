@@ -36,7 +36,7 @@ module internal SetPositions =
 
         let resultLength = Array.zeroCreate 1
 
-        do! PrefixSum.runInplace positions resultLength
+        do! PrefixSum.runExcludeInplace positions resultLength
         let! _ = ToHost resultLength
         let resultLength = resultLength.[0]
 

@@ -23,12 +23,11 @@ module internal RemoveDuplicates =
                 fun (ndRange: _1D)
                     (inputArray: 'a[])
                     (positions: int[])
-                    (ouputArray: 'a[]) ->
+                    (outputArray: 'a[]) ->
 
                     let i = ndRange.GlobalID0
                     if i < inputLength then
-                        let position = positions.[i] - 1
-                        ouputArray.[position] <- inputArray.[i]
+                        outputArray.[positions.[i]] <- inputArray.[i]
             @>
 
         let bitmap = Array.create inputLength 1
@@ -36,7 +35,7 @@ module internal RemoveDuplicates =
             let range = _1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
             kernelPrepare range array bitmap
 
-        let! (positions, sum) = PrefixSum.run bitmap
+        let! (positions, sum) = PrefixSum.runExclude bitmap
         let! _ = ToHost sum
         let resultLength = sum.[0]
 

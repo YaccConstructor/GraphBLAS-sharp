@@ -31,6 +31,35 @@ and CSRMatrix<'a> =
         let rowsCount = array |> Array2D.length1
         let columnsCount = array |> Array2D.length2
 
+        // let (rows, cols, vals) =
+        //     array
+        //     |> Seq.cast<'a>
+        //     |> Seq.mapi
+        //         (fun idx v ->
+        //             let i = idx / Array2D.length2 array
+        //             let j = idx % Array2D.length2 array
+
+        //             (i, j, v)
+        //         )
+        //     |> Seq.filter (fun (_, _, v) -> (not << isZero) v)
+        //     |> Array.ofSeq
+        //     |> Array.unzip3
+
+        // let rowPointers = Array.zeroCreate<int> (rowsCount + 1)
+        // rows
+        // |> Array.Parallel.iter
+        //     (fun x ->
+        //         System.Threading.Interlocked.Increment(&rowPointers.[x + 1]) |> ignore
+        //     )
+
+        // {
+        //     RowCount = rowsCount
+        //     ColumnCount = columnsCount
+        //     RowPointers = rowPointers
+        //     ColumnIndices = cols
+        //     Values = vals
+        // }
+
         let convertedMatrix =
             [for i in 0 .. rowsCount - 1 -> array.[i, *] |> List.ofArray]
             |> List.map

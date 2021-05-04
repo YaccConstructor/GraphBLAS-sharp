@@ -23,12 +23,16 @@ module Generators =
 
     let dimension2DGenerator =
         Gen.sized <| fun size ->
-            Gen.choose (1, size |> float |> sqrt |> int)
+            let quarter = size / 4
+            Gen.choose (size - quarter, size + quarter)
+            |> Gen.filter (fun value -> value > 0)
             |> Gen.two
 
     let dimension3DGenerator =
         Gen.sized <| fun size ->
-            Gen.choose (1, size |> float |> sqrt |> int)
+            let quarter = size / 4
+            Gen.choose (size - quarter, size + quarter)
+            |> Gen.filter (fun value -> value > 0)
             |> Gen.three
 
     let genericSparseGenerator zero valuesGen handler =
@@ -145,7 +149,7 @@ module Generators =
             let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
             let! vector = valuesGenerator |> Gen.arrayOfLength ncols
             let! mask = Arb.generate<bool> |> Gen.arrayOfLength nrows
-            return (vector, matrix, mask)
+            return (matrix, vector, mask)
         }
 
         static member IntType() =
@@ -273,8 +277,9 @@ module Generators =
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 10
-            startSize = 0
+            maxTest = 4
+            startSize = 10
+            endSize = 500
             arbitrary = [
                 typeof<Generators.SingleMatrix>
                 typeof<Generators.PairOfSparseMatricesOfEqualSize>

@@ -2,11 +2,9 @@ namespace GraphBLAS.FSharp
 
 type VectorFormat =
     | COO
-    // | Bitmap
 
 type Vector<'a when 'a : struct> =
     | VectorCOO of COOVector<'a>
-    // | VectorBitmap of BitmapVector<'a>
 
 and COOVector<'a> =
     {
@@ -41,12 +39,6 @@ and COOVector<'a> =
             |> Array.unzip
 
         COOVector.FromTuples(array.Length, indices, vals)
-
-// and BitmapVector<'a> =
-//     {
-//         Bitmap: bool[]
-//         Values: 'a[]
-//     }
 
 type VectorTuples<'a> =
     {

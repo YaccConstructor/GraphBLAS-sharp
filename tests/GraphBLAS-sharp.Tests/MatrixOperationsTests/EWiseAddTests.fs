@@ -43,11 +43,6 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let isZero = isEqual monoid.Zero
 
-    let createMatrixFromArray2D matrixFormat array =
-        match matrixFormat with
-        | CSR -> failwith "Not implemented"
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-
     let expected =
         let left = leftMatrix |> Seq.cast<'a>
         let right = rightMatrix |> Seq.cast<'a>
@@ -73,8 +68,8 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let actual =
         try
-            let left = createMatrixFromArray2D case.MatrixCase leftMatrix
-            let right = createMatrixFromArray2D case.MatrixCase rightMatrix
+            let left = Utils.createMatrixFromArray2D case.MatrixCase leftMatrix isZero
+            let right = Utils.createMatrixFromArray2D case.MatrixCase rightMatrix isZero
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"

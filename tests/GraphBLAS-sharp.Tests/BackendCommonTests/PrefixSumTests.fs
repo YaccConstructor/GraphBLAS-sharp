@@ -15,9 +15,9 @@ let testCases = [
 
         let actual =
             opencl {
-                let! (res, total) = PrefixSum.run array
-                let _ = ToHost res
-                return res
+                let! (result, _) = PrefixSum.runInclude array
+                let! _ = ToHost result
+                return result
             }
             |> OpenCLEvaluationContext().RunSync
 
@@ -27,6 +27,27 @@ let testCases = [
         )
 
         let expected = [| 1; 3; 6 |]
+
+        "Array should be without duplicates"
+        |> Expect.sequenceEqual actual expected
+
+    testCase "Test on empty array" <| fun () ->
+        let array = Array.zeroCreate<int> 0
+
+        let actual =
+            opencl {
+                let! (result, _) = PrefixSum.runInclude array
+                let! _ = ToHost result
+                return result
+            }
+            |> OpenCLEvaluationContext().RunSync
+
+        logger.debug (
+            eventX "Actual is {actual}"
+            >> setField "actual" (sprintf "%A" actual)
+        )
+
+        let expected = array
 
         "Array should be without duplicates"
         |> Expect.sequenceEqual actual expected

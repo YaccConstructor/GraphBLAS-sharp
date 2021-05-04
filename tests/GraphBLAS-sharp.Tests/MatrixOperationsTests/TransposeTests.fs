@@ -11,7 +11,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-let logger = Log.create "TransposeTests"
+let logger = Log.create "MatrixTransposeTests"
 
 type OperationCase =
     {
@@ -42,7 +42,7 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let expected =
         let transposed = Array2D.init (Array2D.length2 matrix) (Array2D.length1 matrix) (fun r c -> matrix.[c, r])
-        // let a = Array2D.
+
         transposed
         |> Seq.cast<'a>
         |> Seq.mapi
@@ -157,4 +157,4 @@ let tests =
             case.MatrixCase = CSR
         )
     |> List.collect testFixtures
-    |> testList "GetTuples tests"
+    |> testList "Matrix GetTuples tests"

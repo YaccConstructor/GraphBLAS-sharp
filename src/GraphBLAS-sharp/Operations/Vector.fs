@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Common
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Vector =
@@ -37,12 +38,31 @@ module Vector =
     *)
 
     let size (vector: Vector<'a>) : int = failwith "Not Implemented yet"
-    //let clear (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
     let copy (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let resize (size: int) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
+
     // NOTE int cant be sync
     let nnz (vector: Vector<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
-    let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> = failwith "Not Implemented yet"
+
+    let tuples (vector: Vector<'a>) : GraphblasEvaluation<VectorTuples<'a>> =
+        match vector with
+        | VectorCOO vec ->
+            opencl {
+                if vec.Values.Length = 0 then
+                    return {
+                        Indices = [||]
+                        Values = [||]
+                    }
+                else
+                    let! ind = Copy.copyArray vec.Indices
+                    let! vals = Copy.copyArray vec.Values
+
+                    return {
+                        Indices = ind
+                        Values = vals
+                    }
+            }
+        |> EvalGB.fromCl
 
     // let mask (vector: Vector<'a>) : Mask1D =
     //     match vector with
@@ -55,7 +75,6 @@ module Vector =
     let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
     let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
 
-    //let thin (isZero: 'a -> bool) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let switch (vectorFormat: VectorFormat) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let synchronize (vector: Vector<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
@@ -110,8 +129,18 @@ module Vector =
 module VectorTuples =
     let synchronize (vectorTuples: VectorTuples<'a>) =
         opencl {
-            let! _ = ToHost vectorTuples.Indices
-            let! _ = ToHost vectorTuples.Values
+            let! _ = if vectorTuples.Indices.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Indices
+            let! _ = if vectorTuples.Values.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Values
+
             return ()
+        }
+        |> EvalGB.fromCl
+
+    let synchronizeAndReturn (vectorTuples: VectorTuples<'a>) =
+        opencl {
+            let! _ = if vectorTuples.Indices.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Indices
+            let! _ = if vectorTuples.Values.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Values
+
+            return vectorTuples
         }
         |> EvalGB.fromCl

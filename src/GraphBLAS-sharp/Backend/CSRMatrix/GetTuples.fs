@@ -9,14 +9,10 @@ open Brahma.OpenCL
 type internal GetTuples<'a>(matrix: CSRMatrix<'a>) =
     member this.Invoke() = opencl {
         if matrix.Values.Length = 0 then
-            let! resultRows = Copy.copyArray matrix.RowPointers
-            let! resultColumns = Copy.copyArray matrix.ColumnIndices
-            let! resultValues = Copy.copyArray matrix.Values
-
             return {
-                RowIndices = resultRows
-                ColumnIndices = resultColumns
-                Values = resultValues
+                RowIndices = [||]
+                ColumnIndices = [||]
+                Values = [||]
             }
 
         else

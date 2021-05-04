@@ -46,11 +46,6 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let isZero = isEqual semiring.Zero
 
-    let createMatrixFromArray2D matrixFormat array =
-        match matrixFormat with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-
     let expected =
         let resultRowCount = Array2D.length1 leftMatrix
         let resultColCount = Array2D.length2 rightMatrix
@@ -88,8 +83,8 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let actual =
         try
-            let left = createMatrixFromArray2D case.LeftMatrixCase leftMatrix
-            let right = createMatrixFromArray2D case.RightMatrixCase rightMatrix
+            let left = Utils.createMatrixFromArray2D case.LeftMatrixCase leftMatrix isZero
+            let right = Utils.createMatrixFromArray2D case.RightMatrixCase rightMatrix isZero
 
             logger.debug (
                 eventX "Left matrix is \n{matrix}"

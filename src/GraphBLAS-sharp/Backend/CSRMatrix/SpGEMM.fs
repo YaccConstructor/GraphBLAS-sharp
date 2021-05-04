@@ -57,8 +57,8 @@ namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
 //             // (4) Set row pointers of output matrix to store in CSR by scan
 //             let nnz = [| 0 |]
-//             // let! outputPointers = PrefixSum.runInplace nnzEstimation nnz
-//             do! PrefixSum.runInplace nnzEstimation nnz
+//             // let! outputPointers = PrefixSum.runExcludeInplace nnzEstimation nnz
+//             do! PrefixSum.runExcludeInplace nnzEstimation nnz
 //             let! _ = ToHost nnz
 
 //             // (5) Memory allocation of output matrix

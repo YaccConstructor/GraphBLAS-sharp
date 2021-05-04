@@ -6,6 +6,14 @@ open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend.Common
+open FSharp.Quotations
+
+open Expecto
+open System.Collections.Generic
+
+open Brahma.OpenCL
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 let logger = Log.create "RemoveDuplicatesTests"
 
@@ -15,9 +23,10 @@ let testCases = [
 
         let actual =
             opencl {
-                let! res = RemoveDuplicates.fromArray array
-                let _ = ToHost res
-                return res
+                let! copiedArray = Copy.copyArray array
+                let! result = RemoveDuplicates.fromArray copiedArray
+                let! _ = ToHost result
+                return result
             }
             |> OpenCLEvaluationContext().RunSync
 
@@ -27,6 +36,28 @@ let testCases = [
         )
 
         let expected = [| 1; 2; 3 |]
+
+        "Array should be without duplicates"
+        |> Expect.sequenceEqual actual expected
+
+    testCase "Test on empty array" <| fun () ->
+        let array = Array.zeroCreate<int> 0
+
+        let actual =
+            opencl {
+                let! copiedArray = Copy.copyArray array
+                let! result = RemoveDuplicates.fromArray copiedArray
+                let! _ = ToHost result
+                return result
+            }
+            |> OpenCLEvaluationContext().RunSync
+
+        logger.debug (
+            eventX "Actual is {actual}"
+            >> setField "actual" (sprintf "%A" actual)
+        )
+
+        let expected = array
 
         "Array should be without duplicates"
         |> Expect.sequenceEqual actual expected

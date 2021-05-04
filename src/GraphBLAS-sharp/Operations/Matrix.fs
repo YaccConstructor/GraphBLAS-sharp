@@ -39,9 +39,9 @@ module Matrix =
 
     let rowCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
     let columnCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
-    //let clear (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
     let copy (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+
     // NOTE int cant be sync
     let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
 
@@ -53,7 +53,6 @@ module Matrix =
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
-    //let thin (isZero: 'a -> bool) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let switch (matrixFormat: MatrixFromat) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
@@ -138,51 +137,20 @@ module Matrix =
     *)
 
     let inline mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
-        // match leftMatrix, rightMatrix with
-        // | MatrixCSR left, MatrixCSR right ->
-        //     opencl {
-        //         let! result = CSRMatrix.Mxm.run left right semiring
-        //         return MatrixCSR result
-        //     }
-        // | _ -> failwith "Not Implemented"
-        // |> EvalGB.fromCl
         failwith "Not Implemented"
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
-        // match matrix, vector with
-        // | MatrixCSR mat, VectorCOO vec ->
-        //     opencl {
-        //         let! result = CSRMatrix.SpMSpV(mat, vec, semiring).Invoke()
-        //         return result
-        //     }
-        // | _ -> failwith "Not Implemented"
-        // |> EvalGB.fromCl
-        failwith "Not Implemented"
+        match matrix, vector with
+        | MatrixCSR mat, VectorCOO vec ->
+            opencl {
+                let! result = CSRMatrix.SpMSpV(mat, vec, semiring).Invoke()
+                return VectorCOO result
+            }
+        | _ -> failwith "Not Implemented"
+        |> EvalGB.fromCl
 
-    // TODO seg fault
     let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
-        // match vector, matrix with
-        // | VectorCOO vector, MatrixCSR matrix ->
-        //     opencl {
-        //         let matrix1D = {
-        //             RowCount = 1
-        //             ColumnCount = vector.Size
-        //             RowPointers = [| 0; vector.Size |]
-        //             ColumnIndices = vector.Indices
-        //             Values = vector.Values
-        //         }
-
-        //         let! result = CSRMatrix.Mxm.run matrix1D matrix semiring
-        //         return VectorCOO {
-        //             Size = matrix.ColumnCount
-        //             Indices = result.ColumnIndices
-        //             Values = result.Values
-        //         }
-        //     }
-        // | _ -> failwith "Not Implemented"
-        // |> EvalGB.fromCl
         failwith "Not Implemented"
-
 
     let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         match leftMatrix, rightMatrix with
@@ -214,14 +182,6 @@ module Matrix =
     let reduceColsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let kroneckerWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 
-    (*
-        unclosed operations
-    *)
-
-    // Должны принимать либо BinaryOp, либо {|BinaryOp; BinaryOp|} с соответствующей семантикой
-
-// ждём тайпклассов чтобы можно было вызывать synchronize для всех объектов,
-// для которых он реализован, не привязывая реализацию к классу (как стратегия)
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MatrixTuples =
     let synchronize (matrixTuples: MatrixTuples<'a>) =

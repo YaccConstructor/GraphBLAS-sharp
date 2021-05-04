@@ -12,13 +12,13 @@ module internal rec PrefixSum =
     /// <code>
     /// let arr = [| 1; 2; 3 |]
     /// let sum = [| 0 |]
-    /// opencl { do! runInplace arr sum }
+    /// opencl { do! runExcludeInplace arr sum }
     /// ...
     /// > val arr = [| 0; 1; 3 |]
     /// > val sum = [| 6 |]
     /// </code>
     /// </example>
-    let runInplace (inputArray: int[]) (totalSum: int[]) = opencl {
+    let runExcludeInplace (inputArray: int[]) (totalSum: int[]) = opencl {
         let workGroupSize = Utils.defaultWorkGroupSize
 
         let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
@@ -41,11 +41,20 @@ module internal rec PrefixSum =
             verticesLength <- (verticesLength - 1) / workGroupSize + 1
     }
 
-    let run (inputArray: int[]) = opencl {
+    let runExclude (inputArray: int[]) = opencl {
         let! copiedArray = Copy.copyArray inputArray
 
         let totalSum = [| 0 |]
-        do! runInplace copiedArray totalSum
+        do! runExcludeInplace copiedArray totalSum
+
+        return (copiedArray, totalSum)
+    }
+
+    let runInclude (inputArray: int[]) = opencl {
+        let! copiedArray = Copy.copyArray inputArray
+
+        let totalSum = [| 0 |]
+        do! runExcludeInplace copiedArray totalSum
 
         let wgSize = Utils.defaultWorkGroupSize
         let n = inputArray.Length

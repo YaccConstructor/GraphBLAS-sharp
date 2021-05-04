@@ -4,27 +4,27 @@ open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 module internal rec BitonicSort =
-    let sortInplace (array: int[]) = opencl {
+    let sortInplace (array: 'a[]) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let n = array.Length
 
-        do! localBitonicBegin array
+        do! localBegin array
 
         let mutable segmentLength = wgSize * 2
         while segmentLength < n do
             segmentLength <- segmentLength <<< 1
 
-            do! bitonicGlobalStep array segmentLength true
+            do! globalStep array segmentLength true
 
             let mutable i = segmentLength / 2
             while i > wgSize * 2 do
-                do! bitonicGlobalStep array i false
+                do! globalStep array i false
                 i <- i >>> 1
 
-            do! localBitonicEnd array
+            do! localEnd array
     }
 
-    let private localBitonicBegin (array: int[]) = opencl {
+    let private localBegin (array: 'a[]) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let n = array.Length
         let processedSize = wgSize * 2
@@ -32,28 +32,28 @@ module internal rec BitonicSort =
         let kernel =
             <@
                 fun (range: _1D)
-                    (array: int[]) ->
+                    (array: 'a[]) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
                     let groupId = gid / wgSize
 
                     // 1 рабочя группа обрабатывает 2 * wgSize элементов
-                    let localBuffer = localArray<int> processedSize
+                    let localBuffer = localArray<'a> processedSize
                     let mutable readIdx = processedSize * groupId + lid
 
                     // копируем элементы из глобальной памяти в локальную
                     if readIdx < n then
                         localBuffer.[lid] <- array.[readIdx]
-                    else
-                        localBuffer.[lid] <- -1
+                    // else
+                    //     localBuffer.[lid] <- -1
 
                     readIdx <- readIdx + wgSize
 
                     if readIdx < n then
                         localBuffer.[lid + wgSize] <- array.[readIdx]
-                    else
-                        localBuffer.[lid + wgSize] <- -1
+                    // else
+                    //     localBuffer.[lid + wgSize] <- -1
 
                     barrier ()
 
@@ -105,14 +105,14 @@ module internal rec BitonicSort =
             <| array
     }
 
-    let private bitonicGlobalStep (array: int[]) (segmentLength: int) (mirror: bool) = opencl {
+    let private globalStep (array: 'a[]) (segmentLength: int) (mirror: bool) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let n = array.Length
 
         let kernel =
             <@
                 fun (range: _1D)
-                    (array: int[]) ->
+                    (array: 'a[]) ->
 
                     let gid = range.GlobalID0
                     let groupId = gid / wgSize
@@ -140,7 +140,7 @@ module internal rec BitonicSort =
             <| array
     }
 
-    let private localBitonicEnd (array: int[]) = opencl {
+    let private localEnd (array: 'a[]) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let n = array.Length
         let processedSize = wgSize * 2
@@ -148,28 +148,28 @@ module internal rec BitonicSort =
         let kernel =
             <@
                 fun (range: _1D)
-                    (array: int[]) ->
+                    (array: 'a[]) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
                     let groupId = gid / wgSize
 
                     // 1 рабочя группа обрабатывает 2 * wgSize элементов
-                    let localBuffer = localArray<int> processedSize
+                    let localBuffer = localArray<'a> processedSize
                     let mutable readIdx = processedSize * groupId + lid
 
                     // копируем элементы из глобальной памяти в локальную
                     if readIdx < n then
                         localBuffer.[lid] <- array.[readIdx]
-                    else
-                        localBuffer.[lid] <- -1
+                    // else
+                    //     localBuffer.[lid] <- -1
 
                     readIdx <- readIdx + wgSize
 
                     if readIdx < n then
                         localBuffer.[lid + wgSize] <- array.[readIdx]
-                    else
-                        localBuffer.[lid + wgSize] <- -1
+                    // else
+                    //     localBuffer.[lid + wgSize] <- -1
 
                     barrier ()
 
@@ -205,4 +205,3 @@ module internal rec BitonicSort =
             <| _1D(Utils.floorToPower2 n |> Utils.getDefaultGlobalSize, wgSize)
             <| array
     }
-

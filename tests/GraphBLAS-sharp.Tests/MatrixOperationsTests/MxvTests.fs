@@ -50,12 +50,17 @@ let checkCorrectnessGeneric<'a when 'a : struct>
         let resultSize = Array2D.length1 matrix
         let resultVector = Array.zeroCreate<'a> resultSize
 
-        for i = 0 to resultSize - 1 do
+        let times = semiring.Times.Invoke
+        let plus = semiring.Plus.Invoke
+
+        let task i =
             let col = matrix.[i, *]
             resultVector.[i] <-
                 vector
-                |> Array.mapi (fun i v -> semiring.Times.Invoke v col.[i])
-                |> Array.reduce (fun x y -> semiring.Plus.Invoke x y)
+                |> Array.Parallel.mapi (fun i v -> times v col.[i])
+                |> Array.fold (fun x y -> plus x y) semiring.Zero
+
+        System.Threading.Tasks.Parallel.For(0, resultSize, task) |> ignore
 
         resultVector
         |> Seq.cast<'a>
@@ -78,18 +83,18 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
     let actual =
         try
-            let vector = Utils.createVectorFromArray case.VectorCase vector isZero
             let matrix = Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
+            let vector = Utils.createVectorFromArray case.VectorCase vector isZero
             let mask = Utils.createVectorFromArray VectorFormat.COO mask not
-
-            logger.debug (
-                eventX "Vector is \n{vector}"
-                >> setField "vector" vector
-            )
 
             logger.debug (
                 eventX "Matrix is \n{matrix}"
                 >> setField "matrix" matrix
+            )
+
+            logger.debug (
+                eventX "Vector is \n{vector}"
+                >> setField "vector" vector
             )
 
             graphblas {
@@ -140,41 +145,43 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     |> Expect.allEqual equality true
 
 let testFixtures case = [
+    let config = Utils.defaultConfig
+
     let getTestName datatype =
         sprintf "Correctness on %s, %A, %A, %A, %O"
             datatype
-            case.VectorCase
             case.MatrixCase
+            case.VectorCase
             case.MaskCase
             case.ClContext
 
     case
     |> checkCorrectnessGeneric<int> AddMult.int (=)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "int")
+    |> testPropertyWithConfig config (getTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "float")
+    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.relative)
+    |> testPropertyWithConfig config (getTestName "float")
 
     case
     |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
+    |> ptestPropertyWithConfig config (getTestName "sbyte")
 
     case
     |> checkCorrectnessGeneric<byte> AddMult.byte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "byte")
+    |> ptestPropertyWithConfig config (getTestName "byte")
 
     case
     |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
+    |> testPropertyWithConfig config (getTestName "int16")
 
     case
     |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
+    |> testPropertyWithConfig config (getTestName "uint16")
 
     case
     |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
+    |> testPropertyWithConfig config (getTestName "bool")
 ]
 
 let tests =

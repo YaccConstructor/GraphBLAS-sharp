@@ -7,7 +7,7 @@ let allTests =
         Backend.BitonicSort.tests
         Backend.RemoveDuplicates.tests
         Matrix.Mxv.tests
-        Matrix.Transpose.tests
+        // Matrix.Transpose.tests
     ]
     |> testSequenced
 

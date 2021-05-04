@@ -12,7 +12,7 @@ type internal Transpose<'a when 'a : struct>(matrix: CSRMatrix<'a>) =
         return matrix
     }
 
-module Transpose =
+module private Transpose =
     let csr2coo<'a when 'a : struct> (matrix: CSRMatrix<'a>) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let expandRows =
