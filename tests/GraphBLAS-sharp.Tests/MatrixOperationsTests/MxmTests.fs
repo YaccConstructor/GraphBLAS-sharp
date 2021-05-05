@@ -11,7 +11,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-let logger = Log.create "MxmTests"
+let logger = Log.create "Matrix.Mxm.Tests"
 
 type OperationCase =
     {
@@ -38,7 +38,7 @@ let testCases =
             MaskCase = unbox list.[3]
         })
 
-let checkCorrectnessGeneric<'a when 'a : struct>
+let correctnessGenericTest<'a when 'a : struct>
     (semiring: ISemiring<'a>)
     (isEqual: 'a -> 'a -> bool)
     (case: OperationCase)
@@ -51,6 +51,9 @@ let checkCorrectnessGeneric<'a when 'a : struct>
         let resultColCount = Array2D.length2 rightMatrix
         let resultMatrix = Array2D.zeroCreate<'a> resultRowCount resultColCount
 
+        let plus = semiring.Plus.Invoke
+        let times = semiring.Times.Invoke
+
         for idx = 0 to resultRowCount * resultColCount - 1 do
             let i = idx / resultColCount
             let j = idx % resultColCount
@@ -59,8 +62,8 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
             resultMatrix.[i, j] <-
                 leftRow
-                |> Array.mapi (fun i v -> semiring.Times.Invoke v rightCol.[i])
-                |> Array.reduce (fun x y -> semiring.Plus.Invoke x y)
+                |> Array.mapi (fun i v -> times v rightCol.[i])
+                |> Array.reduce (fun x y -> plus x y)
 
         resultMatrix
         |> Seq.cast<'a>
@@ -71,7 +74,7 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
                 (i, j, v)
             )
-        |> Seq.filter (fun (_, _, v) -> not <| isZero v)
+        |> Seq.filter (fun (_, _, v) -> (not << isZero) v)
         |> Array.ofSeq
         |> Array.unzip3
         |> fun (rows, cols, vals) ->
@@ -109,13 +112,13 @@ let checkCorrectnessGeneric<'a when 'a : struct>
             case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
-        eventX "Expected result is {matrix}"
-        >> setField "matrix" (sprintf "%A" expected.Values)
+        eventX "Expected result is {expected}"
+        >> setField "expected" (sprintf "%A" expected.Values)
     )
 
     logger.debug (
-        eventX "Actual result is {matrix}"
-        >> setField "matrix" (sprintf "%A" actual.Values)
+        eventX "Actual result is {actual}"
+        >> setField "actual" (sprintf "%A" actual.Values)
     )
 
     let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
@@ -135,41 +138,28 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     |> Expect.allEqual equality true
 
 let testFixtures case = [
-    let getTestName datatype =
-        sprintf "Correctness on %s, %A, %A, %A, %O"
-            datatype
-            case.LeftMatrixCase
-            case.RightMatrixCase
-            case.MaskCase
-            case.ClContext
+    let config = Utils.defaultConfig
+    let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
 
     case
-    |> checkCorrectnessGeneric<int> AddMult.int (=)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "int")
+    |> correctnessGenericTest<int> AddMult.int (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "float")
+    |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+    |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
     case
-    |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
+    |> correctnessGenericTest<int16> AddMult.int16 (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<byte> AddMult.byte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "byte")
+    |> correctnessGenericTest<uint16> AddMult.uint16 (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
 
     case
-    |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
-
-    case
-    |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
-
-    case
-    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
+    |> correctnessGenericTest<bool> AnyAll.bool (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 ]
 
 let tests =
@@ -186,4 +176,4 @@ let tests =
             case.MaskCase = NoMask
         )
     |> List.collect testFixtures
-    |> testList "Mxm tests"
+    |> testList "Matrix.mxm tests"

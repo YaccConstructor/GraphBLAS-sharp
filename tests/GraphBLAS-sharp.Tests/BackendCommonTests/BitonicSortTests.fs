@@ -13,13 +13,15 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open OpenCL.Net
 open GraphBLAS.FSharp.Backend.Common
 
-let logger = Log.create "BitonicSortTests"
+let logger = Log.create "BitonicSort.Tests"
 
 let testCases = [
     let config = Utils.defaultConfig
 
     testPropertyWithConfig config "Simple correctness test on int" <| fun (array: int[]) ->
-        let sortedArray =
+        let expected = Array.sort array
+
+        let actual =
             opencl {
                 let copiedArray = Array.copy array
                 do! BitonicSort.sortInplace copiedArray
@@ -29,10 +31,12 @@ let testCases = [
             |> OpenCLEvaluationContext().RunSync
 
         "Array should be sorted by ascending"
-        |> Expect.isAscending sortedArray
+        |> Expect.sequenceEqual actual expected
 
     testPropertyWithConfig config "Simple correctness test on uint64" <| fun (array: uint64[]) ->
-        let sortedArray =
+        let expected = Array.sort array
+
+        let actual =
             opencl {
                 let copiedArray = Array.copy array
                 do! BitonicSort.sortInplace copiedArray
@@ -42,22 +46,9 @@ let testCases = [
             |> OpenCLEvaluationContext().RunSync
 
         "Array should be sorted by ascending"
-        |> Expect.isAscending sortedArray
-
-    testPropertyWithConfig config "Simple correctness test on float32" <| fun (array: float32[]) ->
-        let sortedArray =
-            opencl {
-                let copiedArray = Array.copy array
-                do! BitonicSort.sortInplace copiedArray
-                let! _ = ToHost copiedArray
-                return copiedArray
-            }
-            |> OpenCLEvaluationContext().RunSync
-
-        "Array should be sorted by ascending"
-        |> Expect.isAscending sortedArray
+        |> Expect.sequenceEqual actual expected
 ]
 
 let tests =
     testCases
-    |> testList "Bitonic sort tests"
+    |> testList "BitonicSort tests"

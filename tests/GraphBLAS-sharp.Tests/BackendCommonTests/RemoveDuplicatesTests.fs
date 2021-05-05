@@ -15,7 +15,7 @@ open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
-let logger = Log.create "RemoveDuplicatesTests"
+let logger = Log.create "RemoveDuplicates.Tests"
 
 let testCases = [
     testCase "Simple correctness test" <| fun () ->
@@ -65,4 +65,4 @@ let testCases = [
 
 let tests =
     testCases
-    |> testList "Remove duplicates tests"
+    |> testList "RemoveDuplicates tests"

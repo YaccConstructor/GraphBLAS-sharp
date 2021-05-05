@@ -1,17 +1,15 @@
 module Matrix.GetTuples
 
 open Expecto
-open FsCheck
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-let logger = Log.create "GetTuplesTests"
+let logger = Log.create "Matrix.GetTuples.Tests"
 
 type OperationCase =
     {
@@ -32,7 +30,7 @@ let testCases =
             MatrixCase = unbox list.[1]
         })
 
-let checkCorrectnessGeneric<'a when 'a : struct>
+let correctnessGenericTest<'a when 'a : struct>
     (isEqual: 'a -> 'a -> bool)
     (zero: 'a)
     (case: OperationCase)
@@ -50,7 +48,7 @@ let checkCorrectnessGeneric<'a when 'a : struct>
 
                 (i, j, v)
             )
-        |> Seq.filter (fun (_, _, v) -> not (isZero v))
+        |> Seq.filter (fun (_, _, v) -> (not << isZero) v)
         |> Array.ofSeq
         |> Array.unzip3
         |> fun (rows, cols, vals) ->
@@ -81,13 +79,13 @@ let checkCorrectnessGeneric<'a when 'a : struct>
             case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
-        eventX "Expected result is {matrix}"
-        >> setField "matrix" (sprintf "%A" expected.Values)
+        eventX "Expected result is {expected}"
+        >> setField "expected" (sprintf "%A" expected.Values)
     )
 
     logger.debug (
-        eventX "Actual result is {matrix}"
-        >> setField "matrix" (sprintf "%A" actual.Values)
+        eventX "Actual result is {actual}"
+        >> setField "actual" (sprintf "%A" actual.Values)
     )
 
     let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
@@ -107,39 +105,28 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     |> Expect.allEqual equality true
 
 let testFixtures case = [
-    let getTestName datatype =
-        sprintf "Correctness on %s, %A, %O"
-            datatype
-            case.MatrixCase
-            case.ClContext
+    let config = Utils.defaultConfig
+    let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
 
     case
-    |> checkCorrectnessGeneric<int> (=) 0
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "int")
+    |> correctnessGenericTest<int> (=) 0
+    |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) 0.
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "float")
+    |> correctnessGenericTest<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) 0.
+    |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
     case
-    |> checkCorrectnessGeneric<sbyte> (=) 0y
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
+    |> correctnessGenericTest<int16> (=) 0s
+    |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<byte> (=) 0uy
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "byte")
+    |> correctnessGenericTest<uint16> (=) 0us
+    |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
 
     case
-    |> checkCorrectnessGeneric<int16> (=) 0s
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
-
-    case
-    |> checkCorrectnessGeneric<uint16> (=) 0us
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
-
-    case
-    |> checkCorrectnessGeneric<bool> (=) false
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
+    |> correctnessGenericTest<bool> (=) false
+    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 ]
 
 let tests =
@@ -154,4 +141,4 @@ let tests =
             case.MatrixCase = CSR
         )
     |> List.collect testFixtures
-    |> testList "GetTuples tests"
+    |> testList "Matrix.tuples tests"

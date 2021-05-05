@@ -51,39 +51,42 @@ module internal rec PrefixSum =
     }
 
     let runInclude (inputArray: int[]) = opencl {
-        let! copiedArray = Copy.copyArray inputArray
+        if inputArray.Length = 0 then
+            return [||], [| 0 |]
+        else
+            let! copiedArray = Copy.copyArray inputArray
 
-        let totalSum = [| 0 |]
-        do! runExcludeInplace copiedArray totalSum
+            let totalSum = [| 0 |]
+            do! runExcludeInplace copiedArray totalSum
 
-        let wgSize = Utils.defaultWorkGroupSize
-        let n = inputArray.Length
+            let wgSize = Utils.defaultWorkGroupSize
+            let n = inputArray.Length
 
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (array: int[])
-                    (totalSum: int[])
-                    (outputArray: int[]) ->
+            let kernel =
+                <@
+                    fun (range: _1D)
+                        (array: int[])
+                        (totalSum: int[])
+                        (outputArray: int[]) ->
 
-                    let gid = range.GlobalID0
+                        let gid = range.GlobalID0
 
-                    if gid < n - 1 then
-                        outputArray.[gid] <- array.[gid + 1]
-                    elif gid = n - 1 then
-                        outputArray.[gid] <- totalSum.[0]
-            @>
+                        if gid < n - 1 then
+                            outputArray.[gid] <- array.[gid + 1]
+                        elif gid = n - 1 then
+                            outputArray.[gid] <- totalSum.[0]
+                @>
 
-        let arr = Array.zeroCreate n
+            let arr = Array.zeroCreate n
 
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize n, wgSize)
-            <| copiedArray
-            <| totalSum
-            <| arr
+            do! RunCommand kernel <| fun kernelPrepare ->
+                kernelPrepare
+                <| _1D(Utils.getDefaultGlobalSize n, wgSize)
+                <| copiedArray
+                <| totalSum
+                <| arr
 
-        return arr, totalSum
+            return arr, totalSum
     }
 
     let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {

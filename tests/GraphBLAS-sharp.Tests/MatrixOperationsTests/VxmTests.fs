@@ -11,7 +11,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-let logger = Log.create "VxmTests"
+let logger = Log.create "Matrix.Vxm.Tests"
 
 type OperationCase =
     {
@@ -38,7 +38,7 @@ let testCases =
             MaskCase = unbox list.[3]
         })
 
-let checkCorrectnessGeneric<'a when 'a : struct>
+let correctnessGenericTest<'a when 'a : struct>
     (semiring: ISemiring<'a>)
     (isEqual: 'a -> 'a -> bool)
     (case: OperationCase)
@@ -50,19 +50,22 @@ let checkCorrectnessGeneric<'a when 'a : struct>
         let resultSize = Array2D.length2 matrix
         let resultVector = Array.zeroCreate<'a> resultSize
 
+        let plus = semiring.Plus.Invoke
+        let times = semiring.Times.Invoke
+
         for i = 0 to resultSize - 1 do
             let col = matrix.[*, i]
             resultVector.[i] <-
                 vector
-                |> Array.mapi (fun i v -> semiring.Times.Invoke v col.[i])
-                |> Array.reduce (fun x y -> semiring.Plus.Invoke x y)
+                |> Array.mapi (fun i v -> times v col.[i])
+                |> Array.reduce (fun x y -> plus x y)
 
         resultVector
         |> Seq.cast<'a>
         |> Seq.mapi (fun i v -> (i, v))
         |> Seq.filter
             (fun (i, v) ->
-                not (isZero v) &&
+                (not << isZero) v &&
                 match case.MaskCase with
                 | NoMask -> true
                 | Regular -> mask.[i]
@@ -140,41 +143,28 @@ let checkCorrectnessGeneric<'a when 'a : struct>
     |> Expect.allEqual equality true
 
 let testFixtures case = [
-    let getTestName datatype =
-        sprintf "Correctness on %s, %A, %A, %A, %O"
-            datatype
-            case.VectorCase
-            case.MatrixCase
-            case.MaskCase
-            case.ClContext
+    let config = Utils.defaultConfig
+    let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
 
     case
-    |> checkCorrectnessGeneric<int> AddMult.int (=)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "int")
+    |> correctnessGenericTest<int> AddMult.int (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
     case
-    |> checkCorrectnessGeneric<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> ftestPropertyWithConfig Utils.defaultConfig (getTestName "float")
+    |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+    |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
     case
-    |> checkCorrectnessGeneric<sbyte> AddMult.sbyte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "sbyte")
+    |> correctnessGenericTest<int16> AddMult.int16 (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
     case
-    |> checkCorrectnessGeneric<byte> AddMult.byte (=)
-    |> ptestPropertyWithConfig Utils.defaultConfig (getTestName "byte")
+    |> correctnessGenericTest<uint16> AddMult.uint16 (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
 
     case
-    |> checkCorrectnessGeneric<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "int16")
-
-    case
-    |> checkCorrectnessGeneric<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "uint16")
-
-    case
-    |> checkCorrectnessGeneric<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig Utils.defaultConfig (getTestName "bool")
+    |> correctnessGenericTest<bool> AnyAll.bool (=)
+    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 ]
 
 let tests =
@@ -191,4 +181,4 @@ let tests =
             case.MaskCase = NoMask
         )
     |> List.collect testFixtures
-    |> testList "Vxm tests"
+    |> testList "Matrix.vxm tests"

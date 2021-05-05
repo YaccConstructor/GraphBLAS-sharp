@@ -6,7 +6,9 @@ let allTests =
         Backend.PrefixSum.tests
         Backend.BitonicSort.tests
         Backend.RemoveDuplicates.tests
+        Matrix.GetTuples.tests
         Matrix.Mxv.tests
+        Matrix.EWiseAdd.tests
         // Matrix.Transpose.tests
     ]
     |> testSequenced

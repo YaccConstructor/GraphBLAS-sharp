@@ -5,44 +5,48 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 module internal RemoveDuplicates =
     let fromArray (array: 'a[]) = opencl {
-        let inputLength = array.Length
+        if array.Length = 0 then
+            return [||]
 
-        let getUniqueBitmap =
-            <@
-                fun (ndRange: _1D)
-                    (inputArray: 'a[])
-                    (isUniqueBitmap: int[]) ->
+        else
+            let inputLength = array.Length
 
-                    let i = ndRange.GlobalID0
-                    if i < inputLength - 1 && inputArray.[i] = inputArray.[i + 1] then
-                        isUniqueBitmap.[i] <- 0
-            @>
+            let getUniqueBitmap =
+                <@
+                    fun (ndRange: _1D)
+                        (inputArray: 'a[])
+                        (isUniqueBitmap: int[]) ->
 
-        let setPositions =
-            <@
-                fun (ndRange: _1D)
-                    (inputArray: 'a[])
-                    (positions: int[])
-                    (outputArray: 'a[]) ->
+                        let i = ndRange.GlobalID0
+                        if i < inputLength - 1 && inputArray.[i] = inputArray.[i + 1] then
+                            isUniqueBitmap.[i] <- 0
+                @>
 
-                    let i = ndRange.GlobalID0
-                    if i < inputLength then
-                        outputArray.[positions.[i]] <- inputArray.[i]
-            @>
+            let setPositions =
+                <@
+                    fun (ndRange: _1D)
+                        (inputArray: 'a[])
+                        (positions: int[])
+                        (outputArray: 'a[]) ->
 
-        let bitmap = Array.create inputLength 1
-        do! RunCommand getUniqueBitmap <| fun kernelPrepare ->
-            let range = _1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
-            kernelPrepare range array bitmap
+                        let i = ndRange.GlobalID0
+                        if i < inputLength then
+                            outputArray.[positions.[i]] <- inputArray.[i]
+                @>
 
-        let! (positions, sum) = PrefixSum.runExclude bitmap
-        let! _ = ToHost sum
-        let resultLength = sum.[0]
+            let bitmap = Array.create inputLength 1
+            do! RunCommand getUniqueBitmap <| fun kernelPrepare ->
+                let range = _1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
+                kernelPrepare range array bitmap
 
-        let outputArray = Array.zeroCreate resultLength
-        do! RunCommand setPositions <| fun kernelPrepare ->
-            let range = _1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
-            kernelPrepare range array positions outputArray
+            let! (positions, sum) = PrefixSum.runExclude bitmap
+            let! _ = ToHost sum
+            let resultLength = sum.[0]
 
-        return outputArray
+            let outputArray = Array.zeroCreate resultLength
+            do! RunCommand setPositions <| fun kernelPrepare ->
+                let range = _1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
+                kernelPrepare range array positions outputArray
+
+            return outputArray
     }

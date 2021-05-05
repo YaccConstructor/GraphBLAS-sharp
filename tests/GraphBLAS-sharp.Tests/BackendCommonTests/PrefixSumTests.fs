@@ -7,7 +7,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend.Common
 
-let logger = Log.create "PrefixSumTests"
+let logger = Log.create "PrefixSum.Tests"
 
 let testCases = [
     testCase "Simple correctness test" <| fun () ->
@@ -55,4 +55,4 @@ let testCases = [
 
 let tests =
     testCases
-    |> testList "Prefix sum tests"
+    |> testList "PrefixSum tests"

@@ -10,6 +10,7 @@ open Expecto.Logging.Message
 open System.Text.RegularExpressions
 open FSharp.Quotations.Evaluator
 open Expecto
+open GraphBLAS.FSharp.Predefined
 
 [<AutoOpen>]
 module Extensions =
@@ -277,9 +278,9 @@ module Generators =
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 4
+            maxTest = 30
             startSize = 10
-            endSize = 500
+            endSize = 1000
             arbitrary = [
                 typeof<Generators.SingleMatrix>
                 typeof<Generators.PairOfSparseMatricesOfEqualSize>
