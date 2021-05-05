@@ -72,7 +72,15 @@ module Vector =
     //     match vector with
     //     | VectorCOO coo -> MaskCOO <| ({ Size = coo.Size; Indices = coo.Indices }, true)
 
-    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
+    let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> =
+        match vector with
+        | VectorCOO vec ->
+            opencl {
+                let! ind = Copy.copyArray vec.Indices
+                return Mask1D(ind, vec.Size, false)
+            }
+        |> EvalGB.fromCl
+
     let complemented (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> = failwith "Not Implemented yet"
 
     let switch (vectorFormat: VectorFormat) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"

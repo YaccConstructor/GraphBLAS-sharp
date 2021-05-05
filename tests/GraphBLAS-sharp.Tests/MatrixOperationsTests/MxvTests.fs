@@ -48,7 +48,7 @@ let correctnessGenericTest<'a when 'a : struct>
 
     let expected =
         let resultSize = Array2D.length1 matrix
-        let resultVector = Array.zeroCreate<'a> resultSize
+        let resultVector = Array.zeroCreate<'a option> resultSize
 
         let times = semiring.Times.Invoke
         let plus = semiring.Plus.Invoke
@@ -57,22 +57,35 @@ let correctnessGenericTest<'a when 'a : struct>
             let col = matrix.[i, *]
             resultVector.[i] <-
                 vector
-                |> Array.Parallel.mapi (fun i v -> times v col.[i])
-                |> Array.fold (fun x y -> plus x y) semiring.Zero
+                |> Array.Parallel.mapi
+                    (fun i v ->
+                        let res = times v col.[i]
+                        if isZero res then None
+                        else Some res
+                    )
+                |> Array.fold
+                    (fun x y ->
+                        match x, y with
+                        | None, None -> None
+                        | None, Some a -> Some a
+                        | Some a, None -> Some a
+                        | Some a, Some b -> Some <| plus a b
+                    ) None
 
         System.Threading.Tasks.Parallel.For(0, resultSize, task) |> ignore
 
         resultVector
-        |> Seq.cast<'a>
+        |> Seq.cast<'a option>
         |> Seq.mapi (fun i v -> (i, v))
         |> Seq.filter
             (fun (i, v) ->
-                (not << isZero) v &&
+                (not << Option.isNone) v &&
                 match case.MaskCase with
                 | NoMask -> true
                 | Regular -> mask.[i]
                 | Complemented -> not mask.[i]
             )
+        |> Seq.map (fun (i, v) -> i, Option.get v)
         |> Array.ofSeq
         |> Array.unzip
         |> fun (cols, vals) ->
@@ -167,6 +180,42 @@ let testFixtures case = [
     case
     |> correctnessGenericTest<bool> AnyAll.bool (=)
     |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+
+    testCase (sprintf "Explicit zero test on %A" case) <| fun () ->
+        let matrix = array2D [
+            [ 1; 0 ]
+            [ 0; 0 ]
+            [ 1; 1 ]
+        ]
+
+        let vector = [| 4; -4 |]
+
+        let expected = {
+            Indices = [| 0; 2 |]
+            Values = [| 4; 0 |]
+        }
+
+        let actual =
+            try
+                let matrix = Utils.createMatrixFromArray2D case.MatrixCase matrix ((=) 0)
+                let vector = Utils.createVectorFromArray case.VectorCase vector ((=) 0)
+
+                graphblas {
+                    return! Matrix.mxv AddMult.int matrix vector
+                    >>= Vector.tuples
+                    >>= VectorTuples.synchronizeAndReturn
+                }
+                |> EvalGB.withClContext case.ClContext
+                |> EvalGB.runSync
+
+            finally
+                case.ClContext.Provider.CloseAllBuffers()
+
+        "Indices of actual and expected vectors should be the same"
+        |> Expect.sequenceEqual actual.Indices expected.Indices
+
+        "Values of actual and expected vectors should be the same"
+        |> Expect.sequenceEqual actual.Values expected.Values
 ]
 
 let tests =
@@ -180,7 +229,7 @@ let tests =
             deviceType = DeviceType.Cpu &&
             case.VectorCase = VectorFormat.COO &&
             case.MatrixCase = CSR &&
-            case.MaskCase = NoMask
+            case.MaskCase <> Complemented
         )
     |> List.collect testFixtures
     |> testList "Matrix.mxv tests"
