@@ -47,8 +47,8 @@ module Matrix =
 
     let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> =
         match matrix with
-        | MatrixCOO matrix -> COOMatrix.GetTuples(matrix).Invoke()
-        | MatrixCSR matrix -> CSRMatrix.GetTuples(matrix).Invoke()
+        | MatrixCOO matrix -> COOMatrix.GetTuples.fromMatrix matrix
+        | MatrixCSR matrix -> CSRMatrix.GetTuples.fromMatrix matrix
         |> EvalGB.fromCl
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
@@ -133,17 +133,17 @@ module Matrix =
         failwith "Not Implemented yet"
 
     (*
-        closed operations
+        closed unmasked operations
     *)
 
-    let inline mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented"
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
         match matrix, vector with
-        | MatrixCSR mat, VectorCOO vec ->
+        | MatrixCSR matrix, VectorCOO vector ->
             opencl {
-                let! result = CSRMatrix.SpMSpV(mat, vec, semiring).Invoke()
+                let! result = CSRMatrix.SpMSpV.unmasked matrix vector semiring
                 return VectorCOO result
             }
         | _ -> failwith "Not Implemented"
@@ -171,24 +171,28 @@ module Matrix =
 
     let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         match matrix with
-        | MatrixCSR mat ->
+        | MatrixCSR matrix ->
             // map
             opencl {
-                let! t = CSRMatrix.Transpose.t mat
-                return MatrixCSR t
+                let! transposed = CSRMatrix.Transpose.transposeMatrix matrix
+                return MatrixCSR transposed
             }
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
     let kronecker (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 
+    (*
+        closed masked operations
+    *)
+
     let mxmWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 
     let mxvWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
         match matrix, vector, mask with
-        | MatrixCSR mat, VectorCOO vec, mask when not mask.IsComplemented ->
+        | MatrixCSR matrix, VectorCOO vector, mask when not mask.IsComplemented ->
             opencl {
-                let! result = CSRMatrix.SpMSpV(mat, vec, semiring).InvokeNotCo(mask)
+                let! result = CSRMatrix.SpMSpV.masked matrix vector semiring mask
                 return VectorCOO result
             }
         | _ -> failwith "Not Implemented"

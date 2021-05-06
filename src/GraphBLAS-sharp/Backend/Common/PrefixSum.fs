@@ -60,7 +60,7 @@ module internal rec PrefixSum =
             do! runExcludeInplace copiedArray totalSum
 
             let wgSize = Utils.defaultWorkGroupSize
-            let n = inputArray.Length
+            let length = inputArray.Length
 
             let kernel =
                 <@
@@ -71,22 +71,22 @@ module internal rec PrefixSum =
 
                         let gid = range.GlobalID0
 
-                        if gid = n - 1 then
+                        if gid = length - 1 then
                             outputArray.[gid] <- totalSum.[0]
-                        elif gid < n - 1 then
+                        elif gid < length - 1 then
                             outputArray.[gid] <- array.[gid + 1]
                 @>
 
-            let arr = Array.zeroCreate n
+            let outputArray = Array.zeroCreate length
 
             do! RunCommand kernel <| fun kernelPrepare ->
                 kernelPrepare
-                <| _1D(Utils.getDefaultGlobalSize n, wgSize)
+                <| _1D(Utils.getDefaultGlobalSize length, wgSize)
                 <| copiedArray
                 <| totalSum
-                <| arr
+                <| outputArray
 
-            return arr, totalSum
+            return outputArray, totalSum
     }
 
     let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {

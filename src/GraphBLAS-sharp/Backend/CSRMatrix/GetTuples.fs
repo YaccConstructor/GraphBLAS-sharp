@@ -6,8 +6,8 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 
-type internal GetTuples<'a>(matrix: CSRMatrix<'a>) =
-    member this.Invoke() = opencl {
+module internal GetTuples =
+    let fromMatrix (matrix: CSRMatrix<'a>) = opencl {
         if matrix.Values.Length = 0 then
             return {
                 RowIndices = [||]
@@ -16,15 +16,6 @@ type internal GetTuples<'a>(matrix: CSRMatrix<'a>) =
             }
 
         else
-            let! _ = ToHost matrix.RowPointers
-            let! _ = ToHost matrix.ColumnIndices
-            let! _ = ToHost matrix.Values
-            printfn "%A" matrix.RowPointers
-            printfn "%A" matrix.ColumnIndices
-            printfn "%A" matrix.Values
-            printfn "%A" matrix.RowCount
-            printfn "%A" matrix.ColumnCount
-
             let rowCount = matrix.RowCount
 
             let expandCsrRows =

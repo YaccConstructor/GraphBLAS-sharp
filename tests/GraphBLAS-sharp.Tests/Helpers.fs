@@ -279,9 +279,9 @@ module Generators =
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 4
-            startSize = 2
-            endSize = 10
+            maxTest = 10
+            // startSize = 1
+            endSize = 1000
             arbitrary = [
                 typeof<Generators.SingleMatrix>
                 typeof<Generators.PairOfSparseMatricesOfEqualSize>

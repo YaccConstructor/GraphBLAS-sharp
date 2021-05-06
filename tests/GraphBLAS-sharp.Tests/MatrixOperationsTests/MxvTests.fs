@@ -227,8 +227,8 @@ let tests =
             let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
             deviceType = DeviceType.Cpu &&
-            case.VectorCase = VectorFormat.COO &&
             case.MatrixCase = CSR &&
+            case.VectorCase = VectorFormat.COO &&
             case.MaskCase <> Complemented
         )
     |> List.collect testFixtures

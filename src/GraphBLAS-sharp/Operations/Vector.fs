@@ -64,20 +64,12 @@ module Vector =
             }
         |> EvalGB.fromCl
 
-    // let mask (vector: Vector<'a>) : Mask1D =
-    //     match vector with
-    //     | VectorCOO coo -> MaskCOO <| ({ Size = coo.Size; Indices = coo.Indices }, false)
-
-    // let complemented (vector: Vector<'a>) : Mask1D =
-    //     match vector with
-    //     | VectorCOO coo -> MaskCOO <| ({ Size = coo.Size; Indices = coo.Indices }, true)
-
     let mask (vector: Vector<'a>) : GraphblasEvaluation<Mask1D> =
         match vector with
         | VectorCOO vec ->
             opencl {
-                let! ind = Copy.copyArray vec.Indices
-                return Mask1D(ind, vec.Size, false)
+                let! indices = Copy.copyArray vec.Indices
+                return Mask1D(indices, vec.Size, false)
             }
         |> EvalGB.fromCl
 

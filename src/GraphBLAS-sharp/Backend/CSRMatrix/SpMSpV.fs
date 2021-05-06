@@ -1,4 +1,4 @@
-namespace rec GraphBLAS.FSharp.Backend.CSRMatrix
+namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
@@ -6,8 +6,8 @@ open GraphBLAS.FSharp
 open Brahma.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
-type internal SpMSpV<'a when 'a : struct>(matrix: CSRMatrix<'a>, vector: COOVector<'a>, semiring: ISemiring<'a>) =
-    member this.Invoke() = opencl {
+module internal rec SpMSpV =
+    let unmasked (matrix: CSRMatrix<'a>) (vector: COOVector<'a>) (semiring: ISemiring<'a>) = opencl {
         if matrix.Values.Length = 0 || vector.Values.Length = 0 then
             return {
                 Size = matrix.RowCount
@@ -168,7 +168,7 @@ type internal SpMSpV<'a when 'a : struct>(matrix: CSRMatrix<'a>, vector: COOVect
                 }
     }
 
-    member this.InvokeNotCo(mask: Mask1D) = opencl {
+    let masked (matrix: CSRMatrix<'a>) (vector: COOVector<'a>) (semiring: ISemiring<'a>) (mask: Mask1D) = opencl {
         if matrix.Values.Length = 0 || vector.Values.Length = 0 then
             return {
                 Size = matrix.RowCount
@@ -176,7 +176,8 @@ type internal SpMSpV<'a when 'a : struct>(matrix: CSRMatrix<'a>, vector: COOVect
                 Values = [||]
             }
 
-        elif mask.Indices.Length = 0 && not mask.IsComplemented || mask.Indices.Length = mask.Size && mask.IsComplemented then
+        elif mask.Indices.Length = 0 && not mask.IsComplemented ||
+            mask.Indices.Length = mask.Size && mask.IsComplemented then
             return {
                 Size = matrix.RowCount
                 Indices = [||]

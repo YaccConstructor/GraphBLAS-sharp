@@ -5,8 +5,8 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
-type internal GetTuples<'a>(matrix: COOMatrix<'a>) =
-    member this.Invoke() = opencl {
+module internal GetTuples =
+    let fromMatrix (matrix: COOMatrix<'a>) = opencl {
         if matrix.Values.Length = 0 then
             let! resultRows = Copy.copyArray matrix.Rows
             let! resultColumns = Copy.copyArray matrix.Columns

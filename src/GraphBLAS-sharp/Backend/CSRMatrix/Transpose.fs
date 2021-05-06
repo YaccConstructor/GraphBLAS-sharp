@@ -6,108 +6,26 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.OpenCL
 
-module rec Transpose =
-    let t (matrix: CSRMatrix<'a>) = opencl {
-        let n = matrix.RowCount
+module internal rec Transpose =
+    let transposeMatrix (matrix: CSRMatrix<'a>) = opencl {
         let! coo = csr2coo matrix
-        let! c = Copy.copyArray coo.Columns
-        let! r = Copy.copyArray coo.Rows
-        let! vs = Copy.copyArray coo.Values
+        let! packedIndices = pack coo.Columns coo.Rows
 
-        let! _ = ToHost c
-        let! _ = ToHost r
-        let! _ = ToHost vs
-        printfn "%A" c
-        printfn "%A" r
-        printfn "%A" vs
+        do! BitonicSort.sortKeyValuesInplace packedIndices coo.Values
+        let! (rows, cols) = unpack packedIndices
 
+        let! compressedRows = compressRows matrix.ColumnCount rows
 
-        let! ind = pack c r
-
-        do! BitonicSort.sortInplace2 ind vs
-        let! (row, col) = unpack ind
-        let! _ = ToHost row
-        let! _ = ToHost col
-        let! _ = ToHost vs
-        printfn "%A" row
-        printfn "%A" col
-        printfn "%A" vs
-
-        let! cr = compressRows matrix.ColumnCount row
-        let! _ = ToHost cr
-        printfn "%A" cr
         return {
             RowCount = matrix.ColumnCount
-            ColumnCount = n
-            RowPointers = cr
-            ColumnIndices = col
-            Values = vs
+            ColumnCount = matrix.ColumnCount
+            RowPointers = compressedRows
+            ColumnIndices = cols
+            Values = coo.Values
         }
-        // return matrix
     }
 
-    let pack (a: int[]) (b: int[]) = opencl {
-        let n = a.Length
-
-        let pack = <@ fun x y -> (uint64 x <<< 32) ||| (uint64 y) @>
-
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (a: int[])
-                    (b: int[])
-                    (c: uint64[]) ->
-
-                    let gid = range.GlobalID0
-                    if gid < n then
-                        c.[gid] <- (%pack) a.[gid] b.[gid]
-            @>
-
-        let c = Array.zeroCreate<uint64> n
-
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize n, Utils.defaultWorkGroupSize)
-            <| a
-            <| b
-            <| c
-
-        return c
-    }
-
-    let unpack (c: uint64[]) = opencl {
-        let n = c.Length
-
-        // let unpackFst = <@ fun x -> int ((x &&& 0xFFFFFFFF0000000UL) >>> 32) @>
-        // let unpackSnd = <@ fun x -> int (x &&& 0xFFFFFFFUL) @>
-
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (a: int[])
-                    (b: int[])
-                    (c: uint64[]) ->
-
-                    let gid = range.GlobalID0
-                    if gid < n then
-                        a.[gid] <- int ((c.[gid] &&& 0xFFFFFFFF0000000UL) >>> 32)
-                        b.[gid] <- int (c.[gid] &&& 0xFFFFFFFUL)
-            @>
-
-        let a = Array.zeroCreate<int> n
-        let b = Array.zeroCreate<int> n
-
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize n, Utils.defaultWorkGroupSize)
-            <| a
-            <| b
-            <| c
-
-        return a, b
-    }
-
-    let csr2coo (matrix: CSRMatrix<'a>) = opencl {
+    let private csr2coo (matrix: CSRMatrix<'a>) = opencl {
         let wgSize = Utils.defaultWorkGroupSize
         let expandRows =
             <@
@@ -147,8 +65,64 @@ module rec Transpose =
         }
     }
 
-    let compressRows m (rowIndices: int[]) = opencl {
-        let n = rowIndices.Length
+    let private pack (firstArray: int[]) (secondArray: int[]) = opencl {
+        let length = firstArray.Length
+
+        let kernel =
+            <@
+                fun (range: _1D)
+                    (firstArray: int[])
+                    (secondArray: int[])
+                    (packed: uint64[]) ->
+
+                    let gid = range.GlobalID0
+                    if gid < length then
+                        packed.[gid] <- (uint64 firstArray.[gid] <<< 32) ||| (uint64 secondArray.[gid])
+            @>
+
+        let packedArray = Array.zeroCreate<uint64> length
+
+        do! RunCommand kernel <| fun kernelPrepare ->
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize length, Utils.defaultWorkGroupSize)
+            <| firstArray
+            <| secondArray
+            <| packedArray
+
+        return packedArray
+    }
+
+    let private unpack (packedArray: uint64[]) = opencl {
+        let length = packedArray.Length
+
+        let kernel =
+            <@
+                fun (range: _1D)
+                    (packedArray: uint64[])
+                    (firstArray: int[])
+                    (secondArray: int[]) ->
+
+                    let gid = range.GlobalID0
+                    if gid < length then
+                        firstArray.[gid] <- int ((packedArray.[gid] &&& 0xFFFFFFFF0000000UL) >>> 32)
+                        secondArray.[gid] <- int (packedArray.[gid] &&& 0xFFFFFFFUL)
+            @>
+
+        let firstArray = Array.zeroCreate<int> length
+        let secondArray = Array.zeroCreate<int> length
+
+        do! RunCommand kernel <| fun kernelPrepare ->
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize length, Utils.defaultWorkGroupSize)
+            <| packedArray
+            <| firstArray
+            <| secondArray
+
+        return firstArray, secondArray
+    }
+
+    let private compressRows rowCount (rowIndices: int[]) = opencl {
+        let nnz = rowIndices.Length
 
         let getUniqueBitmap =
             <@
@@ -157,104 +131,93 @@ module rec Transpose =
                     (isUniqueBitmap: int[]) ->
 
                     let i = ndRange.GlobalID0
-                    if i < n - 1 && inputArray.[i] = inputArray.[i + 1] then
+                    if i < nnz - 1 && inputArray.[i] = inputArray.[i + 1] then
                         isUniqueBitmap.[i] <-    0
             @>
 
-        let bitmap = Array.create n 1
+        let bitmap = Array.create nnz 1
+
         do! RunCommand getUniqueBitmap <| fun kernelPrepare ->
-            let range = _1D(Utils.getDefaultGlobalSize n, Utils.defaultWorkGroupSize)
-            kernelPrepare range rowIndices bitmap
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
+            <| rowIndices
+            <| bitmap
 
-        let! (pos, ts) = PrefixSum.runExclude bitmap
-        let! _ = ToHost ts
+        let! (positions, totalSum) = PrefixSum.runExclude bitmap
+        let! _ = ToHost totalSum
+        let totalSum = totalSum.[0]
 
-        let a = Array.zeroCreate ts.[0]
-        let b = Array.zeroCreate ts.[0]
-        let ts = ts.[0]
-
-        let kern =
+        let calcHyperSparseRows =
             <@
                 fun (ndRange: _1D)
+                    (rowsIndices: int[])
                     (bitmap: int[])
-                    (array: int[])
-                    (pos: int[])
-                    (row: int[])
-                    (off: int[]) ->
+                    (positions: int[])
+                    (nonZeroRowsIndices: int[])
+                    (nonZeroRowsPointers: int[]) ->
 
                     let gid = ndRange.GlobalID0
 
-                    if gid < n && bitmap.[gid] = 1 then
-                        row.[pos.[gid]] <- array.[gid]
-                        off.[pos.[gid]] <- gid + 1
+                    if gid < nnz && bitmap.[gid] = 1 then
+                        nonZeroRowsIndices.[positions.[gid]] <- rowsIndices.[gid]
+                        nonZeroRowsPointers.[positions.[gid]] <- gid + 1
             @>
 
-        do! RunCommand kern <| fun kernelPrepare ->
+        let nonZeroRowsIndices = Array.zeroCreate totalSum
+        let nonZeroRowsPointers = Array.zeroCreate totalSum
+
+        do! RunCommand calcHyperSparseRows <| fun kernelPrepare ->
             kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize n, Utils.defaultWorkGroupSize)
-            <| bitmap
+            <| _1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
             <| rowIndices
-            <| pos
-            <| a
-            <| b
+            <| bitmap
+            <| positions
+            <| nonZeroRowsIndices
+            <| nonZeroRowsPointers
 
-        let! _ = ToHost pos
-        let! _ = ToHost a
-        let! _ = ToHost b
-
-        printfn "%A" pos
-        printfn "row = %A" a
-        printfn "off = %A" b
-
-        let kern3 =
+        let calcNnzPerRowSparse =
             <@
                 fun (ndRange: _1D)
-                    (off: int[])
-                    (off3: int[]) ->
+                    (nonZeroRowsPointers: int[])
+                    (nnzPerRowSparse: int[]) ->
 
                     let gid = ndRange.GlobalID0
                     if gid = 0 then
-                        off3.[gid] <- off.[gid]
-                    elif gid < ts then
-                        off3.[gid] <- off.[gid] - off.[gid - 1]
+                        nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid]
+                    elif gid < totalSum then
+                        nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid] - nonZeroRowsPointers.[gid - 1]
             @>
 
-        let off3 = Array.zeroCreate ts
+        let nnzPerRowSparse = Array.zeroCreate totalSum
 
-        do! RunCommand kern3 <| fun kp ->
-            kp
-            <| _1D(Utils.getDefaultGlobalSize ts, Utils.defaultWorkGroupSize)
-            <| b
-            <| off3
+        do! RunCommand calcNnzPerRowSparse <| fun kernelPrepare ->
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
+            <| nonZeroRowsPointers
+            <| nnzPerRowSparse
 
-        let! _ = ToHost off3
-        printfn "off3 = %A" off3
-
-        let kern2 =
+        let expandSparseNnzPerRow =
             <@
                 fun (ndRange: _1D)
-                    (off3: int[])
-                    (row: int[])
+                    (nnzPerRowSparse: int[])
+                    (nonZeroRowsIndices: int[])
                     (off2: int[]) ->
 
                     let gid = ndRange.GlobalID0
 
-                    if gid < ts then
-                        off2.[row.[gid] + 1] <- off3.[gid]
+                    if gid < totalSum then
+                        off2.[nonZeroRowsIndices.[gid] + 1] <- nnzPerRowSparse.[gid]
             @>
 
-        let off2 = Array.zeroCreate (m + 1)
+        let expandedNnzPerRow = Array.zeroCreate (rowCount + 1)
 
-        do! RunCommand kern2 <| fun kp ->
-            kp
-            <| _1D(Utils.getDefaultGlobalSize ts, Utils.defaultWorkGroupSize)
-            <| off3
-            <| a
-            <| off2
+        do! RunCommand expandSparseNnzPerRow <| fun kernelPrepare ->
+            kernelPrepare
+            <| _1D(Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
+            <| nnzPerRowSparse
+            <| nonZeroRowsIndices
+            <| expandedNnzPerRow
 
-        let! _ = ToHost off2
-        printfn "%A" off2
-
-        let! (rp, _) = PrefixSum.runInclude off2
-        return rp
+        let! (rowPointers, _) = PrefixSum.runInclude expandedNnzPerRow
+        return rowPointers
     }

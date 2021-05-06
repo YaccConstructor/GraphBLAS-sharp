@@ -6,14 +6,6 @@ open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open GraphBLAS.FSharp.Backend.Common
-open FSharp.Quotations
-
-open Expecto
-open System.Collections.Generic
-
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 let logger = Log.create "RemoveDuplicates.Tests"
 
