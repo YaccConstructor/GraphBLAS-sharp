@@ -166,7 +166,7 @@ let testFixtures case = [
     |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
     case
-    |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.relative)
+    |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.low.relative)
     |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
     case
