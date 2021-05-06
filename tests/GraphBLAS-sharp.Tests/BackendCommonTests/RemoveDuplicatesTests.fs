@@ -17,7 +17,9 @@ let testCases = [
             opencl {
                 let! copiedArray = Copy.copyArray array
                 let! result = RemoveDuplicates.fromArray copiedArray
-                let! _ = ToHost result
+                if array.Length <> 0 then
+                    let! _ = ToHost result
+                    ()
                 return result
             }
             |> OpenCLEvaluationContext().RunSync
@@ -39,7 +41,9 @@ let testCases = [
             opencl {
                 let! copiedArray = Copy.copyArray array
                 let! result = RemoveDuplicates.fromArray copiedArray
-                let! _ = ToHost result
+                if array.Length <> 0 then
+                    let! _ = ToHost result
+                    ()
                 return result
             }
             |> OpenCLEvaluationContext().RunSync

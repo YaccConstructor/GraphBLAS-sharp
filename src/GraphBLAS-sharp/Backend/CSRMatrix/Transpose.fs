@@ -18,7 +18,7 @@ module internal rec Transpose =
 
         return {
             RowCount = matrix.ColumnCount
-            ColumnCount = matrix.ColumnCount
+            ColumnCount = matrix.RowCount
             RowPointers = compressedRows
             ColumnIndices = cols
             Values = coo.Values

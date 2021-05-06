@@ -18,7 +18,7 @@ let logger = Log.create "BitonicSort.Tests"
 let testCases = [
     let config = Utils.defaultConfig
 
-    ftestPropertyWithConfig config "Simple correctness test on uint64 * int" <| fun (array: (uint64 * int)[]) ->
+    ptestPropertyWithConfig config "Simple correctness test on uint64 * int" <| fun (array: (uint64 * int)[]) ->
         let expected = Array.sortBy (fun (key, _) -> key) array
 
         let actual =

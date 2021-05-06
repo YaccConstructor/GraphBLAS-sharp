@@ -276,6 +276,15 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
+    type ArrayOfDistinctKeys() =
+        // Stack overflow.
+        static member ArrayOfDistinctKeysArb() =
+            gen {
+                let! array = Arb.generate<(uint64 * int)[]>
+                return Array.distinctBy (fun (key, _) -> key) array
+            }
+            |> Arb.fromGen
+
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
@@ -288,6 +297,7 @@ module Utils =
                 typeof<Generators.PairOfMatricesOfCompatibleSize>
                 typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                 typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
+                // typeof<Generators.ArrayOfDistinctKeys>
             ]
         }
 

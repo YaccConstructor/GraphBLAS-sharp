@@ -16,7 +16,9 @@ let testCases = [
         let actual =
             opencl {
                 let! (result, _) = PrefixSum.runInclude array
-                let! _ = ToHost result
+                if array.Length <> 0 then
+                    let! _ = ToHost result
+                    ()
                 return result
             }
             |> OpenCLEvaluationContext().RunSync
@@ -37,7 +39,10 @@ let testCases = [
         let actual =
             opencl {
                 let! (result, _) = PrefixSum.runInclude array
-                let! _ = ToHost result
+                if array.Length <> 0 then
+                    let! _ = ToHost result
+                    ()
+
                 return result
             }
             |> OpenCLEvaluationContext().RunSync
