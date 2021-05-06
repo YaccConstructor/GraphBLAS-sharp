@@ -71,10 +71,10 @@ module internal rec PrefixSum =
 
                         let gid = range.GlobalID0
 
-                        if gid < n - 1 then
-                            outputArray.[gid] <- array.[gid + 1]
-                        elif gid = n - 1 then
+                        if gid = n - 1 then
                             outputArray.[gid] <- totalSum.[0]
+                        elif gid < n - 1 then
+                            outputArray.[gid] <- array.[gid + 1]
                 @>
 
             let arr = Array.zeroCreate n

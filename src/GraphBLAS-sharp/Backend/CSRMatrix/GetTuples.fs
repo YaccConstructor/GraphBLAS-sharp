@@ -16,6 +16,15 @@ type internal GetTuples<'a>(matrix: CSRMatrix<'a>) =
             }
 
         else
+            let! _ = ToHost matrix.RowPointers
+            let! _ = ToHost matrix.ColumnIndices
+            let! _ = ToHost matrix.Values
+            printfn "%A" matrix.RowPointers
+            printfn "%A" matrix.ColumnIndices
+            printfn "%A" matrix.Values
+            printfn "%A" matrix.RowCount
+            printfn "%A" matrix.ColumnCount
+
             let rowCount = matrix.RowCount
 
             let expandCsrRows =

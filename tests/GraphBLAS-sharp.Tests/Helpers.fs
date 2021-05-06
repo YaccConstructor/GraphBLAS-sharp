@@ -22,6 +22,7 @@ module Extensions =
 module Generators =
     let logger = Log.create "Generators"
 
+    // TODO уточнить, что пустые матрицы тоже генерятся
     let dimension2DGenerator =
         Gen.sized <| fun size ->
             let quarter = size / 4
@@ -278,9 +279,9 @@ module Generators =
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 30
-            startSize = 10
-            endSize = 1000
+            maxTest = 4
+            startSize = 2
+            endSize = 10
             arbitrary = [
                 typeof<Generators.SingleMatrix>
                 typeof<Generators.PairOfSparseMatricesOfEqualSize>

@@ -168,7 +168,18 @@ module Matrix =
     let reduceRows (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduceCols (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
     let reduce (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
-    let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
+
+    let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        match matrix with
+        | MatrixCSR mat ->
+            // map
+            opencl {
+                let! t = CSRMatrix.Transpose.t mat
+                return MatrixCSR t
+            }
+        | _ -> failwith "Not Implemented"
+        |> EvalGB.fromCl
+
     let kronecker (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 
     let mxmWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
