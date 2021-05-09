@@ -137,7 +137,8 @@ let tests =
             let device = case.ClContext.Device
             let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-            deviceType = DeviceType.Cpu
+            deviceType = DeviceType.Cpu &&
+            case.MatrixCase = CSR
         )
     |> List.collect testFixtures
     |> testList "Matrix.tuples tests"
