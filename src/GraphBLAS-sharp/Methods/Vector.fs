@@ -91,7 +91,20 @@ module Vector =
 
     /// t.[mask] <- vec
     let assignSubVector (mask: Mask1D) (source: Vector<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> =
-        failwith "Not Implemented yet"
+        match source, target with
+        | VectorCOO s, VectorCOO t ->
+            if t.Size <> mask.Size then
+                invalidArg "mask" <| sprintf "The size of mask must be %A. Received: %A" t.Size mask.Size
+
+            if t.Size <> s.Size then
+                invalidArg "source" <| sprintf "The size of source vector must be %A. Received: %A" t.Size s.Size
+
+            if mask.IsComplemented then failwith "Not Implemented yet" else
+                graphblas {
+                    let! resultIndices, resultValues = AssignSubVector.run t.Indices t.Values s.Indices s.Values mask.Indices |> EvalGB.fromCl
+                    t.Indices <- resultIndices
+                    t.Values <- resultValues
+                }
 
     /// t.[idx] <- value
     let assignValue (idx: int) (value: Scalar<'a>) (target: Vector<'a>) : GraphblasEvaluation<unit> =

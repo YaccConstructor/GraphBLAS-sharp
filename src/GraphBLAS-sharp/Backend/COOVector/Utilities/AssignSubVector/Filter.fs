@@ -1,17 +1,16 @@
-namespace GraphBLAS.FSharp.Backend.COOVector.EWiseAdd
+namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.AssignSubVector
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
-module internal Merge =
-    let merge (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) : OpenCLEvaluation<int[] * 'a[]> = opencl {
+module internal Filter =
+    let filter (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (bitmap: bool[]) : OpenCLEvaluation<int[] * 'a[] * int[]> = opencl {
         let workGroupSize = Utils.workGroupSize
         let firstSide = leftValues.Length
-        let secondSide = rightValues.Length
+        let secondSide = rightIndices.Length
         let sumOfSides = firstSide + secondSide
 
         let merge =
@@ -21,8 +20,10 @@ module internal Merge =
                     (firstValuesBuffer: 'a[])
                     (secondIndicesBuffer: int[])
                     (secondValuesBuffer: 'a[])
+                    (bitmapBuffer: bool[])
                     (allIndicesBuffer: int[])
-                    (allValuesBuffer: 'a[]) ->
+                    (allValuesBuffer: 'a[])
+                    (rawPositionsBuffer: int[]) ->
 
                     let i = ndRange.GlobalID0
 
@@ -44,7 +45,7 @@ module internal Merge =
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = firstIndicesBuffer.[middleIdx]
                             let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
-                            if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+                            if firstIndex <= secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         // Here localID equals either 0 or 1
                         if localID = 0 then beginIdxLocal <- leftEdge else endIdxLocal <- leftEdge
@@ -78,7 +79,7 @@ module internal Merge =
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = localIndices.[middleIdx]
                             let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
-                            if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+                            if firstIndex <= secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
 
                         let boundaryX = rightEdge
                         let boundaryY = localID - leftEdge
@@ -93,16 +94,20 @@ module internal Merge =
                         let mutable sndIdx = 0
                         if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
 
-                        if not isValidX || isValidY && fstIdx < sndIdx then
+                        if not isValidX || isValidY && fstIdx <= sndIdx then
                             allIndicesBuffer.[i] <- sndIdx
-                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                            if bitmapBuffer.[i - localID - beginIdx + boundaryY] then
+                                allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                            else
+                                rawPositionsBuffer.[i] <- 0
                         else
                             allIndicesBuffer.[i] <- fstIdx
                             allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
             @>
 
-        let allIndices = Array.zeroCreate sumOfSides
-        let allValues = Array.create sumOfSides Unchecked.defaultof<'a>
+        let resultValues = Array.create sumOfSides Unchecked.defaultof<'a>
+        let resultIndices = Array.zeroCreate sumOfSides
+        let rawPositions = Array.create sumOfSides 1
 
         do! RunCommand merge <| fun kernelPrepare ->
             let ndRange = _1D(Utils.workSize sumOfSides, workGroupSize)
@@ -112,8 +117,10 @@ module internal Merge =
                 leftValues
                 rightIndices
                 rightValues
-                allIndices
-                allValues
+                bitmap
+                resultIndices
+                resultValues
+                rawPositions
 
-        return allIndices, allValues
+        return resultIndices, resultValues, rawPositions
     }

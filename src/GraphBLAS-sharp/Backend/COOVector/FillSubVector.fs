@@ -4,12 +4,13 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOVector.Utilities
+open GraphBLAS.FSharp.Backend.COOVector.Utilities.FillSubVector
 
 module internal FillSubVector =
     let private runNotEmpty (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (scalar: 'a[]) : OpenCLEvaluation<int[] * 'a[]> = opencl {
-        let! allIndices, allValues = mergeWithScalar leftIndices leftValues rightIndices scalar
+        let! allIndices, allValues = merge leftIndices leftValues rightIndices scalar
 
-        let! rawPositions = preparePositionsWithoutPlus allIndices
+        let! rawPositions = preparePositions allIndices
 
         return! setPositions allIndices allValues rawPositions
     }

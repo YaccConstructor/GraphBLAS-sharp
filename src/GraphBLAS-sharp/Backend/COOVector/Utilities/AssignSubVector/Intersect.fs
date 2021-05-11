@@ -1,14 +1,13 @@
-namespace GraphBLAS.FSharp.Backend.COOVector.FillSubVector
+namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.AssignSubVector
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
-module internal Merge =
-    let merge (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (scalar: 'a[]) : OpenCLEvaluation<int[] * 'a[]> = opencl {
+module internal Intersect =
+    let intersect (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) : OpenCLEvaluation<bool[] * 'a[]> = opencl {
         let workGroupSize = Utils.workGroupSize
         let firstSide = leftValues.Length
         let secondSide = rightIndices.Length
@@ -20,9 +19,8 @@ module internal Merge =
                     (firstIndicesBuffer: int[])
                     (firstValuesBuffer: 'a[])
                     (secondIndicesBuffer: int[])
-                    (scalarBuffer: 'a[])
-                    (allIndicesBuffer: int[])
-                    (allValuesBuffer: 'a[]) ->
+                    (bitmapBuffer: bool[])
+                    (resultValuesBuffer: 'a[]) ->
 
                     let i = ndRange.GlobalID0
 
@@ -93,16 +91,13 @@ module internal Merge =
                         let mutable sndIdx = 0
                         if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
 
-                        if not isValidX || isValidY && fstIdx < sndIdx then
-                            allIndicesBuffer.[i] <- sndIdx
-                            allValuesBuffer.[i] <- scalarBuffer.[0]
-                        else
-                            allIndicesBuffer.[i] <- fstIdx
-                            allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
+                        if not isValidX || isValidY && fstIdx = sndIdx then
+                            bitmapBuffer.[i - localID - beginIdx + boundaryY] <- true
+                            resultValuesBuffer.[i - localID - beginIdx + boundaryY] <- firstValuesBuffer.[beginIdx + boundaryX]
             @>
 
-        let allIndices = Array.zeroCreate sumOfSides
-        let allValues = Array.create sumOfSides Unchecked.defaultof<'a>
+        let bitmap = Array.zeroCreate secondSide
+        let resultValues = Array.create secondSide Unchecked.defaultof<'a>
 
         do! RunCommand merge <| fun kernelPrepare ->
             let ndRange = _1D(Utils.workSize sumOfSides, workGroupSize)
@@ -111,9 +106,8 @@ module internal Merge =
                 leftIndices
                 leftValues
                 rightIndices
-                scalar
-                allIndices
-                allValues
+                bitmap
+                resultValues
 
-        return allIndices, allValues
+        return bitmap, resultValues
     }
