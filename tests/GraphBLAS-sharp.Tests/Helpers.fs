@@ -25,16 +25,12 @@ module Generators =
     // TODO уточнить, что пустые матрицы тоже генерятся
     let dimension2DGenerator =
         Gen.sized <| fun size ->
-            let quarter = size / 4
-            Gen.choose (size - quarter, size + quarter)
-            |> Gen.filter (fun value -> value > 0)
+            Gen.choose (1, size)
             |> Gen.two
 
     let dimension3DGenerator =
         Gen.sized <| fun size ->
-            let quarter = size / 4
-            Gen.choose (size - quarter, size + quarter)
-            |> Gen.filter (fun value -> value > 0)
+            Gen.choose (1, size)
             |> Gen.three
 
     let genericSparseGenerator zero valuesGen handler =
@@ -288,7 +284,7 @@ module Generators =
 module Utils =
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 20
+            maxTest = 10
             startSize = 1
             endSize = 1000
             arbitrary = [
@@ -323,9 +319,11 @@ module Utils =
         |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
         |> Seq.filter
             (fun device ->
+                let isAvaliable = Cl.GetDeviceInfo(device, DeviceInfo.Available, &e).CastTo<bool>()
                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-                (Regex platformRegex).IsMatch platformName
+                (Regex platformRegex).IsMatch platformName &&
+                isAvaliable
             )
         |> Seq.map
             (fun device ->
