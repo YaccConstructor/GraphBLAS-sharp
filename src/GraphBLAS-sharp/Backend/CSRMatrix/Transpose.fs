@@ -8,21 +8,30 @@ open Brahma.OpenCL
 
 module internal rec Transpose =
     let transposeMatrix (matrix: CSRMatrix<'a>) = opencl {
-        let! coo = csr2coo matrix
-        let! packedIndices = pack coo.Columns coo.Rows
+        if matrix.Values.Length = 0 then
+            return {
+                RowCount = matrix.ColumnCount
+                ColumnCount = matrix.RowCount
+                RowPointers = [| 0; 0 |]
+                ColumnIndices = [||]
+                Values = [||]
+            }
+        else
+            let! coo = csr2coo matrix
+            let! packedIndices = pack coo.Columns coo.Rows
 
-        do! BitonicSort.sortKeyValuesInplace packedIndices coo.Values
-        let! (rows, cols) = unpack packedIndices
+            do! BitonicSort.sortKeyValuesInplace packedIndices coo.Values
+            let! (rows, cols) = unpack packedIndices
 
-        let! compressedRows = compressRows matrix.ColumnCount rows
+            let! compressedRows = compressRows matrix.ColumnCount rows
 
-        return {
-            RowCount = matrix.ColumnCount
-            ColumnCount = matrix.RowCount
-            RowPointers = compressedRows
-            ColumnIndices = cols
-            Values = coo.Values
-        }
+            return {
+                RowCount = matrix.ColumnCount
+                ColumnCount = matrix.RowCount
+                RowPointers = compressedRows
+                ColumnIndices = cols
+                Values = coo.Values
+            }
     }
 
     let private csr2coo (matrix: CSRMatrix<'a>) = opencl {
