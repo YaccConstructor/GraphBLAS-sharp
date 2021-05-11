@@ -276,14 +276,14 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-    type ArrayOfDistinctKeys() =
-        // Stack overflow.
-        static member ArrayOfDistinctKeysArb() =
-            gen {
-                let! array = Arb.generate<(uint64 * int)[]>
-                return Array.distinctBy (fun (key, _) -> key) array
-            }
-            |> Arb.fromGen
+    // type ArrayOfDistinctKeys() =
+    //     // Stack overflow.
+    //     static member ArrayOfDistinctKeysArb() =
+    //         gen {
+    //             let! array = Arb.generate<(uint64 * int)[]>
+    //             return Array.distinctBy (fun (key, _) -> key) array
+    //         }
+    //         |> Arb.fromGen
 
 module Utils =
     let defaultConfig =
