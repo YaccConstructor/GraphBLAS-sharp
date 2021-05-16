@@ -5,6 +5,8 @@ open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
+open GraphBLAS.FSharp.IO
+open System.IO
 
 type ClContext = ClContext of OpenCLEvaluationContext
 with
@@ -27,14 +29,14 @@ with
 
             sprintf "%s, %s" platformName deviceType
 
-type MatrixShapeColumn(columnName: string, getShape: MtxShape -> int) =
+type MatrixShapeColumn(columnName: string, getShape: MtxReader -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
         member this.ColumnName: string = columnName
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader
             sprintf "%i" <| getShape inputMatrix
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle): string =
@@ -55,11 +57,13 @@ type TEPSColumn() =
         member this.ColumnName: string = "TEPS"
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase): string =
-            let inputMatrix = benchmarkCase.Parameters.["InputMatrix"] :?> MtxShape
-            let (nrows, ncols) = inputMatrix.RowCount, inputMatrix.ColumnCount
+            let inputMatrixReader = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader
+            let matrixShape = inputMatrixReader.ReadMatrixShape()
+
+            let (nrows, ncols) = matrixShape.RowCount, matrixShape.ColumnCount
             let (vertices, edges) =
-                match inputMatrix.Format with
-                | "coordinate" -> if nrows = ncols then (nrows, inputMatrix.Size.[2]) else (ncols, nrows)
+                match inputMatrixReader.Format with
+                | Coordinate -> if nrows = ncols then (nrows, matrixShape.Nnz) else (ncols, nrows)
                 | _ -> failwith "Unsupported"
 
             if isNull summary.[benchmarkCase].ResultStatistics then
@@ -78,3 +82,25 @@ type TEPSColumn() =
         member this.Legend: string = "Traversed edges per second"
         member this.PriorityInCategory: int = 0
         member this.UnitType: UnitType = UnitType.Dimensionless
+
+module Utils =
+    let getMatricesFilenames configFilename =
+        let getFullPathToConfig filename =
+            Path.Combine [|
+                __SOURCE_DIRECTORY__
+                "Configs"
+                filename
+            |] |> Path.GetFullPath
+
+        configFilename
+        |> getFullPathToConfig
+        |> File.ReadLines
+        |> Seq.filter (fun line -> not <| line.StartsWith "!")
+
+    let getFullPathToMatrix datasetsFolder matrixFilename =
+        Path.Combine [|
+            __SOURCE_DIRECTORY__
+            "Datasets"
+            datasetsFolder
+            matrixFilename
+        |]

@@ -53,8 +53,31 @@ module Matrix =
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
-    let switch (matrixFormat: MatrixFromat) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+
+    let switch (matrixFormat: MatrixFromat) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        match matrix, matrixFormat with
+        | MatrixCOO matrix, CSR ->
+            opencl {
+                let! result = CSRMatrix.Convert.fromCoo matrix
+                return MatrixCSR result
+            }
+        | _ -> failwith "Not Implemented"
+        |> EvalGB.fromCl
+
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
+
+    let synchronizeAndReturn (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        match matrix with
+        | MatrixCSR matrix ->
+            opencl {
+                let! _ = if matrix.RowPointers.Length = 0 then opencl { return [||] } else ToHost matrix.RowPointers
+                let! _ = if matrix.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrix.ColumnIndices
+                let! _ = if matrix.Values.Length = 0 then opencl { return [||] } else ToHost matrix.Values
+
+                return MatrixCSR matrix
+            }
+        | _ -> failwith "Not Implemented"
+        |> EvalGB.fromCl
 
     (*
         assignment, extraction and filling
