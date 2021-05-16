@@ -9,9 +9,7 @@ module Scalar =
         constructors
     *)
 
-    let internal createFromArray (value: 'a[]) : GraphblasEvaluation<Scalar<'a>> = graphblas { return Scalar.FromArray(value) }
-
-    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = createFromArray [|value|]
+    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = graphblas { return Scalar { Value = [|value|] } }
 
     (*
         methods
@@ -20,8 +18,9 @@ module Scalar =
     let copy (scalar: Scalar<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
 
     let synchronize (scalar: Scalar<'a>) : GraphblasEvaluation<unit> =
-        opencl {
-            let! _ = ToHost scalar.Value
+        match scalar with
+        | Scalar s -> opencl {
+            let! _ = ToHost s.Value
 
             return ()
         }
@@ -31,9 +30,12 @@ module Scalar =
         assignment and extraction
     *)
 
-    let extractValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> = graphblas { return scalar.Value.[0] }
-
-    let internal extractArray (scalar: Scalar<'a>) : GraphblasEvaluation<'a[]> = graphblas { return scalar.Value }
+    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> =
+        match scalar with
+        | Scalar s -> graphblas {
+            do! synchronize scalar
+            return s.Value.[0]
+        }
 
     let assignValue (scalar: Scalar<'a>) (target: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"

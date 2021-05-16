@@ -99,7 +99,8 @@ module Vector =
             if t.Size <> s.Size then
                 invalidArg "source" <| sprintf "The size of source vector must be %A. Received: %A" t.Size s.Size
 
-            if mask.IsComplemented then failwith "Not Implemented yet" else
+            if mask.IsComplemented then failwith "Not Implemented yet"
+            else
                 graphblas {
                     let! resultIndices, resultValues = AssignSubVector.run t.Indices t.Values s.Indices s.Values mask.Indices |> EvalGB.fromCl
                     t.Indices <- resultIndices
@@ -115,13 +116,12 @@ module Vector =
         failwith "Not Implemented yet"
 
     /// vec.[mask] <- value
-    let fillSubVector (mask: Mask1D) (value: Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> =
+    let fillSubVector (mask: Mask1D) ((Scalar scalar): Scalar<'a>) (vector: Vector<'a>) : GraphblasEvaluation<unit> =
         match vector with
         | VectorCOO v ->
             if mask.IsComplemented then failwith "Not Implemented yet" else
                 graphblas {
-                    let! s = Scalar.extractArray value
-                    let! resultIndices, resultValues = FillSubVector.run v.Indices v.Values mask.Indices s |> EvalGB.fromCl
+                    let! resultIndices, resultValues = FillSubVector.run v.Indices v.Values mask.Indices scalar.Value |> EvalGB.fromCl
                     v.Indices <- resultIndices
                     v.Values <- resultValues
                 }
@@ -147,7 +147,7 @@ module Vector =
                     }
                     |> EvalGB.fromCl
 
-                return! (Scalar.createFromArray result)
+                return Scalar {Value = result}
             }
 
     let vxmWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
