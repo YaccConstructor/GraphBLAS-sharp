@@ -17,7 +17,7 @@ let testCases = [
         let expected =
             graphblas {
                 let! matrix =
-                    MtxReader("arc130.mtx").ReadMatrixBoolean(fun _ -> true)
+                    MtxReader("arc130.mtx").ReadMatrixReal(fun _ -> true)
                     |> Matrix.switch CSR
 
                 return!

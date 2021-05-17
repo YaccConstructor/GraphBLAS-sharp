@@ -49,7 +49,7 @@ type QGBenchmarks() =
 
     [<GlobalSetup>]
     member this.BuildMatrixAndSetSource() =
-        let matrix = this.InputMatrixReader.ReadMatrixBoolean(fun _ -> true)
+        let matrix = this.InputMatrixReader.ReadMatrix(fun _ -> true)
 
         match matrix with
         | MatrixCSR csr -> failwith "Not implemented"

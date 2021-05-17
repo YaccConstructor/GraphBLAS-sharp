@@ -55,7 +55,7 @@ type BFSBenchmarks() =
     member this.BuildMatrixAndSetSource() =
         matrix <-
             graphblas {
-                let matrix = this.InputMatrixReader.ReadMatrixBoolean(fun _ -> true)
+                let matrix = this.InputMatrixReader.ReadMatrix(fun _ -> true)
 
                 return! Matrix.switch CSR matrix
                 >>= Matrix.synchronizeAndReturn
