@@ -18,7 +18,7 @@ module internal FillSubVector =
     let run (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (scalar: 'a[]) : OpenCLEvaluation<int[] * 'a[]> =
         if leftValues.Length = 0 then
             opencl {
-                let! resultIndices = Copy.run rightIndices
+                let! resultIndices = Copy.copyArray rightIndices
                 let! resultValues = Replicate.run rightIndices.Length scalar
 
                 return resultIndices, resultValues

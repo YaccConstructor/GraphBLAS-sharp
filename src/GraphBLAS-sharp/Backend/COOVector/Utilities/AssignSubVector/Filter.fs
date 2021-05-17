@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 [<AutoOpen>]
 module internal Filter =
     let filter (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (bitmap: bool[]) : OpenCLEvaluation<int[] * 'a[] * int[]> = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
         let firstSide = leftValues.Length
         let secondSide = rightIndices.Length
         let sumOfSides = firstSide + secondSide
@@ -110,7 +110,7 @@ module internal Filter =
         let rawPositions = Array.create sumOfSides 1
 
         do! RunCommand merge <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize sumOfSides, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
             kernelPrepare
                 ndRange
                 leftIndices

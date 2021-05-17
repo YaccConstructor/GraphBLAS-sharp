@@ -9,7 +9,7 @@ module Scalar =
         constructors
     *)
 
-    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = graphblas { return Scalar { Value = [|value|] } }
+    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = graphblas { return ScalarWrapped { Value = [| value |] } }
 
     (*
         methods
@@ -19,8 +19,8 @@ module Scalar =
 
     let synchronize (scalar: Scalar<'a>) : GraphblasEvaluation<unit> =
         match scalar with
-        | Scalar s -> opencl {
-            let! _ = ToHost s.Value
+        | ScalarWrapped scalar -> opencl {
+            let! _ = ToHost scalar.Value
 
             return ()
         }
@@ -30,12 +30,13 @@ module Scalar =
         assignment and extraction
     *)
 
-    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> =
+    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> = graphblas {
+        do! synchronize scalar
+
         match scalar with
-        | Scalar s -> graphblas {
-            do! synchronize scalar
-            return s.Value.[0]
-        }
+        | ScalarWrapped scalar ->
+            return scalar.Value.[0]
+    }
 
     let assignValue (scalar: Scalar<'a>) (target: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"

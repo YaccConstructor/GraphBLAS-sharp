@@ -12,7 +12,7 @@ module internal rec Sum =
             runNotEmpty inputArray plus zero
 
     let private runNotEmpty (inputArray: 'a[]) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
         let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
@@ -39,7 +39,7 @@ module internal rec Sum =
     }
 
     let private scan (inputArray: 'a[]) (inputArrayLength: int) (vertices: 'a[]) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let scan =
             <@
@@ -66,7 +66,7 @@ module internal rec Sum =
             @>
 
         do! RunCommand scan <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArrayLength, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
             kernelPrepare
                 ndRange
                 inputArray

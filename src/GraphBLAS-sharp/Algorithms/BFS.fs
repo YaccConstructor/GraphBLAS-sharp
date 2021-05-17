@@ -19,14 +19,16 @@ module BFS =
             let! currentLevelScalar = Scalar.create currentLevel
 
             let! frontierMask = Vector.mask frontier
-            do! Vector.fillSubVector frontierMask levels currentLevelScalar
+            do! Vector.fillSubVector levels frontierMask currentLevelScalar
 
             let! levelsComplemented = Vector.complemented levels
             do! Matrix.mxvWithMask AnyAll.bool levelsComplemented transposed frontier // q[!v] = (A' ||.&& q)' = q' ||.&& A -- replace + comp
             >>= Vector.assignVector frontier
 
-            // TODO need export or sync for scalar
-            let! (Scalar succ) = Vector.reduce AnyAll.bool frontier
+            let! succ =
+                Vector.reduce AnyAll.bool frontier
+                >>= Scalar.exportValue
+
             break' <- not succ
 
         return levels

@@ -20,8 +20,8 @@ module internal AssignSubVector =
     let run (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (maskIndices: int[]) : OpenCLEvaluation<int[] * 'a[]> =
         if leftValues.Length = 0 then
             opencl {
-                let! resultIndices = Copy.run rightIndices
-                let! resultValues = Copy.run rightValues
+                let! resultIndices = Copy.copyArray rightIndices
+                let! resultValues = Copy.copyArray rightValues
 
                 return resultIndices, resultValues
             }

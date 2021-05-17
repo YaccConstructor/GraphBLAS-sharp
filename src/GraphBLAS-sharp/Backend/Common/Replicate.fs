@@ -29,7 +29,7 @@ module internal rec Replicate =
         let outputArray = Array.zeroCreate outputArrayLength
 
         do! RunCommand replicate <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize outputArray.Length, Utils.workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize outputArray.Length, Utils.defaultWorkGroupSize)
             kernelPrepare ndRange inputArray outputArray
         return outputArray
     }

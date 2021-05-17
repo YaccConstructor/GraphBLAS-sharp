@@ -32,9 +32,11 @@ module BetweennessCentrality =
             do! Matrix.vxmWithMask AddMult.int pMask q matrix
             >>= Vector.assignVector q
 
-            do! Vector.reduce Add.int q
-            >>= fun (Scalar s) -> EvalGB.return' (sum <- s)
+            let! sum' =
+                Vector.reduce Add.int q
+                >>= Scalar.exportValue
 
+            sum <- sum'
             d <- d + 1
 
         let! t1 = Vector.zeroCreate<float32> n

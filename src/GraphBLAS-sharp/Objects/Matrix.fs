@@ -79,9 +79,6 @@ and CSRMatrix<'a> =
             ColumnCount = columnsCount
         }
 
-    static member FromFile(pathToMatrix: string) : CSRMatrix<'a> =
-        failwith "Not Implemented yet"
-
 and COOMatrix<'a> =
     {
         RowCount: int

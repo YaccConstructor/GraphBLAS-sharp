@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp
 
 type Scalar<'a when 'a : struct> =
-    | Scalar of ArrayScalar<'a>
+    | ScalarWrapped of ArrayScalar<'a>
 
 and ArrayScalar<'a> =
     {

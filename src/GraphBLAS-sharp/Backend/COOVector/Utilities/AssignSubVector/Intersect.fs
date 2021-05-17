@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 [<AutoOpen>]
 module internal Intersect =
     let intersect (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) : OpenCLEvaluation<bool[] * 'a[]> = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
         let firstSide = leftValues.Length
         let secondSide = rightIndices.Length
         let sumOfSides = firstSide + secondSide
@@ -100,7 +100,7 @@ module internal Intersect =
         let resultValues = Array.create secondSide Unchecked.defaultof<'a>
 
         do! RunCommand merge <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize sumOfSides, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
             kernelPrepare
                 ndRange
                 leftIndices
