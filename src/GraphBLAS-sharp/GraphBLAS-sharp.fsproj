@@ -44,6 +44,7 @@
     <Compile Include="Backend/COOVector/EWiseAdd.fs" />
     <Compile Include="Backend/COOVector/FillSubVector.fs" />
     <Compile Include="Backend/COOVector/AssignSubVector.fs" />
+    <Compile Include="Backend/Mask/GetComplemented.fs" />
     <Compile Include="Operations/Matrix.fs" />
     <Compile Include="Operations/Vector.fs" />
     <Compile Include="Operations/Scalar.fs" />

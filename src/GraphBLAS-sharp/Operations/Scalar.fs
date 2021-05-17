@@ -9,7 +9,8 @@ module Scalar =
         constructors
     *)
 
-    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = graphblas { return ScalarWrapped { Value = [| value |] } }
+    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> =
+        graphblas { return ScalarWrapped { Value = [| value |] } }
 
     (*
         methods

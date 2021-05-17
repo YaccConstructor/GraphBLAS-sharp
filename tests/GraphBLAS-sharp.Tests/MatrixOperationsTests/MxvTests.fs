@@ -228,8 +228,7 @@ let tests =
 
             deviceType = DeviceType.Cpu &&
             case.MatrixCase = CSR &&
-            case.VectorCase = VectorFormat.COO &&
-            case.MaskCase <> Complemented
+            case.VectorCase = VectorFormat.COO
         )
     |> List.collect testFixtures
     |> testList "Matrix.mxv tests"

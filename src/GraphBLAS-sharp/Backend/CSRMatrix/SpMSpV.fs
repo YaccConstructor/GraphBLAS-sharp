@@ -177,7 +177,7 @@ module internal rec SpMSpV =
             }
 
         elif mask.Indices.Length = 0 && not mask.IsComplemented ||
-            mask.Indices.Length = mask.Size && mask.IsComplemented then
+             mask.Indices.Length = mask.Size && mask.IsComplemented then
             return {
                 Size = matrix.RowCount
                 Indices = [||]

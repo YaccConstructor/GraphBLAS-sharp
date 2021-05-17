@@ -18,7 +18,13 @@ module Vector =
         failwith "Not Implemented yet"
 
     let ofList (size: int) (elements: (int * 'a) list) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented yet"
+        let (indices, values) =
+            elements
+            |> Array.ofList
+            |> Array.sortBy fst
+            |> Array.unzip
+
+        graphblas { return VectorCOO <| COOVector.FromTuples(size, indices, values) }
 
     // можно оставить, но с условием, что будет создаваться full vector
     // let ofArray (array: 'a[]) : GraphblasEvaluation<Vector<'a>> =
@@ -31,7 +37,7 @@ module Vector =
         failwith "Not Implemented yet"
 
     let zeroCreate<'a when 'a : struct> (size: int) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented yet"
+        graphblas { return VectorCOO <| COOVector.FromTuples(size, [||], [||]) }
 
     (*
         methods
@@ -77,8 +83,9 @@ module Vector =
         match vector with
         | VectorCOO vector ->
             opencl {
-                let! resultIndices = Copy.copyArray vector.Indices
-                return Mask1D(resultIndices, vector.Size, true)
+                let! indices = Copy.copyArray vector.Indices
+                let! complementedMask = Mask.GetComplemented.mask1D <| Mask1D(indices, vector.Size, true)
+                return complementedMask
             }
         |> EvalGB.fromCl
 
@@ -106,9 +113,19 @@ module Vector =
     let extractValue (vector: Vector<'a>) (idx: int) : GraphblasEvaluation<Scalar<'a>> =
         failwith "Not Implemented yet"
 
+    // assignToVector
     /// t <- vec
     let assignVector (target: Vector<'a>) (source: Vector<'a>) : GraphblasEvaluation<unit> =
-        failwith "Not Implemented yet"
+        if target.Size <> source.Size then
+            invalidArg "source" <| sprintf "The size of source vector must be %A. Received: %A" target.Size source.Size
+
+        match source, target with
+        | VectorCOO source, VectorCOO target ->
+            opencl {
+                target.Indices <- source.Indices
+                target.Values <- source.Values
+            }
+        |> EvalGB.fromCl
 
     /// t.[mask] <- vec
     let assignSubVector (target: Vector<'a>) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
