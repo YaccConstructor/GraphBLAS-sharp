@@ -7,7 +7,21 @@ open Microsoft.FSharp.Quotations
 module internal rec Sum =
     let run (inputArray: 'a[]) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) =
         if inputArray.Length = 0 then
-            opencl { return [| zero |] }
+            opencl {
+                let result = [| zero |]
+                let bruh =
+                    <@ fun (range: _1D) (array: 'a[]) ->
+                        let mutable a = 0
+                        a <- 0
+                    @>
+
+                do! RunCommand bruh <| fun kernelPrepare ->
+                    kernelPrepare
+                    <| _1D(64, 64)
+                    <| result
+
+                return result
+            }
         else
             runNotEmpty inputArray plus zero
 

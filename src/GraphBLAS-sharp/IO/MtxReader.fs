@@ -5,7 +5,7 @@ open GraphBLAS.FSharp
 open System
 
 type MtxReader(pathToFile: string) =
-    let mutable object = Matrix
+    let mutable object = MtxMatrix
     let mutable format = Coordinate
     let mutable field = Real
     let mutable symmetry = General
@@ -46,7 +46,7 @@ type MtxReader(pathToFile: string) =
         |}
 
     member this.ReadMatrixReal() : Matrix<float32> =
-        if object <> Matrix then failwith "Object is not matrix"
+        if object <> MtxMatrix then failwith "Object is not matrix"
         if field <> Real then failwith "Field is not real"
 
         use streamReader = new StreamReader(pathToFile)
@@ -103,7 +103,7 @@ type MtxReader(pathToFile: string) =
         | Array -> failwith "Unsupported matrix format"
 
     member this.ReadMatrixBoolean(converter: string -> bool) : Matrix<bool> =
-        if object <> Matrix then failwith "Object is not matrix"
+        if object <> MtxMatrix then failwith "Object is not matrix"
         // if field <> f then failwith "Field is not mmm"
 
         use streamReader = new StreamReader(pathToFile)
@@ -160,12 +160,12 @@ type MtxReader(pathToFile: string) =
         | Array -> failwith "Unsupported matrix format"
 
 and MtxObject =
-    | Matrix
-    | Vector
+    | MtxMatrix
+    | MtxVector
     static member FromString str =
         match str with
-        | "matrix" -> Matrix
-        | "vector" -> Vector
+        | "matrix" -> MtxMatrix
+        | "vector" -> MtxVector
         | _ -> failwithf "Unsupported mtx object %s" str
 
 and MtxFormat =

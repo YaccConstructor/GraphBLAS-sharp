@@ -16,6 +16,7 @@ let allTests =
         Matrix.GetTuples.tests
         Matrix.Mxv.tests
         Matrix.Transpose.tests
+        Algo.Bfs.tests
     ]
     |> testSequenced
 

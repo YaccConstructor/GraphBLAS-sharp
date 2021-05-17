@@ -8,51 +8,57 @@ open Brahma.OpenCL
 
 module internal GetComplemented =
     let mask1D (mask: Mask1D) = opencl {
-        let size = mask.Size
-        let nnz = mask.Indices.Length
+        if mask.Indices.Length = 0 then
+            let indices = Array.init mask.Size id
+            return Mask1D(indices, mask.Size, not mask.IsComplemented)
+        elif mask.Indices.Length = mask.Size then
+            return Mask1D([||], mask.Size, not mask.IsComplemented)
+        else
+            let size = mask.Size
+            let nnz = mask.Indices.Length
 
-        let bitmap = Array.create size 1
-        let getComplementedBitmap =
-            <@
-                fun (range: _1D)
-                    (maskIndices: int[])
-                    (bitmap: int[]) ->
+            let bitmap = Array.create size 1
+            let getComplementedBitmap =
+                <@
+                    fun (range: _1D)
+                        (maskIndices: int[])
+                        (bitmap: int[]) ->
 
-                    let gid = range.GlobalID0
+                        let gid = range.GlobalID0
 
-                    if gid < nnz then
-                        let maskIdx = maskIndices.[gid]
-                        bitmap.[maskIdx] <- 0
-            @>
+                        if gid < nnz then
+                            let maskIdx = maskIndices.[gid]
+                            bitmap.[maskIdx] <- 0
+                @>
 
-        do! RunCommand getComplementedBitmap <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
-            <| mask.Indices
-            <| bitmap
+            do! RunCommand getComplementedBitmap <| fun kernelPrepare ->
+                kernelPrepare
+                <| _1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
+                <| mask.Indices
+                <| bitmap
 
-        let! (positions, _) = PrefixSum.runExclude bitmap
+            let! (positions, _) = PrefixSum.runExclude bitmap
 
-        let complementedIndices = Array.zeroCreate<int> (size - nnz)
-        let setPosotions =
-            <@
-                fun (range: _1D)
-                    (positions: int[])
-                    (bitmap: int[])
-                    (complementedIndices: int[]) ->
+            let complementedIndices = Array.zeroCreate<int> (size - nnz)
+            let setPosotions =
+                <@
+                    fun (range: _1D)
+                        (positions: int[])
+                        (bitmap: int[])
+                        (complementedIndices: int[]) ->
 
-                    let gid = range.GlobalID0
+                        let gid = range.GlobalID0
 
-                    if gid < size && bitmap.[gid] = 1 then
-                        complementedIndices.[positions.[gid]] <- gid
-            @>
+                        if gid < size && bitmap.[gid] = 1 then
+                            complementedIndices.[positions.[gid]] <- gid
+                @>
 
-        do! RunCommand setPosotions <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.getDefaultGlobalSize size, Utils.defaultWorkGroupSize)
-            <| positions
-            <| bitmap
-            <| complementedIndices
+            do! RunCommand setPosotions <| fun kernelPrepare ->
+                kernelPrepare
+                <| _1D(Utils.getDefaultGlobalSize size, Utils.defaultWorkGroupSize)
+                <| positions
+                <| bitmap
+                <| complementedIndices
 
-        return Mask1D(complementedIndices, size, not mask.IsComplemented)
+            return Mask1D(complementedIndices, size, not mask.IsComplemented)
     }

@@ -101,6 +101,16 @@ module Vector =
             }
         |> EvalGB.fromCl
 
+    let synchronizeAndReturn (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
+        match vector with
+        | VectorCOO vector ->
+            opencl {
+                let! _ = if vector.Indices.Length = 0 then opencl { return [||] } else ToHost vector.Indices
+                let! _ = if vector.Values.Length = 0 then opencl { return [||] } else ToHost vector.Values
+                return VectorCOO vector
+            }
+        |> EvalGB.fromCl
+
     (*
         assignment, extraction and filling
     *)
@@ -196,7 +206,6 @@ module VectorTuples =
         opencl {
             let! _ = if vectorTuples.Indices.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Indices
             let! _ = if vectorTuples.Values.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Values
-
             return ()
         }
         |> EvalGB.fromCl
@@ -205,7 +214,6 @@ module VectorTuples =
         opencl {
             let! _ = if vectorTuples.Indices.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Indices
             let! _ = if vectorTuples.Values.Length = 0 then opencl { return [||] } else ToHost vectorTuples.Values
-
             return vectorTuples
         }
         |> EvalGB.fromCl
