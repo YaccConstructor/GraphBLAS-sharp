@@ -1,0 +1,41 @@
+namespace GraphBLAS.FSharp
+
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Scalar =
+
+    (*
+        constructors
+    *)
+
+    let create (value: 'a) : GraphblasEvaluation<Scalar<'a>> = graphblas { return Scalar { Value = [|value|] } }
+
+    (*
+        methods
+    *)
+
+    let copy (scalar: Scalar<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+
+    let synchronize (scalar: Scalar<'a>) : GraphblasEvaluation<unit> =
+        match scalar with
+        | Scalar s -> opencl {
+            let! _ = ToHost s.Value
+
+            return ()
+        }
+        |> EvalGB.fromCl
+
+    (*
+        assignment and extraction
+    *)
+
+    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> =
+        match scalar with
+        | Scalar s -> graphblas {
+            do! synchronize scalar
+            return s.Value.[0]
+        }
+
+    let assignValue (scalar: Scalar<'a>) (target: Scalar<'a>) : GraphblasEvaluation<unit> =
+        failwith "Not Implemented yet"

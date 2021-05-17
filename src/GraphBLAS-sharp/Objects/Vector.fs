@@ -8,9 +8,9 @@ type Vector<'a when 'a : struct> =
 
 and COOVector<'a> =
     {
-        Size: int
-        Indices: int[]
-        Values: 'a[]
+        mutable Size: int
+        mutable Indices: int[]
+        mutable Values: 'a[]
     }
 
     override this.ToString() =

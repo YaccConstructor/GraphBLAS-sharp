@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.COOVector.Utilities
+namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.EWiseAdd
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic

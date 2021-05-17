@@ -10,10 +10,8 @@ module TriangleCounting =
         let! transposed = matrix' |> Matrix.transpose
 
         let! lowerTriangularMask = lowerTriangular |> Matrix.mask
-        let! (Scalar count) =
-            (matrix', transposed)
-            ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
-            >>= Matrix.reduce Add.int
+        let! result = (matrix', transposed) ||> Matrix.mxmWithMask AddMult.int lowerTriangularMask
+        let! count = result |> Matrix.reduce Add.int
 
-        return count
+        return! (Scalar.exportValue count)
     }
