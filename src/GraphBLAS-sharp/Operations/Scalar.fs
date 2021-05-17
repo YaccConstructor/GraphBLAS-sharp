@@ -21,7 +21,6 @@ module Scalar =
         match scalar with
         | ScalarWrapped scalar -> opencl {
             let! _ = ToHost scalar.Value
-
             return ()
         }
         |> EvalGB.fromCl
@@ -30,13 +29,14 @@ module Scalar =
         assignment and extraction
     *)
 
-    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> = graphblas {
-        do! synchronize scalar
+    let exportValue (scalar: Scalar<'a>) : GraphblasEvaluation<'a> =
+        graphblas {
+            do! synchronize scalar
 
-        match scalar with
-        | ScalarWrapped scalar ->
-            return scalar.Value.[0]
-    }
+            match scalar with
+            | ScalarWrapped scalar ->
+                return scalar.Value.[0]
+        }
 
     let assignValue (scalar: Scalar<'a>) (target: Scalar<'a>) : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"

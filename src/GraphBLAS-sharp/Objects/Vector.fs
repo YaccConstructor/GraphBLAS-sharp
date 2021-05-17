@@ -6,6 +6,10 @@ type VectorFormat =
 type Vector<'a when 'a : struct> =
     | VectorCOO of COOVector<'a>
 
+    member this.Size =
+        match this with
+        | VectorCOO vector -> vector.Size
+
 and COOVector<'a> =
     {
         mutable Size: int

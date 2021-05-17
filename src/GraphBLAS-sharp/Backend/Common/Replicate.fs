@@ -31,5 +31,6 @@ module internal rec Replicate =
         do! RunCommand replicate <| fun kernelPrepare ->
             let ndRange = _1D(Utils.getDefaultGlobalSize outputArray.Length, Utils.defaultWorkGroupSize)
             kernelPrepare ndRange inputArray outputArray
+
         return outputArray
     }

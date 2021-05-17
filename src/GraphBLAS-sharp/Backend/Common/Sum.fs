@@ -7,7 +7,7 @@ open Microsoft.FSharp.Quotations
 module internal rec Sum =
     let run (inputArray: 'a[]) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) =
         if inputArray.Length = 0 then
-            opencl { return [|zero|] }
+            opencl { return [| zero |] }
         else
             runNotEmpty inputArray plus zero
 

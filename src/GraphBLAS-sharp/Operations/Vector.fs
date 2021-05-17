@@ -112,22 +112,20 @@ module Vector =
 
     /// t.[mask] <- vec
     let assignSubVector (target: Vector<'a>) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
-        match source, target with
-        | VectorCOO s, VectorCOO t ->
-            if t.Size <> mask.Size then
-                invalidArg "mask" <| sprintf "The size of mask must be %A. Received: %A" t.Size mask.Size
+        if target.Size <> mask.Size then
+            invalidArg "mask" <| sprintf "The size of mask must be %A. Received: %A" target.Size mask.Size
 
-            if t.Size <> s.Size then
-                invalidArg "source" <| sprintf "The size of source vector must be %A. Received: %A" t.Size s.Size
+        if target.Size <> source.Size then
+            invalidArg "source" <| sprintf "The size of source vector must be %A. Received: %A" target.Size source.Size
 
-            if mask.IsComplemented then
-                failwith "Not Implemented yet"
-            else
-                opencl {
-                    let! (resultIndices, resultValues) = COOVector.AssignSubVector.run t.Indices t.Values s.Indices s.Values mask.Indices
-                    t.Indices <- resultIndices
-                    t.Values <- resultValues
-                }
+        match source, target, mask with
+        | VectorCOO source, VectorCOO target, mask when not mask.IsComplemented ->
+            opencl {
+                let! (resultIndices, resultValues) = COOVector.AssignSubVector.run target.Indices target.Values source.Indices source.Values mask.Indices
+                target.Indices <- resultIndices
+                target.Values <- resultValues
+            }
+        | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
     /// t.[idx] <- value
@@ -140,16 +138,14 @@ module Vector =
 
     /// vec.[mask] <- value
     let fillSubVector (vector: Vector<'a>) (mask: Mask1D) (value: Scalar<'a>) : GraphblasEvaluation<unit> =
-        match vector, value with
-        | VectorCOO vector, ScalarWrapped scalar ->
-            if mask.IsComplemented then
-                failwith "Not Implemented yet"
-            else
-                opencl {
-                    let! (resultIndices, resultValues) = COOVector.FillSubVector.run vector.Indices vector.Values mask.Indices scalar.Value
-                    vector.Indices <- resultIndices
-                    vector.Values <- resultValues
-                }
+        match vector, value, mask with
+        | VectorCOO vector, ScalarWrapped scalar, mask when not mask.IsComplemented ->
+            opencl {
+                let! (resultIndices, resultValues) = COOVector.FillSubVector.run vector.Indices vector.Values mask.Indices scalar.Value
+                vector.Indices <- resultIndices
+                vector.Values <- resultValues
+            }
+        | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
     (*
@@ -162,14 +158,12 @@ module Vector =
     let select (predicate: UnaryOp<'a, bool>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
 
     let reduce (monoid: IMonoid<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Scalar<'a>> =
+        let (ClosedBinaryOp plus) = monoid.Plus
+
         match vector with
         | VectorCOO vector ->
             opencl {
-                let! result = opencl {
-                    let (ClosedBinaryOp plus) = monoid.Plus
-                    return! Sum.run vector.Values plus monoid.Zero
-                }
-
+                let! result = Sum.run vector.Values plus monoid.Zero
                 return ScalarWrapped { Value = result }
             }
         |> EvalGB.fromCl
