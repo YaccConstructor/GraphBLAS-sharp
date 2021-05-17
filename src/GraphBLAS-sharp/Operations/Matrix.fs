@@ -37,8 +37,9 @@ module Matrix =
         methods
     *)
 
-    let rowCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
-    let columnCount (matrix: Matrix<'a>) : int = failwith "Not Implemented yet"
+    let rowCount (matrix: Matrix<'a>) : int = matrix.RowCount
+    let columnCount (matrix: Matrix<'a>) : int = matrix.ColumnCount
+
     let copy (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
     let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
 

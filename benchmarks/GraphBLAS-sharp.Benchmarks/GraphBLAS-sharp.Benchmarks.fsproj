@@ -17,6 +17,7 @@
     <Compile Include="Helpers.fs" />
     <Compile Include="BenchmarksBFS.fs" />
     <Compile Include="BenchmarksEWiseAdd.fs" />
+    <Compile Include="BenchmarksQG.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

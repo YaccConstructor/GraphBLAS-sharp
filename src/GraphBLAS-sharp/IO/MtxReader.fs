@@ -23,6 +23,9 @@ type MtxReader(pathToFile: string) =
     member this.Field = field
     member this.Symmetry = symmetry
 
+    override this.ToString() =
+        Path.GetFileName pathToFile
+
     member this.ReadMatrixShape() =
         use streamReader = new StreamReader(pathToFile)
         while streamReader.Peek() = int '%' do

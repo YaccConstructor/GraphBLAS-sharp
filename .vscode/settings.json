@@ -4,5 +4,5 @@
     "FSharp.analyzersPath": [
         "./packages/analyzers"
     ],
-    "FSharp.suggestSdkScripts": false
+    "FSharp.suggestSdkScripts": false,
 }
