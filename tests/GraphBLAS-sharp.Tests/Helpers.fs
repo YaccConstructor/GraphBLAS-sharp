@@ -20,6 +20,7 @@ module Extensions =
             QuotationEvaluator.Evaluate f
 
 module CustomDatatypes =
+    // мб заменить рекорд на структуру (не помогает)
     [<Struct>]
     type WrappedInt = { InnerValue: int }
     with

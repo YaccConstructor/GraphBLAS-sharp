@@ -7,7 +7,6 @@ let main argv =
         // typeof<EWiseAddBenchmarks4Float32>
         // typeof<EWiseAddBenchmarks4Bool>
         typeof<BFSBenchmarks>
-        typeof<QGBenchmarks>
     |]
 
     benchmarks.Run argv |> ignore

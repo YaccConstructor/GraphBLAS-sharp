@@ -7,20 +7,13 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open System.IO
 open System
-open System.IO
 open System.Text.RegularExpressions
-open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Predefined
-open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
-open BenchmarkDotNet.Filters
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
+open QuickGraph
 
-type Config() =
+type BFSConfig() =
     inherit ManualConfig()
 
     do
@@ -35,12 +28,18 @@ type Config() =
 
 [<IterationCount(5)>]
 [<WarmupCount(3)>]
-[<Config(typeof<Config>)>]
+[<Config(typeof<BFSConfig>)>]
 type BFSBenchmarks() =
     let random = Random()
 
-    let mutable matrix = Unchecked.defaultof<Matrix<bool>>
     let mutable source = 0
+
+    // gb
+    let mutable matrix = Unchecked.defaultof<Matrix<int>>
+
+    // qg
+    let graph = AdjacencyGraph<int, Edge<int>>(false)
+    let mutable bfs = Unchecked.defaultof<Algorithms.Search.BreadthFirstSearchAlgorithm<int, Edge<int>>>
 
     [<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
@@ -52,24 +51,38 @@ type BFSBenchmarks() =
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
     [<GlobalSetup>]
-    member this.BuildMatrixAndSetSource() =
+    member this.BuildGraph() =
+        let inputMatrix = this.InputMatrixReader.ReadMatrix(fun _ -> 1)
+
         matrix <-
             graphblas {
-                let matrix = this.InputMatrixReader.ReadMatrix(fun _ -> true)
-
-                return! Matrix.switch CSR matrix
+                return! Matrix.switch CSR inputMatrix
                 >>= Matrix.synchronizeAndReturn
             }
             |> EvalGB.withClContext this.Context
             |> EvalGB.runSync
 
+        match inputMatrix with
+        | MatrixCSR csr -> failwith "Not implemented"
+        | MatrixCOO coo ->
+            for i = 0 to coo.Values.Length - 1 do
+                graph.AddVerticesAndEdge(Edge(coo.Rows.[i], coo.Columns.[i])) |> ignore
+
+        bfs <- Algorithms.Search.BreadthFirstSearchAlgorithm(graph)
+
+    [<IterationSetup>]
+    member this.SetSource() =
         source <- random.Next <| Matrix.rowCount matrix
 
     [<Benchmark>]
-    member this.LevelBFS() =
+    member this.GraphblasLevelBFS() =
         BFS.levelSingleSource matrix source
         |> EvalGB.withClContext this.Context
         |> EvalGB.runSync
+
+    [<Benchmark>]
+    member this.QuickGraphBFS() =
+        bfs.Compute(source)
 
     [<IterationCleanup>]
     member this.ClearBuffers() =
