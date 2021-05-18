@@ -216,6 +216,10 @@ let testFixtures case = [
 
         "Values of actual and expected vectors should be the same"
         |> Expect.sequenceEqual actual.Values expected.Values
+
+    case
+    |> correctnessGenericTest<CustomDatatypes.WrappedInt> CustomDatatypes.addMultSemiringOnWrappedInt (=)
+    |> ftestPropertyWithConfig config (getCorrectnessTestName "WrappedInt")
 ]
 
 let tests =

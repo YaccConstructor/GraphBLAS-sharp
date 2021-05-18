@@ -19,7 +19,8 @@ module internal rec Convert =
         else
             let! compressedRows = compressRows matrix.RowCount matrix.Rows
             let! cols = Copy.copyArray matrix.Columns
-            let! vals = Copy.copyArray matrix.Values
+            // FIXME copy broken
+            let vals = matrix.Values
 
             return {
                 RowCount = matrix.RowCount

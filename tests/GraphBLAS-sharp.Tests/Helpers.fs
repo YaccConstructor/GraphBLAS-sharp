@@ -19,6 +19,23 @@ module Extensions =
             let (ClosedBinaryOp f) = this
             QuotationEvaluator.Evaluate f
 
+module CustomDatatypes =
+    [<Struct>]
+    type WrappedInt = { InnerValue: int }
+    with
+        static member (+) (x: WrappedInt, y: WrappedInt) = { InnerValue = x.InnerValue + y.InnerValue }
+        static member (*) (x: WrappedInt, y: WrappedInt) = { InnerValue = x.InnerValue * y.InnerValue }
+
+    let addMultSemiringOnWrappedInt: Semiring<WrappedInt> =
+        {
+            PlusMonoid = {
+                AssociativeOp = ClosedBinaryOp <@ (+) @>
+                Identity = { InnerValue = 0 }
+            }
+
+            TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (*) @> }
+        }
+
 module Generators =
     let logger = Log.create "Generators"
 
@@ -183,6 +200,13 @@ module Generators =
         static member BoolType() =
             pairOfMatrixAndVectorOfCompatibleSizeGenerator
             |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
+        static member WrappedInt() =
+            pairOfMatrixAndVectorOfCompatibleSizeGenerator
+            |> genericSparseGenerator
+                CustomDatatypes.addMultSemiringOnWrappedInt.PlusMonoid.Identity
+                Arb.generate<CustomDatatypes.WrappedInt>
             |> Arb.fromGen
 
     type PairOfSparseVectorAndMatrixOfCompatibleSize() =

@@ -10,35 +10,36 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Algorithms
 open GraphBLAS.FSharp.IO
 
-// [<Tests>]
-// let allTests =
-//     testList "All tests" [
-//         Backend.PrefixSum.tests
-//         Backend.BitonicSort.tests
-//         Backend.RemoveDuplicates.tests
-//         Matrix.GetTuples.tests
-//         Matrix.Mxv.tests
-//         Matrix.Transpose.tests
-//         Algo.Bfs.tests
-//     ]
-//     |> testSequenced
+[<Tests>]
+let allTests =
+    testList "All tests" [
+        Backend.PrefixSum.tests
+        Backend.BitonicSort.tests
+        Backend.RemoveDuplicates.tests
+        Matrix.EWiseAdd.tests
+        Matrix.GetTuples.tests
+        Matrix.Mxv.tests
+        Matrix.Transpose.tests
+        Algo.Bfs.tests
+    ]
+    |> testSequenced
 
 [<EntryPoint>]
 let main argv =
-    // allTests
-    // |> runTestsWithCLIArgs [] argv
+    allTests
+    |> runTestsWithCLIArgs [] argv
 
-    graphblas {
-        let! matrix =
-            MtxReader("arc130.mtx").ReadMatrixReal(fun _ -> true)
-            |> Matrix.switch CSR
+    // graphblas {
+    //     let! matrix =
+    //         MtxReader("arc130.mtx").ReadMatrix(fun _ -> 1)
+    //         |> Matrix.switch CSR
 
-        return!
-            BFS.levelSingleSource matrix 0
-            >>= Vector.synchronizeAndReturn
-    }
-    |> EvalGB.withClContext (OpenCLEvaluationContext())
-    |> EvalGB.runSync
-    |> ignore
+    //     return!
+    //         BFS.levelSingleSource matrix 0
+    //         >>= Vector.synchronizeAndReturn
+    // }
+    // |> EvalGB.withClContext (OpenCLEvaluationContext())
+    // |> EvalGB.runSync
+    // |> printfn "%A"
 
-    0
+    // 0
