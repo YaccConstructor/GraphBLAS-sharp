@@ -7,6 +7,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
+open System.Text.RegularExpressions
 
 type ClContext = ClContext of OpenCLEvaluationContext
 with
@@ -104,3 +105,39 @@ module Utils =
             datasetsFolder
             matrixFilename
         |]
+
+    let avaliableContexts =
+        let pathToConfig =
+            Path.Combine [|
+                __SOURCE_DIRECTORY__
+                "Configs"
+                "Context.txt"
+            |] |> Path.GetFullPath
+
+        use reader = new StreamReader(pathToConfig)
+        let platformRegex = Regex <| reader.ReadLine()
+        let deviceType =
+            match reader.ReadLine() with
+            | "Cpu" -> DeviceType.Cpu
+            | "Gpu" -> DeviceType.Gpu
+            | "All" -> DeviceType.All
+            | _ -> failwith "Unsupported"
+
+        let mutable e = ErrorCode.Unknown
+        Cl.GetPlatformIDs &e
+        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
+        |> Seq.ofArray
+        |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
+        |> Seq.filter
+            (fun device ->
+                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+                let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
+                platformRegex.IsMatch platformName
+            )
+        |> Seq.map
+            (fun device ->
+                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
+                let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
+                let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
+                OpenCLEvaluationContext(platformName, deviceType) |> ClContext
+            )

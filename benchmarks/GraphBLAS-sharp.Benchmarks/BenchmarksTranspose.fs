@@ -1,13 +1,18 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Algorithms
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open System.IO
+open System
+open System.Text.RegularExpressions
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open OpenCL.Net
 open GraphBLAS.FSharp.IO
 
-type MxvConfig() =
+type TransposeConfig() =
     inherit ManualConfig()
 
     do
@@ -23,12 +28,8 @@ type MxvConfig() =
 [<IterationCount(5)>]
 [<WarmupCount(3)>]
 [<Config(typeof<MxvConfig>)>]
-type MxvBenchmarks() =
-    let rand = System.Random()
-
+type TransposeBenchmarks() =
     let mutable matrix = Unchecked.defaultof<Matrix<float>>
-    let mutable vector = Unchecked.defaultof<Vector<float>>
-    let semiring = Predefined.AddMult.float
 
     [<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
@@ -51,21 +52,9 @@ type MxvBenchmarks() =
             |> EvalGB.withClContext this.Context
             |> EvalGB.runSync
 
-    [<IterationSetup>]
-    member this.BuildVector() =
-        vector <-
-            graphblas {
-                return!
-                    [ for i = 0 to matrix.ColumnCount - 1 do if rand.Next() % 2 = 0 then yield (i, 1.) ]
-                    |> Vector.ofList matrix.ColumnCount
-                // >>= Vector.synchronizeAndReturn
-            }
-            |> EvalGB.withClContext this.Context
-            |> EvalGB.runSync
-
     [<Benchmark>]
-    member this.Mxv() =
-        Matrix.mxv semiring matrix vector
+    member this.Transpose() =
+        Matrix.transpose matrix
         |> EvalGB.withClContext this.Context
         |> EvalGB.runSync
 
