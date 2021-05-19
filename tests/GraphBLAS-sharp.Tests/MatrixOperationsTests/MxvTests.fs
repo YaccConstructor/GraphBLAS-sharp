@@ -219,7 +219,7 @@ let testFixtures case = [
 
     case
     |> correctnessGenericTest<CustomDatatypes.WrappedInt> CustomDatatypes.addMultSemiringOnWrappedInt (=)
-    |> ftestPropertyWithConfig config (getCorrectnessTestName "WrappedInt")
+    |> ptestPropertyWithConfig config (getCorrectnessTestName "WrappedInt")
 ]
 
 let tests =
