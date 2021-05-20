@@ -25,8 +25,9 @@ type TransposeConfig() =
             StatisticColumn.Max
         ) |> ignore
 
-[<IterationCount(5)>]
+[<IterationCount(10)>]
 [<WarmupCount(3)>]
+[<InvocationCount(3)>]
 [<Config(typeof<MxvConfig>)>]
 type TransposeBenchmarks() =
     let mutable matrix = Unchecked.defaultof<Matrix<float>>
@@ -70,11 +71,11 @@ type TransposeBenchmarks() =
     static member AvaliableContextsProvider = Utils.avaliableContexts
 
     static member InputMatricesProvider =
-        "MxvBenchmarks.txt"
+        "Common.txt"
         |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "MxvDatasets" matrixFilename)
+                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
                 | _ -> failwith "Unsupported matrix format"
             )

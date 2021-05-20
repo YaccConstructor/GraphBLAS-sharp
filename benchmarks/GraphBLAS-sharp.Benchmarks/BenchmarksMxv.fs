@@ -20,8 +20,9 @@ type MxvConfig() =
             StatisticColumn.Max
         ) |> ignore
 
-[<IterationCount(5)>]
+[<IterationCount(10)>]
 [<WarmupCount(3)>]
+[<InvocationCount(3)>]
 [<Config(typeof<MxvConfig>)>]
 type MxvBenchmarks() =
     let rand = System.Random()
@@ -81,11 +82,11 @@ type MxvBenchmarks() =
     static member AvaliableContextsProvider = Utils.avaliableContexts
 
     static member InputMatricesProvider =
-        "MxvBenchmarks.txt"
+        "Common.txt"
         |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "MxvDatasets" matrixFilename)
+                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
                 | _ -> failwith "Unsupported matrix format"
             )

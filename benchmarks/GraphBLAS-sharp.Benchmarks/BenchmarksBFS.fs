@@ -26,8 +26,9 @@ type BFSConfig() =
             StatisticColumn.Max
         ) |> ignore
 
-[<IterationCount(5)>]
+[<IterationCount(10)>]
 [<WarmupCount(3)>]
+[<InvocationCount(3)>]
 [<Config(typeof<BFSConfig>)>]
 type BFSBenchmarks() =
     let random = Random()
@@ -96,11 +97,11 @@ type BFSBenchmarks() =
     static member AvaliableContextsProvider = Utils.avaliableContexts
 
     static member InputMatricesProvider =
-        "BFSBenchmarks.txt"
+        "Common.txt"
         |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "BFSDatasets" matrixFilename)
+                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
                 | _ -> failwith "Unsupported matrix format"
             )
