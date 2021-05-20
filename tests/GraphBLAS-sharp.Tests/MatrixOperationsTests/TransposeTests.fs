@@ -131,7 +131,7 @@ let testFixtures case = [
 
     case
     |> correctnessGenericTest<bool> (=) false
-    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+    |> ptestPropertyWithConfig config (getCorrectnessTestName "bool")
 ]
 
 let tests =

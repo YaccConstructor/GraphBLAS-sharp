@@ -179,7 +179,7 @@ let testFixtures case = [
 
     case
     |> correctnessGenericTest<bool> AnyAll.bool (=)
-    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+    |> ptestPropertyWithConfig config (getCorrectnessTestName "bool")
 
     testCase (sprintf "Explicit zero test on %A" case) <| fun () ->
         let matrix = array2D [
