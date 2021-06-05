@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Algorithms
 let logger = Log.create "Bfs.Tests"
 
 let testCases = [
-    testCase "" <| fun () ->
+    ptestCase "" <| fun () ->
         let expected =
             graphblas {
                 let! matrix =
