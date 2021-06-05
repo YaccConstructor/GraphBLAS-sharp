@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Benchmarks
+namespace rec GraphBLAS.FSharp.Benchmarks
 
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
@@ -8,6 +8,28 @@ open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
 open System.Text.RegularExpressions
+open BenchmarkDotNet.Configs
+open BenchmarkDotNet.Jobs
+
+type CommonConfig() =
+    inherit ManualConfig()
+
+    do
+        base.AddColumn(
+            MatrixShapeColumn("RowCount", fun mtxReader -> mtxReader.ReadMatrixShape().RowCount) :> IColumn,
+            MatrixShapeColumn("ColumnCount", fun mtxReader -> mtxReader.ReadMatrixShape().ColumnCount) :> IColumn,
+            MatrixShapeColumn("NNZ", fun mtxReader -> mtxReader.ReadMatrixShape().Nnz) :> IColumn,
+            TEPSColumn() :> IColumn,
+            StatisticColumn.Min,
+            StatisticColumn.Max
+        ) |> ignore
+
+        base.AddJob(
+            Job.Dry
+                .WithWarmupCount(3)
+                .WithIterationCount(10)
+                .WithInvocationCount(3)
+        ) |> ignore
 
 type ClContext = ClContext of OpenCLEvaluationContext
 with

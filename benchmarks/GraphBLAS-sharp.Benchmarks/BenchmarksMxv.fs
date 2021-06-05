@@ -7,23 +7,7 @@ open BenchmarkDotNet.Columns
 open System.IO
 open GraphBLAS.FSharp.IO
 
-type MxvConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn("RowCount", fun mtxReader -> mtxReader.ReadMatrixShape().RowCount) :> IColumn,
-            MatrixShapeColumn("ColumnCount", fun mtxReader -> mtxReader.ReadMatrixShape().ColumnCount) :> IColumn,
-            MatrixShapeColumn("NNZ", fun mtxReader -> mtxReader.ReadMatrixShape().Nnz) :> IColumn,
-            TEPSColumn() :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        ) |> ignore
-
-[<IterationCount(10)>]
-[<WarmupCount(3)>]
-[<InvocationCount(3)>]
-[<Config(typeof<MxvConfig>)>]
+[<Config(typeof<CommonConfig>)>]
 type MxvBenchmarks() =
     let rand = System.Random()
 

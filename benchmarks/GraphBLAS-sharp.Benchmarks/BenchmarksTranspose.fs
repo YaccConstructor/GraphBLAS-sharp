@@ -12,23 +12,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 
-type TransposeConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn("RowCount", fun mtxReader -> mtxReader.ReadMatrixShape().RowCount) :> IColumn,
-            MatrixShapeColumn("ColumnCount", fun mtxReader -> mtxReader.ReadMatrixShape().ColumnCount) :> IColumn,
-            MatrixShapeColumn("NNZ", fun mtxReader -> mtxReader.ReadMatrixShape().Nnz) :> IColumn,
-            TEPSColumn() :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        ) |> ignore
-
-[<IterationCount(10)>]
-[<WarmupCount(3)>]
-[<InvocationCount(3)>]
-[<Config(typeof<MxvConfig>)>]
+[<Config(typeof<CommonConfig>)>]
 type TransposeBenchmarks() =
     let mutable matrix = Unchecked.defaultof<Matrix<float>>
 

@@ -13,23 +13,7 @@ open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open QuickGraph
 
-type BFSConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn("RowCount", fun mtxReader -> mtxReader.ReadMatrixShape().RowCount) :> IColumn,
-            MatrixShapeColumn("ColumnCount", fun mtxReader -> mtxReader.ReadMatrixShape().ColumnCount) :> IColumn,
-            MatrixShapeColumn("NNZ", fun mtxReader -> mtxReader.ReadMatrixShape().Nnz) :> IColumn,
-            TEPSColumn() :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        ) |> ignore
-
-[<IterationCount(10)>]
-[<WarmupCount(3)>]
-[<InvocationCount(3)>]
-[<Config(typeof<BFSConfig>)>]
+[<Config(typeof<CommonConfig>)>]
 type BFSBenchmarks() =
     let random = Random()
 

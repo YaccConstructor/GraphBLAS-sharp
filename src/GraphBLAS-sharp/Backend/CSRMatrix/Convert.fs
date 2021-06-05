@@ -110,12 +110,12 @@ module internal rec Convert =
                 fun (ndRange: _1D)
                     (nnzPerRowSparse: int[])
                     (nonZeroRowsIndices: int[])
-                    (off2: int[]) ->
+                    (expandedNnzPerRow: int[]) ->
 
                     let gid = ndRange.GlobalID0
 
                     if gid < totalSum then
-                        off2.[nonZeroRowsIndices.[gid] + 1] <- nnzPerRowSparse.[gid]
+                        expandedNnzPerRow.[nonZeroRowsIndices.[gid] + 1] <- nnzPerRowSparse.[gid]
             @>
 
         let expandedNnzPerRow = Array.zeroCreate (rowCount + 1)
