@@ -268,3 +268,6 @@ coverage.*.xml
 .paket/paket
 
 BenchmarkDotNet.Artifacts/
+
+# Folder for datasets
+benchmarks/GraphBLAS-sharp.Benchmarks/Datasets

@@ -2,17 +2,31 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open GraphBLAS.FSharp.Backend.Common
 
 module internal rec PrefixSum =
-    let runInplace (inputArray: int[]) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.workGroupSize
+    /// <summary>
+    /// Exclude inplace prefix sum
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 2; 3 |]
+    /// let sum = [| 0 |]
+    /// opencl { do! runExcludeInplace arr sum }
+    /// ...
+    /// > val arr = [| 0; 1; 3 |]
+    /// > val sum = [| 6 |]
+    /// </code>
+    /// </example>
+    let runExcludeInplace (inputArray: int[]) (totalSum: int[]) = opencl {
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
         let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
         let mutable verticesArrays = firstVertices, secondVertices
         let swap (a, b) = (b, a)
 
-        let mutable verticesLength = (inputArray.Length - 1) / workGroupSize + 1
+        let mutable verticesLength = firstVertices.Length
         let mutable bunchLength = workGroupSize
 
         do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
@@ -27,8 +41,56 @@ module internal rec PrefixSum =
             verticesLength <- (verticesLength - 1) / workGroupSize + 1
     }
 
+    let runExclude (inputArray: int[]) = opencl {
+        let! copiedArray = Copy.copyArray inputArray
+
+        let totalSum = [| 0 |]
+        do! runExcludeInplace copiedArray totalSum
+
+        return (copiedArray, totalSum)
+    }
+
+    let runInclude (inputArray: int[]) = opencl {
+        if inputArray.Length = 0 then
+            return [||], [| 0 |]
+        else
+            let! copiedArray = Copy.copyArray inputArray
+
+            let totalSum = [| 0 |]
+            do! runExcludeInplace copiedArray totalSum
+
+            let wgSize = Utils.defaultWorkGroupSize
+            let length = inputArray.Length
+
+            let kernel =
+                <@
+                    fun (range: _1D)
+                        (array: int[])
+                        (totalSum: int[])
+                        (outputArray: int[]) ->
+
+                        let gid = range.GlobalID0
+
+                        if gid = length - 1 then
+                            outputArray.[gid] <- totalSum.[0]
+                        elif gid < length - 1 then
+                            outputArray.[gid] <- array.[gid + 1]
+                @>
+
+            let outputArray = Array.zeroCreate length
+
+            do! RunCommand kernel <| fun kernelPrepare ->
+                kernelPrepare
+                <| _1D(Utils.getDefaultGlobalSize length, wgSize)
+                <| copiedArray
+                <| totalSum
+                <| outputArray
+
+            return outputArray, totalSum
+    }
+
     let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let scan =
             <@
@@ -74,7 +136,7 @@ module internal rec PrefixSum =
             @>
 
         do! RunCommand scan <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArrayLength, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
             kernelPrepare
                 ndRange
                 inputArray
@@ -83,7 +145,7 @@ module internal rec PrefixSum =
     }
 
     let private update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
 
         let update =
             <@
@@ -97,7 +159,7 @@ module internal rec PrefixSum =
             @>
 
         do! RunCommand update <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize inputArrayLength - bunchLength, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength - bunchLength, workGroupSize)
             kernelPrepare
                 ndRange
                 inputArray

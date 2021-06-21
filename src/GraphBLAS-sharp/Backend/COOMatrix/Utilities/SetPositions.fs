@@ -36,7 +36,7 @@ module internal SetPositions =
 
         let resultLength = Array.zeroCreate 1
 
-        do! PrefixSum.runInplace positions resultLength
+        do! PrefixSum.runExcludeInplace positions resultLength
         let! _ = ToHost resultLength
         let resultLength = resultLength.[0]
 
@@ -45,7 +45,7 @@ module internal SetPositions =
         let resultValues = Array.create resultLength Unchecked.defaultof<'a>
 
         do! RunCommand setPositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize positions.Length, Utils.workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
             kernelPrepare
                 ndRange
                 allRows

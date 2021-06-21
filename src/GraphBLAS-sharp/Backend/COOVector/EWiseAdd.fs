@@ -5,6 +5,7 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOVector.Utilities
+open GraphBLAS.FSharp.Backend.COOVector.Utilities.EWiseAdd
 
 module internal EWiseAdd =
     let private runNonEmpty (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<int[] * 'a[]> = opencl {
@@ -19,16 +20,16 @@ module internal EWiseAdd =
     let run (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<int[] * 'a[]> =
         if leftValues.Length = 0 then
             opencl {
-                let! resultIndices = Copy.run rightIndices
-                let! resultValues = Copy.run rightValues
+                let! resultIndices = Copy.copyArray rightIndices
+                let! resultValues = Copy.copyArray rightValues
 
                 return resultIndices, resultValues
             }
 
         elif rightIndices.Length = 0 then
             opencl {
-                let! resultIndices = Copy.run leftIndices
-                let! resultValues = Copy.run leftValues
+                let! resultIndices = Copy.copyArray leftIndices
+                let! resultValues = Copy.copyArray leftValues
 
                 return resultIndices, resultValues
             }

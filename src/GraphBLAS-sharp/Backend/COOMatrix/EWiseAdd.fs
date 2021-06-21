@@ -5,7 +5,38 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOMatrix.Utilities
 
-module internal EWiseAdd =
+module internal rec EWiseAdd =
+    let run (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (monoid: IMonoid<'a>) = opencl {
+        if matrixLeft.Values.Length = 0 then
+            let! resultRows = Copy.copyArray matrixRight.Rows
+            let! resultColumns = Copy.copyArray matrixRight.Columns
+            let! resultValues = Copy.copyArray matrixRight.Values
+
+            return {
+                RowCount = matrixRight.RowCount
+                ColumnCount = matrixRight.ColumnCount
+                Rows = resultRows
+                Columns = resultColumns
+                Values = resultValues
+            }
+
+        elif matrixRight.Values.Length = 0 then
+            let! resultRows = Copy.copyArray matrixLeft.Rows
+            let! resultColumns = Copy.copyArray matrixLeft.Columns
+            let! resultValues = Copy.copyArray matrixLeft.Values
+
+            return {
+                RowCount = matrixLeft.RowCount
+                ColumnCount = matrixLeft.ColumnCount
+                Rows = resultRows
+                Columns = resultColumns
+                Values = resultValues
+            }
+
+        else
+            return! runNonEmpty matrixLeft matrixRight mask monoid
+    }
+
     let private runNonEmpty (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (monoid: IMonoid<'a>) = opencl {
         let! allRows, allColumns, allValues = merge matrixLeft matrixRight mask
 
@@ -21,37 +52,3 @@ module internal EWiseAdd =
             Values = resultValues
         }
     }
-
-    let run (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) (monoid: IMonoid<'a>) =
-        if matrixLeft.Values.Length = 0 then
-            opencl {
-                let! resultRows = Copy.run matrixRight.Rows
-                let! resultColumns = Copy.run matrixRight.Columns
-                let! resultValues = Copy.run matrixRight.Values
-
-                return {
-                    RowCount = matrixRight.RowCount
-                    ColumnCount = matrixRight.ColumnCount
-                    Rows = resultRows
-                    Columns = resultColumns
-                    Values = resultValues
-                }
-            }
-
-        elif matrixRight.Values.Length = 0 then
-            opencl {
-                let! resultRows = Copy.run matrixLeft.Rows
-                let! resultColumns = Copy.run matrixLeft.Columns
-                let! resultValues = Copy.run matrixLeft.Values
-
-                return {
-                    RowCount = matrixLeft.RowCount
-                    ColumnCount = matrixLeft.ColumnCount
-                    Rows = resultRows
-                    Columns = resultColumns
-                    Values = resultValues
-                }
-            }
-
-        else
-            runNonEmpty matrixLeft matrixRight mask monoid

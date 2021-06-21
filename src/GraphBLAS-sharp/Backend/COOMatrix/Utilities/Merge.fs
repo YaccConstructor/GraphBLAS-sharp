@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Common
 [<AutoOpen>]
 module internal Merge =
     let merge (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) (mask: Mask2D option) : OpenCLEvaluation<int[] * int[] * 'a[]> = opencl {
-        let workGroupSize = Utils.workGroupSize
+        let workGroupSize = Utils.defaultWorkGroupSize
         let firstSide = matrixLeft.Values.Length
         let secondSide = matrixRight.Values.Length
         let sumOfSides = firstSide + secondSide
@@ -111,7 +111,7 @@ module internal Merge =
         let allValues = Array.create sumOfSides Unchecked.defaultof<'a>
 
         do! RunCommand merge <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.workSize sumOfSides, workGroupSize)
+            let ndRange = _1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
             kernelPrepare
                 ndRange
                 matrixLeft.Rows

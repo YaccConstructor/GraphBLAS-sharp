@@ -7,28 +7,85 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
 open System.IO
 open System
+open System.Text.RegularExpressions
+open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open OpenCL.Net
+open GraphBLAS.FSharp.IO
+open QuickGraph
 
-[<SimpleJob(targetCount=10)>]
-type BFSBenchmark4CSRMatrix() =
+[<Config(typeof<CommonConfig>)>]
+type BFSBenchmarks() =
     let random = Random()
 
-    let mutable matrix = Unchecked.defaultof<Matrix<bool>>
     let mutable source = 0
 
-    [<ParamsSource("GraphPaths")>]
-    member val PathToGraph = "" with get, set
+    // gb
+    let mutable matrix = Unchecked.defaultof<Matrix<int>>
+
+    // qg
+    let graph = AdjacencyGraph<int, Edge<int>>(false)
+    let mutable bfs = Unchecked.defaultof<Algorithms.Search.BreadthFirstSearchAlgorithm<int, Edge<int>>>
+
+    [<ParamsSource("AvaliableContextsProvider")>]
+    member val OclContext = Unchecked.defaultof<ClContext> with get, set
+    member this.Context =
+        let (ClContext context) = this.OclContext
+        context
+
+    [<ParamsSource("InputMatricesProvider")>]
+    member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
     [<GlobalSetup>]
-    member this.BuildMatrix() =
-        matrix <- MatrixCSR <| CSRMatrix.FromFile this.PathToGraph
+    member this.BuildGraph() =
+        let inputMatrix = this.InputMatrixReader.ReadMatrix(fun _ -> 1)
+
+        matrix <-
+            graphblas {
+                return! Matrix.switch CSR inputMatrix
+                >>= Matrix.synchronizeAndReturn
+            }
+            |> EvalGB.withClContext this.Context
+            |> EvalGB.runSync
+
+        match inputMatrix with
+        | MatrixCSR csr -> failwith "Not implemented"
+        | MatrixCOO coo ->
+            for i = 0 to coo.Values.Length - 1 do
+                graph.AddVerticesAndEdge(Edge(coo.Rows.[i], coo.Columns.[i])) |> ignore
+
+        bfs <- Algorithms.Search.BreadthFirstSearchAlgorithm(graph)
+
+    [<IterationSetup>]
+    member this.SetSource() =
         source <- random.Next <| Matrix.rowCount matrix
 
     [<Benchmark>]
-    member this.LevelBFS() =
+    member this.GraphblasLevelBFS() =
         BFS.levelSingleSource matrix source
+        |> EvalGB.withClContext this.Context
+        |> EvalGB.runSync
 
-    /// Sequence of paths to files where data for benchmarking will be taken from
-    static member GraphPaths = seq {
-        // Gets all mtx files from following directory
-        yield! Directory.EnumerateFiles(Path.Combine [|"Datasets"; "1"|], "*.mtx")
-    }
+    [<Benchmark>]
+    member this.QuickGraphBFS() =
+        bfs.Compute(source)
+
+    [<IterationCleanup>]
+    member this.ClearBuffers() =
+        this.Context.Provider.CloseAllBuffers()
+
+    [<GlobalCleanup>]
+    member this.ClearContext() =
+        let (ClContext context) = this.OclContext
+        context.Provider.Dispose()
+
+    static member AvaliableContextsProvider = Utils.avaliableContexts
+
+    static member InputMatricesProvider =
+        "Common.txt"
+        |> Utils.getMatricesFilenames
+        |> Seq.map
+            (fun matrixFilename ->
+                match Path.GetExtension matrixFilename with
+                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
+                | _ -> failwith "Unsupported matrix format"
+            )
