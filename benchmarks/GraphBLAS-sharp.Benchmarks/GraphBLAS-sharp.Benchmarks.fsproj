@@ -21,5 +21,9 @@
     <Compile Include="BenchmarksTranspose.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Brahma.FSharp.OpenCL.WorkflowBuilder" Version="2.0.0-alpha7.1" />
+	<PackageReference Include="mathNet.Numerics" Version="4.15.0" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
