@@ -13,10 +13,6 @@ open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
 open OpenCL.Net
 
-open BenchmarkDotNet.Exporters
-
-type A = class end
-
 type Config() =
     inherit ManualConfig()
 
