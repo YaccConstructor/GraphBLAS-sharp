@@ -267,5 +267,7 @@ coverage.*.xml
 .paket/.store
 .paket/paket
 
-.fake
-.ionide
+BenchmarkDotNet.Artifacts/
+
+# Folder for datasets
+benchmarks/GraphBLAS-sharp.Benchmarks/Datasets

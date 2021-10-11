@@ -8,16 +8,60 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Operators.fs" />
-    <Compile Include="Monoid.fs" />
-    <Compile Include="Semiring.fs" />
-    <Compile Include="ComputationalContext.fs" />
-    <Compile Include="Scalar.fs" />
-    <Compile Include="MatrixAndVector.fs" />
-    <Compile Include="DenseVector.fs" />
-    <Compile Include="CSRMatrix.fs" />
-    <Compile Include="Semirings/Boolean.fs" />
-    <Compile Include="Semirings/Float.fs" />
+    <Compile Include="Exceptions.fs" />
+    <Compile Include="AlgebraicStructures.fs" />
+    <Compile Include="GraphblasEvaluation.fs" />
+    <Compile Include="Objects/Matrix.fs" />
+    <Compile Include="Objects/Vector.fs" />
+    <Compile Include="Objects/Scalar.fs" />
+    <Compile Include="Objects/Masks.fs" />
+    <Compile Include="Backend/Common/Utils.fs" />
+    <Compile Include="Backend/Common/Copy.fs" />
+    <Compile Include="Backend/Common/Sum.fs" />
+    <Compile Include="Backend/Common/PrefixSum.fs" />
+    <Compile Include="Backend/Common/BitonicSort.fs" />
+    <Compile Include="Backend/Common/Replicate.fs" />
+    <Compile Include="Backend/Common/RemoveDuplicates.fs" />
+    <Compile Include="Backend/CSRMatrix/Convert.fs" />
+    <Compile Include="Backend/CSRMatrix/GetTuples.fs" />
+    <Compile Include="Backend/CSRMatrix/SpGEMM.fs" />
+    <Compile Include="Backend/CSRMatrix/SpMSpV.fs" />
+    <Compile Include="Backend/CSRMatrix/SpMV.fs" />
+    <Compile Include="Backend/CSRMatrix/Transpose.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />
+    <Compile Include="Backend/COOMatrix/Utilities/SetPositions.fs" />
+    <Compile Include="Backend/COOMatrix/GetTuples.fs" />
+    <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
+    <Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
+    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Intersect.fs" />
+    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Filter.fs" />
+    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/PreparePositions.fs" />
+    <Compile Include="Backend/COOVector/Utilities/EWiseAdd/Merge.fs" />
+    <Compile Include="Backend/COOVector/Utilities/EWiseAdd/PreparePositions.fs" />
+    <Compile Include="Backend/COOVector/Utilities/FillSubVector/Merge.fs" />
+    <Compile Include="Backend/COOVector/Utilities/FillSubVector/PreparePositions.fs" />
+    <Compile Include="Backend/COOVector/EWiseAdd.fs" />
+    <Compile Include="Backend/COOVector/FillSubVector.fs" />
+    <Compile Include="Backend/COOVector/AssignSubVector.fs" />
+    <Compile Include="Backend/Mask/GetComplemented.fs" />
+    <Compile Include="Operations/Matrix.fs" />
+    <Compile Include="Operations/Vector.fs" />
+    <Compile Include="Operations/Scalar.fs" />
+    <Compile Include="IO/MtxReader.fs" />
+    <Compile Include="Predefined/Monoids/Any.fs" />
+    <Compile Include="Predefined/Monoids/Add.fs" />
+    <Compile Include="Predefined/Monoids/Min.fs" />
+    <Compile Include="Predefined/Semirings/AnyAll.fs" />
+    <Compile Include="Predefined/Semirings/AddMult.fs" />
+    <Compile Include="Predefined/Semirings/MinAdd.fs" />
+    <Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/ShortestPath.fs" />
+    <Compile Include="Algorithms/TriangleCounting.fs" />
+    <Compile Include="Algorithms/BetweennessCentrality.fs" />
+    <Content Include="YC.OpenCL.NET.dll.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -2,9 +2,12 @@ FSharp.Core
 Microsoft.NETFramework.ReferenceAssemblies
 
 Expecto
+Expecto.FsCheck
 Microsoft.NET.Test.Sdk
 YoloDev.Expecto.TestSdk
+MathNet.Numerics.FSharp
 
 dotnet-mono
 
 Brahma.FSharp
+TypeShape

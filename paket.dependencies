@@ -6,6 +6,7 @@ nuget FSharp.Core 4.3.4
 nuget Microsoft.SourceLink.GitHub prerelease copy_local: true
 nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
 nuget Expecto 8.13.1
+nuget Expecto.FsCheck 8.13.1
 nuget YoloDev.Expecto.TestSdk 0.8.0
 nuget Microsoft.NET.Test.Sdk 15.7.2
 nuget altcover ~> 6
@@ -17,7 +18,12 @@ nuget System.CodeDom 4.7.0
 nuget FSharp.Quotations.Evaluator 2.1.0
 nuget FSharpx.Collections 2.1.3
 nuget FSharpx.Text.StructuredFormat 2.3.0
-nuget Brahma.FSharp.OpenCL.WorkflowBuilder
+nuget Brahma.FSharp.OpenCL.WorkflowBuilder 2.0.0-alpha7
+nuget BenchmarkDotNet
+nuget MathNet.Numerics.FSharp
+nuget MathNet.Numerics.MKL.Win-x64 2.5.0
+nuget TypeShape 9.0.0
+nuget YC.QuickGraph 3.7.4
 
 // [ FAKE GROUP ]
 group Build
