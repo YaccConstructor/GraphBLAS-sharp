@@ -5,7 +5,9 @@ module internal Utils =
 
     let getDefaultGlobalSize n =
         let m = n - 1
-        m - m % defaultWorkGroupSize + defaultWorkGroupSize
+
+        m - m % defaultWorkGroupSize
+        + defaultWorkGroupSize
 
     let getValidGlobalSize wgSize neededSize =
         (neededSize + wgSize - 1) / wgSize * wgSize

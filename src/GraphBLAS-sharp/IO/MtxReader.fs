@@ -23,11 +23,11 @@ type MtxReader(pathToFile: string) =
     member this.Field = field
     member this.Symmetry = symmetry
 
-    override this.ToString() =
-        Path.GetFileName pathToFile
+    override this.ToString() = Path.GetFileName pathToFile
 
     member this.ReadMatrixShape() =
         use streamReader = new StreamReader(pathToFile)
+
         while streamReader.Peek() = int '%' do
             streamReader.ReadLine() |> ignore
 
@@ -39,17 +39,19 @@ type MtxReader(pathToFile: string) =
         let ncols = size.[1]
         let nnz = size.[2]
 
-        {|
-            RowCount = nrows
-            ColumnCount = ncols
-            Nnz = nnz
-        |}
+        {| RowCount = nrows
+           ColumnCount = ncols
+           Nnz = nnz |}
 
     member this.ReadMatrixReal(converter: string -> 'a) : Matrix<'a> =
-        if object <> MtxMatrix then failwith "Object is not matrix"
-        if field <> Real then failwith "Field is not real"
+        if object <> MtxMatrix then
+            failwith "Object is not matrix"
+
+        if field <> Real then
+            failwith "Field is not real"
 
         use streamReader = new StreamReader(pathToFile)
+
         while streamReader.Peek() = int '%' do
             streamReader.ReadLine() |> ignore
 
@@ -63,10 +65,12 @@ type MtxReader(pathToFile: string) =
             let nnz = size.[2]
 
             let pack x y = (uint64 x <<< 32) ||| (uint64 y)
-            let unpack x = int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
+
+            let unpack x =
+                int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
 
             let sortedData =
-                [0 .. nnz - 1]
+                [ 0 .. nnz - 1 ]
                 |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
                 |> Array.ofList
                 |> Array.Parallel.map
@@ -74,39 +78,42 @@ type MtxReader(pathToFile: string) =
                         let i = int line.[0]
                         let j = int line.[1]
                         let v = converter line.[2]
-                        struct(pack i j, v)
-                    )
-                |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
+                        struct (pack i j, v))
+                |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
 
             let rows = Array.zeroCreate sortedData.Length
             let cols = Array.zeroCreate sortedData.Length
             let values = Array.zeroCreate sortedData.Length
 
-            Array.Parallel.iteri (fun i struct(packedIndex, value) ->
-                let (rowIdx, columnIdx) = unpack packedIndex
-                // in mtx indecies start at 1
-                rows.[i] <- rowIdx - 1
-                cols.[i] <- columnIdx - 1
-                values.[i] <- value
-            ) sortedData
+            Array.Parallel.iteri
+                (fun i struct (packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    // in mtx indecies start at 1
+                    rows.[i] <- rowIdx - 1
+                    cols.[i] <- columnIdx - 1
+                    values.[i] <- value)
+                sortedData
 
-            MatrixCOO {
-                Rows = rows
-                Columns = cols
-                Values = values
-                RowCount = n
-                ColumnCount = m
-            }
+            MatrixCOO
+                { Rows = rows
+                  Columns = cols
+                  Values = values
+                  RowCount = n
+                  ColumnCount = m }
 
         match format with
         | Coordinate -> matrixFromCoordinateFormat ()
         | Array -> failwith "Unsupported matrix format"
 
     member this.ReadMatrixBoolean(converter: string -> 'a) : Matrix<'a> =
-        if object <> MtxMatrix then failwith "Object is not matrix"
-        if field <> Pattern then failwith "Field is not boolean"
+        if object <> MtxMatrix then
+            failwith "Object is not matrix"
+
+        if field <> Pattern then
+            failwith "Field is not boolean"
 
         use streamReader = new StreamReader(pathToFile)
+
         while streamReader.Peek() = int '%' do
             streamReader.ReadLine() |> ignore
 
@@ -120,10 +127,12 @@ type MtxReader(pathToFile: string) =
             let mutable nnz = size.[2]
 
             let pack x y = (uint64 x <<< 32) ||| (uint64 y)
-            let unpack x = int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
+
+            let unpack x =
+                int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
 
             let sortedData =
-                [0 .. nnz - 1]
+                [ 0 .. nnz - 1 ]
                 |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
                 |> Array.ofList
                 |> Array.Parallel.map
@@ -131,39 +140,42 @@ type MtxReader(pathToFile: string) =
                         let i = int line.[0]
                         let j = int line.[1]
                         let v = converter ""
-                        struct(pack i j, v)
-                    )
-                |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
+                        struct (pack i j, v))
+                |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
 
             let rows = Array.zeroCreate sortedData.Length
             let cols = Array.zeroCreate sortedData.Length
             let values = Array.zeroCreate sortedData.Length
 
-            Array.Parallel.iteri (fun i struct(packedIndex, value) ->
-                let (rowIdx, columnIdx) = unpack packedIndex
-                // in mtx indecies start at 1
-                rows.[i] <- rowIdx - 1
-                cols.[i] <- columnIdx - 1
-                values.[i] <- value
-            ) sortedData
+            Array.Parallel.iteri
+                (fun i struct (packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    // in mtx indecies start at 1
+                    rows.[i] <- rowIdx - 1
+                    cols.[i] <- columnIdx - 1
+                    values.[i] <- value)
+                sortedData
 
-            MatrixCOO {
-                Rows = rows
-                Columns = cols
-                Values = values
-                RowCount = n
-                ColumnCount = m
-            }
+            MatrixCOO
+                { Rows = rows
+                  Columns = cols
+                  Values = values
+                  RowCount = n
+                  ColumnCount = m }
 
         match format with
         | Coordinate -> matrixFromCoordinateFormat ()
         | Array -> failwith "Unsupported matrix format"
 
     member this.ReadMatrixInteger(converter: string -> 'a) : Matrix<'a> =
-        if object <> MtxMatrix then failwith "Object is not matrix"
-        if field <> Integer then failwith "Field is not real"
+        if object <> MtxMatrix then
+            failwith "Object is not matrix"
+
+        if field <> Integer then
+            failwith "Field is not real"
 
         use streamReader = new StreamReader(pathToFile)
+
         while streamReader.Peek() = int '%' do
             streamReader.ReadLine() |> ignore
 
@@ -177,10 +189,12 @@ type MtxReader(pathToFile: string) =
             let nnz = size.[2]
 
             let pack x y = (uint64 x <<< 32) ||| (uint64 y)
-            let unpack x = int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
+
+            let unpack x =
+                int ((x &&& 0xFFFFFFFF0000000UL) >>> 32), int (x &&& 0xFFFFFFFUL)
 
             let sortedData =
-                [0 .. nnz - 1]
+                [ 0 .. nnz - 1 ]
                 |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
                 |> Array.ofList
                 |> Array.Parallel.map
@@ -188,29 +202,28 @@ type MtxReader(pathToFile: string) =
                         let i = int line.[0]
                         let j = int line.[1]
                         let v = converter line.[2]
-                        struct(pack i j, v)
-                    )
-                |> Array.sortBy (fun struct(packedIndex, _) -> packedIndex)
+                        struct (pack i j, v))
+                |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
 
             let rows = Array.zeroCreate sortedData.Length
             let cols = Array.zeroCreate sortedData.Length
             let values = Array.zeroCreate sortedData.Length
 
-            Array.Parallel.iteri (fun i struct(packedIndex, value) ->
-                let (rowIdx, columnIdx) = unpack packedIndex
-                // in mtx indecies start at 1
-                rows.[i] <- rowIdx - 1
-                cols.[i] <- columnIdx - 1
-                values.[i] <- value
-            ) sortedData
+            Array.Parallel.iteri
+                (fun i struct (packedIndex, value) ->
+                    let (rowIdx, columnIdx) = unpack packedIndex
+                    // in mtx indecies start at 1
+                    rows.[i] <- rowIdx - 1
+                    cols.[i] <- columnIdx - 1
+                    values.[i] <- value)
+                sortedData
 
-            MatrixCOO {
-                Rows = rows
-                Columns = cols
-                Values = values
-                RowCount = n
-                ColumnCount = m
-            }
+            MatrixCOO
+                { Rows = rows
+                  Columns = cols
+                  Values = values
+                  RowCount = n
+                  ColumnCount = m }
 
         match format with
         | Coordinate -> matrixFromCoordinateFormat ()

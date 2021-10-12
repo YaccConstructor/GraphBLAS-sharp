@@ -20,10 +20,11 @@ module Scalar =
 
     let synchronize (scalar: Scalar<'a>) : GraphblasEvaluation<unit> =
         match scalar with
-        | ScalarWrapped scalar -> opencl {
-            let! _ = ToHost scalar.Value
-            return ()
-        }
+        | ScalarWrapped scalar ->
+            opencl {
+                let! _ = ToHost scalar.Value
+                return ()
+            }
         |> EvalGB.fromCl
 
     (*
@@ -35,8 +36,7 @@ module Scalar =
             do! synchronize scalar
 
             match scalar with
-            | ScalarWrapped scalar ->
-                return scalar.Value.[0]
+            | ScalarWrapped scalar -> return scalar.Value.[0]
         }
 
     let assignValue (scalar: Scalar<'a>) (target: Scalar<'a>) : GraphblasEvaluation<unit> =

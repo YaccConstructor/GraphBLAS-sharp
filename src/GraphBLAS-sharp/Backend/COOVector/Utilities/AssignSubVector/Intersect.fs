@@ -7,52 +7,66 @@ open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal Intersect =
-    let intersect (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) : OpenCLEvaluation<bool[] * 'a[]> = opencl {
-        let workGroupSize = Utils.defaultWorkGroupSize
-        let firstSide = leftValues.Length
-        let secondSide = rightIndices.Length
-        let sumOfSides = firstSide + secondSide
+    let intersect (leftIndices: int []) (leftValues: 'a []) (rightIndices: int []) : OpenCLEvaluation<bool [] * 'a []> =
+        opencl {
+            let workGroupSize = Utils.defaultWorkGroupSize
+            let firstSide = leftValues.Length
+            let secondSide = rightIndices.Length
+            let sumOfSides = firstSide + secondSide
 
-        let merge =
-            <@
-                fun (ndRange: _1D)
-                    (firstIndicesBuffer: int[])
-                    (firstValuesBuffer: 'a[])
-                    (secondIndicesBuffer: int[])
-                    (bitmapBuffer: bool[])
-                    (resultValuesBuffer: 'a[]) ->
+            let merge =
+                <@ fun (ndRange: _1D) (firstIndicesBuffer: int []) (firstValuesBuffer: 'a []) (secondIndicesBuffer: int []) (bitmapBuffer: bool []) (resultValuesBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
                     let mutable beginIdxLocal = local ()
                     let mutable endIdxLocal = local ()
                     let localID = ndRange.LocalID0
+
                     if localID < 2 then
                         let mutable x = localID * (workGroupSize - 1) + i - 1
-                        if x >= sumOfSides then x <- sumOfSides - 1
+
+                        if x >= sumOfSides then
+                            x <- sumOfSides - 1
+
                         let diagonalNumber = x
 
                         let mutable leftEdge = diagonalNumber + 1 - secondSide
                         if leftEdge < 0 then leftEdge <- 0
 
                         let mutable rightEdge = firstSide - 1
-                        if rightEdge > diagonalNumber then rightEdge <- diagonalNumber
+
+                        if rightEdge > diagonalNumber then
+                            rightEdge <- diagonalNumber
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = firstIndicesBuffer.[middleIdx]
-                            let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
-                            if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+
+                            let secondIndex =
+                                secondIndicesBuffer.[diagonalNumber - middleIdx]
+
+                            if firstIndex < secondIndex then
+                                leftEdge <- middleIdx + 1
+                            else
+                                rightEdge <- middleIdx - 1
 
                         // Here localID equals either 0 or 1
-                        if localID = 0 then beginIdxLocal <- leftEdge else endIdxLocal <- leftEdge
+                        if localID = 0 then
+                            beginIdxLocal <- leftEdge
+                        else
+                            endIdxLocal <- leftEdge
+
                     barrier ()
 
                     let beginIdx = beginIdxLocal
                     let endIdx = endIdxLocal
                     let firstLocalLength = endIdx - beginIdx
                     let mutable x = workGroupSize - firstLocalLength
-                    if endIdx = firstSide then x <- secondSide - i + localID + beginIdx
+
+                    if endIdx = firstSide then
+                        x <- secondSide - i + localID + beginIdx
+
                     let secondLocalLength = x
 
                     //First indices are from 0 to firstLocalLength - 1 inclusive
@@ -61,8 +75,10 @@ module internal Intersect =
 
                     if localID < firstLocalLength then
                         localIndices.[localID] <- firstIndicesBuffer.[beginIdx + localID]
+
                     if localID < secondLocalLength then
                         localIndices.[firstLocalLength + localID] <- secondIndicesBuffer.[i - beginIdx]
+
                     barrier ()
 
                     if i < sumOfSides then
@@ -70,13 +86,21 @@ module internal Intersect =
                         if leftEdge < 0 then leftEdge <- 0
 
                         let mutable rightEdge = firstLocalLength - 1
-                        if rightEdge > localID then rightEdge <- localID
+
+                        if rightEdge > localID then
+                            rightEdge <- localID
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = localIndices.[middleIdx]
-                            let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
-                            if firstIndex < secondIndex then leftEdge <- middleIdx + 1 else rightEdge <- middleIdx - 1
+
+                            let secondIndex =
+                                localIndices.[firstLocalLength + localID - middleIdx]
+
+                            if firstIndex < secondIndex then
+                                leftEdge <- middleIdx + 1
+                            else
+                                rightEdge <- middleIdx - 1
 
                         let boundaryX = rightEdge
                         let boundaryY = localID - leftEdge
@@ -86,28 +110,33 @@ module internal Intersect =
                         let isValidY = boundaryY >= 0
 
                         let mutable fstIdx = 0
-                        if isValidX then fstIdx <- localIndices.[boundaryX]
+
+                        if isValidX then
+                            fstIdx <- localIndices.[boundaryX]
 
                         let mutable sndIdx = 0
-                        if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
+
+                        if isValidY then
+                            sndIdx <- localIndices.[firstLocalLength + boundaryY]
 
                         if not isValidX || isValidY && fstIdx = sndIdx then
                             bitmapBuffer.[i - localID - beginIdx + boundaryY] <- true
-                            resultValuesBuffer.[i - localID - beginIdx + boundaryY] <- firstValuesBuffer.[beginIdx + boundaryX]
-            @>
 
-        let bitmap = Array.zeroCreate secondSide
-        let resultValues = Array.create secondSide Unchecked.defaultof<'a>
+                            resultValuesBuffer.[i - localID - beginIdx + boundaryY] <-
+                                firstValuesBuffer.[beginIdx + boundaryX] @>
 
-        do! RunCommand merge <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
-            kernelPrepare
-                ndRange
-                leftIndices
-                leftValues
-                rightIndices
-                bitmap
-                resultValues
+            let bitmap = Array.zeroCreate secondSide
 
-        return bitmap, resultValues
-    }
+            let resultValues =
+                Array.create secondSide Unchecked.defaultof<'a>
+
+            do!
+                RunCommand merge
+                <| fun kernelPrepare ->
+                    let ndRange =
+                        _1D (Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+
+                    kernelPrepare ndRange leftIndices leftValues rightIndices bitmap resultValues
+
+            return bitmap, resultValues
+        }

@@ -4,7 +4,5 @@ open GraphBLAS.FSharp
 
 module Any =
     let bool: Monoid<bool> =
-        {
-            AssociativeOp = ClosedBinaryOp <@ (||) @>
-            Identity = false
-        }
+        { AssociativeOp = ClosedBinaryOp <@ (||) @>
+          Identity = false }

@@ -8,16 +8,31 @@ open GraphBLAS.FSharp.Backend.COOVector.Utilities
 open GraphBLAS.FSharp.Backend.COOVector.Utilities.EWiseAdd
 
 module internal EWiseAdd =
-    let private runNonEmpty (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<int[] * 'a[]> = opencl {
-        let! allIndices, allValues = merge leftIndices leftValues rightIndices rightValues mask
+    let private runNonEmpty
+        (leftIndices: int [])
+        (leftValues: 'a [])
+        (rightIndices: int [])
+        (rightValues: 'a [])
+        (mask: Mask1D option)
+        (semiring: ISemiring<'a>)
+        : OpenCLEvaluation<int [] * 'a []> =
+        opencl {
+            let! allIndices, allValues = merge leftIndices leftValues rightIndices rightValues mask
 
-        let (ClosedBinaryOp plus) = semiring.Plus
-        let! rawPositions = preparePositions allIndices allValues plus
+            let (ClosedBinaryOp plus) = semiring.Plus
+            let! rawPositions = preparePositions allIndices allValues plus
 
-        return! setPositions allIndices allValues rawPositions
-    }
+            return! setPositions allIndices allValues rawPositions
+        }
 
-    let run (leftIndices: int[]) (leftValues: 'a[]) (rightIndices: int[]) (rightValues: 'a[]) (mask: Mask1D option) (semiring: ISemiring<'a>) : OpenCLEvaluation<int[] * 'a[]> =
+    let run
+        (leftIndices: int [])
+        (leftValues: 'a [])
+        (rightIndices: int [])
+        (rightValues: 'a [])
+        (mask: Mask1D option)
+        (semiring: ISemiring<'a>)
+        : OpenCLEvaluation<int [] * 'a []> =
         if leftValues.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray rightIndices

@@ -4,40 +4,41 @@ open Brahma.OpenCL
 open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
 
 module internal rec BitonicSort =
-    let sortKeyValuesInplace (keys: uint64[]) (values: 'a[]) = opencl {
-        if keys.Length = 0 then
-            return ()
-        else
+    let sortKeyValuesInplace (keys: uint64 []) (values: 'a []) =
+        opencl {
+            if keys.Length = 0 then
+                return ()
+            else
+                let wgSize = Utils.defaultWorkGroupSize
+                let length = keys.Length
+
+                do! localBegin keys values
+
+                let mutable segmentLength = wgSize * 2
+
+                while segmentLength < length do
+                    segmentLength <- segmentLength <<< 1
+
+                    do! globalStep keys values segmentLength true
+
+                    let mutable i = segmentLength / 2
+
+                    while i > wgSize * 2 do
+                        do! globalStep keys values i false
+                        i <- i >>> 1
+
+                    do! localEnd keys values
+        }
+
+    let private localBegin (keys: uint64 []) (values: 'a []) =
+        opencl {
             let wgSize = Utils.defaultWorkGroupSize
             let length = keys.Length
+            let processedSize = wgSize * 2
+            let positiveInf = System.UInt64.MaxValue
 
-            do! localBegin keys values
-
-            let mutable segmentLength = wgSize * 2
-            while segmentLength < length do
-                segmentLength <- segmentLength <<< 1
-
-                do! globalStep keys values segmentLength true
-
-                let mutable i = segmentLength / 2
-                while i > wgSize * 2 do
-                    do! globalStep keys values i false
-                    i <- i >>> 1
-
-                do! localEnd keys values
-    }
-
-    let private localBegin (keys: uint64[]) (values: 'a[]) = opencl {
-        let wgSize = Utils.defaultWorkGroupSize
-        let length = keys.Length
-        let processedSize = wgSize * 2
-        let positiveInf = System.UInt64.MaxValue
-
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (keys: uint64[])
-                    (values: 'a[]) ->
+            let kernel =
+                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
@@ -71,13 +72,18 @@ module internal rec BitonicSort =
                     barrier ()
 
                     let mutable segmentLength = 1
+
                     while segmentLength < processedSize do
                         segmentLength <- segmentLength <<< 1
                         let localLineId = lid % (segmentLength / 2)
                         let localTwinId = segmentLength - localLineId - 1
                         let groupLineId = lid / (segmentLength / 2)
-                        let lineId = segmentLength * groupLineId + localLineId
-                        let twinId = segmentLength * groupLineId + localTwinId
+
+                        let lineId =
+                            segmentLength * groupLineId + localLineId
+
+                        let twinId =
+                            segmentLength * groupLineId + localTwinId
 
                         if localKeys.[lineId] > localKeys.[twinId] then
                             let tmpKey = localKeys.[lineId]
@@ -91,6 +97,7 @@ module internal rec BitonicSort =
                         barrier ()
 
                         let mutable j = segmentLength / 2
+
                         while j > 1 do
                             let localLineId = lid % (j / 2)
                             let localTwinId = localLineId + (j / 2)
@@ -112,45 +119,55 @@ module internal rec BitonicSort =
                             j <- j >>> 1
 
                     let mutable writeIdx = processedSize * groupId + lid
+
                     if writeIdx < length then
                         keys.[writeIdx] <- localKeys.[lid]
                         values.[writeIdx] <- localValues.[lid]
 
                     writeIdx <- writeIdx + wgSize
+
                     if writeIdx < length then
                         keys.[writeIdx] <- localKeys.[lid + wgSize]
-                        values.[writeIdx] <- localValues.[lid + wgSize]
-            @>
+                        values.[writeIdx] <- localValues.[lid + wgSize] @>
 
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.floorToPower2 length |> Utils.getDefaultGlobalSize, wgSize)
-            <| keys
-            <| values
-    }
+            do!
+                RunCommand kernel
+                <| fun kernelPrepare ->
+                    kernelPrepare
+                    <| _1D (
+                        Utils.floorToPower2 length
+                        |> Utils.getDefaultGlobalSize,
+                        wgSize
+                    )
+                    <| keys
+                    <| values
+        }
 
-    let private globalStep (keys: uint64[]) (values: 'a[]) (segmentLength: int) (mirror: bool) = opencl {
-        let wgSize = Utils.defaultWorkGroupSize
-        let length = keys.Length
+    let private globalStep (keys: uint64 []) (values: 'a []) (segmentLength: int) (mirror: bool) =
+        opencl {
+            let wgSize = Utils.defaultWorkGroupSize
+            let length = keys.Length
 
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (keys: uint64[])
-                    (values: 'a[]) ->
+            let kernel =
+                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
 
                     let gid = range.GlobalID0
 
                     let localLineId = gid % (segmentLength / 2)
                     let mutable localTwinId = 0
+
                     if mirror then
                         localTwinId <- segmentLength - localLineId - 1
                     else
                         localTwinId <- localLineId + (segmentLength / 2)
 
                     let groupLineId = gid / (segmentLength / 2)
-                    let lineId = segmentLength * groupLineId + localLineId
-                    let twinId = segmentLength * groupLineId + localTwinId
+
+                    let lineId =
+                        segmentLength * groupLineId + localLineId
+
+                    let twinId =
+                        segmentLength * groupLineId + localTwinId
 
                     if twinId < length && keys.[lineId] > keys.[twinId] then
                         let tmp = keys.[lineId]
@@ -159,27 +176,30 @@ module internal rec BitonicSort =
 
                         let tmpV = values.[lineId]
                         values.[lineId] <- values.[twinId]
-                        values.[twinId] <- tmpV
-            @>
+                        values.[twinId] <- tmpV @>
 
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.floorToPower2 length |> Utils.getDefaultGlobalSize, wgSize)
-            <| keys
-            <| values
-    }
+            do!
+                RunCommand kernel
+                <| fun kernelPrepare ->
+                    kernelPrepare
+                    <| _1D (
+                        Utils.floorToPower2 length
+                        |> Utils.getDefaultGlobalSize,
+                        wgSize
+                    )
+                    <| keys
+                    <| values
+        }
 
-    let private localEnd (keys: uint64[]) (values: 'a[]) = opencl {
-        let wgSize = Utils.defaultWorkGroupSize
-        let length = keys.Length
-        let processedSize = wgSize * 2
-        let positiveInf = System.UInt64.MaxValue
+    let private localEnd (keys: uint64 []) (values: 'a []) =
+        opencl {
+            let wgSize = Utils.defaultWorkGroupSize
+            let length = keys.Length
+            let processedSize = wgSize * 2
+            let positiveInf = System.UInt64.MaxValue
 
-        let kernel =
-            <@
-                fun (range: _1D)
-                    (keys: uint64[])
-                    (values: 'a[]) ->
+            let kernel =
+                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
@@ -214,6 +234,7 @@ module internal rec BitonicSort =
 
                     let mutable segmentLength = processedSize
                     let mutable j = segmentLength
+
                     while j > 1 do
                         let localLineId = lid % (j / 2)
                         let localTwinId = localLineId + (j / 2)
@@ -235,19 +256,26 @@ module internal rec BitonicSort =
                         j <- j >>> 1
 
                     let mutable writeIdx = processedSize * groupId + lid
+
                     if writeIdx < length then
                         keys.[writeIdx] <- localKeys.[lid]
                         values.[writeIdx] <- localValues.[lid]
 
                     writeIdx <- writeIdx + wgSize
+
                     if writeIdx < length then
                         keys.[writeIdx] <- localKeys.[lid + wgSize]
-                        values.[writeIdx] <- localValues.[lid + wgSize]
-            @>
+                        values.[writeIdx] <- localValues.[lid + wgSize] @>
 
-        do! RunCommand kernel <| fun kernelPrepare ->
-            kernelPrepare
-            <| _1D(Utils.floorToPower2 length |> Utils.getDefaultGlobalSize, wgSize)
-            <| keys
-            <| values
-    }
+            do!
+                RunCommand kernel
+                <| fun kernelPrepare ->
+                    kernelPrepare
+                    <| _1D (
+                        Utils.floorToPower2 length
+                        |> Utils.getDefaultGlobalSize,
+                        wgSize
+                    )
+                    <| keys
+                    <| values
+        }

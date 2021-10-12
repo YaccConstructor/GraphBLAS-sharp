@@ -14,35 +14,33 @@ open OpenCL.Net
 let logger = Log.create "Matrix.Vxm.Tests"
 
 type OperationCase =
-    {
-        ClContext: OpenCLEvaluationContext
-        VectorCase: VectorFormat
-        MatrixCase: MatrixFromat
-        MaskCase: MaskType
-    }
+    { ClContext: OpenCLEvaluationContext
+      VectorCase: VectorFormat
+      MatrixCase: MatrixFromat
+      MaskCase: MaskType }
 
 let testCases =
-    [
-        Utils.avaliableContexts "" |> Seq.map box
-        Utils.listOfUnionCases<VectorFormat> |> Seq.map box
-        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
-        Utils.listOfUnionCases<MaskType> |> Seq.map box
-    ]
+    [ Utils.avaliableContexts "" |> Seq.map box
+      Utils.listOfUnionCases<VectorFormat>
+      |> Seq.map box
+      Utils.listOfUnionCases<MatrixFromat>
+      |> Seq.map box
+      Utils.listOfUnionCases<MaskType> |> Seq.map box ]
     |> List.map List.ofSeq
     |> Utils.cartesian
     |> List.map
-        (fun list -> {
-            ClContext = unbox list.[0]
-            VectorCase = unbox list.[1]
-            MatrixCase = unbox list.[2]
-            MaskCase = unbox list.[3]
-        })
+        (fun list ->
+            { ClContext = unbox list.[0]
+              VectorCase = unbox list.[1]
+              MatrixCase = unbox list.[2]
+              MaskCase = unbox list.[3] })
 
-let correctnessGenericTest<'a when 'a : struct>
+let correctnessGenericTest<'a when 'a: struct>
     (semiring: ISemiring<'a>)
     (isEqual: 'a -> 'a -> bool)
     (case: OperationCase)
-    (vector: 'a[], matrix: 'a[,], mask: bool[]) =
+    (vector: 'a [], matrix: 'a [,], mask: bool [])
+    =
 
     let isZero = isEqual semiring.Zero
 
@@ -55,6 +53,7 @@ let correctnessGenericTest<'a when 'a : struct>
 
         for i = 0 to resultSize - 1 do
             let col = matrix.[*, i]
+
             resultVector.[i] <-
                 vector
                 |> Array.mapi (fun i v -> times v col.[i])
@@ -65,25 +64,25 @@ let correctnessGenericTest<'a when 'a : struct>
         |> Seq.mapi (fun i v -> (i, v))
         |> Seq.filter
             (fun (i, v) ->
-                (not << isZero) v &&
-                match case.MaskCase with
-                | NoMask -> true
-                | Regular -> mask.[i]
-                | Complemented -> not mask.[i]
-            )
+                (not << isZero) v
+                && match case.MaskCase with
+                   | NoMask -> true
+                   | Regular -> mask.[i]
+                   | Complemented -> not mask.[i])
         |> Array.ofSeq
         |> Array.unzip
-        |> fun (cols, vals) ->
-            {
-                Indices = cols
-                Values = vals
-            }
+        |> fun (cols, vals) -> { Indices = cols; Values = vals }
 
     let actual =
         try
-            let vector = Utils.createVectorFromArray case.VectorCase vector isZero
-            let matrix = Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
-            let mask = Utils.createVectorFromArray VectorFormat.COO mask not
+            let vector =
+                Utils.createVectorFromArray case.VectorCase vector isZero
+
+            let matrix =
+                Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
+
+            let mask =
+                Utils.createVectorFromArray VectorFormat.COO mask not
 
             logger.debug (
                 eventX "Vector is \n{vector}"
@@ -142,30 +141,31 @@ let correctnessGenericTest<'a when 'a : struct>
     "There should be no difference between expected and received values"
     |> Expect.allEqual equality true
 
-let testFixtures case = [
-    let config = Utils.defaultConfig
-    let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
+let testFixtures case =
+    [ let config = Utils.defaultConfig
 
-    case
-    |> correctnessGenericTest<int> AddMult.int (=)
-    |> testPropertyWithConfig config (getCorrectnessTestName "int")
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
 
-    case
-    |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-    |> testPropertyWithConfig config (getCorrectnessTestName "float")
+      case
+      |> correctnessGenericTest<int> AddMult.int (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-    case
-    |> correctnessGenericTest<int16> AddMult.int16 (=)
-    |> testPropertyWithConfig config (getCorrectnessTestName "int16")
+      case
+      |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-    case
-    |> correctnessGenericTest<uint16> AddMult.uint16 (=)
-    |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
+      case
+      |> correctnessGenericTest<int16> AddMult.int16 (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
-    case
-    |> correctnessGenericTest<bool> AnyAll.bool (=)
-    |> ptestPropertyWithConfig config (getCorrectnessTestName "bool")
-]
+      case
+      |> correctnessGenericTest<uint16> AddMult.uint16 (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
+
+      case
+      |> correctnessGenericTest<bool> AnyAll.bool (=)
+      |> ptestPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testCases
@@ -173,12 +173,15 @@ let tests =
         (fun case ->
             let mutable e = ErrorCode.Unknown
             let device = case.ClContext.Device
-            let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-            deviceType = DeviceType.Cpu &&
-            case.VectorCase = VectorFormat.COO &&
-            case.MatrixCase = CSR &&
-            case.MaskCase = NoMask
-        )
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Cpu
+            && case.VectorCase = VectorFormat.COO
+            && case.MatrixCase = CSR
+            && case.MaskCase = NoMask)
     |> List.collect testFixtures
     |> testList "Matrix.vxm tests"

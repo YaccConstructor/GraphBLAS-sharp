@@ -18,110 +18,134 @@ module internal rec PrefixSum =
     /// > val sum = [| 6 |]
     /// </code>
     /// </example>
-    let runExcludeInplace (inputArray: int[]) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.defaultWorkGroupSize
+    let runExcludeInplace (inputArray: int []) (totalSum: int []) =
+        opencl {
+            let workGroupSize = Utils.defaultWorkGroupSize
 
-        let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
-        let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
-        let mutable verticesArrays = firstVertices, secondVertices
-        let swap (a, b) = (b, a)
+            let firstVertices =
+                Array.zeroCreate
+                <| (inputArray.Length - 1) / workGroupSize + 1
 
-        let mutable verticesLength = firstVertices.Length
-        let mutable bunchLength = workGroupSize
+            let secondVertices =
+                Array.zeroCreate
+                <| (firstVertices.Length - 1) / workGroupSize + 1
 
-        do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
-        while verticesLength > 1 do
-            let fstVertices = fst verticesArrays
-            let sndVertices = snd verticesArrays
-            do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1) totalSum
-            do! update inputArray inputArray.Length fstVertices bunchLength
+            let mutable verticesArrays = firstVertices, secondVertices
+            let swap (a, b) = (b, a)
 
-            bunchLength <- bunchLength * workGroupSize
-            verticesArrays <- swap verticesArrays
-            verticesLength <- (verticesLength - 1) / workGroupSize + 1
-    }
+            let mutable verticesLength = firstVertices.Length
+            let mutable bunchLength = workGroupSize
 
-    let runExclude (inputArray: int[]) = opencl {
-        let! copiedArray = Copy.copyArray inputArray
+            do! scan inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
 
-        let totalSum = [| 0 |]
-        do! runExcludeInplace copiedArray totalSum
+            while verticesLength > 1 do
+                let fstVertices = fst verticesArrays
+                let sndVertices = snd verticesArrays
+                do! scan fstVertices verticesLength sndVertices ((verticesLength - 1) / workGroupSize + 1) totalSum
+                do! update inputArray inputArray.Length fstVertices bunchLength
 
-        return (copiedArray, totalSum)
-    }
+                bunchLength <- bunchLength * workGroupSize
+                verticesArrays <- swap verticesArrays
+                verticesLength <- (verticesLength - 1) / workGroupSize + 1
+        }
 
-    let runInclude (inputArray: int[]) = opencl {
-        if inputArray.Length = 0 then
-            return [||], [| 0 |]
-        else
+    let runExclude (inputArray: int []) =
+        opencl {
             let! copiedArray = Copy.copyArray inputArray
 
             let totalSum = [| 0 |]
             do! runExcludeInplace copiedArray totalSum
 
-            let wgSize = Utils.defaultWorkGroupSize
-            let length = inputArray.Length
+            return (copiedArray, totalSum)
+        }
 
-            let kernel =
-                <@
-                    fun (range: _1D)
-                        (array: int[])
-                        (totalSum: int[])
-                        (outputArray: int[]) ->
+    let runInclude (inputArray: int []) =
+        opencl {
+            if inputArray.Length = 0 then
+                return [||], [| 0 |]
+            else
+                let! copiedArray = Copy.copyArray inputArray
+
+                let totalSum = [| 0 |]
+                do! runExcludeInplace copiedArray totalSum
+
+                let wgSize = Utils.defaultWorkGroupSize
+                let length = inputArray.Length
+
+                let kernel =
+                    <@ fun (range: _1D) (array: int []) (totalSum: int []) (outputArray: int []) ->
 
                         let gid = range.GlobalID0
 
                         if gid = length - 1 then
                             outputArray.[gid] <- totalSum.[0]
                         elif gid < length - 1 then
-                            outputArray.[gid] <- array.[gid + 1]
-                @>
+                            outputArray.[gid] <- array.[gid + 1] @>
 
-            let outputArray = Array.zeroCreate length
+                let outputArray = Array.zeroCreate length
 
-            do! RunCommand kernel <| fun kernelPrepare ->
-                kernelPrepare
-                <| _1D(Utils.getDefaultGlobalSize length, wgSize)
-                <| copiedArray
-                <| totalSum
-                <| outputArray
+                do!
+                    RunCommand kernel
+                    <| fun kernelPrepare ->
+                        kernelPrepare
+                        <| _1D (Utils.getDefaultGlobalSize length, wgSize)
+                        <| copiedArray
+                        <| totalSum
+                        <| outputArray
 
-            return outputArray, totalSum
-    }
+                return outputArray, totalSum
+        }
 
-    let private scan (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (verticesLength: int) (totalSum: int[]) = opencl {
-        let workGroupSize = Utils.defaultWorkGroupSize
+    let private scan
+        (inputArray: int [])
+        (inputArrayLength: int)
+        (vertices: int [])
+        (verticesLength: int)
+        (totalSum: int [])
+        =
+        opencl {
+            let workGroupSize = Utils.defaultWorkGroupSize
 
-        let scan =
-            <@
-                fun (ndRange: _1D)
-                    (resultBuffer: int[])
-                    (verticesBuffer: int[])
-                    (totalSumBuffer: int[]) ->
+            let scan =
+                <@ fun (ndRange: _1D) (resultBuffer: int []) (verticesBuffer: int []) (totalSumBuffer: int []) ->
 
                     let resultLocalBuffer = localArray<int> workGroupSize
                     let i = ndRange.GlobalID0
                     let localID = ndRange.LocalID0
 
-                    if i < inputArrayLength then resultLocalBuffer.[localID] <- resultBuffer.[i] else resultLocalBuffer.[localID] <- 0
+                    if i < inputArrayLength then
+                        resultLocalBuffer.[localID] <- resultBuffer.[i]
+                    else
+                        resultLocalBuffer.[localID] <- 0
 
                     let mutable step = 2
+
                     while step <= workGroupSize do
                         barrier ()
+
                         if localID < workGroupSize / step then
                             let i = step * (localID + 1) - 1
-                            resultLocalBuffer.[i] <- resultLocalBuffer.[i] + resultLocalBuffer.[i - (step >>> 1)]
+
+                            resultLocalBuffer.[i] <-
+                                resultLocalBuffer.[i]
+                                + resultLocalBuffer.[i - (step >>> 1)]
+
                         step <- step <<< 1
+
                     barrier ()
 
                     if localID = workGroupSize - 1 then
-                        if verticesLength <= 1 && localID = i then totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                        if verticesLength <= 1 && localID = i then
+                            totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+
                         verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                         resultLocalBuffer.[localID] <- 0
 
                     step <- workGroupSize
+
                     while step > 1 do
                         barrier ()
+
                         if localID < workGroupSize / step then
                             let i = step * (localID + 1) - 1
                             let j = i - (step >>> 1)
@@ -129,39 +153,46 @@ module internal rec PrefixSum =
                             let tmp = resultLocalBuffer.[i]
                             resultLocalBuffer.[i] <- resultLocalBuffer.[i] + resultLocalBuffer.[j]
                             resultLocalBuffer.[j] <- tmp
+
                         step <- step >>> 1
+
                     barrier ()
 
-                    if i < inputArrayLength then resultBuffer.[i] <- resultLocalBuffer.[localID]
-            @>
+                    if i < inputArrayLength then
+                        resultBuffer.[i] <- resultLocalBuffer.[localID] @>
 
-        do! RunCommand scan <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
-            kernelPrepare
-                ndRange
-                inputArray
-                vertices
-                totalSum
-    }
+            do!
+                RunCommand scan
+                <| fun kernelPrepare ->
+                    let ndRange =
+                        _1D (Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
 
-    let private update (inputArray: int[]) (inputArrayLength: int) (vertices: int[]) (bunchLength: int) = opencl {
-        let workGroupSize = Utils.defaultWorkGroupSize
+                    kernelPrepare ndRange inputArray vertices totalSum
+        }
 
-        let update =
-            <@
-                fun (ndRange: _1D)
-                    (resultBuffer: int[])
-                    (verticesBuffer: int[]) ->
+    let private update (inputArray: int []) (inputArrayLength: int) (vertices: int []) (bunchLength: int) =
+        opencl {
+            let workGroupSize = Utils.defaultWorkGroupSize
+
+            let update =
+                <@ fun (ndRange: _1D) (resultBuffer: int []) (verticesBuffer: int []) ->
 
                     let i = ndRange.GlobalID0 + bunchLength
-                    if i < inputArrayLength then
-                        resultBuffer.[i] <- resultBuffer.[i] + verticesBuffer.[i / bunchLength]
-            @>
 
-        do! RunCommand update <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.getDefaultGlobalSize inputArrayLength - bunchLength, workGroupSize)
-            kernelPrepare
-                ndRange
-                inputArray
-                vertices
-    }
+                    if i < inputArrayLength then
+                        resultBuffer.[i] <-
+                            resultBuffer.[i]
+                            + verticesBuffer.[i / bunchLength] @>
+
+            do!
+                RunCommand update
+                <| fun kernelPrepare ->
+                    let ndRange =
+                        _1D (
+                            Utils.getDefaultGlobalSize inputArrayLength
+                            - bunchLength,
+                            workGroupSize
+                        )
+
+                    kernelPrepare ndRange inputArray vertices
+        }

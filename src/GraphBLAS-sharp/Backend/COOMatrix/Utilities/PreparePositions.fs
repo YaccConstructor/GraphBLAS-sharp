@@ -8,41 +8,34 @@ open Microsoft.FSharp.Quotations
 
 [<AutoOpen>]
 module internal PreparePositions =
-    let preparePositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (plus: Expr<'a -> 'a -> 'a>) = opencl {
-        let length = allValues.Length
+    let preparePositions (allRows: int []) (allColumns: int []) (allValues: 'a []) (plus: Expr<'a -> 'a -> 'a>) =
+        opencl {
+            let length = allValues.Length
 
-        let preparePositions =
-            <@
-                fun (ndRange: _1D)
-                    (allRowsBuffer: int[])
-                    (allColumnsBuffer: int[])
-                    (allValuesBuffer: 'a[])
-                    (rawPositionsBuffer: int[]) ->
+            let preparePositions =
+                <@ fun (ndRange: _1D) (allRowsBuffer: int []) (allColumnsBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
 
                     let i = ndRange.GlobalID0
 
                     if i < length - 1
-                    && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
-                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]
-                    then
+                       && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
+                       && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1] then
                         rawPositionsBuffer.[i] <- 0
-                        allValuesBuffer.[i + 1] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                        allValuesBuffer.[i + 1] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1] @>
 
-                        //Drop explicit zeroes
-                        // let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-                        // if localResultBuffer = zero then rawPositionsBuffer.[i + 1] <- 0 else allValuesBuffer.[i + 1] <- localResultBuffer
-            @>
+            //Drop explicit zeroes
+            // let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+            // if localResultBuffer = zero then rawPositionsBuffer.[i + 1] <- 0 else allValuesBuffer.[i + 1] <- localResultBuffer
 
-        let rawPositions = Array.create length 1
+            let rawPositions = Array.create length 1
 
-        do! RunCommand preparePositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
-            kernelPrepare
-                ndRange
-                allRows
-                allColumns
-                allValues
-                rawPositions
+            do!
+                RunCommand preparePositions
+                <| fun kernelPrepare ->
+                    let ndRange =
+                        _1D (Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
 
-        return rawPositions
-    }
+                    kernelPrepare ndRange allRows allColumns allValues rawPositions
+
+            return rawPositions
+        }

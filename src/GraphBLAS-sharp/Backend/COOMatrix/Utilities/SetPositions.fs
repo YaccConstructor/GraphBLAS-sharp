@@ -7,54 +7,44 @@ open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal SetPositions =
-    let setPositions (allRows: int[]) (allColumns: int[]) (allValues: 'a[]) (positions: int[]) = opencl {
-        let prefixSumArrayLength = positions.Length
+    let setPositions (allRows: int []) (allColumns: int []) (allValues: 'a []) (positions: int []) =
+        opencl {
+            let prefixSumArrayLength = positions.Length
 
-        let setPositions =
-            <@
-                fun (ndRange: _1D)
-                    (allRowsBuffer: int[])
-                    (allColumnsBuffer: int[])
-                    (allValuesBuffer: 'a[])
-                    (prefixSumArrayBuffer: int[])
-                    (resultRowsBuffer: int[])
-                    (resultColumnsBuffer: int[])
-                    (resultValuesBuffer: 'a[]) ->
+            let setPositions =
+                <@ fun (ndRange: _1D) (allRowsBuffer: int []) (allColumnsBuffer: int []) (allValuesBuffer: 'a []) (prefixSumArrayBuffer: int []) (resultRowsBuffer: int []) (resultColumnsBuffer: int []) (resultValuesBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
                     if i = prefixSumArrayLength - 1
-                    || i < prefixSumArrayLength
-                    && prefixSumArrayBuffer.[i] <> prefixSumArrayBuffer.[i + 1]
-                    then
+                       || i < prefixSumArrayLength
+                          && prefixSumArrayBuffer.[i]
+                             <> prefixSumArrayBuffer.[i + 1] then
                         let index = prefixSumArrayBuffer.[i]
 
                         resultRowsBuffer.[index] <- allRowsBuffer.[i]
                         resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
-                        resultValuesBuffer.[index] <- allValuesBuffer.[i]
-            @>
+                        resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
 
-        let resultLength = Array.zeroCreate 1
+            let resultLength = Array.zeroCreate 1
 
-        do! PrefixSum.runExcludeInplace positions resultLength
-        let! _ = ToHost resultLength
-        let resultLength = resultLength.[0]
+            do! PrefixSum.runExcludeInplace positions resultLength
+            let! _ = ToHost resultLength
+            let resultLength = resultLength.[0]
 
-        let resultRows = Array.zeroCreate resultLength
-        let resultColumns = Array.zeroCreate resultLength
-        let resultValues = Array.create resultLength Unchecked.defaultof<'a>
+            let resultRows = Array.zeroCreate resultLength
+            let resultColumns = Array.zeroCreate resultLength
 
-        do! RunCommand setPositions <| fun kernelPrepare ->
-            let ndRange = _1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
-            kernelPrepare
-                ndRange
-                allRows
-                allColumns
-                allValues
-                positions
-                resultRows
-                resultColumns
-                resultValues
+            let resultValues =
+                Array.create resultLength Unchecked.defaultof<'a>
 
-        return resultRows, resultColumns, resultValues
-    }
+            do!
+                RunCommand setPositions
+                <| fun kernelPrepare ->
+                    let ndRange =
+                        _1D (Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
+
+                    kernelPrepare ndRange allRows allColumns allValues positions resultRows resultColumns resultValues
+
+            return resultRows, resultColumns, resultValues
+        }

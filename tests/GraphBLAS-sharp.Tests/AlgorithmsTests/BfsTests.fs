@@ -12,24 +12,22 @@ open GraphBLAS.FSharp.Algorithms
 
 let logger = Log.create "Bfs.Tests"
 
-let testCases = [
-    ptestCase "" <| fun () ->
-        let expected =
-            graphblas {
-                let! matrix =
-                    MtxReader("arc130.mtx").ReadMatrixReal(fun _ -> 1)
-                    |> Matrix.switch CSR
+let testCases =
+    [ ptestCase ""
+      <| fun () ->
+          let expected =
+              graphblas {
+                  let! matrix =
+                      MtxReader("arc130.mtx").ReadMatrixReal(fun _ -> 1)
+                      |> Matrix.switch CSR
 
-                return!
-                    BFS.levelSingleSource matrix 0
-                    >>= Vector.synchronizeAndReturn
-            }
-            |> EvalGB.withClContext (OpenCLEvaluationContext())
-            |> EvalGB.runSync
+                  return!
+                      BFS.levelSingleSource matrix 0
+                      >>= Vector.synchronizeAndReturn
+              }
+              |> EvalGB.withClContext (OpenCLEvaluationContext())
+              |> EvalGB.runSync
 
-        Expect.isTrue true ""
-]
+          Expect.isTrue true "" ]
 
-let tests =
-    testCases
-    |> testList "Bfs tests"
+let tests = testCases |> testList "Bfs tests"
