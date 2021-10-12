@@ -1,12 +1,5 @@
-open Argu
-#load ".fake/build.fsx/intellisense.fsx"
-#load "docsTool/CLI.fs"
-#if !FAKE
-#r "Facades/netstandard"
-#r "netstandard"
-#endif
+
 open System
-open Fake.SystemHelper
 open Fake.Core
 open Fake.DotNet
 open Fake.Tools
@@ -16,13 +9,7 @@ open Fake.IO.Globbing.Operators
 open Fake.Core.TargetOperators
 open Fake.Api
 open Fake.BuildServer
-open Fantomas
-open Fantomas.FakeHelpers
-
-BuildServer.install [
-    AppVeyor.Installer
-    Travis.Installer
-]
+open Argu
 
 let environVarAsBoolOrDefault varName defaultValue =
     let truthyConsts = [
@@ -43,45 +30,47 @@ let environVarAsBoolOrDefault varName defaultValue =
 //-----------------------------------------------------------------------------
 
 let productName = "GraphBLAS-sharp"
-let sln = "GraphBLAS-sharp.sln"
+let sln = __SOURCE_DIRECTORY__ </> ".." </> "GraphBLAS-sharp.sln"
 
 
 let srcCodeGlob =
-    !! (__SOURCE_DIRECTORY__  @@ "src/**/*.fs")
-    ++ (__SOURCE_DIRECTORY__  @@ "src/**/*.fsx")
+    !! (__SOURCE_DIRECTORY__ </> ".." </> "src/**/*.fs")
+    ++ (__SOURCE_DIRECTORY__ </> ".." </> "src/**/*.fsx")
+    -- (__SOURCE_DIRECTORY__ </> ".." </> "src/**/obj/**/*.fs")
 
 let testsCodeGlob =
-    !! (__SOURCE_DIRECTORY__  @@ "tests/**/*.fs")
-    ++ (__SOURCE_DIRECTORY__  @@ "tests/**/*.fsx")
+    !! (__SOURCE_DIRECTORY__ </> ".." </> "tests/**/*.fs")
+    ++ (__SOURCE_DIRECTORY__ </> ".." </> "tests/**/*.fsx")
+    -- (__SOURCE_DIRECTORY__ </> ".." </> "tests/**/obj/**/*.fs")
 
-let srcGlob =__SOURCE_DIRECTORY__  @@ "src/**/*.??proj"
-let testsGlob = __SOURCE_DIRECTORY__  @@ "tests/**/*.??proj"
+let srcGlob =__SOURCE_DIRECTORY__ </> ".." </> "src/**/*.??proj"
+let testsGlob = __SOURCE_DIRECTORY__ </> ".." </> "tests/**/*.??proj"
 
 let srcAndTest =
     !! srcGlob
     ++ testsGlob
 
-let distDir = __SOURCE_DIRECTORY__  @@ "dist"
-let distGlob = distDir @@ "*.nupkg"
+let distDir = __SOURCE_DIRECTORY__ </> ".." </> "dist"
+let distGlob = distDir </> "*.nupkg"
 
 let coverageThresholdPercent = 80
-let coverageReportDir =  __SOURCE_DIRECTORY__  @@ "docs" @@ "coverage"
+let coverageReportDir =  __SOURCE_DIRECTORY__ </> ".." </> "docs" </> "coverage"
 
 
-let docsDir = __SOURCE_DIRECTORY__  @@ "docs"
-let docsSrcDir = __SOURCE_DIRECTORY__  @@ "docsSrc"
-let docsToolDir = __SOURCE_DIRECTORY__ @@ "docsTool"
+let docsDir = __SOURCE_DIRECTORY__ </> ".." </> "docs"
+let docsSrcDir = __SOURCE_DIRECTORY__ </> ".." </> "docsSrc"
+let docsToolDir = __SOURCE_DIRECTORY__ </> ".." </> "docsTool"
 
 let gitOwner = "YaccConstructor"
 let gitRepoName = "GraphBLAS-sharp"
 
 let gitHubRepoUrl = sprintf "https://github.com/%s/%s" gitOwner gitRepoName
 
-let releaseBranch = "master"
+let releaseBranch = "main"
 
 let tagFromVersionNumber versionNumber = sprintf "v%s" versionNumber
 
-let changelogFilename = "CHANGELOG.md"
+let changelogFilename = __SOURCE_DIRECTORY__ </> ".." </> "CHANGELOG.md"
 let changelog = Fake.Core.Changelog.load changelogFilename
 let mutable latestEntry =
     if Seq.isEmpty changelog.Entries
@@ -97,11 +86,9 @@ let docsSiteBaseUrl = sprintf "https://%s.github.io/%s" gitOwner gitRepoName
 let disableCodeCoverage = environVarAsBoolOrDefault "DISABLE_COVERAGE" false
 
 let githubToken = Environment.environVarOrNone "GITHUB_TOKEN"
-Option.iter(TraceSecrets.register "<GITHUB_TOKEN>" )
 
 
 let nugetToken = Environment.environVarOrNone "NUGET_TOKEN"
-Option.iter(TraceSecrets.register "<NUGET_TOKEN>")
 
 //-----------------------------------------------------------------------------
 // Helpers
@@ -115,7 +102,7 @@ let isRelease (targets : Target list) =
 let invokeAsync f = async { f () }
 
 let configuration (targets : Target list) =
-    let defaultVal = "Release" //if isRelease targets then "Release" else "Debug"
+    let defaultVal = if isRelease targets then "Release" else "Debug"
     match Environment.environVarOrDefault "CONFIGURATION" defaultVal with
     | "Debug" -> DotNet.BuildConfiguration.Debug
     | "Release" -> DotNet.BuildConfiguration.Release
@@ -228,6 +215,9 @@ module dotnet =
     let fsharpAnalyzer optionConfig args =
         tool optionConfig "fsharp-analyzers" args
 
+    let fantomas args =
+        DotNet.exec id "fantomas" args
+
 module FSharpAnalyzers =
     type Arguments =
     | Project of string
@@ -273,7 +263,7 @@ module DocsTool =
         ]
         |> watchparser.PrintCommandLineArgumentsFlat
 
-    let watch projectpath =
+    let watch () =
         dotnet.watch (fun args ->
            { args with WorkingDirectory = docsToolDir }
         ) "run" (sprintf "-- watch %s" (watchCLI()))
@@ -296,7 +286,7 @@ let clean _ =
     ++ testsGlob
     |> Seq.collect(fun p ->
         ["bin";"obj"]
-        |> Seq.map(fun sp -> IO.Path.GetDirectoryName p @@ sp ))
+        |> Seq.map(fun sp -> IO.Path.GetDirectoryName p </> sp ))
     |> Shell.cleanDirs
 
     [
@@ -408,13 +398,13 @@ let dotnetBuild ctx =
 
         }) sln
 
-let fsharpAnalyzers ctx =
+let fsharpAnalyzers _ =
     let argParser = ArgumentParser.Create<FSharpAnalyzers.Arguments>(programName = "fsharp-analyzers")
     !! srcGlob
     |> Seq.iter(fun proj ->
         let args  =
             [
-                FSharpAnalyzers.Analyzers_Path (__SOURCE_DIRECTORY__ </> "packages/analyzers")
+                FSharpAnalyzers.Analyzers_Path (__SOURCE_DIRECTORY__ </> ".." </> "packages/analyzers")
                 FSharpAnalyzers.Arguments.Project proj
                 FSharpAnalyzers.Arguments.Fail_On_Warnings [
                     "BDH0002"
@@ -511,7 +501,7 @@ let generateAssemblyInfo _ =
             AssemblyInfo.Metadata("GitHash", Git.Information.getCurrentSHA1(null))
         ]
 
-    let getProjectDetails projectPath =
+    let getProjectDetails (projectPath : string) =
         let projectName = IO.Path.GetFileNameWithoutExtension(projectPath)
         (
             projectPath,
@@ -524,9 +514,9 @@ let generateAssemblyInfo _ =
     |> Seq.map getProjectDetails
     |> Seq.iter (fun (projFileName, _, folderName, attributes) ->
         match projFileName with
-        | Fsproj -> AssemblyInfoFile.createFSharp (folderName @@ "AssemblyInfo.fs") attributes
-        | Csproj -> AssemblyInfoFile.createCSharp ((folderName @@ "Properties") @@ "AssemblyInfo.cs") attributes
-        | Vbproj -> AssemblyInfoFile.createVisualBasic ((folderName @@ "My Project") @@ "AssemblyInfo.vb") attributes
+        | Fsproj -> AssemblyInfoFile.createFSharp (folderName </> "AssemblyInfo.fs") attributes
+        | Csproj -> AssemblyInfoFile.createCSharp ((folderName </> "Properties") </> "AssemblyInfo.cs") attributes
+        | Vbproj -> AssemblyInfoFile.createVisualBasic ((folderName </> "My Project") </> "AssemblyInfo.vb") attributes
         )
 
 let dotnetPack ctx =
@@ -604,40 +594,44 @@ let githubRelease _ =
     |> Async.RunSynchronously
 
 let formatCode _ =
-    [
-        srcCodeGlob
-        testsCodeGlob
-    ]
-    |> Seq.collect id
-    // Ignore AssemblyInfo
-    |> Seq.filter(fun f -> f.EndsWith("AssemblyInfo.fs") |> not)
-    |> formatFilesAsync FormatConfig.FormatConfig.Default
-    |> Async.RunSynchronously
-    |> Seq.iter(fun result ->
-        match result with
-        | Formatted(original, tempfile) ->
-            tempfile |> Shell.copyFile original
-            Trace.logfn "Formatted %s" original
-        | _ -> ()
-    )
+    let result =
+        [
+            srcCodeGlob
+            testsCodeGlob
+        ]
+        |> Seq.collect id
+        // Ignore AssemblyInfo
+        |> Seq.filter(fun f -> f.EndsWith("AssemblyInfo.fs") |> not)
+        |> String.concat " "
+        |> dotnet.fantomas
 
+    if not result.OK then
+        printfn "Errors while formatting all files: %A" result.Messages
+
+let checkFormatCode _ =
+    let result =
+        [
+            srcCodeGlob
+            testsCodeGlob
+        ]
+        |> Seq.collect id
+        // Ignore AssemblyInfo
+        |> Seq.filter(fun f -> f.EndsWith("AssemblyInfo.fs") |> not)
+        |> String.concat " "
+        |> sprintf "%s --check"
+        |> dotnet.fantomas
+
+    if result.ExitCode = 0 then
+        Trace.log "No files need formatting"
+    elif result.ExitCode = 99 then
+        failwith "Some files need formatting, check output for more info"
+    else
+        Trace.logf "Errors while formatting: %A" result.Errors
 
 let buildDocs _ =
     DocsTool.build ()
 
 let watchDocs _ =
-    let watchBuild () =
-        !! srcGlob
-        |> Seq.map(fun proj -> fun () ->
-            dotnet.watch
-                (fun opt ->
-                    opt |> DotNet.Options.withWorkingDirectory (IO.Path.GetDirectoryName proj))
-                "build"
-                ""
-            |> ignore
-        )
-        |> Seq.iter (invokeAsync >> Async.Catch >> Async.Ignore >> Async.Start)
-    watchBuild ()
     DocsTool.watch ()
 
 let releaseDocs ctx =
@@ -651,79 +645,102 @@ let releaseDocs ctx =
         Git.Branches.push ""
 
 
-//-----------------------------------------------------------------------------
-// Target Declaration
-//-----------------------------------------------------------------------------
+let initTargets () =
+    BuildServer.install [
+        GitHubActions.Installer
+    ]
+    /// Defines a dependency - y is dependent on x. Finishes the chain.
+    let (==>!) x y = x ==> y |> ignore
+    /// Defines a soft dependency. x must run before y, if it is present, but y does not require x to be run. Finishes the chain.
+    let (?=>!) x y = x ?=> y |> ignore
+    //-----------------------------------------------------------------------------
+    // Hide Secrets in Logger
+    //-----------------------------------------------------------------------------
+    Option.iter(TraceSecrets.register "<GITHUB_TOKEN>" ) githubToken
+    Option.iter(TraceSecrets.register "<NUGET_TOKEN>") nugetToken
+    //-----------------------------------------------------------------------------
+    // Target Declaration
+    //-----------------------------------------------------------------------------
 
-Target.create "Clean" clean
-Target.create "DotnetRestore" dotnetRestore
-Target.create "UpdateChangelog" updateChangelog
-Target.createBuildFailure "RevertChangelog" revertChangelog  // Do NOT put this in the dependency chain
-Target.createFinal "DeleteChangelogBackupFile" deleteChangelogBackupFile  // Do NOT put this in the dependency chain
-Target.create "DotnetBuild" dotnetBuild
-Target.create "FSharpAnalyzers" fsharpAnalyzers
-Target.create "DotnetTest" dotnetTest
-Target.create "GenerateCoverageReport" generateCoverageReport
-Target.create "WatchTests" watchTests
-Target.create "GenerateAssemblyInfo" generateAssemblyInfo
-Target.create "DotnetPack" dotnetPack
-Target.create "SourceLinkTest" sourceLinkTest
-Target.create "PublishToNuGet" publishToNuget
-Target.create "GitRelease" gitRelease
-Target.create "GitHubRelease" githubRelease
-Target.create "FormatCode" formatCode
-Target.create "Release" ignore
-Target.create "BuildDocs" buildDocs
-Target.create "WatchDocs" watchDocs
-Target.create "ReleaseDocs" releaseDocs
+    Target.create "Clean" clean
+    Target.create "DotnetRestore" dotnetRestore
+    Target.create "UpdateChangelog" updateChangelog
+    Target.createBuildFailure "RevertChangelog" revertChangelog  // Do NOT put this in the dependency chain
+    Target.createFinal "DeleteChangelogBackupFile" deleteChangelogBackupFile  // Do NOT put this in the dependency chain
+    Target.create "DotnetBuild" dotnetBuild
+    Target.create "FSharpAnalyzers" fsharpAnalyzers
+    Target.create "DotnetTest" dotnetTest
+    Target.create "GenerateCoverageReport" generateCoverageReport
+    Target.create "WatchTests" watchTests
+    Target.create "GenerateAssemblyInfo" generateAssemblyInfo
+    Target.create "DotnetPack" dotnetPack
+    Target.create "SourceLinkTest" sourceLinkTest
+    Target.create "PublishToNuGet" publishToNuget
+    Target.create "GitRelease" gitRelease
+    Target.create "GitHubRelease" githubRelease
+    Target.create "FormatCode" formatCode
+    Target.create "CheckFormatCode" checkFormatCode
+    Target.create "Release" ignore
+    Target.create "BuildDocs" buildDocs
+    Target.create "WatchDocs" watchDocs
+    Target.create "ReleaseDocs" releaseDocs
 
-//-----------------------------------------------------------------------------
-// Target Dependencies
-//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    // Target Dependencies
+    //-----------------------------------------------------------------------------
 
 
-// Only call Clean if DotnetPack was in the call chain
-// Ensure Clean is called before DotnetRestore
-"Clean" ?=> "DotnetRestore"
-"Clean" ==> "DotnetPack"
+    // Only call Clean if DotnetPack was in the call chain
+    // Ensure Clean is called before DotnetRestore
+    "Clean" ?=>! "DotnetRestore"
+    "Clean" ==>! "DotnetPack"
 
-// Only call GenerateAssemblyInfo if Publish was in the call chain
-// Ensure GenerateAssemblyInfo is called after DotnetRestore and before DotnetBuild
-"DotnetRestore" ?=> "GenerateAssemblyInfo"
-"GenerateAssemblyInfo" ?=> "DotnetBuild"
-"GenerateAssemblyInfo" ==> "PublishToNuGet"
+    // Only call GenerateAssemblyInfo if Publish was in the call chain
+    // Ensure GenerateAssemblyInfo is called after DotnetRestore and before DotnetBuild
+    "DotnetRestore" ?=>! "GenerateAssemblyInfo"
+    "GenerateAssemblyInfo" ?=>! "DotnetBuild"
+    "GenerateAssemblyInfo" ==>! "PublishToNuGet"
 
-// Only call UpdateChangelog if Publish was in the call chain
-// Ensure UpdateChangelog is called after DotnetRestore and before GenerateAssemblyInfo
-"DotnetRestore" ?=> "UpdateChangelog"
-"UpdateChangelog" ?=> "GenerateAssemblyInfo"
-"UpdateChangelog" ==> "PublishToNuGet"
+    // Only call UpdateChangelog if Publish was in the call chain
+    // Ensure UpdateChangelog is called after DotnetRestore and before GenerateAssemblyInfo
+    "DotnetRestore" ?=>! "UpdateChangelog"
+    "UpdateChangelog" ?=>! "GenerateAssemblyInfo"
+    "UpdateChangelog" ==>! "PublishToNuGet"
 
-"DotnetBuild" ==> "BuildDocs"
-"BuildDocs" ==> "ReleaseDocs"
-"BuildDocs" ?=> "PublishToNuget"
-"DotnetPack" ?=> "BuildDocs"
-"GenerateCoverageReport" ?=> "ReleaseDocs"
+    "BuildDocs" ==>! "ReleaseDocs"
+    "BuildDocs" ?=>! "PublishToNuget"
+    "DotnetPack" ?=>! "BuildDocs"
+    "GenerateCoverageReport" ?=>! "ReleaseDocs"
 
-"DotnetBuild" ==> "WatchDocs"
 
-"DotnetRestore"
-    ==> "DotnetBuild"
-    ==> "FSharpAnalyzers"
-    ==> "DotnetTest"
-    =?> ("GenerateCoverageReport", not disableCodeCoverage)
-    ==> "DotnetPack"
-    ==> "SourceLinkTest"
-    ==> "PublishToNuGet"
-    ==> "GitRelease"
-    ==> "GitHubRelease"
-    ==> "Release"
+    "DotnetRestore"
+        ==> "CheckFormatCode"
+        ==> "DotnetBuild"
+        ==> "FSharpAnalyzers"
+        ==> "DotnetTest"
+        =?> ("GenerateCoverageReport", not disableCodeCoverage)
+        ==> "DotnetPack"
+        ==> "SourceLinkTest"
+        ==> "PublishToNuGet"
+        ==> "GitRelease"
+        ==> "GitHubRelease"
+        ==>! "Release"
 
-"DotnetRestore"
-    ==> "WatchTests"
+    "DotnetRestore"
+        ==>! "WatchTests"
 
 //-----------------------------------------------------------------------------
 // Target Start
 //-----------------------------------------------------------------------------
+[<EntryPoint>]
+let main argv =
+    argv
+    |> Array.toList
+    |> Context.FakeExecutionContext.Create false "build.fsx"
+    |> Context.RuntimeContext.Fake
+    |> Context.setExecutionContext
+    initTargets ()
+    Target.runOrDefaultWithArguments "DotnetPack"
 
-Target.runOrDefaultWithArguments "DotnetTest"
+    0 // return an integer exit code
+
