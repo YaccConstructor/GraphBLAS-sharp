@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 
 module internal rec BitonicSort =
     let sortKeyValuesInplace (keys: uint64 []) (values: 'a []) =
@@ -38,7 +37,7 @@ module internal rec BitonicSort =
             let positiveInf = System.UInt64.MaxValue
 
             let kernel =
-                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
+                <@ fun (range: Range1D) (keys: uint64 []) (values: 'a []) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
@@ -131,10 +130,10 @@ module internal rec BitonicSort =
                         values.[writeIdx] <- localValues.[lid + wgSize] @>
 
             do!
-                RunCommand kernel
+                runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (
+                    <| Range1D(
                         Utils.floorToPower2 length
                         |> Utils.getDefaultGlobalSize,
                         wgSize
@@ -149,7 +148,7 @@ module internal rec BitonicSort =
             let length = keys.Length
 
             let kernel =
-                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
+                <@ fun (range: Range1D) (keys: uint64 []) (values: 'a []) ->
 
                     let gid = range.GlobalID0
 
@@ -179,10 +178,10 @@ module internal rec BitonicSort =
                         values.[twinId] <- tmpV @>
 
             do!
-                RunCommand kernel
+                runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (
+                    <| Range1D(
                         Utils.floorToPower2 length
                         |> Utils.getDefaultGlobalSize,
                         wgSize
@@ -199,7 +198,7 @@ module internal rec BitonicSort =
             let positiveInf = System.UInt64.MaxValue
 
             let kernel =
-                <@ fun (range: _1D) (keys: uint64 []) (values: 'a []) ->
+                <@ fun (range: Range1D) (keys: uint64 []) (values: 'a []) ->
 
                     let lid = range.LocalID0
                     let gid = range.GlobalID0
@@ -268,10 +267,10 @@ module internal rec BitonicSort =
                         values.[writeIdx] <- localValues.[lid + wgSize] @>
 
             do!
-                RunCommand kernel
+                runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (
+                    <| Range1D(
                         Utils.floorToPower2 length
                         |> Utils.getDefaultGlobalSize,
                         wgSize

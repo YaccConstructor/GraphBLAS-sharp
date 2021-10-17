@@ -1,50 +1,88 @@
 namespace GraphBLAS.FSharp.Backend.COOMatrix.Utilities
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal SetPositions =
-    let setPositions (allRows: int []) (allColumns: int []) (allValues: 'a []) (positions: int []) =
-        opencl {
+    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+
+        let setPositions =
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i = prefixSumArrayLength - 1
+                   || i < prefixSumArrayLength
+                      && prefixSumArrayBuffer.[i]
+                         <> prefixSumArrayBuffer.[i + 1] then
+                    let index = prefixSumArrayBuffer.[i]
+
+                    resultRowsBuffer.[index] <- allRowsBuffer.[i]
+                    resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
+                    resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
+
+        let kernel = clContext.CreateClKernel(setPositions)
+
+        let sum =
+            PrefixSum.runExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate 1
+
+        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let prefixSumArrayLength = positions.Length
 
-            let setPositions =
-                <@ fun (ndRange: _1D) (allRowsBuffer: int []) (allColumnsBuffer: int []) (allValuesBuffer: 'a []) (prefixSumArrayBuffer: int []) (resultRowsBuffer: int []) (resultColumnsBuffer: int []) (resultValuesBuffer: 'a []) ->
+            let resultLengthGpu = clContext.CreateClArray<_>(1)
 
-                    let i = ndRange.GlobalID0
+            let _, r = sum processor positions resultLengthGpu
 
-                    if i = prefixSumArrayLength - 1
-                       || i < prefixSumArrayLength
-                          && prefixSumArrayBuffer.[i]
-                             <> prefixSumArrayBuffer.[i + 1] then
-                        let index = prefixSumArrayBuffer.[i]
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
 
-                        resultRowsBuffer.[index] <- allRowsBuffer.[i]
-                        resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
-                        resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
+                processor.Post(Msg.CreateFreeMsg<_>(r))
 
-            let resultLength = Array.zeroCreate 1
+                res.[0]
 
-            do! PrefixSum.runExcludeInplace positions resultLength
-            let! _ = ToHost resultLength
-            let resultLength = resultLength.[0]
+            let resultRows =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                )
 
-            let resultRows = Array.zeroCreate resultLength
-            let resultColumns = Array.zeroCreate resultLength
+            let resultColumns =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                )
 
             let resultValues =
-                Array.create resultLength Unchecked.defaultof<'a>
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                )
 
-            do!
-                RunCommand setPositions
-                <| fun kernelPrepare ->
-                    let ndRange =
-                        _1D (Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
+            let ndRange =
+                Range1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
 
-                    kernelPrepare ndRange allRows allColumns allValues positions resultRows resultColumns resultValues
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.SetArguments
+                            ndRange
+                            prefixSumArrayLength
+                            allRows
+                            allColumns
+                            allValues
+                            positions
+                            resultRows
+                            resultColumns
+                            resultValues)
+            )
 
-            return resultRows, resultColumns, resultValues
-        }
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultRows, resultColumns, resultValues, resultLength

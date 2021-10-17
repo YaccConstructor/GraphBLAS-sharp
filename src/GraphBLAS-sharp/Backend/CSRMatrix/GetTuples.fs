@@ -1,10 +1,8 @@
 namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open Brahma.OpenCL
 
 module internal GetTuples =
     let fromMatrix (matrix: CSRMatrix<'a>) =
@@ -19,7 +17,7 @@ module internal GetTuples =
                 let rowCount = matrix.RowCount
 
                 let expandCsrRows =
-                    <@ fun (ndRange: _1D) (rowPointers: int []) (outputRowIndices: int []) ->
+                    <@ fun (ndRange: Range1D) (rowPointers: int []) (outputRowIndices: int []) ->
 
                         let gid = ndRange.GlobalID0
 
@@ -31,10 +29,10 @@ module internal GetTuples =
                     Array.zeroCreate<int> matrix.Values.Length
 
                 do!
-                    RunCommand expandCsrRows
+                    runCommand expandCsrRows
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (rowCount |> Utils.getDefaultGlobalSize, Utils.defaultWorkGroupSize)
+                        <| Range1D(rowCount |> Utils.getDefaultGlobalSize, Utils.defaultWorkGroupSize)
                         <| matrix.RowPointers
                         <| rowIndices
 

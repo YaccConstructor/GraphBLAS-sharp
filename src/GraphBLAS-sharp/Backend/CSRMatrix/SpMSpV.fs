@@ -1,9 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
-open Brahma.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 module internal rec SpMSpV =
@@ -26,7 +24,7 @@ module internal rec SpMSpV =
                 let zero = semiring.Zero
 
                 let calcValuesPerRow =
-                    <@ fun (range: _1D) (matrixRowPointers: int []) (matrixColumnIndices: int []) (matrixValues: 'a []) (vectorIndices: int []) (vectorValues: 'a []) (countOfProductsPerRow: int []) (valuesPerRow: 'a []) ->
+                    <@ fun (range: Range1D) (matrixRowPointers: int []) (matrixColumnIndices: int []) (matrixValues: 'a []) (vectorIndices: int []) (vectorValues: 'a []) (countOfProductsPerRow: int []) (valuesPerRow: 'a []) ->
 
                         let gid = range.GlobalID0
                         let lid = range.LocalID0
@@ -88,10 +86,10 @@ module internal rec SpMSpV =
                 let valuesPerRow = Array.zeroCreate<'a> rowCount
 
                 do!
-                    RunCommand calcValuesPerRow
+                    runCommand calcValuesPerRow
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (rowCount * Utils.defaultWorkGroupSize, Utils.defaultWorkGroupSize)
+                        <| Range1D(rowCount * Utils.defaultWorkGroupSize, Utils.defaultWorkGroupSize)
                         <| matrix.RowPointers
                         <| matrix.ColumnIndices
                         <| matrix.Values
@@ -101,7 +99,7 @@ module internal rec SpMSpV =
                         <| valuesPerRow
 
                 let getNonzeroBitmap =
-                    <@ fun (range: _1D) (count: int []) (bitmap: int []) ->
+                    <@ fun (range: Range1D) (count: int []) (bitmap: int []) ->
 
                         let gid = range.GlobalID0
 
@@ -111,10 +109,10 @@ module internal rec SpMSpV =
                 let bitmap = Array.create<int> rowCount 1
 
                 do!
-                    RunCommand getNonzeroBitmap
+                    runCommand getNonzeroBitmap
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
+                        <| Range1D(Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
                         <| countOfProductsPerRow
                         <| bitmap
 
@@ -130,7 +128,7 @@ module internal rec SpMSpV =
 
                 else
                     let getOutputVector =
-                        <@ fun (range: _1D) (count: int []) (values: 'a []) (positions: int []) (outputValues: 'a []) (outputIndices: int []) ->
+                        <@ fun (range: Range1D) (count: int []) (values: 'a []) (positions: int []) (outputValues: 'a []) (outputIndices: int []) ->
 
                             let gid = range.GlobalID0
 
@@ -142,10 +140,10 @@ module internal rec SpMSpV =
                     let outputIndices = Array.zeroCreate<int> resultLength
 
                     do!
-                        RunCommand getOutputVector
+                        runCommand getOutputVector
                         <| fun kernelPrepare ->
                             kernelPrepare
-                            <| _1D (Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
+                            <| Range1D(Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
                             <| countOfProductsPerRow
                             <| valuesPerRow
                             <| positions
@@ -186,7 +184,7 @@ module internal rec SpMSpV =
                 let zero = semiring.Zero
 
                 let calcValuesPerRow =
-                    <@ fun (range: _1D) (mask: int []) (matrixRowPointers: int []) (matrixColumnIndices: int []) (matrixValues: 'a []) (vectorIndices: int []) (vectorValues: 'a []) (countOfProductsPerRow: int []) (valuesPerRow: 'a []) ->
+                    <@ fun (range: Range1D) (mask: int []) (matrixRowPointers: int []) (matrixColumnIndices: int []) (matrixValues: 'a []) (vectorIndices: int []) (vectorValues: 'a []) (countOfProductsPerRow: int []) (valuesPerRow: 'a []) ->
 
                         let gid = range.GlobalID0
                         let lid = range.LocalID0
@@ -249,10 +247,10 @@ module internal rec SpMSpV =
                 let valuesPerRow = Array.zeroCreate<'a> rowCount
 
                 do!
-                    RunCommand calcValuesPerRow
+                    runCommand calcValuesPerRow
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (maskNnz * Utils.defaultWorkGroupSize, Utils.defaultWorkGroupSize)
+                        <| Range1D(maskNnz * Utils.defaultWorkGroupSize, Utils.defaultWorkGroupSize)
                         <| mask.Indices
                         <| matrix.RowPointers
                         <| matrix.ColumnIndices
@@ -263,7 +261,7 @@ module internal rec SpMSpV =
                         <| valuesPerRow
 
                 let getNonzeroBitmap =
-                    <@ fun (range: _1D) (count: int []) (bitmap: int []) ->
+                    <@ fun (range: Range1D) (count: int []) (bitmap: int []) ->
 
                         let gid = range.GlobalID0
 
@@ -273,10 +271,10 @@ module internal rec SpMSpV =
                 let bitmap = Array.create<int> rowCount 1
 
                 do!
-                    RunCommand getNonzeroBitmap
+                    runCommand getNonzeroBitmap
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
+                        <| Range1D(Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
                         <| countOfProductsPerRow
                         <| bitmap
 
@@ -292,7 +290,7 @@ module internal rec SpMSpV =
 
                 else
                     let getOutputVector =
-                        <@ fun (range: _1D) (count: int []) (values: 'a []) (positions: int []) (outputValues: 'a []) (outputIndices: int []) ->
+                        <@ fun (range: Range1D) (count: int []) (values: 'a []) (positions: int []) (outputValues: 'a []) (outputIndices: int []) ->
 
                             let gid = range.GlobalID0
 
@@ -304,10 +302,10 @@ module internal rec SpMSpV =
                     let outputIndices = Array.zeroCreate<int> resultLength
 
                     do!
-                        RunCommand getOutputVector
+                        runCommand getOutputVector
                         <| fun kernelPrepare ->
                             kernelPrepare
-                            <| _1D (Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
+                            <| Range1D(Utils.getDefaultGlobalSize rowCount, Utils.defaultWorkGroupSize)
                             <| countOfProductsPerRow
                             <| valuesPerRow
                             <| positions

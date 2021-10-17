@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.COOVector
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOVector.Utilities
@@ -15,7 +14,7 @@ module internal EWiseAdd =
         (rightValues: 'a [])
         (mask: Mask1D option)
         (semiring: ISemiring<'a>)
-        : OpenCLEvaluation<int [] * 'a []> =
+        : ClTask<int [] * 'a []> =
         opencl {
             let! allIndices, allValues = merge leftIndices leftValues rightIndices rightValues mask
 
@@ -32,7 +31,7 @@ module internal EWiseAdd =
         (rightValues: 'a [])
         (mask: Mask1D option)
         (semiring: ISemiring<'a>)
-        : OpenCLEvaluation<int [] * 'a []> =
+        : ClTask<int [] * 'a []> =
         if leftValues.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray rightIndices

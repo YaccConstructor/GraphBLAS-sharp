@@ -1,23 +1,17 @@
 namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.EWiseAdd
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 [<AutoOpen>]
 module internal PreparePositions =
-    let preparePositions
-        (allIndices: int [])
-        (allValues: 'a [])
-        (plus: Expr<'a -> 'a -> 'a>)
-        : OpenCLEvaluation<int []> =
+    let preparePositions (allIndices: int []) (allValues: 'a []) (plus: Expr<'a -> 'a -> 'a>) : ClTask<int []> =
         opencl {
             let length = allValues.Length
 
             let preparePositions =
-                <@ fun (ndRange: _1D) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
+                <@ fun (ndRange: Range1D) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -35,10 +29,10 @@ module internal PreparePositions =
             let rawPositions = Array.create length 1
 
             do!
-                RunCommand preparePositions
+                runCommand preparePositions
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange allIndices allValues rawPositions
 

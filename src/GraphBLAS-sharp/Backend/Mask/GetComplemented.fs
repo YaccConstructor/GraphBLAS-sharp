@@ -1,10 +1,8 @@
 namespace GraphBLAS.FSharp.Backend.Mask
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open Brahma.OpenCL
 
 module internal GetComplemented =
     let mask1D (mask: Mask1D) =
@@ -21,7 +19,7 @@ module internal GetComplemented =
                 let bitmap = Array.create size 1
 
                 let getComplementedBitmap =
-                    <@ fun (range: _1D) (maskIndices: int []) (bitmap: int []) ->
+                    <@ fun (range: Range1D) (maskIndices: int []) (bitmap: int []) ->
 
                         let gid = range.GlobalID0
 
@@ -30,10 +28,10 @@ module internal GetComplemented =
                             bitmap.[maskIdx] <- 0 @>
 
                 do!
-                    RunCommand getComplementedBitmap
+                    runCommand getComplementedBitmap
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
+                        <| Range1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
                         <| mask.Indices
                         <| bitmap
 
@@ -42,7 +40,7 @@ module internal GetComplemented =
                 let complementedIndices = Array.zeroCreate<int> (size - nnz)
 
                 let setPosotions =
-                    <@ fun (range: _1D) (positions: int []) (bitmap: int []) (complementedIndices: int []) ->
+                    <@ fun (range: Range1D) (positions: int []) (bitmap: int []) (complementedIndices: int []) ->
 
                         let gid = range.GlobalID0
 
@@ -50,10 +48,10 @@ module internal GetComplemented =
                             complementedIndices.[positions.[gid]] <- gid @>
 
                 do!
-                    RunCommand setPosotions
+                    runCommand setPosotions
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (Utils.getDefaultGlobalSize size, Utils.defaultWorkGroupSize)
+                        <| Range1D(Utils.getDefaultGlobalSize size, Utils.defaultWorkGroupSize)
                         <| positions
                         <| bitmap
                         <| complementedIndices

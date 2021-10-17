@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 
 module internal RemoveDuplicates =
     let fromArray (array: 'a []) =
@@ -13,7 +12,7 @@ module internal RemoveDuplicates =
                 let inputLength = array.Length
 
                 let getUniqueBitmap =
-                    <@ fun (ndRange: _1D) (inputArray: 'a []) (isUniqueBitmap: int []) ->
+                    <@ fun (ndRange: Range1D) (inputArray: 'a []) (isUniqueBitmap: int []) ->
 
                         let i = ndRange.GlobalID0
 
@@ -22,7 +21,7 @@ module internal RemoveDuplicates =
                             isUniqueBitmap.[i] <- 0 @>
 
                 let setPositions =
-                    <@ fun (ndRange: _1D) (inputArray: 'a []) (positions: int []) (outputArray: 'a []) ->
+                    <@ fun (ndRange: Range1D) (inputArray: 'a []) (positions: int []) (outputArray: 'a []) ->
 
                         let i = ndRange.GlobalID0
 
@@ -32,10 +31,10 @@ module internal RemoveDuplicates =
                 let bitmap = Array.create inputLength 1
 
                 do!
-                    RunCommand getUniqueBitmap
+                    runCommand getUniqueBitmap
                     <| fun kernelPrepare ->
                         let range =
-                            _1D (Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
+                            Range1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
 
                         kernelPrepare range array bitmap
 
@@ -46,10 +45,10 @@ module internal RemoveDuplicates =
                 let outputArray = Array.zeroCreate resultLength
 
                 do!
-                    RunCommand setPositions
+                    runCommand setPositions
                     <| fun kernelPrepare ->
                         let range =
-                            _1D (Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
+                            Range1D(Utils.getDefaultGlobalSize inputLength, Utils.defaultWorkGroupSize)
 
                         kernelPrepare range array positions outputArray
 

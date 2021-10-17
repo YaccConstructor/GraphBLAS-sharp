@@ -1,10 +1,8 @@
 namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open Brahma.OpenCL
 
 module internal rec Convert =
     let fromCoo (matrix: COOMatrix<'a>) =
@@ -34,7 +32,7 @@ module internal rec Convert =
             let nnz = rowIndices.Length
 
             let getUniqueBitmap =
-                <@ fun (ndRange: _1D) (inputArray: int []) (isUniqueBitmap: int []) ->
+                <@ fun (ndRange: Range1D) (inputArray: int []) (isUniqueBitmap: int []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -44,10 +42,10 @@ module internal rec Convert =
             let bitmap = Array.create nnz 1
 
             do!
-                RunCommand getUniqueBitmap
+                runCommand getUniqueBitmap
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
+                    <| Range1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
                     <| rowIndices
                     <| bitmap
 
@@ -56,7 +54,7 @@ module internal rec Convert =
             let totalSum = totalSum.[0]
 
             let calcHyperSparseRows =
-                <@ fun (ndRange: _1D) (rowsIndices: int []) (bitmap: int []) (positions: int []) (nonZeroRowsIndices: int []) (nonZeroRowsPointers: int []) ->
+                <@ fun (ndRange: Range1D) (rowsIndices: int []) (bitmap: int []) (positions: int []) (nonZeroRowsIndices: int []) (nonZeroRowsPointers: int []) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -68,10 +66,10 @@ module internal rec Convert =
             let nonZeroRowsPointers = Array.zeroCreate totalSum
 
             do!
-                RunCommand calcHyperSparseRows
+                runCommand calcHyperSparseRows
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
+                    <| Range1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
                     <| rowIndices
                     <| bitmap
                     <| positions
@@ -79,7 +77,7 @@ module internal rec Convert =
                     <| nonZeroRowsPointers
 
             let calcNnzPerRowSparse =
-                <@ fun (ndRange: _1D) (nonZeroRowsPointers: int []) (nnzPerRowSparse: int []) ->
+                <@ fun (ndRange: Range1D) (nonZeroRowsPointers: int []) (nnzPerRowSparse: int []) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -93,15 +91,15 @@ module internal rec Convert =
             let nnzPerRowSparse = Array.zeroCreate totalSum
 
             do!
-                RunCommand calcNnzPerRowSparse
+                runCommand calcNnzPerRowSparse
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
+                    <| Range1D(Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
                     <| nonZeroRowsPointers
                     <| nnzPerRowSparse
 
             let expandSparseNnzPerRow =
-                <@ fun (ndRange: _1D) (nnzPerRowSparse: int []) (nonZeroRowsIndices: int []) (expandedNnzPerRow: int []) ->
+                <@ fun (ndRange: Range1D) (nnzPerRowSparse: int []) (nonZeroRowsIndices: int []) (expandedNnzPerRow: int []) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -111,10 +109,10 @@ module internal rec Convert =
             let expandedNnzPerRow = Array.zeroCreate (rowCount + 1)
 
             do!
-                RunCommand expandSparseNnzPerRow
+                runCommand expandSparseNnzPerRow
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| _1D (Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
+                    <| Range1D(Utils.getDefaultGlobalSize totalSum, Utils.defaultWorkGroupSize)
                     <| nnzPerRowSparse
                     <| nonZeroRowsIndices
                     <| expandedNnzPerRow

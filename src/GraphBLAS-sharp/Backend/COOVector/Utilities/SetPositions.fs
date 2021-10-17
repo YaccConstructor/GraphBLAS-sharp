@@ -1,18 +1,16 @@
 namespace GraphBLAS.FSharp.Backend.COOVector.Utilities
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal SetPositions =
-    let setPositions (allIndices: int []) (allValues: 'a []) (positions: int []) : OpenCLEvaluation<int [] * 'a []> =
+    let setPositions (allIndices: int []) (allValues: 'a []) (positions: int []) : ClTask<int [] * 'a []> =
         opencl {
             let prefixSumArrayLength = positions.Length
 
             let setPositions =
-                <@ fun (ndRange: _1D) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (prefixSumArrayBuffer: int []) (resultIndicesBuffer: int []) (resultValuesBuffer: 'a []) ->
+                <@ fun (ndRange: Range1D) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (prefixSumArrayBuffer: int []) (resultIndicesBuffer: int []) (resultValuesBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -37,10 +35,10 @@ module internal SetPositions =
                 Array.create resultLength Unchecked.defaultof<'a>
 
             do!
-                RunCommand setPositions
+                runCommand setPositions
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange allIndices allValues positions resultIndices resultValues
 

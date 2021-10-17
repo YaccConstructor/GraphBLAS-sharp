@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 
 module internal rec Copy =
     let copyArray (inputArray: 'a []) =
@@ -15,7 +14,7 @@ module internal rec Copy =
             let inputArrayLength = inputArray.Length
 
             let copy =
-                <@ fun (ndRange: _1D) (inputArrayBuffer: 'a []) (outputArrayBuffer: 'a []) ->
+                <@ fun (ndRange: Range1D) (inputArrayBuffer: 'a []) (outputArrayBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -25,10 +24,10 @@ module internal rec Copy =
             let outputArray = Array.zeroCreate inputArray.Length
 
             do!
-                RunCommand copy
+                runCommand copy
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize inputArray.Length, Utils.defaultWorkGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize inputArray.Length, Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange inputArray outputArray
 

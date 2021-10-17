@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 
 module internal rec Replicate =
     let run (count: int) (inputArray: 'a []) =
@@ -18,7 +17,7 @@ module internal rec Replicate =
             let outputArrayLength = inputArrayLength * count
 
             let replicate =
-                <@ fun (ndRange: _1D) (inputArrayBuffer: 'a []) (outputArrayBuffer: 'a []) ->
+                <@ fun (ndRange: Range1D) (inputArrayBuffer: 'a []) (outputArrayBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -28,10 +27,10 @@ module internal rec Replicate =
             let outputArray = Array.zeroCreate outputArrayLength
 
             do!
-                RunCommand replicate
+                runCommand replicate
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize outputArray.Length, Utils.defaultWorkGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize outputArray.Length, Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange inputArray outputArray
 

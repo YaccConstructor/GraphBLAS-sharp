@@ -1,13 +1,11 @@
 namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.AssignSubVector
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal Intersect =
-    let intersect (leftIndices: int []) (leftValues: 'a []) (rightIndices: int []) : OpenCLEvaluation<bool [] * 'a []> =
+    let intersect (leftIndices: int []) (leftValues: 'a []) (rightIndices: int []) : ClTask<bool [] * 'a []> =
         opencl {
             let workGroupSize = Utils.defaultWorkGroupSize
             let firstSide = leftValues.Length
@@ -15,7 +13,7 @@ module internal Intersect =
             let sumOfSides = firstSide + secondSide
 
             let merge =
-                <@ fun (ndRange: _1D) (firstIndicesBuffer: int []) (firstValuesBuffer: 'a []) (secondIndicesBuffer: int []) (bitmapBuffer: bool []) (resultValuesBuffer: 'a []) ->
+                <@ fun (ndRange: Range1D) (firstIndicesBuffer: int []) (firstValuesBuffer: 'a []) (secondIndicesBuffer: int []) (bitmapBuffer: bool []) (resultValuesBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -131,10 +129,10 @@ module internal Intersect =
                 Array.create secondSide Unchecked.defaultof<'a>
 
             do!
-                RunCommand merge
+                runCommand merge
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
 
                     kernelPrepare ndRange leftIndices leftValues rightIndices bitmap resultValues
 

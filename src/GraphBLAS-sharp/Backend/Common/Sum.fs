@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
 module internal rec Sum =
@@ -11,13 +10,13 @@ module internal rec Sum =
                 let result = [| zero |]
 
                 let bruh =
-                    <@ fun (range: _1D) (array: 'a []) ->
+                    <@ fun (range: Range1D) (array: 'a []) ->
                         let mutable a = 0
                         a <- 0 @>
 
                 do!
-                    RunCommand bruh
-                    <| fun kernelPrepare -> kernelPrepare <| _1D (64, 64) <| result
+                    runCommand bruh
+                    <| fun kernelPrepare -> kernelPrepare <| Range1D(64, 64) <| result
 
                 return result
             }
@@ -70,7 +69,7 @@ module internal rec Sum =
             let workGroupSize = Utils.defaultWorkGroupSize
 
             let scan =
-                <@ fun (ndRange: _1D) (resultBuffer: 'a []) (verticesBuffer: 'a []) ->
+                <@ fun (ndRange: Range1D) (resultBuffer: 'a []) (verticesBuffer: 'a []) ->
 
                     let i = ndRange.GlobalID0
                     let localID = ndRange.LocalID0
@@ -99,10 +98,10 @@ module internal rec Sum =
                         verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID] @>
 
             do!
-                RunCommand scan
+                runCommand scan
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
 
                     kernelPrepare ndRange inputArray vertices
         }

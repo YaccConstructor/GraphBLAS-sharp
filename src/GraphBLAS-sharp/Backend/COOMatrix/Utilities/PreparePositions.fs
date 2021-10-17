@@ -1,41 +1,43 @@
 namespace GraphBLAS.FSharp.Backend.COOMatrix.Utilities
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp.OpenCL
+open OpenCL.Net
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
 module internal PreparePositions =
-    let preparePositions (allRows: int []) (allColumns: int []) (allValues: 'a []) (plus: Expr<'a -> 'a -> 'a>) =
-        opencl {
+    let preparePositions<'a when 'a: struct> (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
+
+        let preparePositions =
+            <@ fun (ndRange: Range1D) length (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (rawPositionsBuffer: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if (i < length - 1
+                    && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
+                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
+                    rawPositionsBuffer.[i] <- 0
+                    allValuesBuffer.[i + 1] <- (%opAdd) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                else
+                    (rawPositionsBuffer.[i] <- 1) @>
+
+        let kernel =
+            clContext.CreateClKernel(preparePositions)
+
+        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) ->
             let length = allValues.Length
 
-            let preparePositions =
-                <@ fun (ndRange: _1D) (allRowsBuffer: int []) (allColumnsBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
+            let ndRange =
+                Range1D(Utils.getDefaultGlobalSize (length - 1), workGroupSize)
 
-                    let i = ndRange.GlobalID0
+            let rawPositionsGpu =
+                clContext.CreateClArray<int>(length, hostAccessMode = HostAccessMode.NotAccessible)
 
-                    if i < length - 1
-                       && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
-                       && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1] then
-                        rawPositionsBuffer.[i] <- 0
-                        allValuesBuffer.[i + 1] <- (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1] @>
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.SetArguments ndRange length allRows allColumns allValues rawPositionsGpu)
+            )
 
-            //Drop explicit zeroes
-            // let localResultBuffer = (%plus) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-            // if localResultBuffer = zero then rawPositionsBuffer.[i + 1] <- 0 else allValuesBuffer.[i + 1] <- localResultBuffer
-
-            let rawPositions = Array.create length 1
-
-            do!
-                RunCommand preparePositions
-                <| fun kernelPrepare ->
-                    let ndRange =
-                        _1D (Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
-
-                    kernelPrepare ndRange allRows allColumns allValues rawPositions
-
-            return rawPositions
-        }
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            rawPositionsGpu

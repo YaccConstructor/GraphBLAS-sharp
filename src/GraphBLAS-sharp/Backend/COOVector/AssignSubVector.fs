@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.COOVector
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.COOVector.Utilities
 open GraphBLAS.FSharp.Backend.COOVector.Utilities.AssignSubVector
@@ -13,7 +12,7 @@ module internal AssignSubVector =
         (rightIndices: int [])
         (rightValues: 'a [])
         (maskIndices: int [])
-        : OpenCLEvaluation<int [] * 'a []> =
+        : ClTask<int [] * 'a []> =
         opencl {
             let! bitmap, maskValues = intersect rightIndices rightValues maskIndices
 
@@ -30,7 +29,7 @@ module internal AssignSubVector =
         (rightIndices: int [])
         (rightValues: 'a [])
         (maskIndices: int [])
-        : OpenCLEvaluation<int [] * 'a []> =
+        : ClTask<int [] * 'a []> =
         if leftValues.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray rightIndices

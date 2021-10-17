@@ -31,6 +31,7 @@
     <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />
     <Compile Include="Backend/COOMatrix/Utilities/SetPositions.fs" />
+    <Compile Include="Backend/COOMatrix/COOMatrix.fs" />
     <Compile Include="Backend/COOMatrix/GetTuples.fs" />
     <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
     <Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />

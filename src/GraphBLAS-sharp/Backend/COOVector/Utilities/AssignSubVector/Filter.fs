@@ -1,8 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.COOVector.Utilities.AssignSubVector
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 [<AutoOpen>]
@@ -13,7 +11,7 @@ module internal Filter =
         (rightIndices: int [])
         (rightValues: 'a [])
         (bitmap: bool [])
-        : OpenCLEvaluation<int [] * 'a [] * int []> =
+        : ClTask<int [] * 'a [] * int []> =
         opencl {
             let workGroupSize = Utils.defaultWorkGroupSize
             let firstSide = leftValues.Length
@@ -21,7 +19,7 @@ module internal Filter =
             let sumOfSides = firstSide + secondSide
 
             let merge =
-                <@ fun (ndRange: _1D) (firstIndicesBuffer: int []) (firstValuesBuffer: 'a []) (secondIndicesBuffer: int []) (secondValuesBuffer: 'a []) (bitmapBuffer: bool []) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
+                <@ fun (ndRange: Range1D) (firstIndicesBuffer: int []) (firstValuesBuffer: 'a []) (secondIndicesBuffer: int []) (secondValuesBuffer: 'a []) (bitmapBuffer: bool []) (allIndicesBuffer: int []) (allValuesBuffer: 'a []) (rawPositionsBuffer: int []) ->
 
                     let i = ndRange.GlobalID0
 
@@ -143,10 +141,10 @@ module internal Filter =
             let rawPositions = Array.create sumOfSides 1
 
             do!
-                RunCommand merge
+                runCommand merge
                 <| fun kernelPrepare ->
                     let ndRange =
-                        _1D (Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+                        Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
 
                     kernelPrepare
                         ndRange

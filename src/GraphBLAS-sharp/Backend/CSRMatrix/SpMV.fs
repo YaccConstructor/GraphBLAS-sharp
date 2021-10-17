@@ -1,9 +1,7 @@
 namespace rec GraphBLAS.FSharp.Backend.CSRMatrix
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp
-open Brahma.OpenCL
 
 // let pcsr (matrix: CSRMatrix<'a>) (vector: BitmapVector<'a>) mask (semiring: ISemiring<'a>) = opencl {
 //     let (ClosedBinaryOp plus) = semiring.Plus
