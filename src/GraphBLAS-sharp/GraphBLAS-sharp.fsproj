@@ -16,12 +16,9 @@
     <Compile Include="Objects/Scalar.fs" />
     <Compile Include="Objects/Masks.fs" />
     <Compile Include="Backend/Common/Utils.fs" />
-    <Compile Include="Backend/Common/Copy.fs" />
+    <Compile Include="Backend/Common/ClArray.fs" />    
     <Compile Include="Backend/Common/Sum.fs" />
-    <Compile Include="Backend/Common/PrefixSum.fs" />
-    <Compile Include="Backend/Common/BitonicSort.fs" />
-    <Compile Include="Backend/Common/Replicate.fs" />
-    <Compile Include="Backend/Common/RemoveDuplicates.fs" />
+    <Compile Include="Backend/Common/BitonicSort.fs" />        
     <Compile Include="Backend/CSRMatrix/Convert.fs" />
     <Compile Include="Backend/CSRMatrix/GetTuples.fs" />
     <Compile Include="Backend/CSRMatrix/SpGEMM.fs" />
@@ -33,7 +30,6 @@
     <Compile Include="Backend/COOMatrix/Utilities/SetPositions.fs" />
     <Compile Include="Backend/COOMatrix/COOMatrix.fs" />
     <Compile Include="Backend/COOMatrix/GetTuples.fs" />
-    <Compile Include="Backend/COOMatrix/EWiseAdd.fs" />
     <Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
     <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Intersect.fs" />
     <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Filter.fs" />

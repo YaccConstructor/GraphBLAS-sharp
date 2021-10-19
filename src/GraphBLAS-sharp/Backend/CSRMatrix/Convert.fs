@@ -16,8 +16,9 @@ module internal rec Convert =
                       Values = [||] }
             else
                 let! compressedRows = compressRows matrix.RowCount matrix.Rows
-                let! cols = Copy.copyArray matrix.Columns
-                let! vals = Copy.copyArray matrix.Values
+                failwith "FIX ME!"
+                let cols = [||] //let! cols = Copy.copyArray matrix.Columns
+                let vals = [||] //let! vals = Copy.copyArray matrix.Values
 
                 return
                     { RowCount = matrix.RowCount
@@ -49,10 +50,12 @@ module internal rec Convert =
                     <| rowIndices
                     <| bitmap
 
-            let! (positions, totalSum) = PrefixSum.runExclude bitmap
             failwith "FIX ME! And rewrite."
+            //let! (positions, totalSum) = GraphBLAS.FSharp.Backend.ClArray.prefixSumExclude bitmap
             //let! _ = ToHost totalSum
-            let totalSum = totalSum.[0]
+            //let totalSum = totalSum.[0]
+            let positions = [||]
+            let totalSum = 0
 
             let calcHyperSparseRows =
                 <@ fun (ndRange: Range1D) (rowsIndices: int []) (bitmap: int []) (positions: int []) (nonZeroRowsIndices: int []) (nonZeroRowsPointers: int []) ->
@@ -118,6 +121,8 @@ module internal rec Convert =
                     <| nonZeroRowsIndices
                     <| expandedNnzPerRow
 
-            let! (rowPointers, _) = PrefixSum.runInclude expandedNnzPerRow
-            return rowPointers
+            failwith "FIX ME! And rewrite."
+            //let! (rowPointers, _) = PrefixSum.runInclude expandedNnzPerRow
+            //return rowPointers
+            return [||]
         }

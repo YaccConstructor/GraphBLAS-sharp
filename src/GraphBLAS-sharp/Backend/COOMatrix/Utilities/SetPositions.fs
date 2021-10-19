@@ -25,7 +25,7 @@ module internal SetPositions =
         let kernel = clContext.CreateClKernel(setPositions)
 
         let sum =
-            PrefixSum.runExcludeInplace clContext workGroupSize
+            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext
 
         let resultLength = Array.zeroCreate 1
 
@@ -34,7 +34,8 @@ module internal SetPositions =
 
             let resultLengthGpu = clContext.CreateClArray<_>(1)
 
-            let _, r = sum processor positions resultLengthGpu
+            let _, r =
+                sum processor workGroupSize positions resultLengthGpu
 
             let resultLength =
                 let res =
@@ -66,7 +67,7 @@ module internal SetPositions =
                 )
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
+                Range1D(Utils.getDefaultGlobalSize positions.Length, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments

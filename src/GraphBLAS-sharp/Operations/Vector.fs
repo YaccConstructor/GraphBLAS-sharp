@@ -63,8 +63,9 @@ module Vector =
                 if vector.Values.Length = 0 then
                     return { Indices = [||]; Values = [||] }
                 else
-                    let! ind = Copy.copyArray vector.Indices
-                    let! vals = Copy.copyArray vector.Values
+                    failwith "FIX ME!"
+                    let ind = [||] //let! ind = Copy.copyArray vector.Indices
+                    let vals = [||] //let! vals = Copy.copyArray vector.Values
 
                     return { Indices = ind; Values = vals }
             }
@@ -74,7 +75,8 @@ module Vector =
         match vector with
         | VectorCOO vector ->
             opencl {
-                let! indices = Copy.copyArray vector.Indices
+                failwith "FIX ME!"
+                let indices = [||] //let! indices = Copy.copyArray vector.Indices
                 return Mask1D(indices, vector.Size, false)
             }
         |> EvalGB.fromCl
@@ -83,7 +85,8 @@ module Vector =
         match vector with
         | VectorCOO vector ->
             opencl {
-                let! indices = Copy.copyArray vector.Indices
+                failwith "FIX ME!"
+                let indices = [||] //let! indices = Copy.copyArray vector.Indices
 
                 let! complementedMask =
                     Mask.GetComplemented.mask1D
