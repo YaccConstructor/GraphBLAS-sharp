@@ -3,7 +3,7 @@ namespace rec GraphBLAS.FSharp.Benchmarks
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
@@ -31,7 +31,7 @@ type CommonConfig() =
                 .WithInvocationCount(3)
         ) |> ignore
 
-type ClContext = ClContext of OpenCLEvaluationContext
+type ClContext = ClContext of Brahma.FSharp.OpenCL.ClContext
 with
     override this.ToString() =
         let mutable e = ErrorCode.Unknown

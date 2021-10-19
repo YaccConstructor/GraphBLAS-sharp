@@ -165,13 +165,14 @@ module internal PrefixSum =
 
             inputArray, totalSum
 
-(*
+
     let runExclude (inputArray: int []) =
         opencl {
             let! copiedArray = Copy.copyArray inputArray
 
             let totalSum = [| 0 |]
-            do! runExcludeInplace copiedArray totalSum
+            failwith "FIX ME! And rewrite."
+            //do! runExcludeInplace copiedArray totalSum
 
             return (copiedArray, totalSum)
         }
@@ -184,13 +185,14 @@ module internal PrefixSum =
                 let! copiedArray = Copy.copyArray inputArray
 
                 let totalSum = [| 0 |]
-                do! runExcludeInplace copiedArray totalSum
+                failwith "FIX ME! And rewrite."
+                //do! runExcludeInplace copiedArray totalSum
 
                 let wgSize = Utils.defaultWorkGroupSize
                 let length = inputArray.Length
 
                 let kernel =
-                    <@ fun (range: _1D) (array: int []) (totalSum: int []) (outputArray: int []) ->
+                    <@ fun (range: Range1D) (array: int []) (totalSum: int []) (outputArray: int []) ->
 
                         let gid = range.GlobalID0
 
@@ -202,14 +204,13 @@ module internal PrefixSum =
                 let outputArray = Array.zeroCreate length
 
                 do!
-                    RunCommand kernel
+                    runCommand kernel
                     <| fun kernelPrepare ->
                         kernelPrepare
-                        <| _1D (Utils.getDefaultGlobalSize length, wgSize)
+                        <| Range1D(Utils.getDefaultGlobalSize length, wgSize)
                         <| copiedArray
                         <| totalSum
                         <| outputArray
 
                 return outputArray, totalSum
         }
-*)

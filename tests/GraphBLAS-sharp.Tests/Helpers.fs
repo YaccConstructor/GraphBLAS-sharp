@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Tests
 open FsCheck
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message

@@ -2,13 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp.OpenCL
 
-module internal rec Copy =
-    let copyArray (inputArray: 'a []) =
-        if inputArray.Length = 0 then
-            opencl { return [||] }
-        else
-            copyNonEmpty inputArray
-
+module internal Copy =
     let private copyNonEmpty (inputArray: 'a []) =
         opencl {
             let inputArrayLength = inputArray.Length
@@ -33,3 +27,10 @@ module internal rec Copy =
 
             return outputArray
         }
+
+
+    let copyArray (inputArray: 'a []) =
+        if inputArray.Length = 0 then
+            opencl { return [||] }
+        else
+            copyNonEmpty inputArray

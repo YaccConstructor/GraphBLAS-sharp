@@ -152,7 +152,8 @@ module internal rec Transpose =
                     <| bitmap
 
             let! (positions, totalSum) = PrefixSum.runExclude bitmap
-            let! _ = ToHost totalSum
+            failwith "FIX ME! And rewrite."
+            //let! _ = ToHost totalSum
             let totalSum = totalSum.[0]
 
             let calcHyperSparseRows =

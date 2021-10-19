@@ -8,13 +8,13 @@ open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 
 let logger = Log.create "Matrix.Vxm.Tests"
 
 type OperationCase =
-    { ClContext: OpenCLEvaluationContext
+    { ClContext: ClContext
       VectorCase: VectorFormat
       MatrixCase: MatrixFromat
       MaskCase: MaskType }

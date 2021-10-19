@@ -3,8 +3,7 @@ module Backend.PrefixSum
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 
 let logger = Log.create "PrefixSum.Tests"

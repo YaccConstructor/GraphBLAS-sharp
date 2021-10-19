@@ -8,8 +8,7 @@ open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 open GraphBLAS.FSharp.Backend.Common
 
@@ -28,6 +27,7 @@ let testCases =
                   do! BitonicSort.sortKeyValuesInplace keys values
 
                   if array.Length <> 0 then
+
                       let! _ = ToHost keys
                       let! _ = ToHost values
                       ()

@@ -117,7 +117,8 @@ module internal rec SpMSpV =
                         <| bitmap
 
                 let! (positions, totalSum) = PrefixSum.runExclude bitmap
-                let! _ = ToHost totalSum
+                failwith "FIX ME! And rewrite."
+                //let! _ = ToHost totalSum
                 let resultLength = totalSum.[0]
 
                 if resultLength = 0 then
@@ -279,7 +280,8 @@ module internal rec SpMSpV =
                         <| bitmap
 
                 let! (positions, totalSum) = PrefixSum.runExclude bitmap
-                let! _ = ToHost totalSum
+                failwith "FIX ME! And rewrite."
+                //let! _ = ToHost totalSum
                 let resultLength = totalSum.[0]
 
                 if resultLength = 0 then

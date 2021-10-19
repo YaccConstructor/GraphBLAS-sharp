@@ -83,19 +83,22 @@ module Matrix =
                     if matrix.RowPointers.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost matrix.RowPointers
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.RowPointers
 
                 let! _ =
                     if matrix.ColumnIndices.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost matrix.ColumnIndices
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.ColumnIndices
 
                 let! _ =
                     if matrix.Values.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost matrix.Values
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.Values
 
                 return MatrixCSR matrix
             }
@@ -215,11 +218,11 @@ module Matrix =
         (rightMatrix: Matrix<'a>)
         : GraphblasEvaluation<Matrix<'a>> =
         match leftMatrix, rightMatrix with
-        | MatrixCOO left, MatrixCOO right ->
-            opencl {
-                let! result = COOMatrix.EWiseAdd.run left right None monoid
-                return MatrixCOO result
-            }
+        | MatrixCOO left, MatrixCOO right -> failwith "FIX ME! And rewrite."
+        //opencl {
+        //    let! result = COOMatrix.EWiseAdd.run left right None monoid
+        //    return MatrixCOO result
+        //}
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
@@ -346,19 +349,22 @@ module MatrixTuples =
                 if matrixTuples.RowIndices.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost matrixTuples.RowIndices
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.RowIndices
 
             let! _ =
                 if matrixTuples.ColumnIndices.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost matrixTuples.ColumnIndices
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.ColumnIndices
 
             let! _ =
                 if matrixTuples.Values.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost matrixTuples.Values
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.Values
 
             return ()
         }

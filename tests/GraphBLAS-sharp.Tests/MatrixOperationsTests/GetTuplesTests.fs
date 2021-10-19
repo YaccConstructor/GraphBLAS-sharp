@@ -6,13 +6,13 @@ open GraphBLAS.FSharp.Tests
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 
 let logger = Log.create "Matrix.GetTuples.Tests"
 
 type OperationCase =
-    { ClContext: OpenCLEvaluationContext
+    { ClContext: ClContext
       MatrixCase: MatrixFromat }
 
 let testCases =

@@ -1,10 +1,7 @@
 open Expecto
 
-open Brahma.OpenCL
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
-open Brahma.FSharp.OpenCL.Core
 open OpenCL.Net
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Algorithms

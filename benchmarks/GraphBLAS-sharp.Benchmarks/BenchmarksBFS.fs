@@ -8,7 +8,7 @@ open BenchmarkDotNet.Columns
 open System.IO
 open System
 open System.Text.RegularExpressions
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open QuickGraph

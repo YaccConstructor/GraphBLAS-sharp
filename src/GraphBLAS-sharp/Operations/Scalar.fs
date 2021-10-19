@@ -22,7 +22,8 @@ module Scalar =
         match scalar with
         | ScalarWrapped scalar ->
             opencl {
-                let! _ = ToHost scalar.Value
+                failwith "FIX ME!"
+                //let! _ = ToHost scalar.Value
                 return ()
             }
         |> EvalGB.fromCl

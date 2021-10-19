@@ -104,13 +104,15 @@ module Vector =
                     if vector.Indices.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost vector.Indices
+                        failwith "FIX ME!"
+                //ToHost vector.Indices
 
                 let! _ =
                     if vector.Values.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost vector.Values
+                        failwith "FIX ME!"
+                //ToHost vector.Values
 
                 return ()
             }
@@ -124,13 +126,15 @@ module Vector =
                     if vector.Indices.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost vector.Indices
+                        failwith "FIX ME!"
+                //ToHost vector.Indices
 
                 let! _ =
                     if vector.Values.Length = 0 then
                         opencl { return [||] }
                     else
-                        ToHost vector.Values
+                        failwith "FIX ME!"
+                //ToHost vector.Values
 
                 return VectorCOO vector
             }
@@ -274,13 +278,15 @@ module VectorTuples =
                 if vectorTuples.Indices.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost vectorTuples.Indices
+                    failwith "FIX ME!"
+            //ToHost vectorTuples.Indices
 
             let! _ =
                 if vectorTuples.Values.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost vectorTuples.Values
+                    failwith "FIX ME!"
+            //ToHost vectorTuples.Values
 
             return ()
         }
@@ -292,13 +298,15 @@ module VectorTuples =
                 if vectorTuples.Indices.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost vectorTuples.Indices
+                    failwith "FIX ME!"
+            //ToHost vectorTuples.Indices
 
             let! _ =
                 if vectorTuples.Values.Length = 0 then
                     opencl { return [||] }
                 else
-                    ToHost vectorTuples.Values
+                    failwith "FIX ME!"
+            //ToHost vectorTuples.Values
 
             return vectorTuples
         }

@@ -2,8 +2,7 @@ namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 
 module ShortestPath =
     // FIXME Unsupported call: min
@@ -16,9 +15,10 @@ module ShortestPath =
 
             // TODO terminate earlier if we reach a fixed point
             for _ = 1 to vertexCount - 1 do
-                do!
-                    Matrix.mxv MinAdd.float transposed distance
-                    >>= Vector.assignVector distance
+                failwith "FIX ME! And rewrite."
+            //do!
+            //  Matrix.mxv MinAdd.float transposed distance
+            //  >>= Vector.assignVector distance
 
             return distance
         }

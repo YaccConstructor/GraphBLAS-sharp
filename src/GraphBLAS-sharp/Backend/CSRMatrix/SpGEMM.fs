@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.CSRMatrix
 
-// open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-// open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+// open Brahma.FSharp.OpenCL
 // open GraphBLAS.FSharp
 // open GraphBLAS.FSharp.Backend.Common
 // open Brahma.OpenCL

@@ -39,7 +39,8 @@ module internal RemoveDuplicates =
                         kernelPrepare range array bitmap
 
                 let! (positions, sum) = PrefixSum.runExclude bitmap
-                let! _ = ToHost sum
+                failwith "FIX ME! And rewrite."
+                //let! _ = ToHost sum
                 let resultLength = sum.[0]
 
                 let outputArray = Array.zeroCreate resultLength
