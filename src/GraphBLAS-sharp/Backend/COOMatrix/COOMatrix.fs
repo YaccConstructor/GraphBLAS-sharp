@@ -4,6 +4,10 @@ open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.COOMatrix.Utilities
 open Microsoft.FSharp.Quotations
 
+type TupleMatrix<'elem when 'elem: struct> =
+    { RowIndices: ClArray<int>
+      ColumnIndices: ClArray<int>
+      Values: ClArray<'elem> }
 
 type COOMatrix<'elem when 'elem: struct> =
     { RowCount: int
@@ -50,4 +54,20 @@ module COOMatrix =
               ColumnCount = matrixLeft.ColumnCount
               Rows = resultRows
               Columns = resultColumns
+              Values = resultValues }
+    
+    let getTuples (clContext: ClContext) =
+        
+        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+
+        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: COOMatrix<'a>) ->
+                
+            let resultRows = copy processor workGroupSize matrix.Rows
+            let resultColumns = copy processor workGroupSize matrix.Columns
+            let resultValues = copyData processor workGroupSize matrix.Values
+
+            
+            { RowIndices = resultRows
+              ColumnIndices = resultColumns
               Values = resultValues }
