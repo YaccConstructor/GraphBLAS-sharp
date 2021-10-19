@@ -15,10 +15,10 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
-    <Compile Include="BenchmarksBFS.fs" />
+    <!--Compile Include="BenchmarksBFS.fs" /-->
     <Compile Include="BenchmarksMxv.fs" />
     <Compile Include="BenchmarksEWiseAdd.fs" />
-    <Compile Include="BenchmarksTranspose.fs" />
+    <!--Compile Include="BenchmarksTranspose.fs" /-->
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

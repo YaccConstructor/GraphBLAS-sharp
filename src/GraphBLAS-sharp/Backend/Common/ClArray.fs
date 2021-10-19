@@ -46,7 +46,7 @@ module ClArray =
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArray(outputArrayLength)
+                clContext.CreateClArray outputArrayLength
 
             let ndRange =
                 Range1D(Utils.getDefaultGlobalSize outputArray.Length, workGroupSize)
@@ -72,7 +72,7 @@ module ClArray =
                         resultBuffer.[i]
                         + verticesBuffer.[i / bunchLength] @>
 
-        let kernel = clContext.CreateClKernel(update)
+        let kernel = clContext.CreateClKernel update
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
             let ndRange =
@@ -146,7 +146,7 @@ module ClArray =
                 if i < inputArrayLength then
                     resultBuffer.[i] <- resultLocalBuffer.[localID] @>
 
-        let kernel = clContext.CreateClKernel(scan)
+        let kernel = clContext.CreateClKernel scan
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
             let ndRange =

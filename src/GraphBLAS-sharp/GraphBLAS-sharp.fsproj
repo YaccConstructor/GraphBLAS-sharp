@@ -20,16 +20,13 @@
     <Compile Include="Backend/Common/Sum.fs" />
     <Compile Include="Backend/Common/BitonicSort.fs" />        
     <Compile Include="Backend/CSRMatrix/Convert.fs" />
-    <Compile Include="Backend/CSRMatrix/GetTuples.fs" />
+    <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <Compile Include="Backend/CSRMatrix/SpGEMM.fs" />
-    <Compile Include="Backend/CSRMatrix/SpMSpV.fs" />
+    <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <Compile Include="Backend/CSRMatrix/SpMV.fs" />
-    <Compile Include="Backend/CSRMatrix/Transpose.fs" />
-    <Compile Include="Backend/COOMatrix/Utilities/Merge.fs" />
-    <Compile Include="Backend/COOMatrix/Utilities/PreparePositions.fs" />
-    <Compile Include="Backend/COOMatrix/Utilities/SetPositions.fs" />
+    <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->
     <Compile Include="Backend/COOMatrix/COOMatrix.fs" />
-    <Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
+    <!--Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
     <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Intersect.fs" />
     <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Filter.fs" />
     <Compile Include="Backend/COOVector/Utilities/AssignSubVector/PreparePositions.fs" />
@@ -39,10 +36,10 @@
     <Compile Include="Backend/COOVector/Utilities/FillSubVector/PreparePositions.fs" />
     <Compile Include="Backend/COOVector/EWiseAdd.fs" />
     <Compile Include="Backend/COOVector/FillSubVector.fs" />
-    <Compile Include="Backend/COOVector/AssignSubVector.fs" />
-    <Compile Include="Backend/Mask/GetComplemented.fs" />
-    <Compile Include="Operations/Matrix.fs" />
-    <Compile Include="Operations/Vector.fs" />
+    <Compile Include="Backend/COOVector/AssignSubVector.fs" /-->
+    <!--Compile Include="Backend/Mask/GetComplemented.fs" /-->
+    <!--Compile Include="Operations/Matrix.fs" /-->
+    <!--Compile Include="Operations/Vector.fs" /-->
     <Compile Include="Operations/Scalar.fs" />
     <Compile Include="IO/MtxReader.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
@@ -51,10 +48,10 @@
     <Compile Include="Predefined/Semirings/AnyAll.fs" />
     <Compile Include="Predefined/Semirings/AddMult.fs" />
     <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <Compile Include="Algorithms/BFS.fs" />
+    <!--Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/ShortestPath.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
-    <Compile Include="Algorithms/BetweennessCentrality.fs" />
+    <Compile Include="Algorithms/BetweennessCentrality.fs" /-->
     <Content Include="YC.OpenCL.NET.dll.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
