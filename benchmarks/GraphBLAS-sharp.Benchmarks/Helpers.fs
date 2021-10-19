@@ -161,5 +161,7 @@ module Utils =
                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
-                OpenCLEvaluationContext(platformName, deviceType) |> ClContext
+                failwith "fix me"
+                //OpenCLEvaluationContext(platformName, deviceType) |> ClContext
+                Brahma.FSharp.OpenCL.ClContext () |> ClContext
             )

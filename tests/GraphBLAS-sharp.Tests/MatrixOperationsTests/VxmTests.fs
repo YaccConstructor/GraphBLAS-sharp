@@ -98,12 +98,12 @@ let correctnessGenericTest<'a when 'a: struct>
                 let! result =
                     match case.MaskCase with
                     | NoMask -> Matrix.vxm semiring vector matrix
-                    | Regular ->
-                        Vector.mask mask
-                        >>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
-                    | Complemented ->
-                        Vector.complemented mask
-                        >>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
+                    | Regular -> failwith "fix me"
+                    //Vector.mask mask
+                    //>>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
+                    | Complemented -> failwith "fix me"
+                //Vector.complemented mask
+                //>>= fun mask -> Matrix.vxmWithMask semiring mask vector matrix
 
                 let! tuples = Vector.tuples result
                 do! VectorTuples.synchronize tuples
@@ -113,7 +113,8 @@ let correctnessGenericTest<'a when 'a: struct>
             |> EvalGB.runSync
 
         finally
-            case.ClContext.Provider.CloseAllBuffers()
+            failwith "fix me"
+    //case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
         eventX "Expected result is {expected}"

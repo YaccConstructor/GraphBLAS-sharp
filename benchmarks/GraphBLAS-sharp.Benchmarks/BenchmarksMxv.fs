@@ -15,7 +15,8 @@ type MxvBenchmarks() =
     let mutable vector = Unchecked.defaultof<Vector<float>>
     let semiring = Predefined.AddMult.float
 
-    [<ParamsSource("AvaliableContextsProvider")>]
+    //TODO fix me
+    (*[<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
     member this.Context =
         let (ClContext context) = this.OclContext
@@ -74,3 +75,4 @@ type MxvBenchmarks() =
                 | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
                 | _ -> failwith "Unsupported matrix format"
             )
+*)

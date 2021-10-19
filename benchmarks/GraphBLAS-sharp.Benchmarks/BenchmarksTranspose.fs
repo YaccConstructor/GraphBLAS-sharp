@@ -16,6 +16,8 @@ open GraphBLAS.FSharp.IO
 type TransposeBenchmarks() =
     let mutable matrix = Unchecked.defaultof<Matrix<float>>
 
+    //TODO fix me
+    (*
     [<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
     member this.Context =
@@ -63,3 +65,4 @@ type TransposeBenchmarks() =
                 | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
                 | _ -> failwith "Unsupported matrix format"
             )
+*)

@@ -416,7 +416,9 @@ module Utils =
                         .GetDeviceInfo(device, DeviceInfo.Type, &e)
                         .CastTo<DeviceType>()
 
-                OpenCLEvaluationContext(platformName, deviceType))
+                failwith "fix me"
+                //ClContext(platformName, deviceType)
+                ClContext())
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with

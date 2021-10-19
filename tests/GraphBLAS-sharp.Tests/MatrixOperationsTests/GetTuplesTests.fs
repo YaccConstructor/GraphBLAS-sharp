@@ -71,7 +71,9 @@ let correctnessGenericTest<'a when 'a: struct>
             |> EvalGB.runSync
 
         finally
-            case.ClContext.Provider.CloseAllBuffers()
+            // TODO fix me
+            ()
+    //case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
         eventX "Expected result is {expected}"

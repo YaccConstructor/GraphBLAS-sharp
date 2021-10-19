@@ -112,12 +112,12 @@ let correctnessGenericTest<'a when 'a: struct>
                 let! result =
                     match case.MaskCase with
                     | NoMask -> Matrix.mxv semiring matrix vector
-                    | Regular ->
-                        Vector.mask mask
-                        >>= fun mask -> Matrix.mxvWithMask semiring mask matrix vector
-                    | Complemented ->
-                        Vector.complemented mask
-                        >>= fun mask -> Matrix.mxvWithMask semiring mask matrix vector
+                    | Regular -> failwith "fix me"
+                    //Vector.mask mask
+                    //>>= fun mask -> Matrix.mxvWithMask semiring mask matrix vector
+                    | Complemented -> failwith "fix me"
+                //Vector.complemented mask
+                //>>= fun mask -> Matrix.mxvWithMask semiring mask matrix vector
 
                 let! tuples = Vector.tuples result
                 do! VectorTuples.synchronize tuples
@@ -127,7 +127,9 @@ let correctnessGenericTest<'a when 'a: struct>
             |> EvalGB.runSync
 
         finally
-            case.ClContext.Provider.CloseAllBuffers()
+            // TODO fix me
+            ()
+    // case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
         eventX "Expected result is {expected}"
@@ -199,23 +201,21 @@ let testFixtures case =
                   let vector =
                       Utils.createVectorFromArray case.VectorCase vector ((=) 0)
 
-                  graphblas {
-                      return!
-                          Matrix.mxv AddMult.int matrix vector
-                          >>= Vector.tuples
-                          >>= VectorTuples.synchronizeAndReturn
-                  }
+                  graphblas { failwith "fix me" }
                   |> EvalGB.withClContext case.ClContext
                   |> EvalGB.runSync
 
               finally
-                  case.ClContext.Provider.CloseAllBuffers()
+                  // TODO fix me
+                  failwith "fix me"
+          // case.ClContext.Provider.CloseAllBuffers()
+          failwith "fix me"
+          //"Indices of actual and expected vectors should be the same"
+          // |> Expect.sequenceEqual actual.Indices expected.Indices
 
-          "Indices of actual and expected vectors should be the same"
-          |> Expect.sequenceEqual actual.Indices expected.Indices
-
-          "Values of actual and expected vectors should be the same"
-          |> Expect.sequenceEqual actual.Values expected.Values
+          failwith "fix me"
+      //"Values of actual and expected vectors should be the same"
+      // |> Expect.sequenceEqual actual.Values expected.Values
 
       case
       |> correctnessGenericTest<CustomDatatypes.WrappedInt> CustomDatatypes.addMultSemiringOnWrappedInt (=)
