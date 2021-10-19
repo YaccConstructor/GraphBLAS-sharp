@@ -6,9 +6,9 @@ let main argv =
     let benchmarks = BenchmarkSwitcher [|
         // typeof<EWiseAddBenchmarks4Float32>
         // typeof<EWiseAddBenchmarks4Bool>
-        typeof<BFSBenchmarks>
+        //typeof<BFSBenchmarks>
         typeof<MxvBenchmarks>
-        typeof<TransposeBenchmarks>
+        //typeof<TransposeBenchmarks>
     |]
 
     benchmarks.Run argv |> ignore
