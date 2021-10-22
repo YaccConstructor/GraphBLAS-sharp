@@ -12,14 +12,14 @@ let allTests =
     testList
         "All tests"
         [ //Backend.PrefixSum.tests
-        //Backend.BitonicSort.tests
-        //Backend.RemoveDuplicates.tests
+          //Backend.BitonicSort.tests
+          Backend.RemoveDuplicates.tests
         //Matrix.EWiseAdd.tests
         //Matrix.GetTuples.tests
         //Matrix.Mxv.tests
         //Matrix.Transpose.tests
         //Algo.Bfs.tests
-        ]
+         ]
     |> testSequenced
 
 [<EntryPoint>]

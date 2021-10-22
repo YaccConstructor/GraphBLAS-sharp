@@ -10,8 +10,8 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
     <!--Compile Include="BackendCommonTests/PrefixSumTests.fs" />
-    <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
-    <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" /-->
+    <Compile Include="BackendCommonTests/BitonicSortTests.fs" /-->
+    <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->

@@ -4,29 +4,29 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 
 let logger = Log.create "RemoveDuplicates.Tests"
+
+let context =
+    let deviceType = ClDeviceType.Default
+    let platformName = ClPlatform.Any
+    ClContext(platformName, deviceType)
 
 let testCases =
     [ testCase "Simple correctness test"
       <| fun () ->
+          let q = context.Provider.CommandQueue
           let array = [| 1; 2; 2; 3; 3; 3 |]
 
+          let clArray = context.CreateClArray array
+
           let actual =
-              opencl {
-                  let! copiedArray = Copy.copyArray array
-                  let! result = RemoveDuplicates.fromArray copiedArray
+              let clActual =
+                  ClArray.removeDuplications context 2 q clArray
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost result
-                      ()
-
-                  return result
-              }
-              //|> OpenCLEvaluationContext().RunSync
-              failwith "fix me"
+              let actual = Array.zeroCreate clActual.Length
+              q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 
           logger.debug (
               eventX "Actual is {actual}"
@@ -36,9 +36,9 @@ let testCases =
           let expected = [| 1; 2; 3 |]
 
           "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected
+          |> Expect.sequenceEqual actual expected ]
 
-      testCase "Test on empty array"
+(*testCase "Test on empty array"
       <| fun () ->
           let array = Array.zeroCreate<int> 0
 
@@ -65,7 +65,7 @@ let testCases =
           let expected = array
 
           "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected ]
+          |> Expect.sequenceEqual actual expected ]*)
 
 let tests =
-    testCases |> ptestList "RemoveDuplicates tests"
+    testCases |> testList "RemoveDuplicates tests"
