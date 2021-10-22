@@ -15,6 +15,7 @@ let allTests =
           //Backend.BitonicSort.tests
           Backend.RemoveDuplicates.tests
           Backend.Copy.tests
+          Backend.Replicate.tests
           //Matrix.EWiseAdd.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests

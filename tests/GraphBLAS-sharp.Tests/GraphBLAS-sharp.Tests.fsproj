@@ -13,6 +13,7 @@
     <Compile Include="BackendCommonTests/BitonicSortTests.fs" /-->
     <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
     <Compile Include="BackendCommonTests/CopyTests.fs" />
+    <Compile Include="BackendCommonTests/ReplicateTests.fs" />
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
