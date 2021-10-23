@@ -16,6 +16,7 @@ let allTests =
           Backend.RemoveDuplicates.tests
           Backend.Copy.tests
           Backend.Replicate.tests
+          Backend.COOMatrix.EwiseAdd.tests
           //Matrix.EWiseAdd.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests

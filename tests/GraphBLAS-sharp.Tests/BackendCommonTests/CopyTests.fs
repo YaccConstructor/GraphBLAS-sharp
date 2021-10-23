@@ -28,12 +28,12 @@ let testCases =
 
     let makeTest getCopyFun (array: array<'a>) =
         if array.Length > 0 then
-            let clArray = context.CreateClArray array
+            use clArray = context.CreateClArray array
 
             let copy = getCopyFun array
 
             let actual =
-                let clActual: ClArray<'a> = copy clArray
+                use clActual: ClArray<'a> = copy clArray
 
                 let actual = Array.zeroCreate clActual.Length
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))

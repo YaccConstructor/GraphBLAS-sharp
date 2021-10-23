@@ -28,12 +28,12 @@ let testCases =
 
     let makeTest getReplicateFun (array: array<'a>) i =
         if array.Length > 0 && i > 0 then
-            let clArray = context.CreateClArray array
+            use clArray = context.CreateClArray array
 
             let replicate = getReplicateFun array
 
             let actual =
-                let clActual: ClArray<'a> = replicate clArray i
+                use clActual: ClArray<'a> = replicate clArray i
 
                 let actual = Array.zeroCreate clActual.Length
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
@@ -46,7 +46,7 @@ let testCases =
             let expected =
                 array |> Array.replicate i |> Array.concat
 
-            "Array should be equals to original"
+            sprintf "Array should contains %i copies of the original one" i
             |> Expect.sequenceEqual actual expected
 
     [ testProperty "Correctness test on random int arrays"
