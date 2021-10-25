@@ -373,14 +373,6 @@ module COOMatrix =
 
     let private compressRows (clContext: ClContext) =
 
-        let getUniqueBitmap =
-            <@ fun (ndRange: Range1D) (inputArray: ClArray<int>) (isUniqueBitmap: ClArray<int>) nnz ->
-
-                let i = ndRange.GlobalID0
-
-                if i < nnz - 1 && inputArray.[i] = inputArray.[i + 1] then
-                    isUniqueBitmap.[i] <- 0 @>
-
         let posAndTotalSum = GraphBLAS.FSharp.Backend.ClArray.prefixSumExclude clContext
 
         let calcHyperSparseRows =
@@ -404,47 +396,32 @@ module COOMatrix =
                         nonZeroRowsPointers.[gid]
                         - nonZeroRowsPointers.[gid - 1] @>
 
-        let expandSparseNnzPerRow =
-            <@ fun (ndRange: Range1D) (nnzPerRowSparse: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (expandedNnzPerRow: ClArray<int>) totalSum ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < totalSum then
-                    expandedNnzPerRow.[nonZeroRowsIndices.[gid] + 1] <- nnzPerRowSparse.[gid] @>
-
-        let kernelGUB = clContext.CreateClKernel getUniqueBitmap 
         let kernelCHSR = clContext.CreateClKernel calcHyperSparseRows
         let kernelCNPRS = clContext.CreateClKernel calcNnzPerRowSparse
-        let kernelESNPR = clContext.CreateClKernel expandSparseNnzPerRow
 
-        let rowPointersAndSmth = ClArray.prefixSumInclude clContext
+        let getUniqueBitmap = ClArray.getUniqueBitmap clContext
+        let expandSparseNnzPerRow = ClArray.setPositions clContext
+        let rowPointersAndTotalSum = ClArray.prefixSumExclude clContext
 
         fun (processor:MailboxProcessor<_>) workGroupSize rowCount (rowIndices: ClArray<int>) ->
 
             let nnz = rowIndices.Length
-            let ndRangeGUBandCHSR = Range1D(Utils.getDefaultGlobalSize nnz, workGroupSize)
-            let bitmap = clContext.CreateClArray (Array.create nnz 1)
-
-            processor.Post(
-                Msg.MsgSetArguments
-                      (fun () -> kernelGUB.SetArguments ndRangeGUBandCHSR rowIndices bitmap nnz)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _> kernelGUB)
-
+            let ndRangeCHSR = Range1D(Utils.getDefaultGlobalSize nnz, workGroupSize)
+            let bitmap = getUniqueBitmap processor workGroupSize rowIndices
 
             let positions, totalSum = posAndTotalSum processor workGroupSize bitmap
             let hostTotalSum = [| 0 |]
             processor.Post(Msg.CreateToHostMsg(totalSum, hostTotalSum))
             let totalSum = hostTotalSum.[0]
 
-            let ndRangeCNPRSandESNPR = Range1D(Utils.getDefaultGlobalSize totalSum, workGroupSize)
+            let ndRangeCNPRS = Range1D(Utils.getDefaultGlobalSize totalSum, workGroupSize)
             let zeroArray = Array.zeroCreate totalSum
             let nonZeroRowsIndices = clContext.CreateClArray zeroArray
             let nonZeroRowsPointers = clContext.CreateClArray zeroArray
             
             processor.Post(
                 Msg.MsgSetArguments
-                      (fun () -> kernelCHSR.SetArguments ndRangeGUBandCHSR rowIndices bitmap positions nonZeroRowsIndices nonZeroRowsPointers nnz)
+                      (fun () -> kernelCHSR.SetArguments ndRangeCHSR rowIndices bitmap positions nonZeroRowsIndices nonZeroRowsPointers nnz)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
 
@@ -453,20 +430,16 @@ module COOMatrix =
 
             processor.Post(
                 Msg.MsgSetArguments
-                      (fun () -> kernelCNPRS.SetArguments ndRangeCNPRSandESNPR nonZeroRowsPointers nnzPerRowSparse totalSum)
+                      (fun () -> kernelCNPRS.SetArguments ndRangeCNPRS nonZeroRowsPointers nnzPerRowSparse totalSum)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
 
 
-            let expandedNnzPerRow = clContext.CreateClArray (Array.zeroCreate (rowCount + 1))
+            let expandedNnzPerRow = clContext.CreateClArray (Array.zeroCreate rowCount)
 
-            processor.Post(
-                Msg.MsgSetArguments
-                      (fun () -> kernelESNPR.SetArguments ndRangeCNPRSandESNPR nnzPerRowSparse nonZeroRowsIndices expandedNnzPerRow totalSum)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _> kernelESNPR)
-
-            let rowPointers, _ = rowPointersAndSmth processor workGroupSize expandedNnzPerRow
+            expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices expandedNnzPerRow
+            
+            let rowPointers, _ = rowPointersAndTotalSum processor workGroupSize expandedNnzPerRow
 
             rowPointers
   
