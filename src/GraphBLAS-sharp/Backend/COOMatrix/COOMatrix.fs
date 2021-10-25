@@ -373,8 +373,6 @@ module COOMatrix =
 
     let private compressRows (clContext: ClContext) =
 
-        let posAndTotalSum = GraphBLAS.FSharp.Backend.ClArray.prefixSumExclude clContext
-
         let calcHyperSparseRows =
             <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
 
@@ -400,6 +398,7 @@ module COOMatrix =
         let kernelCNPRS = clContext.CreateClKernel calcNnzPerRowSparse
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
+        let posAndTotalSum = ClArray.prefixSumExclude clContext
         let expandSparseNnzPerRow = ClArray.setPositions clContext
         let rowPointersAndTotalSum = ClArray.prefixSumExclude clContext
 
@@ -425,7 +424,6 @@ module COOMatrix =
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
 
-
             let nnzPerRowSparse = clContext.CreateClArray zeroArray
 
             processor.Post(
@@ -434,10 +432,7 @@ module COOMatrix =
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
 
-
-            let expandedNnzPerRow = clContext.CreateClArray (Array.zeroCreate rowCount)
-
-            expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices expandedNnzPerRow
+            let expandedNnzPerRow = expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices
             
             let rowPointers, _ = rowPointersAndTotalSum processor workGroupSize expandedNnzPerRow
 

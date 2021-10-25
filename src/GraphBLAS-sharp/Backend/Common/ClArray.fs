@@ -322,15 +322,19 @@ module ClArray =
 
         let kernel = clContext.CreateClKernel setPositions
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) ->
 
             let ndRange =
                 Range1D(Utils.getDefaultGlobalSize inputArray.Length, workGroupSize)
+
+            let outputArray = clContext.CreateClArray inputArray.Length
 
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () -> kernel.SetArguments ndRange inputArray inputArray.Length positions outputArray)
             )
+
+            outputArray
             
     let removeDuplications (clContext: ClContext) =
         let setPositions = setPositions clContext
@@ -357,8 +361,6 @@ module ClArray =
 
                 a.[0]
 
-            let outputArray = clContext.CreateClArray resultLength
-
-            setPositions processor workGroupSize inputArray positions outputArray
+            let outputArray = setPositions processor workGroupSize inputArray positions
 
             outputArray
