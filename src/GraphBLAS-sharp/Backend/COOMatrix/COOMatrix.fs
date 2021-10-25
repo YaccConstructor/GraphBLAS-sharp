@@ -25,7 +25,7 @@ module COOMatrix =
         let kernel = clContext.CreateClKernel(setPositions)
 
         let sum =
-            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext
+            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
@@ -34,8 +34,7 @@ module COOMatrix =
 
             let resultLengthGpu = clContext.CreateClArray<_>(1)
 
-            let _, r =
-                sum processor workGroupSize positions resultLengthGpu
+            let _, r = sum processor positions resultLengthGpu
 
             let resultLength =
                 let res =
