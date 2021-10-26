@@ -4,18 +4,6 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
-type TupleMatrix<'elem when 'elem: struct> =
-    { RowIndices: ClArray<int>
-      ColumnIndices: ClArray<int>
-      Values: ClArray<'elem> }
-
-type COOMatrix<'elem when 'elem: struct> =
-    { RowCount: int
-      ColumnCount: int
-      Rows: ClArray<int>
-      Columns: ClArray<int>
-      Values: ClArray<'elem> }
-
 module COOMatrix =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
@@ -380,3 +368,89 @@ module COOMatrix =
             { RowIndices = resultRows
               ColumnIndices = resultColumns
               Values = resultValues }
+
+
+    let private compressRows (clContext: ClContext) =
+
+        let calcHyperSparseRows =
+            <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < nnz && bitmap.[gid] = 1 then
+                    nonZeroRowsIndices.[positions.[gid]] <- rowsIndices.[gid]
+                    nonZeroRowsPointers.[positions.[gid]] <- gid + 1 @>
+
+        let calcNnzPerRowSparse =
+            <@ fun (ndRange: Range1D) (nonZeroRowsPointers: ClArray<int>) (nnzPerRowSparse: ClArray<int>) totalSum ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid = 0 then
+                    nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid]
+                elif gid < totalSum then
+                    nnzPerRowSparse.[gid] <-
+                        nonZeroRowsPointers.[gid]
+                        - nonZeroRowsPointers.[gid - 1] @>
+
+        let kernelCHSR = clContext.CreateClKernel calcHyperSparseRows
+        let kernelCNPRS = clContext.CreateClKernel calcNnzPerRowSparse
+
+        let getUniqueBitmap = ClArray.getUniqueBitmap clContext
+        let posAndTotalSum = ClArray.prefixSumExclude clContext
+        let expandSparseNnzPerRow = ClArray.setPositions clContext
+        let rowPointersAndTotalSum = ClArray.prefixSumExclude clContext
+
+        fun (processor:MailboxProcessor<_>) workGroupSize rowCount (rowIndices: ClArray<int>) ->
+
+            let nnz = rowIndices.Length
+            let ndRangeCHSR = Range1D(Utils.getDefaultGlobalSize nnz, workGroupSize)
+            let bitmap = getUniqueBitmap processor workGroupSize rowIndices
+
+            let positions, totalSum = posAndTotalSum processor workGroupSize bitmap
+            let hostTotalSum = [| 0 |]
+            processor.Post(Msg.CreateToHostMsg(totalSum, hostTotalSum))
+            let totalSum = hostTotalSum.[0]
+
+            let ndRangeCNPRS = Range1D(Utils.getDefaultGlobalSize totalSum, workGroupSize)
+            let zeroArray = Array.zeroCreate totalSum
+            let nonZeroRowsIndices = clContext.CreateClArray zeroArray
+            let nonZeroRowsPointers = clContext.CreateClArray zeroArray
+            
+            processor.Post(
+                Msg.MsgSetArguments
+                      (fun () -> kernelCHSR.SetArguments ndRangeCHSR rowIndices bitmap positions nonZeroRowsIndices nonZeroRowsPointers nnz)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
+
+            let nnzPerRowSparse = clContext.CreateClArray zeroArray
+
+            processor.Post(
+                Msg.MsgSetArguments
+                      (fun () -> kernelCNPRS.SetArguments ndRangeCNPRS nonZeroRowsPointers nnzPerRowSparse totalSum)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
+
+            let expandedNnzPerRow = expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices
+            
+            let rowPointers, _ = rowPointersAndTotalSum processor workGroupSize expandedNnzPerRow
+
+            rowPointers
+  
+
+    let toCSR (clContext: ClContext) =
+
+        let compressRows = compressRows clContext
+        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext 
+        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+
+        fun (processor:MailboxProcessor<_>) workGroupSize (matrix: COOMatrix<'a>) ->
+            let compressedRows = compressRows processor workGroupSize matrix.RowCount matrix.Rows
+            let cols = copy processor workGroupSize matrix.Columns
+            let vals = copyData processor workGroupSize matrix.Values
+
+            { RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              RowPointers = compressedRows
+              Columns = cols
+              Values = vals }

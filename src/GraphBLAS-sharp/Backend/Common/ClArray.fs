@@ -275,7 +275,7 @@ module ClArray =
             outputArray, totalSum
 
 
-    let removeDuplications (clContext: ClContext) workGroupSize =
+    let getUniqueBitmap (clContext: ClContext) =
         let getUniqueBitmap =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
 
@@ -287,6 +287,27 @@ module ClArray =
                 else
                     isUniqueBitmap.[i] <- 1 @>
 
+        let getUniqueBitmap = clContext.CreateClKernel getUniqueBitmap
+
+        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+
+            let inputLength = inputArray.Length
+            
+            let ndRange =
+                Range1D(Utils.getDefaultGlobalSize inputLength, workGroupSize)
+            
+            let bitmap = clContext.CreateClArray inputLength
+            
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
+            )
+            
+            processor.Post(Msg.CreateRunMsg<_, _> getUniqueBitmap)
+
+            bitmap
+
+
+    let setPositions (clContext: ClContext) =
         let setPositions =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
 
@@ -295,9 +316,27 @@ module ClArray =
                 if i < inputLength then
                     outputArray.[positions.[i]] <- inputArray.[i] @>
 
-        let getUniqueBitmap = clContext.CreateClKernel getUniqueBitmap
-        let setPositions = clContext.CreateClKernel setPositions
-        let prefixSumExclude = prefixSumExclude clContext workGroupSize
+        let kernel = clContext.CreateClKernel setPositions
+
+        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) ->
+
+            let ndRange =
+                Range1D(Utils.getDefaultGlobalSize inputArray.Length, workGroupSize)
+
+            let outputArray = clContext.CreateClArray inputArray.Length
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.SetArguments ndRange inputArray inputArray.Length positions outputArray)
+            )
+
+            outputArray
+            
+    
+    let removeDuplications (clContext: ClContext) =
+        let setPositions = setPositions clContext
+        let getUniqueBitmap = getUniqueBitmap clContext
+        let prefixSumExclude = prefixSumExclude clContext
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -306,13 +345,7 @@ module ClArray =
             let ndRange =
                 Range1D(Utils.getDefaultGlobalSize inputLength, workGroupSize)
 
-            let bitmap = clContext.CreateClArray inputLength
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> getUniqueBitmap)
+            let bitmap = getUniqueBitmap processor workGroupSize inputArray
 
             let (positions, sum) = prefixSumExclude processor bitmap
 
@@ -324,13 +357,6 @@ module ClArray =
 
                 a.[0]
 
-            let outputArray = clContext.CreateClArray resultLength
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> setPositions.SetArguments ndRange inputArray inputLength positions outputArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> setPositions)
+            let outputArray = setPositions processor workGroupSize inputArray positions
 
             outputArray
