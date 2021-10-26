@@ -18,7 +18,7 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputArray.Length, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputArray.Length, workGroupSize)
 
             let outputArray =
                 clContext.CreateClArray(inputArray.Length)
@@ -49,7 +49,7 @@ module ClArray =
                 clContext.CreateClArray outputArrayLength
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize outputArray.Length, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize outputArray.Length, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -77,7 +77,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
             let ndRange =
                 Range1D(
-                    Utils.getDefaultGlobalSize inputArrayLength
+                    Utils.getDefaultGlobalSize workGroupSize inputArrayLength
                     - bunchLength,
                     workGroupSize
                 )
@@ -150,7 +150,7 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputArrayLength, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -263,7 +263,7 @@ module ClArray =
             let outputArray = clContext.CreateClArray inputArrayLength
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputArrayLength, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -292,16 +292,16 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
             let inputLength = inputArray.Length
-            
+
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputLength, workGroupSize)
-            
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputLength, workGroupSize)
+
             let bitmap = clContext.CreateClArray inputLength
-            
+
             processor.Post(
                 Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
             )
-            
+
             processor.Post(Msg.CreateRunMsg<_, _> getUniqueBitmap)
 
             bitmap
@@ -321,9 +321,10 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) ->
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputArray.Length, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputArray.Length, workGroupSize)
 
-            let outputArray = clContext.CreateClArray inputArray.Length
+            let outputArray =
+                clContext.CreateClArray inputArray.Length
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -331,21 +332,21 @@ module ClArray =
             )
 
             outputArray
-            
-    
-    let removeDuplications (clContext: ClContext) =
+
+    let removeDuplications (clContext: ClContext) workGroupSize =
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
-        let prefixSumExclude = prefixSumExclude clContext
+        let prefixSumExclude = prefixSumExclude clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let inputLength = inputArray.Length
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize inputLength, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize inputLength, workGroupSize)
 
-            let bitmap = getUniqueBitmap processor workGroupSize inputArray
+            let bitmap =
+                getUniqueBitmap processor workGroupSize inputArray
 
             let (positions, sum) = prefixSumExclude processor bitmap
 
@@ -357,6 +358,7 @@ module ClArray =
 
                 a.[0]
 
-            let outputArray = setPositions processor workGroupSize inputArray positions
+            let outputArray =
+                setPositions processor workGroupSize inputArray positions
 
             outputArray

@@ -1,13 +1,10 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 module internal Utils =
-    let defaultWorkGroupSize = 256
-
-    let getDefaultGlobalSize n =
+    let getDefaultGlobalSize workGroupSize n =
         let m = n - 1
 
-        m - m % defaultWorkGroupSize
-        + defaultWorkGroupSize
+        m - m % workGroupSize + workGroupSize
 
     let getValidGlobalSize wgSize neededSize =
         (neededSize + wgSize - 1) / wgSize * wgSize
