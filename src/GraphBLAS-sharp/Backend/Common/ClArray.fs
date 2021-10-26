@@ -89,10 +89,10 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-    let private scan (clContext: ClContext) =
+    let private scan (clContext: ClContext) workGroupSize =
 
         let scan =
-            <@ fun (ndRange: Range1D) workGroupSize inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClArray<int>) ->
 
                 let resultLocalBuffer = localArray<int> workGroupSize
                 let i = ndRange.GlobalID0
@@ -148,21 +148,13 @@ module ClArray =
 
         let kernel = clContext.CreateClKernel scan
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
             let ndRange =
                 Range1D(Utils.getDefaultGlobalSize inputArrayLength, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.SetArguments
-                            ndRange
-                            workGroupSize
-                            inputArrayLength
-                            verticesLength
-                            inputArray
-                            vertices
-                            totalSum)
+                    (fun () -> kernel.SetArguments ndRange inputArrayLength verticesLength inputArray vertices totalSum)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -180,12 +172,12 @@ module ClArray =
     /// > val sum = [| 6 |]
     /// </code>
     /// </example>
-    let prefixSumExcludeInplace (clContext: ClContext) =
+    let prefixSumExcludeInplace (clContext: ClContext) workGroupSize =
 
-        let scan = scan clContext
+        let scan = scan clContext workGroupSize
         let update = update clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClArray<int>) ->
             let firstVertices =
                 clContext.CreateClArray<int>(
                     (inputArray.Length - 1) / workGroupSize + 1,
@@ -204,7 +196,7 @@ module ClArray =
             let mutable verticesLength = firstVertices.Length
             let mutable bunchLength = workGroupSize
 
-            scan processor workGroupSize inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
+            scan processor inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
 
             while verticesLength > 1 do
                 let fstVertices = fst verticesArrays
@@ -212,7 +204,6 @@ module ClArray =
 
                 scan
                     processor
-                    workGroupSize
                     fstVertices
                     verticesLength
                     sndVertices
@@ -230,19 +221,21 @@ module ClArray =
             inputArray, totalSum
 
 
-    let prefixSumExclude (clContext: ClContext) =
+    let prefixSumExclude (clContext: ClContext) workGroupSize =
         let copy = copy clContext
-        let prefixSumExcludeInplace = prefixSumExcludeInplace clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) ->
+        let prefixSumExcludeInplace =
+            prefixSumExcludeInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let copiedArray = copy processor workGroupSize inputArray
 
             let totalSum = clContext.CreateClArray [| 0 |]
 
-            prefixSumExcludeInplace processor workGroupSize copiedArray totalSum
+            prefixSumExcludeInplace processor copiedArray totalSum
 
 
-    let prefixSumInclude (clContext: ClContext) =
+    let prefixSumInclude (clContext: ClContext) workGroupSize =
         let kernel =
             <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClArray<int>) (outputArray: ClArray<int>) ->
 
@@ -255,15 +248,17 @@ module ClArray =
 
         let kernel = clContext.CreateClKernel kernel
         let copy = copy clContext
-        let prefixSumExcludeInplace = prefixSumExcludeInplace clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+        let prefixSumExcludeInplace =
+            prefixSumExcludeInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let copiedArray = copy processor workGroupSize inputArray
             let inputArrayLength = inputArray.Length
             let totalSum = clContext.CreateClArray [| 0 |]
 
             let _, totalSum =
-                prefixSumExcludeInplace processor workGroupSize copiedArray totalSum
+                prefixSumExcludeInplace processor copiedArray totalSum
 
             let outputArray = clContext.CreateClArray inputArrayLength
 
@@ -311,6 +306,7 @@ module ClArray =
 
             bitmap
 
+
     let setPositions (clContext: ClContext) =
         let setPositions =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
@@ -336,12 +332,13 @@ module ClArray =
 
             outputArray
             
+    
     let removeDuplications (clContext: ClContext) =
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
         let prefixSumExclude = prefixSumExclude clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let inputLength = inputArray.Length
 
@@ -350,8 +347,7 @@ module ClArray =
 
             let bitmap = getUniqueBitmap processor workGroupSize inputArray
 
-            let (positions, sum) =
-                prefixSumExclude processor workGroupSize bitmap
+            let (positions, sum) = prefixSumExclude processor bitmap
 
             let resultLength =
                 let a = [| 0 |]
