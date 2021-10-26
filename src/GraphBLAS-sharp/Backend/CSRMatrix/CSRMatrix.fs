@@ -5,7 +5,7 @@ open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let toCOO (clContext: ClContext)  =
+    let toCOO (clContext: ClContext) =
 
         let expandRows =
             <@ fun (range: Range1D) workGroupSize (rowPointers: ClArray<int>) (rowIndices: ClArray<int>) ->
@@ -27,18 +27,28 @@ module CSRMatrix =
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        fun (processor:MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
-            let ndRange = Range1D(workGroupSize * matrix.RowCount, workGroupSize)
-            let rowIndices = clContext.CreateClArray matrix.Values.Length
+        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
+            let ndRange =
+                Range1D(
+                    Common.Utils.getDefaultGlobalSize workGroupSize workGroupSize
+                    * matrix.RowCount,
+                    workGroupSize
+                )
+
+            let rowIndices =
+                clContext.CreateClArray matrix.Values.Length
 
             processor.Post(
-                Msg.MsgSetArguments
-                      (fun () -> kernel.SetArguments ndRange workGroupSize matrix.RowPointers rowIndices)
+                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange workGroupSize matrix.RowPointers rowIndices)
             )
+
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
-   
-            let colIndices = copy processor workGroupSize matrix.Columns
-            let values = copyData processor workGroupSize matrix.Values
+
+            let colIndices =
+                copy processor workGroupSize matrix.Columns
+
+            let values =
+                copyData processor workGroupSize matrix.Values
 
             { RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
@@ -50,20 +60,18 @@ module CSRMatrix =
 
         let toCOO = toCOO clContext
 
-        let eWiseCOO = COOMatrix.eWiseAdd clContext opAdd workGroupSize
+        let eWiseCOO =
+            COOMatrix.eWiseAdd clContext opAdd workGroupSize
 
-        let toCSR = COOMatrix.toCSR clContext
+        let toCSR = COOMatrix.toCSR clContext workGroupSize
 
-        fun (processor:MailboxProcessor<_>) workGroupSize (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
 
             let m1COO = toCOO processor workGroupSize m1
             let m2COO = toCOO processor workGroupSize m2
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
-            let m3 = toCSR processor workGroupSize m3COO
+            let m3 = toCSR processor m3COO
 
             m3
-   
-      
-

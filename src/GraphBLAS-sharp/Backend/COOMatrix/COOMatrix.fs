@@ -66,7 +66,7 @@ module COOMatrix =
                 )
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize positions.Length, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize positions.Length, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -113,7 +113,7 @@ module COOMatrix =
             let length = allValues.Length
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize (length - 1), workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize (length - 1), workGroupSize)
 
             let rawPositionsGpu =
                 clContext.CreateClArray<int>(length, hostAccessMode = HostAccessMode.NotAccessible)
@@ -282,7 +282,7 @@ module COOMatrix =
                 )
 
             let ndRange =
-                Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+                Range1D(Utils.getDefaultGlobalSize workGroupSize sumOfSides, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -370,7 +370,7 @@ module COOMatrix =
               Values = resultValues }
 
 
-    let private compressRows (clContext: ClContext) =
+    let private compressRows (clContext: ClContext) workGroupSize =
 
         let calcHyperSparseRows =
             <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
@@ -393,61 +393,96 @@ module COOMatrix =
                         nonZeroRowsPointers.[gid]
                         - nonZeroRowsPointers.[gid - 1] @>
 
-        let kernelCHSR = clContext.CreateClKernel calcHyperSparseRows
-        let kernelCNPRS = clContext.CreateClKernel calcNnzPerRowSparse
+        let kernelCHSR =
+            clContext.CreateClKernel calcHyperSparseRows
+
+        let kernelCNPRS =
+            clContext.CreateClKernel calcNnzPerRowSparse
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
-        let posAndTotalSum = ClArray.prefixSumExclude clContext
-        let expandSparseNnzPerRow = ClArray.setPositions clContext
-        let rowPointersAndTotalSum = ClArray.prefixSumExclude clContext
 
-        fun (processor:MailboxProcessor<_>) workGroupSize rowCount (rowIndices: ClArray<int>) ->
+        let posAndTotalSum =
+            ClArray.prefixSumExclude clContext workGroupSize
+
+        let expandSparseNnzPerRow = ClArray.setPositions clContext
+
+        let rowPointersAndTotalSum =
+            ClArray.prefixSumExclude clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) ->
 
             let nnz = rowIndices.Length
-            let ndRangeCHSR = Range1D(Utils.getDefaultGlobalSize nnz, workGroupSize)
-            let bitmap = getUniqueBitmap processor workGroupSize rowIndices
 
-            let positions, totalSum = posAndTotalSum processor workGroupSize bitmap
+            let ndRangeCHSR =
+                Range1D(Utils.getDefaultGlobalSize workGroupSize nnz, workGroupSize)
+
+            let bitmap =
+                getUniqueBitmap processor workGroupSize rowIndices
+
+            let positions, totalSum = posAndTotalSum processor bitmap
+
             let hostTotalSum = [| 0 |]
             processor.Post(Msg.CreateToHostMsg(totalSum, hostTotalSum))
             let totalSum = hostTotalSum.[0]
 
-            let ndRangeCNPRS = Range1D(Utils.getDefaultGlobalSize totalSum, workGroupSize)
+            let ndRangeCNPRS =
+                Range1D(Utils.getDefaultGlobalSize workGroupSize totalSum, workGroupSize)
+
             let zeroArray = Array.zeroCreate totalSum
             let nonZeroRowsIndices = clContext.CreateClArray zeroArray
             let nonZeroRowsPointers = clContext.CreateClArray zeroArray
-            
+
             processor.Post(
                 Msg.MsgSetArguments
-                      (fun () -> kernelCHSR.SetArguments ndRangeCHSR rowIndices bitmap positions nonZeroRowsIndices nonZeroRowsPointers nnz)
+                    (fun () ->
+                        kernelCHSR.SetArguments
+                            ndRangeCHSR
+                            rowIndices
+                            bitmap
+                            positions
+                            nonZeroRowsIndices
+                            nonZeroRowsPointers
+                            nnz)
             )
+
             processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
 
             let nnzPerRowSparse = clContext.CreateClArray zeroArray
 
             processor.Post(
                 Msg.MsgSetArguments
-                      (fun () -> kernelCNPRS.SetArguments ndRangeCNPRS nonZeroRowsPointers nnzPerRowSparse totalSum)
+                    (fun () -> kernelCNPRS.SetArguments ndRangeCNPRS nonZeroRowsPointers nnzPerRowSparse totalSum)
             )
+
             processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
 
-            let expandedNnzPerRow = expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices
-            
-            let rowPointers, _ = rowPointersAndTotalSum processor workGroupSize expandedNnzPerRow
+            let expandedNnzPerRow =
+                expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices
+
+            let rowPointers, _ =
+                rowPointersAndTotalSum processor expandedNnzPerRow
 
             rowPointers
-  
 
-    let toCSR (clContext: ClContext) =
 
-        let compressRows = compressRows clContext
-        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext 
-        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+    let toCSR (clContext: ClContext) workGroupSize =
 
-        fun (processor:MailboxProcessor<_>) workGroupSize (matrix: COOMatrix<'a>) ->
-            let compressedRows = compressRows processor workGroupSize matrix.RowCount matrix.Rows
-            let cols = copy processor workGroupSize matrix.Columns
-            let vals = copyData processor workGroupSize matrix.Values
+        let compressRows = compressRows clContext workGroupSize
+
+        let copy =
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+
+        let copyData =
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+
+        fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
+            let compressedRows = compressRows processor matrix.Rows
+
+            let cols =
+                copy processor workGroupSize matrix.Columns
+
+            let vals =
+                copyData processor workGroupSize matrix.Values
 
             { RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount

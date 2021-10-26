@@ -8,7 +8,7 @@ module internal rec BitonicSort =
             if keys.Length = 0 then
                 return ()
             else
-                let wgSize = Utils.defaultWorkGroupSize
+                let wgSize = 256
                 let length = keys.Length
 
                 do! localBegin keys values
@@ -31,7 +31,7 @@ module internal rec BitonicSort =
 
     let private localBegin (keys: uint64 []) (values: 'a []) =
         opencl {
-            let wgSize = Utils.defaultWorkGroupSize
+            let wgSize = 256
             let length = keys.Length
             let processedSize = wgSize * 2
             let positiveInf = System.UInt64.MaxValue
@@ -135,7 +135,7 @@ module internal rec BitonicSort =
                     kernelPrepare
                     <| Range1D(
                         Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize,
+                        |> Utils.getDefaultGlobalSize 256,
                         wgSize
                     )
                     <| keys
@@ -144,7 +144,7 @@ module internal rec BitonicSort =
 
     let private globalStep (keys: uint64 []) (values: 'a []) (segmentLength: int) (mirror: bool) =
         opencl {
-            let wgSize = Utils.defaultWorkGroupSize
+            let wgSize = 256
             let length = keys.Length
 
             let kernel =
@@ -183,7 +183,7 @@ module internal rec BitonicSort =
                     kernelPrepare
                     <| Range1D(
                         Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize,
+                        |> Utils.getDefaultGlobalSize 256,
                         wgSize
                     )
                     <| keys
@@ -192,7 +192,7 @@ module internal rec BitonicSort =
 
     let private localEnd (keys: uint64 []) (values: 'a []) =
         opencl {
-            let wgSize = Utils.defaultWorkGroupSize
+            let wgSize = 256
             let length = keys.Length
             let processedSize = wgSize * 2
             let positiveInf = System.UInt64.MaxValue
@@ -272,7 +272,7 @@ module internal rec BitonicSort =
                     kernelPrepare
                     <| Range1D(
                         Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize,
+                        |> Utils.getDefaultGlobalSize 256,
                         wgSize
                     )
                     <| keys
