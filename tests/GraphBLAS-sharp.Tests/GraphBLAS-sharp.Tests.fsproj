@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
+    <ProjectReference Include="../../src/GraphBLAS-sharp.Backend/GraphBLAS-sharp.Backend.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />

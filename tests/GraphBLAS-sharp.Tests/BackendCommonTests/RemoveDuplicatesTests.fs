@@ -42,7 +42,7 @@ let testCases =
           "Array should be without duplicates"
           |> Expect.sequenceEqual actual expected
 
-      testProperty "Correctness test on random int arrays"
+      ptestProperty "Correctness test on random int arrays"
       <| fun (array: array<int>) ->
           printfn "array: %A" array
 
@@ -76,4 +76,5 @@ let testCases =
       ]
 
 let tests =
-    testCases |> testList "RemoveDuplicates tests"
+    testCases
+    |> testList "Array.removeDuplicates tests"
