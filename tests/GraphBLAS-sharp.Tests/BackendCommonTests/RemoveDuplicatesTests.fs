@@ -42,8 +42,9 @@ let testCases =
           "Array should be without duplicates"
           |> Expect.sequenceEqual actual expected
 
-      ptestProperty "Correctness test on random int arrays"
+      testProperty "Correctness test on random int arrays"
       <| fun (array: array<int>) ->
+          let array = Array.sort array
           printfn "array: %A" array
 
           if array.Length > 0 then
@@ -52,10 +53,8 @@ let testCases =
               let removeDuplicates =
                   if array.Length % 32 = 0 then
                       removeDuplicates_wg_32
-                  elif array.Length % 2 = 0 then
-                      removeDuplicates_wg_2
                   else
-                      removeDuplicates_wg_1
+                      removeDuplicates_wg_2
 
               let actual =
                   let clActual = removeDuplicates q clArray

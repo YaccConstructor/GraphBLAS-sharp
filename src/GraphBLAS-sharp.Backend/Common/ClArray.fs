@@ -156,7 +156,7 @@ module ClArray =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
     /// <summary>
-    /// Exclude inplace prefix sum
+    /// Exclude inplace prefix sum.
     /// </summary>
     /// <example>
     /// <code>
@@ -168,6 +168,8 @@ module ClArray =
     /// > val sum = [| 6 |]
     /// </code>
     /// </example>
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExcludeInplace (clContext: ClContext) workGroupSize =
         let scan = scan clContext workGroupSize
         let update = update clContext
@@ -214,7 +216,8 @@ module ClArray =
 
             inputArray, totalSum
 
-
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExclude (clContext: ClContext) workGroupSize =
         let copy = copy clContext
 
@@ -227,7 +230,8 @@ module ClArray =
             let totalSum = clContext.CreateClArray [| 0 |]
             prefixSumExcludeInplace processor copiedArray totalSum
 
-
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumInclude (clContext: ClContext) workGroupSize =
         let kernel =
             <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClArray<int>) (outputArray: ClArray<int>) ->
@@ -327,6 +331,9 @@ module ClArray =
 
             outputArray
 
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
