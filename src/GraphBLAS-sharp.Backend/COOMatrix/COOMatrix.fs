@@ -5,6 +5,8 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
 module COOMatrix =
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
@@ -113,7 +115,7 @@ module COOMatrix =
             let length = allValues.Length
 
             let ndRange =
-                Range1D.CreateValid(length - 1, workGroupSize)
+                Range1D.CreateValid(length, workGroupSize)
 
             let rawPositionsGpu =
                 clContext.CreateClArray<int>(length, hostAccessMode = HostAccessMode.NotAccessible)
@@ -307,7 +309,9 @@ module COOMatrix =
 
             allRows, allColumns, allValues
 
-
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
 
         let merge = merge clContext workGroupSize
@@ -369,7 +373,8 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private compressRows (clContext: ClContext) workGroupSize =
 
         let calcHyperSparseRows =
@@ -463,7 +468,8 @@ module COOMatrix =
 
             rowPointers
 
-
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
 
         let compressRows = compressRows clContext workGroupSize

@@ -26,10 +26,10 @@ let genCOOMatricesToAdd (_base: 'a [,]) i1 i2 =
 
     for i in 0 .. _base.GetLength 0 - 1 do
         for j in 0 .. _base.GetLength 1 - 1 do
-            if (i + j) % (i1 % 20) <> 0 then
+            if (i + j) % (abs i1 % 20 + 1) <> 0 then
                 m1.[i, j] <- Some _base.[i, j]
 
-            if (i + j) % (i2 % 20) <> 0 then
+            if (i + j) % (abs i2 % 20 + 1) <> 0 then
                 m2.[i, j] <- Some _base.[i, j]
 
     let getCOOMatrix (m: option<'a> [,]) =
@@ -89,8 +89,8 @@ let checkResult op zero (mtx1: TestCOOMatrix<'a>) (mtx2: TestCOOMatrix<'a>) (act
 
         actual2D
 
-    for i in 0 .. mtx1.OriginalMatrix.Value.GetLength 0 do
-        for j in 0 .. mtx1.OriginalMatrix.Value.GetLength 1 do
+    for i in 0 .. (mtx1.OriginalMatrix.Value.GetLength 0) - 1 do
+        for j in 0 .. (mtx1.OriginalMatrix.Value.GetLength 1) - 1 do
             Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
 
 
@@ -105,7 +105,7 @@ let testCases =
                 |> Array.filter (fun i -> array.Length % i = 0)
                 |> Array.max
 
-            mAdd wgSize q
+            mAdd (if wgSize = 1 then 2 else wgSize) q
 
     let makeTest getReplicateFun op zero (mtx1: TestCOOMatrix<'a>) (mtx2: TestCOOMatrix<'a>) =
         if mtx1.Values.Length > 0 && mtx2.Values.Length > 0 then
@@ -135,7 +135,6 @@ let testCases =
 
             let actual =
                 let res: COOMatrix<'a> = replicate m1 m2
-
                 let actualRows = Array.zeroCreate res.Rows.Length
                 let actualColumns = Array.zeroCreate res.Columns.Length
                 let actualValues = Array.zeroCreate res.Values.Length
