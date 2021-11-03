@@ -101,7 +101,7 @@ module internal rec Sum =
                 runCommand scan
                 <| fun kernelPrepare ->
                     let ndRange =
-                        Range1D(Utils.getDefaultGlobalSize 256 inputArrayLength, workGroupSize)
+                        Range1D.CreateValid(inputArrayLength, workGroupSize)
 
                     kernelPrepare ndRange inputArray vertices
         }

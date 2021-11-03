@@ -29,11 +29,7 @@ module CSRMatrix =
 
         fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
             let ndRange =
-                Range1D(
-                    Common.Utils.getDefaultGlobalSize workGroupSize workGroupSize
-                    * matrix.RowCount,
-                    workGroupSize
-                )
+                Range1D.CreateValid(matrix.RowCount * workGroupSize, workGroupSize)
 
             let rowIndices =
                 clContext.CreateClArray matrix.Values.Length

@@ -133,11 +133,7 @@ module internal rec BitonicSort =
                 runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| Range1D(
-                        Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize 256,
-                        wgSize
-                    )
+                    <| Range1D.CreateValid(Utils.floorToPower2 length, wgSize)
                     <| keys
                     <| values
         }
@@ -181,11 +177,7 @@ module internal rec BitonicSort =
                 runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| Range1D(
-                        Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize 256,
-                        wgSize
-                    )
+                    <| Range1D.CreateValid(Utils.floorToPower2 length, wgSize)
                     <| keys
                     <| values
         }
@@ -270,11 +262,7 @@ module internal rec BitonicSort =
                 runCommand kernel
                 <| fun kernelPrepare ->
                     kernelPrepare
-                    <| Range1D(
-                        Utils.floorToPower2 length
-                        |> Utils.getDefaultGlobalSize 256,
-                        wgSize
-                    )
+                    <| Range1D.CreateValid(Utils.floorToPower2 length, wgSize)
                     <| keys
                     <| values
         }

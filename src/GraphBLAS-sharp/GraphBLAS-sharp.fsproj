@@ -32,7 +32,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GraphBLAS-sharp.Backend\GraphBLAS-sharp.Backaend.fsproj">
+    <ProjectReference Include="..\..\src\GraphBLAS-sharp.Backend\GraphBLAS-sharp.Backend.fsproj">
       <Name>GraphBLAS-sharp.fsproj</Name>
     </ProjectReference>
   </ItemGroup>

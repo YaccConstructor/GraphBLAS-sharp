@@ -1,14 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 module internal Utils =
-    let getDefaultGlobalSize workGroupSize n =
-        let m = n - 1
-
-        m - m % workGroupSize + workGroupSize
-
-    let getValidGlobalSize wgSize neededSize =
-        (neededSize + wgSize - 1) / wgSize * wgSize
-
     let floorToPower2 =
         fun x -> x ||| (x >>> 1)
         >> fun x -> x ||| (x >>> 2)
