@@ -334,12 +334,13 @@ module COOMatrix =
                     matrixRight.Values
 
 
-            use rawPositions =
+            let rawPositions =
                 preparePositions queue allRows allColumns allValues
 
             let resultRows, resultColumns, resultValues, resultLength =
                 setPositions queue allRows allColumns allValues rawPositions
 
+            queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
