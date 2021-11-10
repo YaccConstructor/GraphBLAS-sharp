@@ -148,6 +148,10 @@ let testCases =
                 let _ =
                     q.PostAndReply(fun ch -> Msg.CreateToHostMsg(res.Values, actualValues, ch))
 
+                q.Post(Msg.CreateFreeMsg<_>(res.Columns))
+                q.Post(Msg.CreateFreeMsg<_>(res.Rows))
+                q.Post(Msg.CreateFreeMsg<_>(res.Values))
+
                 { OriginalMatrix = None
                   RowCount = res.RowCount
                   ColumnCount = res.ColumnCount
