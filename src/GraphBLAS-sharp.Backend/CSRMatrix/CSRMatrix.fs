@@ -61,7 +61,7 @@ module CSRMatrix =
 
         let toCSR = COOMatrix.toCSR clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
 
             let m1COO = toCOO processor workGroupSize m1
             let m2COO = toCOO processor workGroupSize m2
