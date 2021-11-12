@@ -45,7 +45,6 @@ let testCases =
       testProperty "Correctness test on random int arrays"
       <| fun (array: array<int>) ->
           let array = Array.sort array
-          printfn "array: %A" array
 
           if array.Length > 0 then
               let clArray = context.CreateClArray array
