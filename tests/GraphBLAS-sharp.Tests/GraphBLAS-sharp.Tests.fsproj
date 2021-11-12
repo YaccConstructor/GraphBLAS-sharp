@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net5.0</TargetFrameworks>
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
