@@ -26,7 +26,7 @@ let testCases =
 
             copy q wgSize
 
-    let makeTest getCopyFun (array: array<'a>) =
+    let makeTest getCopyFun (array: array<'a>) filterFun =
         if array.Length > 0 then
             use clArray = context.CreateClArray array
 
@@ -43,7 +43,8 @@ let testCases =
                 >> setField "actual" (sprintf "%A" actual)
             )
 
-            let expected = array
+            let expected = filterFun array
+            let actual = filterFun actual
 
             "Array should be equals to original"
             |> Expect.sequenceEqual actual expected
@@ -51,25 +52,25 @@ let testCases =
     [ testProperty "Correctness test on random int arrays"
       <| (let copy = ClArray.copy context
           let getCopyFun = getCopyFun copy
-          fun (array: array<int>) -> makeTest getCopyFun array)
+          fun (array: array<int>) -> makeTest getCopyFun array id)
 
       testProperty "Correctness test on random bool arrays"
       <| (let copy = ClArray.copy context
           let getCopyFun = getCopyFun copy
 
-          fun (array: array<bool>) -> makeTest getCopyFun array)
+          fun (array: array<bool>) -> makeTest getCopyFun array id)
 
       testProperty "Correctness test on random float arrays"
       <| (let copy = ClArray.copy context
           let getCopyFun = getCopyFun copy
 
-          fun (array: array<float>) -> makeTest getCopyFun array)
+          fun (array: array<float>) -> makeTest getCopyFun array (Array.filter (System.Double.IsNaN >> not)))
 
       testProperty "Correctness test on random byte arrays"
       <| (let copy = ClArray.copy context
           let getCopyFun = getCopyFun copy
 
-          fun (array: array<byte>) -> makeTest getCopyFun array)
+          fun (array: array<byte>) -> makeTest getCopyFun array id)
 
       ]
 
