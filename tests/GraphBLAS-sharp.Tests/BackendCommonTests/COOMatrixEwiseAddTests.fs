@@ -45,24 +45,35 @@ let checkResult op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a
     | MatrixCOO actual ->
         for i in 0 .. actual.Rows.Length - 1 do
             actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
+
+        for i in 0 .. rows - 1 do
+            for j in 0 .. columns - 1 do
+                Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
     | MatrixCSR actual ->
-        let rows =
+        let rowIndices =
             Array.create actual.ColumnIndices.Length 0
 
-        for i in 0 .. actual.RowCount - 2 do
-            let rowStart = actual.RowPointers.[i]
-            let rowEnd = actual.RowPointers.[i + 1]
-            let rowLength = rowEnd - rowStart
+        for i in 0 .. actual.RowCount - 1 do
+            if i < actual.RowCount - 1 then
+                let rowStart = actual.RowPointers.[i]
+                let rowEnd = actual.RowPointers.[i + 1]
+                let rowLength = rowEnd - rowStart
 
-            for j in 0 .. rowLength - 1 do
-                rows.[rowStart + j] <- i
+                for j in 0 .. rowLength - 1 do
+                    rowIndices.[rowStart + j] <- i
+            else
+                let rowStart = actual.RowPointers.[actual.RowCount - 1]
+                let rowLength = rowIndices.Length - rowStart
 
-        for i in 0 .. rows.Length - 1 do
-            actual2D.[rows.[i], actual.ColumnIndices.[i]] <- actual.Values.[i]
+                for j in 0 .. rowLength - 1 do
+                    rowIndices.[rowStart + j] <- i
 
-    for i in 0 .. rows - 1 do
-        for j in 0 .. columns - 1 do
-            Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
+        for i in 0 .. rowIndices.Length - 1 do
+            actual2D.[rowIndices.[i], actual.ColumnIndices.[i]] <- actual.Values.[i]
+
+        for i in 0 .. rows - 1 do
+            for j in 0 .. columns - 1 do
+                Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
 
 let testCases =
     let q = context.Provider.CommandQueue
@@ -77,7 +88,7 @@ let testCases =
 
             mAdd (if wgSize = 1 then 2 else wgSize) q
 
-    let makeTest (context: ClContext) generator size mFormat op qOp zero = //zero || isZero
+    let makeTest (context: ClContext) generator size mFormat op qOp zero =
         let mtx1, mtx2, baseMtx1, baseMtx2 =
             getMatricesToAdd generator size (fun x -> x = zero) mFormat
 
@@ -168,8 +179,7 @@ let testCases =
                       Values = clValues2 }
 
                 let getAddFun =
-                    CSRMatrix.eWiseAdd context <@ op @>
-                    |> setSizeForAddFun
+                    CSRMatrix.eWiseAdd context qOp |> setSizeForAddFun
 
                 let add = getAddFun mtx1.Values
 
@@ -205,6 +215,7 @@ let testCases =
 
                 checkResult op zero baseMtx1 baseMtx2 (MatrixCSR(actual))
 
+        | _ -> failwith "No other types of matrices tested yet."
 
     [ testProperty "Correctness test on random int arrays"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size COO (+) <@ (+) @> 0)
