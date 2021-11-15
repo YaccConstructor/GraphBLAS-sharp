@@ -90,7 +90,7 @@ let testCases =
 
     let makeTest (context: ClContext) generator size mFormat op qOp zero =
         let mtx1, mtx2, baseMtx1, baseMtx2 =
-            getMatricesToAdd generator size (fun x -> x = zero) mFormat
+            getMatricesToAdd generator size ((=) zero) mFormat
 
         match mtx1, mtx2 with
         | MatrixCOO mtx1, MatrixCOO mtx2 ->
@@ -227,7 +227,7 @@ let testCases =
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size COO (+) <@ (+) @> 0.0)
 
       testProperty "Correctness test on random byte arrays"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> (byte 0)) ]
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> 0uy) ]
 
 let tests =
     testCases |> testList "COOMatrix.EwiseAdd tests"
