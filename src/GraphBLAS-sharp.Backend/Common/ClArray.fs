@@ -331,7 +331,8 @@ module ClArray =
 
             outputArray
 
-    ///<param name="clContext">.</param>
+    ///<description>Remove duplicates form the given array.</description>
+    ///<param name="clContext">Computational context</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
