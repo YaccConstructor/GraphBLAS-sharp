@@ -412,9 +412,6 @@ module COOMatrix =
 
         let expandSparseNnzPerRow = ClArray.setPositions clContext
 
-        let rowPointersAndTotalSum =
-            ClArray.prefixSumExclude clContext workGroupSize
-
         fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) ->
 
             let nnz = rowIndices.Length
@@ -427,7 +424,10 @@ module COOMatrix =
             let positions, totalSum = posAndTotalSum processor bitmap
 
             let hostTotalSum = [| 0 |]
-            processor.Post(Msg.CreateToHostMsg(totalSum, hostTotalSum))
+
+            let _ =
+                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(totalSum, hostTotalSum, ch))
+
             let totalSum = hostTotalSum.[0]
 
             let ndRangeCNPRS =
@@ -465,7 +465,7 @@ module COOMatrix =
                 expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices totalSum
 
             let rowPointers, _ =
-                rowPointersAndTotalSum processor expandedNnzPerRow
+                posAndTotalSum processor expandedNnzPerRow
 
             rowPointers
 
