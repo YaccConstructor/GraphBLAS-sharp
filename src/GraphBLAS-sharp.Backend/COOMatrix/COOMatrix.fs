@@ -399,25 +399,31 @@ module COOMatrix =
                         nonZeroRowsPointers.[gid]
                         - nonZeroRowsPointers.[gid - 1] @>
 
+        let expandNnzPerRow =
+            <@ fun (ndRange: Range1D) totalSum (nnzPerRowSparse: ClArray<'a>) (nonZeroRowsIndices: ClArray<int>) (expandedNnzPerRow: ClArray<'a>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i < totalSum then
+                    expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
+
         let kernelCHSR =
             clContext.CreateClKernel calcHyperSparseRows
 
         let kernelCNPRS =
             clContext.CreateClKernel calcNnzPerRowSparse
 
+        let kernelENPR = clContext.CreateClKernel expandNnzPerRow
+
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 
         let posAndTotalSum =
             ClArray.prefixSumExclude clContext workGroupSize
 
-        let expandSparseNnzPerRow = ClArray.setPositions clContext
+        let getRowPointers =
+            ClArray.prefixSumInclude clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) ->
-
-            let nnz = rowIndices.Length
-
-            let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
-
+        fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
             let bitmap =
                 getUniqueBitmap processor workGroupSize rowIndices
 
@@ -430,12 +436,11 @@ module COOMatrix =
 
             let totalSum = hostTotalSum.[0]
 
-            let ndRangeCNPRS =
-                Range1D.CreateValid(totalSum, workGroupSize)
+            let nonZeroRowsIndices = clContext.CreateClArray totalSum
+            let nonZeroRowsPointers = clContext.CreateClArray totalSum
 
-            let zeroArray = Array.zeroCreate totalSum
-            let nonZeroRowsIndices = clContext.CreateClArray zeroArray
-            let nonZeroRowsPointers = clContext.CreateClArray zeroArray
+            let nnz = rowIndices.Length
+            let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -452,20 +457,37 @@ module COOMatrix =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
 
-            let nnzPerRowSparse = clContext.CreateClArray zeroArray
+            let nnzPerRowSparse = clContext.CreateClArray totalSum
+
+            let ndRangeCNPRSandENPR =
+                Range1D.CreateValid(totalSum, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernelCNPRS.SetArguments ndRangeCNPRS nonZeroRowsPointers nnzPerRowSparse totalSum)
+                    (fun () ->
+                        kernelCNPRS.SetArguments ndRangeCNPRSandENPR nonZeroRowsPointers nnzPerRowSparse totalSum)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
 
             let expandedNnzPerRow =
-                expandSparseNnzPerRow processor workGroupSize nnzPerRowSparse nonZeroRowsIndices totalSum
+                clContext.CreateClArray(Array.zeroCreate rowCount)
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernelENPR.SetArguments
+                            ndRangeCNPRSandENPR
+                            totalSum
+                            nnzPerRowSparse
+                            nonZeroRowsIndices
+                            expandedNnzPerRow)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernelENPR)
 
             let rowPointers, _ =
-                posAndTotalSum processor expandedNnzPerRow
+                getRowPointers processor expandedNnzPerRow
 
             rowPointers
 
@@ -482,7 +504,8 @@ module COOMatrix =
             GraphBLAS.FSharp.Backend.ClArray.copy clContext
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
-            let compressedRows = compressRows processor matrix.Rows
+            let compressedRows =
+                compressRows processor matrix.Rows matrix.RowCount
 
             let cols =
                 copy processor workGroupSize matrix.Columns
