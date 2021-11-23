@@ -407,13 +407,13 @@ module COOMatrix =
                 if i < totalSum then
                     expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
 
-        let kernelCHSR =
+        let kernelCalcHyperSparseRows =
             clContext.CreateClKernel calcHyperSparseRows
 
-        let kernelCNPRS =
+        let kernelCalcNnzPerRowSparse =
             clContext.CreateClKernel calcNnzPerRowSparse
 
-        let kernelENPR = clContext.CreateClKernel expandNnzPerRow
+        let kernelExpandNnzPerRow = clContext.CreateClKernel expandNnzPerRow
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 
@@ -445,7 +445,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCHSR.SetArguments
+                        kernelCalcHyperSparseRows.SetArguments
                             ndRangeCHSR
                             rowIndices
                             bitmap
@@ -455,7 +455,7 @@ module COOMatrix =
                             nnz)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _> kernelCHSR)
+            processor.Post(Msg.CreateRunMsg<_, _> kernelCalcHyperSparseRows)
 
             let nnzPerRowSparse = clContext.CreateClArray totalSum
 
@@ -465,10 +465,14 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCNPRS.SetArguments ndRangeCNPRSandENPR nonZeroRowsPointers nnzPerRowSparse totalSum)
+                        kernelCalcNnzPerRowSparse.SetArguments
+                            ndRangeCNPRSandENPR
+                            nonZeroRowsPointers
+                            nnzPerRowSparse
+                            totalSum)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _> kernelCNPRS)
+            processor.Post(Msg.CreateRunMsg<_, _> kernelCalcNnzPerRowSparse)
 
             let expandedNnzPerRow =
                 clContext.CreateClArray(Array.zeroCreate rowCount)
@@ -476,7 +480,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelENPR.SetArguments
+                        kernelExpandNnzPerRow.SetArguments
                             ndRangeCNPRSandENPR
                             totalSum
                             nnzPerRowSparse
@@ -484,7 +488,7 @@ module COOMatrix =
                             expandedNnzPerRow)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _> kernelENPR)
+            processor.Post(Msg.CreateRunMsg<_, _> kernelExpandNnzPerRow)
 
             let rowPointers, _ =
                 getRowPointers processor expandedNnzPerRow

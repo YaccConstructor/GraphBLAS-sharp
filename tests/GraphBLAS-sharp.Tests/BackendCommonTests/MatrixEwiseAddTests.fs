@@ -218,28 +218,28 @@ let testCases =
 
         | _ -> failwith "No other types of matrices tested yet."
 
-    [ testProperty "Correctness test on random int arrays COO"
+    [ testProperty "Correctness test on random int matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size COO (+) <@ (+) @> 0)
 
-      testProperty "Correctness test on random bool arrays COO"
+      testProperty "Correctness test on random bool matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size COO (||) <@ (||) @> false)
 
-      testProperty "Correctness test on random float arrays COO"
+      testProperty "Correctness test on random float matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size COO (+) <@ (+) @> 0.0)
 
-      testProperty "Correctness test on random byte arrays COO"
+      testProperty "Correctness test on random byte matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> 0uy)
 
-      testProperty "Correctness test on random int arrays CSR"
+      testProperty "Correctness test on random int matrices CSR"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size CSR (+) <@ (+) @> 0)
 
-      testProperty "Correctness test on random boll arrays CSR"
+      testProperty "Correctness test on random bool matrices CSR"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size CSR (||) <@ (||) @> false)
 
-      testProperty "Correctness test on random float arrays CSR"
+      testProperty "Correctness test on random float matrices CSR"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size CSR (+) <@ (+) @> 0.0)
 
-      testProperty "Correctness test on random byte arrays CSR"
+      testProperty "Correctness test on random byte matrices CSR"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size CSR (+) <@ (+) @> 0uy) ]
 
 let tests =
