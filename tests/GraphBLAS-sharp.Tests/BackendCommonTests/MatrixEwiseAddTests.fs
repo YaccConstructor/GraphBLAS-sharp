@@ -1,4 +1,4 @@
-module Backend.COOMatrix.EwiseAdd
+module Backend.EwiseAdd
 
 open FsCheck
 open Expecto
@@ -10,7 +10,7 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Generators
 open GraphBLAS.FSharp.Tests.Utils
 
-let logger = Log.create "COOMatrix.EwiseAdd.Tests"
+let logger = Log.create "EwiseAdd.Tests"
 
 let context =
     let deviceType = ClDeviceType.Default
@@ -41,39 +41,40 @@ let checkResult op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a
     let actual2D =
         Array2D.create actual.RowCount actual.ColumnCount zero
 
-    match actual with
-    | MatrixCOO actual ->
-        for i in 0 .. actual.Rows.Length - 1 do
-            actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
+    let actual2D =
+        match actual with
+        | MatrixCOO actual ->
+            for i in 0 .. actual.Rows.Length - 1 do
+                actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
 
-        for i in 0 .. rows - 1 do
-            for j in 0 .. columns - 1 do
-                Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
-    | MatrixCSR actual ->
-        let rowIndices =
-            Array.create actual.ColumnIndices.Length 0
+            actual2D
+        | MatrixCSR actual ->
+            let rowIndices =
+                Array.create actual.ColumnIndices.Length 0
 
-        for i in 0 .. actual.RowCount - 1 do
-            if i < actual.RowCount - 1 then
-                let rowStart = actual.RowPointers.[i]
-                let rowEnd = actual.RowPointers.[i + 1]
-                let rowLength = rowEnd - rowStart
+            for i in 0 .. actual.RowCount - 1 do
+                if i < actual.RowCount - 1 then
+                    let rowStart = actual.RowPointers.[i]
+                    let rowEnd = actual.RowPointers.[i + 1]
+                    let rowLength = rowEnd - rowStart
 
-                for j in 0 .. rowLength - 1 do
-                    rowIndices.[rowStart + j] <- i
-            else
-                let rowStart = actual.RowPointers.[actual.RowCount - 1]
-                let rowLength = rowIndices.Length - rowStart
+                    for j in 0 .. rowLength - 1 do
+                        rowIndices.[rowStart + j] <- i
+                else
+                    let rowStart = actual.RowPointers.[actual.RowCount - 1]
+                    let rowLength = rowIndices.Length - rowStart
 
-                for j in 0 .. rowLength - 1 do
-                    rowIndices.[rowStart + j] <- i
+                    for j in 0 .. rowLength - 1 do
+                        rowIndices.[rowStart + j] <- i
 
-        for i in 0 .. rowIndices.Length - 1 do
-            actual2D.[rowIndices.[i], actual.ColumnIndices.[i]] <- actual.Values.[i]
+            for i in 0 .. rowIndices.Length - 1 do
+                actual2D.[rowIndices.[i], actual.ColumnIndices.[i]] <- actual.Values.[i]
 
-        for i in 0 .. rows - 1 do
-            for j in 0 .. columns - 1 do
-                Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
+            actual2D
+
+    for i in 0 .. rows - 1 do
+        for j in 0 .. columns - 1 do
+            Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
 
 let testCases =
     let q = context.Provider.CommandQueue
@@ -217,17 +218,29 @@ let testCases =
 
         | _ -> failwith "No other types of matrices tested yet."
 
-    [ testProperty "Correctness test on random int arrays"
+    [ testProperty "Correctness test on random int matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size COO (+) <@ (+) @> 0)
 
-      testProperty "Correctness test on random bool arrays"
+      testProperty "Correctness test on random bool matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size COO (||) <@ (||) @> false)
 
-      testProperty "Correctness test on random float arrays"
+      testProperty "Correctness test on random float matrices COO"
       <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size COO (+) <@ (+) @> 0.0)
 
-      testProperty "Correctness test on random byte arrays"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> 0uy) ]
+      testProperty "Correctness test on random byte matrices COO"
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> 0uy)
+
+      testProperty "Correctness test on random int matrices CSR"
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size CSR (+) <@ (+) @> 0)
+
+      testProperty "Correctness test on random bool matrices CSR"
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size CSR (||) <@ (||) @> false)
+
+      testProperty "Correctness test on random float matrices CSR"
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size CSR (+) <@ (+) @> 0.0)
+
+      testProperty "Correctness test on random byte matrices CSR"
+      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size CSR (+) <@ (+) @> 0uy) ]
 
 let tests =
-    testCases |> testList "COOMatrix.EwiseAdd tests"
+    testCases |> testList "Backend.EwiseAdd tests"
