@@ -9,14 +9,19 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Common/Utils.fs" />
-    <Compile Include="Common/ClArray.fs" />    
+    <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Matrices.fs" />
     <Compile Include="COOMatrix/COOMatrix.fs" />
+    <Compile Include="CSRMatrix\Mxm/Setup.fs" />
+    <Compile Include="CSRMatrix\Mxm/Expansion.fs" />
+    <Compile Include="CSRMatrix\Mxm/Sorting.fs" />
+    <Compile Include="CSRMatrix\Mxm/Compression.fs" />
     <Compile Include="CSRMatrix/CSRMatrix.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <Compile Include="CSRMatrix/SpGEMM.fs" />
+    <Compile Include="CSRMatrix\SpGEMMSimple.fs" />
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <Compile Include="CSRMatrix/SpMV.fs" />
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

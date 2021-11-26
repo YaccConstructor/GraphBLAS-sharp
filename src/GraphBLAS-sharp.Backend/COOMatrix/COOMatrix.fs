@@ -105,7 +105,7 @@ module COOMatrix =
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
                     rawPositionsBuffer.[i] <- 0
                     allValuesBuffer.[i + 1] <- (%opAdd) allValuesBuffer.[i] allValuesBuffer.[i + 1]
-                else
+                elif i < length then
                     (rawPositionsBuffer.[i] <- 1) @>
 
         let kernel =
