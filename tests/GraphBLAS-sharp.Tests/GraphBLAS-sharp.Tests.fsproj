@@ -26,5 +26,8 @@
     <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Brahma.FSharp" Version="2.0.0-alpha9.2" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -35,7 +35,7 @@ module CSRMatrix =
                 clContext.CreateClArray matrix.Values.Length
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange workGroupSize matrix.RowPointers rowIndices)
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange workGroupSize matrix.RowPointers rowIndices)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)

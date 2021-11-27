@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.CSRMatrix.Mxm
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
@@ -95,12 +95,12 @@ module internal rec Setup =
 
             let kernel = clContext.CreateClKernel(getRowLengths)
 
-            let ndRange = Range1D(workGroupSize * matrixLeft.RowCount)
+            let ndRange = Range1D(workGroupSize * matrixLeft.RowCount, workGroupSize)
 
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.ArgumentsSetter
                             ndRange
                             matrixLeft.RowPointers
                             matrixLeft.Columns

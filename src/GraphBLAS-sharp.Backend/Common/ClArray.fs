@@ -5,6 +5,38 @@ open GraphBLAS.FSharp.Backend.Common
 
 module ClArray =
 
+    let zip (clContext: ClContext) workGroupSize =
+        fun (processor: MailboxProcessor<_>) (firstArray: ClArray<'a>) (secondArray: ClArray<'b>) ->
+            let length = firstArray.Length
+
+            let zip =
+                <@
+                    fun (range: Range1D)
+                        (firstBuffer: ClArray<'a>)
+                        (secondBuffer: ClArray<'b>)
+                        (outputBuffer: ClArray<_>) ->
+
+                        let i = range.GlobalID0
+                        if i < length then
+                            let a = firstBuffer.[i]
+                            let b = secondBuffer.[i]
+                            outputBuffer.[i] <- struct(a, b)
+                @>
+
+            let outputArray = clContext.CreateClArray(firstArray.Length)
+
+            let kernel = clContext.CreateClKernel zip
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange firstArray secondArray outputArray)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            outputArray
+
     let copy (clContext: ClContext) =
         let copy =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
@@ -24,7 +56,7 @@ module ClArray =
                 clContext.CreateClArray(inputArray.Length)
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange inputArray outputArray inputArray.Length)
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray outputArray inputArray.Length)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -53,7 +85,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArray outputArray inputArray.Length outputArrayLength)
+                    (fun () -> kernel.ArgumentsSetter ndRange inputArray outputArray inputArray.Length outputArrayLength)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -80,7 +112,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArrayLength bunchLength inputArray vertices)
+                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -150,7 +182,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArrayLength verticesLength inputArray vertices totalSum)
+                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength verticesLength inputArray vertices totalSum)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -264,7 +296,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange copiedArray inputArrayLength totalSum outputArray)
+                    (fun () -> kernel.ArgumentsSetter ndRange copiedArray inputArrayLength totalSum outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -296,7 +328,7 @@ module ClArray =
             let bitmap = clContext.CreateClArray inputLength
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
+                Msg.MsgSetArguments(fun () -> getUniqueBitmap.ArgumentsSetter ndRange inputArray inputLength bitmap)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> getUniqueBitmap)
@@ -324,7 +356,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArray inputArray.Length positions outputArray)
+                    (fun () -> kernel.ArgumentsSetter ndRange inputArray inputArray.Length positions outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)

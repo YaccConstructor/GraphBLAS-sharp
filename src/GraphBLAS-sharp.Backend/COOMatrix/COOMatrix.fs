@@ -73,7 +73,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.ArgumentsSetter
                             ndRange
                             prefixSumArrayLength
                             allRows
@@ -122,7 +122,7 @@ module COOMatrix =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange length allRows allColumns allValues rawPositionsGpu)
+                    (fun () -> kernel.ArgumentsSetter ndRange length allRows allColumns allValues rawPositionsGpu)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -289,7 +289,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.ArgumentsSetter
                             ndRange
                             firstSide
                             secondSide
@@ -445,7 +445,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCalcHyperSparseRows.SetArguments
+                        kernelCalcHyperSparseRows.ArgumentsSetter
                             ndRangeCHSR
                             rowIndices
                             bitmap
@@ -465,7 +465,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCalcNnzPerRowSparse.SetArguments
+                        kernelCalcNnzPerRowSparse.ArgumentsSetter
                             ndRangeCNPRSandENPR
                             nonZeroRowsPointers
                             nnzPerRowSparse
@@ -480,7 +480,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelExpandNnzPerRow.SetArguments
+                        kernelExpandNnzPerRow.ArgumentsSetter
                             ndRangeCNPRSandENPR
                             totalSum
                             nnzPerRowSparse

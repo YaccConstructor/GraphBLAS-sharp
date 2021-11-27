@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.CSRMatrix.Mxm
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
@@ -42,7 +42,7 @@ module internal Expansion =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.ArgumentsSetter
                             ndRange
                             matrixLeft.RowPointers
                             matrixLeft.Columns

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.CSRMatrix.Mxm
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
@@ -41,7 +41,7 @@ module internal Sorting =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.ArgumentsSetter
                             ndRange
                             matrix.RowPointers
                             matrix.Columns
