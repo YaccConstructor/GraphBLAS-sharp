@@ -1,0 +1,236 @@
+namespace GraphBLAS.FSharp.Backend.Common
+
+open Brahma.FSharp.OpenCL
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Core.Operators
+open GraphBLAS.FSharp.Backend
+
+module internal rec RadixSort =
+    let sortByKey (clContext: ClContext) workGroupSize =
+        fun (processor: MailboxProcessor<_>)
+            (keys: ClArray<uint64>)
+            (values: ClArray<'a>)
+            (numberOfBits: int) ->
+
+            let numberOfArrays = pown 2 numberOfBits
+            let numberOfStages = 64 / numberOfBits
+
+            let positionsSeq = seq {
+                for i in 0 .. numberOfArrays - 1 ->
+                clContext.CreateClArray(
+                    keys.Length,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
+            }
+
+            let sums =
+                clContext.CreateClArray(
+                    numberOfArrays,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
+
+            let mutable keysArrays =
+                if numberOfStages % 2 = 0 then
+                    let auxiliaryKeys =
+                        clContext.CreateClArray(
+                            keys.Length,
+                            hostAccessMode = HostAccessMode.NotAccessible
+                        )
+
+                    keys, auxiliaryKeys
+                else
+                    let auxiliaryKeys = ClArray.copy clContext processor workGroupSize keys
+
+                    auxiliaryKeys, keys
+
+            let mutable valuesArrays =
+                if numberOfStages % 2 = 0 then
+                    let auxiliaryValues =
+                        clContext.CreateClArray(
+                            values.Length,
+                            hostAccessMode = HostAccessMode.NotAccessible
+                        )
+
+                    values, auxiliaryValues
+                else
+                    let auxiliaryValues = ClArray.copy clContext processor workGroupSize values
+
+                    auxiliaryValues, values
+
+            let swap (a, b) = (b, a)
+
+            for stage in 0 .. numberOfStages - 1 do
+                preparePositions
+                    clContext
+                    workGroupSize
+                    processor
+                    (fst keysArrays)
+                    positionsSeq
+                    sums
+                    numberOfBits
+                    stage
+
+                setPositions
+                    clContext
+                    workGroupSize
+                    processor
+                    positionsSeq
+                    (fst keysArrays)
+                    (fst valuesArrays)
+                    (snd keysArrays)
+                    (snd valuesArrays)
+                    numberOfBits
+                    stage
+
+                keysArrays <- swap keysArrays
+                valuesArrays <- swap valuesArrays
+
+    let private setPositions
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (positionsSeq: seq<ClArray<int>>)
+        (keys: ClArray<uint64>)
+        (values: ClArray<'a>)
+        (resultKeys: ClArray<uint64>)
+        (resultValues: ClArray<'a>)
+        (numberOfBits: int)
+        (stage: int) =
+
+        let keysLength = keys.Length
+        let offset = numberOfBits * stage
+
+        let updatePositions =
+            <@
+                fun (ndRange: Range1D)
+                    (keys: ClArray<uint64>)
+                    (values: ClArray<'a>)
+                    (positions: ClArray<int>)
+                    (indexOfPositions: int)
+                    (resultKeys: ClArray<uint64>)
+                    (resultValues: ClArray<'a>) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < keysLength then
+                        if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
+                            resultKeys.[positions.[i]] <- keys.[i]
+                            resultValues.[positions.[i]] <- values.[i]
+            @>
+
+        let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
+
+        // TODO: сделать параллельно
+        positionsSeq
+        |> Seq.iteri (fun i positions ->
+            let kernel = clContext.CreateClKernel updatePositions
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.ArgumentsSetter
+                                ndRange
+                                keys
+                                values
+                                positions
+                                i
+                                resultKeys
+                                resultValues)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+        )
+
+    let private updatePositions
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (positionsSeq: seq<ClArray<int>>)
+        positionsLength
+        (sums: ClArray<int>) =
+
+        let updatePositions =
+            <@
+                fun (ndRange: Range1D)
+                    (positions: ClArray<int>)
+                    (indexOfPositions: int)
+                    (sums: ClArray<int>) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < positionsLength then
+                        positions.[i] <- positions.[i] + sums.[indexOfPositions]
+            @>
+
+        let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
+
+        // TODO: сделать параллельно
+        positionsSeq
+        |> Seq.skip 1
+        |> Seq.iteri (fun i positions ->
+            let kernel = clContext.CreateClKernel updatePositions
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.ArgumentsSetter ndRange positions (i + 1) sums)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+        )
+
+    let private preparePositions
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (keys: ClArray<uint64>)
+        (positionsSeq: seq<ClArray<int>>)
+        (sums: ClArray<int>)
+        (numberOfBits: int)
+        (stage: int) =
+
+        let keysLength = keys.Length
+        let offset = numberOfBits * stage
+
+        let preparePositions =
+            <@
+                fun (ndRange: Range1D)
+                    (keys: ClArray<uint64>)
+                    (positions: ClArray<int>)
+                    (indexOfPositions: int) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < keysLength then
+                        if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
+                            positions.[i] <- 1
+                        else
+                            positions.[i] <- 0
+            @>
+
+
+        let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
+
+        // TODO: сделать параллельно
+        positionsSeq
+        |> Seq.iteri (fun i positions ->
+            let kernel = clContext.CreateClKernel preparePositions
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.ArgumentsSetter ndRange keys positions i)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            PrefixSum.runExcludeInplace clContext workGroupSize processor positions sums i <@ (+) @> 0
+            |> ignore
+        )
+
+        // TODO: не используется
+        let total =
+            clContext.CreateClArray(
+                1,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
+
+        PrefixSum.runExcludeInplace clContext workGroupSize processor sums total 0 <@ (+) @> 0
+        |> ignore

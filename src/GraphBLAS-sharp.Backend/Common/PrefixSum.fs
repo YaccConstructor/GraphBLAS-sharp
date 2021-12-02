@@ -85,6 +85,7 @@ module internal rec PrefixSum =
             (vertices: ClArray<'a>)
             (verticesLength: int)
             (totalSum: ClArray<'a>)
+            idxToWrite
             (opAdd: Expr<'a -> 'a -> 'a>)
             (zero: 'a) ->
 
@@ -122,7 +123,7 @@ module internal rec PrefixSum =
 
                     if localID = workGroupSize - 1 then
                         if verticesLength <= 1 && localID = i then
-                            totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                            totalSumBuffer.[idxToWrite] <- resultLocalBuffer.[localID]
 
                         verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                         (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
@@ -166,6 +167,7 @@ module internal rec PrefixSum =
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
             (totalSum: ClArray<'a>)
+            (idxToWrite: int)
             (opAdd: Expr<'a -> 'a -> 'a>)
             (zero: 'a) ->
 
@@ -195,6 +197,7 @@ module internal rec PrefixSum =
                 (fst verticesArrays)
                 verticesLength
                 totalSum
+                idxToWrite
                 opAdd
                 zero
 
@@ -211,6 +214,7 @@ module internal rec PrefixSum =
                     sndVertices
                     ((verticesLength - 1) / workGroupSize + 1)
                     totalSum
+                    idxToWrite
                     opAdd
                     zero
 
