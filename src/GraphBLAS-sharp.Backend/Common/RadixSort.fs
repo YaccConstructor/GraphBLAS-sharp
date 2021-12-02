@@ -1,12 +1,11 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp.OpenCL
-open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Core.Operators
 open GraphBLAS.FSharp.Backend
 
 module internal rec RadixSort =
-    let sortByKey (clContext: ClContext) workGroupSize =
+    let sortByKeyInPlace (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<uint64>)
             (values: ClArray<'a>)
@@ -29,35 +28,31 @@ module internal rec RadixSort =
                     hostAccessMode = HostAccessMode.NotAccessible
                 )
 
-            let mutable keysArrays =
+            let auxiliaryKeys =
                 if numberOfStages % 2 = 0 then
-                    let auxiliaryKeys =
-                        clContext.CreateClArray(
-                            keys.Length,
-                            hostAccessMode = HostAccessMode.NotAccessible
-                        )
-
-                    keys, auxiliaryKeys
+                    clContext.CreateClArray(
+                        keys.Length,
+                        hostAccessMode = HostAccessMode.NotAccessible
+                    )
                 else
-                    let auxiliaryKeys = ClArray.copy clContext processor workGroupSize keys
+                    ClArray.copy clContext processor workGroupSize keys
 
-                    auxiliaryKeys, keys
-
-            let mutable valuesArrays =
+            let auxiliaryValues =
                 if numberOfStages % 2 = 0 then
-                    let auxiliaryValues =
-                        clContext.CreateClArray(
-                            values.Length,
-                            hostAccessMode = HostAccessMode.NotAccessible
-                        )
-
-                    values, auxiliaryValues
+                    clContext.CreateClArray(
+                        values.Length,
+                        hostAccessMode = HostAccessMode.NotAccessible
+                    )
                 else
-                    let auxiliaryValues = ClArray.copy clContext processor workGroupSize values
-
-                    auxiliaryValues, values
+                    ClArray.copy clContext processor workGroupSize values
 
             let swap (a, b) = (b, a)
+
+            let mutable keysArrays = auxiliaryKeys, keys
+            let mutable valuesArrays = auxiliaryValues, values
+            if numberOfStages % 2 = 0 then
+                keysArrays <- swap keysArrays
+                valuesArrays <- swap valuesArrays
 
             for stage in 0 .. numberOfStages - 1 do
                 preparePositions
@@ -84,6 +79,15 @@ module internal rec RadixSort =
 
                 keysArrays <- swap keysArrays
                 valuesArrays <- swap valuesArrays
+
+            positionsSeq
+            |> Seq.iter (fun positions ->
+                processor.Post(Msg.CreateFreeMsg(positions))
+            )
+            processor.Post(Msg.CreateFreeMsg(sums))
+            processor.Post(Msg.CreateFreeMsg(auxiliaryKeys))
+            processor.Post(Msg.CreateFreeMsg(auxiliaryValues))
+
 
     let private setPositions
         (clContext: ClContext)
@@ -113,7 +117,11 @@ module internal rec RadixSort =
                     let i = ndRange.GlobalID0
 
                     if i < keysLength then
-                        if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
+                        let mutable mask = 0UL
+                        for j in 0 .. numberOfBits - 1 do
+                            mask <- (mask <<< 1) ||| 1UL
+                        if (keys.[i] >>> offset) &&& mask = uint64 indexOfPositions then
+                        // if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
                             resultKeys.[positions.[i]] <- keys.[i]
                             resultValues.[positions.[i]] <- values.[i]
             @>
@@ -200,7 +208,11 @@ module internal rec RadixSort =
                     let i = ndRange.GlobalID0
 
                     if i < keysLength then
-                        if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
+                        let mutable mask = 0UL
+                        for j in 0 .. numberOfBits - 1 do
+                            mask <- (mask <<< 1) ||| 1UL
+                        if (keys.[i] >>> offset) &&& mask = uint64 indexOfPositions then
+                        // if (keys.[i] >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits) = uint64 indexOfPositions then
                             positions.[i] <- 1
                         else
                             positions.[i] <- 0
@@ -226,11 +238,9 @@ module internal rec RadixSort =
         )
 
         // TODO: не используется
-        let total =
-            clContext.CreateClArray(
-                1,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
+        let total = clContext.CreateClArray(1)
 
         PrefixSum.runExcludeInplace clContext workGroupSize processor sums total 0 <@ (+) @> 0
         |> ignore
+
+        processor.Post(Msg.CreateFreeMsg(total))

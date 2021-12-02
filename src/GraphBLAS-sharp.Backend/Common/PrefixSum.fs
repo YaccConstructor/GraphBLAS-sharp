@@ -40,7 +40,15 @@ module internal rec PrefixSum =
 
     let private scanExclusive clContext =
         scanGeneral
-            <@ fun _ _ _ _ -> () @>
+            <@ fun
+                (_: ClArray<'a>)
+                (_: 'a)
+                (_: int)
+                (_: int) ->
+
+                let mutable a = 1
+                a <- 1
+            @>
             <@
                 fun (resultBuffer: ClArray<'a>)
                     (resultLocalBuffer: 'a[])
@@ -150,14 +158,11 @@ module internal rec PrefixSum =
                 @>
 
             let kernel = clContext.CreateClKernel scan
-
             let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
-
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength verticesLength inputArray vertices totalSum)
             )
-
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
     let private runInPlace scan (clContext: ClContext) workGroupSize =
