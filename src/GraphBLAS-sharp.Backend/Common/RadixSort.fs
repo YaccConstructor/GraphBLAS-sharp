@@ -4,7 +4,7 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Core.Operators
 open GraphBLAS.FSharp.Backend
 
-module internal rec RadixSort =
+module (*internal*) rec RadixSort =
     let sortByKeyInPlace (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<uint64>)
@@ -14,13 +14,13 @@ module internal rec RadixSort =
             let numberOfArrays = pown 2 numberOfBits
             let numberOfStages = 64 / numberOfBits
 
-            let positionsSeq = seq {
-                for i in 0 .. numberOfArrays - 1 ->
-                clContext.CreateClArray(
-                    keys.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible
-                )
-            }
+            let allPositions =
+                [| for i in 0 .. numberOfArrays - 1 ->
+                    clContext.CreateClArray(
+                        keys.Length,
+                        hostAccessMode = HostAccessMode.NotAccessible
+                    )
+                |]
 
             let sums =
                 clContext.CreateClArray(
@@ -60,7 +60,7 @@ module internal rec RadixSort =
                     workGroupSize
                     processor
                     (fst keysArrays)
-                    positionsSeq
+                    allPositions
                     sums
                     numberOfBits
                     stage
@@ -69,7 +69,7 @@ module internal rec RadixSort =
                     clContext
                     workGroupSize
                     processor
-                    positionsSeq
+                    allPositions
                     (fst keysArrays)
                     (fst valuesArrays)
                     (snd keysArrays)
@@ -80,8 +80,8 @@ module internal rec RadixSort =
                 keysArrays <- swap keysArrays
                 valuesArrays <- swap valuesArrays
 
-            positionsSeq
-            |> Seq.iter (fun positions ->
+            allPositions
+            |> Array.iter (fun positions ->
                 processor.Post(Msg.CreateFreeMsg(positions))
             )
             processor.Post(Msg.CreateFreeMsg(sums))
@@ -93,7 +93,7 @@ module internal rec RadixSort =
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
-        (positionsSeq: seq<ClArray<int>>)
+        (allPositions: ClArray<int>[])
         (keys: ClArray<uint64>)
         (values: ClArray<'a>)
         (resultKeys: ClArray<uint64>)
@@ -129,8 +129,8 @@ module internal rec RadixSort =
         let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
 
         // TODO: сделать параллельно
-        positionsSeq
-        |> Seq.iteri (fun i positions ->
+        allPositions
+        |> Array.iteri (fun i positions ->
             let kernel = clContext.CreateClKernel updatePositions
 
             processor.Post(
@@ -152,7 +152,7 @@ module internal rec RadixSort =
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
-        (positionsSeq: seq<ClArray<int>>)
+        (allPositions: ClArray<int>[])
         positionsLength
         (sums: ClArray<int>) =
 
@@ -172,9 +172,9 @@ module internal rec RadixSort =
         let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
 
         // TODO: сделать параллельно
-        positionsSeq
-        |> Seq.skip 1
-        |> Seq.iteri (fun i positions ->
+        allPositions
+        |> Array.skip 1
+        |> Array.iteri (fun i positions ->
             let kernel = clContext.CreateClKernel updatePositions
 
             processor.Post(
@@ -190,7 +190,7 @@ module internal rec RadixSort =
         workGroupSize
         (processor: MailboxProcessor<_>)
         (keys: ClArray<uint64>)
-        (positionsSeq: seq<ClArray<int>>)
+        (allPositions: ClArray<int>[])
         (sums: ClArray<int>)
         (numberOfBits: int)
         (stage: int) =
@@ -222,8 +222,8 @@ module internal rec RadixSort =
         let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
 
         // TODO: сделать параллельно
-        positionsSeq
-        |> Seq.iteri (fun i positions ->
+        allPositions
+        |> Array.iteri (fun i positions ->
             let kernel = clContext.CreateClKernel preparePositions
 
             processor.Post(
@@ -244,3 +244,5 @@ module internal rec RadixSort =
         |> ignore
 
         processor.Post(Msg.CreateFreeMsg(total))
+
+        updatePositions clContext workGroupSize processor allPositions keys.Length sums

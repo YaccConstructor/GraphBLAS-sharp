@@ -45,24 +45,24 @@ let main argv =
 
     let totalSum = clContext.CreateClArray(1)
 
-    // let init =
-    //     <@
-    //         fun (range: Range1D)
-    //             (buffer: ClArray<_>) ->
+    let init =
+        <@
+            fun (range: Range1D)
+                (buffer: ClArray<_>) ->
 
-    //             let i = range.GlobalID0
-    //             if i < n then buffer.[i] <- i
-    //     @>
-    // let kernel = clContext.CreateClKernel(init)
-    // let ndRange = Range1D.CreateValid(n, workGroupSize)
-    // processor.Post(
-    //     Msg.MsgSetArguments
-    //         (fun () ->
-    //             kernel.ArgumentsSetter
-    //                 ndRange
-    //                 xs)
-    // )
-    // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+                let i = range.GlobalID0
+                if i < n then buffer.[i] <- uint64 (n - i)
+        @>
+    let kernel = clContext.CreateClKernel(init)
+    let ndRange = Range1D.CreateValid(n, workGroupSize)
+    processor.Post(
+        Msg.MsgSetArguments
+            (fun () ->
+                kernel.ArgumentsSetter
+                    ndRange
+                    xs)
+    )
+    processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 
     // let init =
@@ -86,10 +86,10 @@ let main argv =
     // // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 
-    // RadixSort.sortByKeyInPlace clContext workGroupSize processor xs ys 2
+    RadixSort.sortByKeyInPlace clContext workGroupSize processor xs ys 2
 
 
-    // let _ = PrefixSum.runExcludeInplace clContext workGroupSize processor xs totalSum 0 <@ (+) @> 0.0
+    // let _ = PrefixSum.runIncludeInplace clContext workGroupSize processor xs totalSum 0 <@ (+) @> 0
 
     // let update =
     //     <@
@@ -233,28 +233,14 @@ let main argv =
     //     0
 
     // let _ = ClArray.prefixSumExcludeInplace clContext workGroupSize processor xs totalSum
-    opencl {
-        let n = 100
-        let workGroupSize = 256
-        let! clContext = ClTask.ask
-        let xs =
-            clContext.CreateClArray(
-                n,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
-        let totalSum = clContext.CreateClArray(1)
-        let _ = PrefixSum.runExcludeInplace clContext workGroupSize clContext.CommandQueue xs totalSum 0 <@ (+) @> 0
-        return ()
-    }
-    |> ClTask.runSync (ClContext())
 
-    // let res = Array.zeroCreate n
-    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
-    // processor.Post(Msg.CreateFreeMsg<_>(xs))
-    // processor.Post(Msg.CreateFreeMsg<_>(ys))
+    let res = Array.zeroCreate n
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
+    processor.Post(Msg.CreateFreeMsg<_>(xs))
+    processor.Post(Msg.CreateFreeMsg<_>(ys))
 
-    // processor.PostAndReply <| MsgNotifyMe
+    processor.PostAndReply <| MsgNotifyMe
 
-    // printfn "%A" res
+    printfn "%A" res
 
     0
