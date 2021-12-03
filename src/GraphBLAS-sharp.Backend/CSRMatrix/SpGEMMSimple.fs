@@ -25,6 +25,6 @@ module internal rec SpGEMMSimple =
     let private runNonEmpty (clContext: ClContext) workGroupSize (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) (times: Expr<'a -> 'a -> 'a>) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) =
         let initialResult = Setup.run clContext workGroupSize processor matrixLeft matrixRight
         let expandedResult = Expansion.run clContext workGroupSize processor matrixLeft matrixRight initialResult times
-        Sorting.runInPlace clContext workGroupSize processor expandedResult
+        let sortedResult = Sorting.run clContext workGroupSize processor expandedResult
 
-        Compression.run clContext workGroupSize processor expandedResult plus zero
+        Compression.run clContext workGroupSize processor sortedResult plus zero

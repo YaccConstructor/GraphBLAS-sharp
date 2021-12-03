@@ -5,7 +5,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
 module internal rec Sorting =
-    let runInPlace (clContext: ClContext) workGroupSize =
+    let run (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
             let matrixCOO = Converter.toCOO clContext processor workGroupSize matrix
 

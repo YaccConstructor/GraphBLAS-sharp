@@ -20,8 +20,6 @@ let main argv =
     let n = 100
     let workGroupSize = 128
 
-
-
     // let opAdd =
     //     <@
     //         fun ((x1,x2): struct(int*int))
@@ -33,36 +31,63 @@ let main argv =
 
     let xs =
         clContext.CreateClArray(
-            n,
+            [|0; 1; 3; 3; 4|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
 
     let ys =
         clContext.CreateClArray(
-            n,
+            [|0; 1; 2; 3|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
 
-    let totalSum = clContext.CreateClArray(1)
+    let zs =
+        clContext.CreateClArray(
+            [|1; 2; 3; 4|],
+            hostAccessMode = HostAccessMode.NotAccessible
+        )
 
-    let init =
-        <@
-            fun (range: Range1D)
-                (buffer: ClArray<_>) ->
+    let mtx = {
+        RowCount = xs.Length
+        ColumnCount = ys.Length
+        RowPointers = xs
+        Columns = ys
+        Values = zs
+    }
 
-                let i = range.GlobalID0
-                if i < n then buffer.[i] <- uint64 (n - i)
-        @>
-    let kernel = clContext.CreateClKernel(init)
-    let ndRange = Range1D.CreateValid(n, workGroupSize)
-    processor.Post(
-        Msg.MsgSetArguments
-            (fun () ->
-                kernel.ArgumentsSetter
-                    ndRange
-                    xs)
-    )
-    processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+    // let mtx2 = Converter.toCOO clContext processor workGroupSize mtx
+    // let res = Array.zeroCreate mtx2.Rows.Length
+    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(mtx2.Rows, res, ch))
+
+
+    //let totalSum = clContext.CreateClArray(1)
+
+    // let init =
+    //     <@
+    //         fun (range: Range1D)
+    //             (buffer: ClArray<_>) ->
+
+    //             let i = range.GlobalID0
+    //             if i < n then
+    //                 if i = 0 then buffer.[i] <- 0
+    //                 if i = 1 then buffer.[i] <- 0
+    //                 if i = 2 then buffer.[i] <- 0
+    //                 if i = 3 then buffer.[i] <- 1
+    //                 if i = 4 then buffer.[i] <- 1
+    //                 if i = 5 then buffer.[i] <- 5
+    //                 if i = 6 then buffer.[i] <- 5
+    //                 if i = 7 then buffer.[i] <- 8
+    //     @>
+    // let kernel = clContext.CreateClKernel(init)
+    // let ndRange = Range1D.CreateValid(n, workGroupSize)
+    // processor.Post(
+    //     Msg.MsgSetArguments
+    //         (fun () ->
+    //             kernel.ArgumentsSetter
+    //                 ndRange
+    //                 xs)
+    // )
+    // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 
     // let init =
@@ -86,8 +111,29 @@ let main argv =
     // // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 
-    RadixSort.sortByKeyInPlace clContext workGroupSize processor xs ys 2
+    //RadixSort.sortByKeyInPlace clContext workGroupSize processor xs ys 2
 
+    // let length = xs.Length
+    // let klukva =
+    //     <@
+    //         fun (range: Range1D)
+    //             (buffer: ClArray<_>) ->
+
+    //             let i = range.GlobalID0
+    //             if i < length then
+    //                 atomic (+) buffer.[0] buffer.[i] |> ignore
+    //                 //buffer.[0] <- a
+    //     @>
+    // let kernel = clContext.CreateClKernel(klukva)
+    // let ndRange = Range1D.CreateValid(xs.Length, workGroupSize)
+    // processor.Post(
+    //     Msg.MsgSetArguments
+    //         (fun () ->
+    //             kernel.ArgumentsSetter
+    //                 ndRange
+    //                 xs)
+    // )
+    // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     // let _ = PrefixSum.runIncludeInplace clContext workGroupSize processor xs totalSum 0 <@ (+) @> 0
 
@@ -234,7 +280,7 @@ let main argv =
 
     // let _ = ClArray.prefixSumExcludeInplace clContext workGroupSize processor xs totalSum
 
-    let res = Array.zeroCreate n
+    let res = Array.zeroCreate xs.Length
     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
     processor.Post(Msg.CreateFreeMsg<_>(xs))
     processor.Post(Msg.CreateFreeMsg<_>(ys))

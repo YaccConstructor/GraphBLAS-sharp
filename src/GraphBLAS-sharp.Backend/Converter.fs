@@ -14,7 +14,7 @@ module internal rec Converter =
             let nnz = clContext.CreateClArray(1)
 
             let rowIndices = prepareRows clContext workGroupSize processor matrix
-            PrefixSum.runExcludeInplace clContext workGroupSize processor rowIndices nnz 0 <@ (+) @> 0
+            PrefixSum.runIncludeInplace clContext workGroupSize processor rowIndices nnz 0 <@ (+) @> 0
             |> ignore
 
             processor.Post(Msg.CreateFreeMsg(nnz))
@@ -52,15 +52,14 @@ module internal rec Converter =
                     (rowPointers: ClArray<int>)
                     (rows: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0
+                    let i = ndRange.GlobalID0 + 1
 
-                    if i < rowPointersLength then
-                        rows.[rowPointers.[i]] <- 1
+                    if i < rowPointersLength - 1 then atomic (+) rows.[rowPointers.[i]] 1 |> ignore
             @>
 
         let kernel = clContext.CreateClKernel(prepareRows)
 
-        let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
+        let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)
 
         processor.Post(
             Msg.MsgSetArguments
