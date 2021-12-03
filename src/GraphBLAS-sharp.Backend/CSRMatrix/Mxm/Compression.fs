@@ -42,6 +42,7 @@ module internal rec Compression =
                 res.[0]
 
             let resultColumns, resultValues = setColumnsAndValues clContext workGroupSize processor matrix.Columns scannedValues resultLength positions
+            setRowPointers clContext workGroupSize processor matrix.RowPointers positions
 
             {
                 RowCount = matrix.RowCount
@@ -97,7 +98,7 @@ module internal rec Compression =
 
             heads, tails
 
-    // TODO: оптимальней ли будет сначала убрать повторяющиеся значения из rowPointers?
+    // TODO: оптимальней будет сначала убрать повторяющиеся значения из rowPointers
     let private createFlags (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>) (rowPointers: ClArray<int>) (columns: ClArray<int>) ->
 
@@ -205,79 +206,36 @@ module internal rec Compression =
 
             resultColumns, resultValues
 
-    // let private setRowPointers (clContext: ClContext) workGroupSize =
-    //     fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) (positions: ClArray<int>) ->
-    //         let rowPointersLength = matrix.RowPointers.Length
+    let private setRowPointers (clContext: ClContext) workGroupSize =
+        fun (processor: MailboxProcessor<_>)
+            (rowPointers: ClArray<int>)
+            (positions: ClArray<int>) ->
 
-    //         let setRowPointers =
-    //             <@
-    //                 fun (ndRange: Range1D)
-    //                     (rowPointersBuffer: ClArray<int>)
-    //                     (positionsBuffer: ClArray<int>) ->
+            let rowPointersLength = rowPointers.Length
 
-    //                     let i = ndRange.GlobalID0
-    //                     if i < rowPointersLength then rowPointersBuffer.[i] <- positionsBuffer.[rowPointersBuffer.[i]]
-    //             @>
+            let setRowPointers =
+                <@
+                    fun (ndRange: Range1D)
+                        (rowPointersBuffer: ClArray<int>)
+                        (positionsBuffer: ClArray<int>) ->
 
-    //         let kernel = clContext.CreateClKernel(setRowPointers)
+                        let i = ndRange.GlobalID0
 
-    //         let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
+                        if i < rowPointersLength then
+                            rowPointersBuffer.[i] <- positionsBuffer.[rowPointersBuffer.[i]]
+                @>
 
-    //         processor.Post(
-    //             Msg.MsgSetArguments
-    //                 (fun () ->
-    //                     kernel.ArgumentsSetter
-    //                         ndRange
-    //                         matrix.RowPointers
-    //                         positions)
-    //         )
+            let kernel = clContext.CreateClKernel(setRowPointers)
 
-    //         processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
 
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            rowPointers
+                            positions)
+            )
 
-    // let private preparePositions (clContext: ClContext) workGroupSize =
-    //     let preparePositions =
-    //         <@
-    //             fun (ndRange: Range1D)
-    //                 (rowPointersBuffer: ClArray<int>)
-    //                 (columnsBuffer: ClArray<int>)
-    //                 (rawPositionsBuffer: ClArray<int>) ->
-
-    //                 let i = ndRange.GlobalID0
-    //                 let localID = ndRange.LocalID0
-    //                 let workGroupNumber = i / workGroupSize
-
-    //                 let beginIndex = rowPointersBuffer.[workGroupNumber]
-    //                 let mutable j = localID + beginIndex
-    //                 let endIndex = rowPointersBuffer.[workGroupNumber + 1]
-    //                 while j < endIndex do
-    //                     let currColumn = columnsBuffer.[j]
-    //                     if j < endIndex - 1 && currColumn = columnsBuffer.[j + 1] then rawPositionsBuffer.[j] <- 0 else rawPositionsBuffer.[j] <- 1
-    //                     j <- j + workGroupSize
-    //         @>
-
-    //     fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
-    //         let rawPositions =
-    //             clContext.CreateClArray(
-    //                 matrix.Columns.Length + 1,
-    //                 hostAccessMode = HostAccessMode.NotAccessible,
-    //                 deviceAccessMode = DeviceAccessMode.WriteOnly
-    //             )
-
-    //         let kernel = clContext.CreateClKernel(preparePositions)
-
-    //         let ndRange = Range1D(workGroupSize * matrix.RowCount)
-
-    //         processor.Post(
-    //             Msg.MsgSetArguments
-    //                 (fun () ->
-    //                     kernel.ArgumentsSetter
-    //                         ndRange
-    //                         matrix.RowPointers
-    //                         matrix.Columns
-    //                         rawPositions)
-    //         )
-
-    //         processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-    //         rawPositions
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))

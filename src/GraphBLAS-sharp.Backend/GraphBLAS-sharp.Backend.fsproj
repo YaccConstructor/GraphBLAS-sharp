@@ -13,8 +13,9 @@
     <Compile Include="Common/PrefixSum.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/BitonicSort.fs" />
-    <Compile Include="Common\RadixSort.fs" />
+    <Compile Include="Common/RadixSort.fs" />
     <Compile Include="Matrices.fs" />
+    <Compile Include="Converter.fs" />
     <Compile Include="COOMatrix/COOMatrix.fs" />
     <Compile Include="CSRMatrix/Mxm/Setup.fs" />
     <Compile Include="CSRMatrix/Mxm/Expansion.fs" />

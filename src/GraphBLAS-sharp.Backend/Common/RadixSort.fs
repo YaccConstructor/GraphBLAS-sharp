@@ -4,7 +4,7 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Core.Operators
 open GraphBLAS.FSharp.Backend
 
-module (*internal*) rec RadixSort =
+module internal rec RadixSort =
     let sortByKeyInPlace (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<uint64>)

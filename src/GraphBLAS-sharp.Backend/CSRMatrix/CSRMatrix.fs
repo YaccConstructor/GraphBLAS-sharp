@@ -5,52 +5,7 @@ open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let toCOO (clContext: ClContext) =
-
-        let expandRows =
-            <@ fun (range: Range1D) workGroupSize (rowPointers: ClArray<int>) (rowIndices: ClArray<int>) ->
-
-                let lid = range.LocalID0
-                let groupId = range.GlobalID0 / workGroupSize
-
-                let rowStart = rowPointers.[groupId]
-                let rowEnd = rowPointers.[groupId + 1]
-                let rowLength = rowEnd - rowStart
-
-                let mutable i = lid
-
-                while i < rowLength do
-                    rowIndices.[rowStart + i] <- groupId
-                    i <- i + workGroupSize @>
-
-        let kernel = clContext.CreateClKernel expandRows
-        let copy = ClArray.copy clContext
-        let copyData = ClArray.copy clContext
-
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
-            let ndRange =
-                Range1D.CreateValid(matrix.RowCount * workGroupSize, workGroupSize)
-
-            let rowIndices =
-                clContext.CreateClArray matrix.Values.Length
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange workGroupSize matrix.RowPointers rowIndices)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            let colIndices =
-                copy processor workGroupSize matrix.Columns
-
-            let values =
-                copyData processor workGroupSize matrix.Values
-
-            { RowCount = matrix.RowCount
-              ColumnCount = matrix.ColumnCount
-              Rows = rowIndices
-              Columns = colIndices
-              Values = values }
+    let toCOO = Converter.toCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
 
