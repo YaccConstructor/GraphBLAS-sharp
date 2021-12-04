@@ -86,86 +86,99 @@ module internal rec PrefixSum =
             @>
             clContext
 
-    let private scanGeneral beforeLocalSumClear writeData (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>)
-            (inputArray: ClArray<'a>)
-            (inputArrayLength: int)
-            (vertices: ClArray<'a>)
-            (verticesLength: int)
-            (totalSum: ClArray<'a>)
-            idxToWrite
-            (opAdd: Expr<'a -> 'a -> 'a>)
-            (zero: 'a) ->
+    let private scanGeneral
+        beforeLocalSumClear
+        writeData
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (inputArray: ClArray<'a>)
+        (inputArrayLength: int)
+        (vertices: ClArray<'a>)
+        (verticesLength: int)
+        (totalSum: ClArray<'a>)
+        idxToWrite
+        (opAdd: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
 
-            let scan =
-                <@ fun
-                    (ndRange: Range1D)
-                    inputArrayLength
-                    verticesLength
-                    (resultBuffer: ClArray<'a>)
-                    (verticesBuffer: ClArray<'a>)
-                    (totalSumBuffer: ClArray<'a>) ->
+        let scan =
+            <@ fun
+                (ndRange: Range1D)
+                inputArrayLength
+                verticesLength
+                (resultBuffer: ClArray<'a>)
+                (verticesBuffer: ClArray<'a>)
+                (totalSumBuffer: ClArray<'a>) ->
 
-                    let resultLocalBuffer = localArray<'a> workGroupSize
-                    let i = ndRange.GlobalID0
-                    let localID = ndRange.LocalID0
+                let resultLocalBuffer = localArray<'a> workGroupSize
+                let i = ndRange.GlobalID0
+                let localID = ndRange.LocalID0
 
-                    if i < inputArrayLength then
-                        resultLocalBuffer.[localID] <- resultBuffer.[i]
-                    else
-                        resultLocalBuffer.[localID] <- zero
+                if i < inputArrayLength then
+                    resultLocalBuffer.[localID] <- resultBuffer.[i]
+                else
+                    resultLocalBuffer.[localID] <- zero
 
-                    let mutable step = 2
+                let mutable step = 2
 
-                    while step <= workGroupSize do
-                        barrier ()
-
-                        if localID < workGroupSize / step then
-                            let i = step * (localID + 1) - 1
-
-                            resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
-
-                        step <- step <<< 1
-
+                while step <= workGroupSize do
                     barrier ()
 
-                    if localID = workGroupSize - 1 then
-                        if verticesLength <= 1 && localID = i then
-                            totalSumBuffer.[idxToWrite] <- resultLocalBuffer.[localID]
+                    if localID < workGroupSize / step then
+                        let i = step * (localID + 1) - 1
 
-                        verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
-                        (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
-                        resultLocalBuffer.[localID] <- zero
+                        resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
 
-                    step <- workGroupSize
+                    step <- step <<< 1
 
-                    while step > 1 do
-                        barrier ()
+                barrier ()
 
-                        if localID < workGroupSize / step then
-                            let i = step * (localID + 1) - 1
-                            let j = i - (step >>> 1)
+                if localID = workGroupSize - 1 then
+                    if verticesLength <= 1 && localID = i then
+                        totalSumBuffer.[idxToWrite] <- resultLocalBuffer.[localID]
 
-                            let tmp = resultLocalBuffer.[i]
-                            resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i] resultLocalBuffer.[j]
-                            resultLocalBuffer.[j] <- tmp
+                    verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
+                    (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
+                    resultLocalBuffer.[localID] <- zero
 
-                        step <- step >>> 1
+                step <- workGroupSize
 
+                while step > 1 do
                     barrier ()
 
-                    (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
-                @>
+                    if localID < workGroupSize / step then
+                        let i = step * (localID + 1) - 1
+                        let j = i - (step >>> 1)
 
-            let kernel = clContext.CreateClKernel scan
-            let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength verticesLength inputArray vertices totalSum)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+                        let tmp = resultLocalBuffer.[i]
+                        resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i] resultLocalBuffer.[j]
+                        resultLocalBuffer.[j] <- tmp
 
-    let private runInPlace scan (clContext: ClContext) workGroupSize =
+                    step <- step >>> 1
+
+                barrier ()
+
+                (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
+            @>
+
+        let kernel = clContext.CreateClKernel scan
+        let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
+        processor.Post(
+            Msg.MsgSetArguments
+                (fun () -> kernel.ArgumentsSetter
+                            ndRange
+                            inputArrayLength
+                            verticesLength
+                            inputArray
+                            vertices
+                            totalSum)
+        )
+        processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+    let private runInPlace
+        scan
+        (clContext: ClContext)
+        workGroupSize =
 
         let update = update clContext
 
@@ -236,4 +249,5 @@ module internal rec PrefixSum =
     let runExcludeInplace clContext = runInPlace scanExclusive clContext
 
     // TODO: нужен ли здесь totalSum?
+    // TODO: нужен ли здесь zero?
     let runIncludeInplace clContext = runInPlace scanInclusive clContext
