@@ -4,7 +4,8 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 
-module internal rec SpGEMMSimple =
+// module internal rec SpGEMMSimple =
+module rec SpGEMMSimple =
     let run (clContext: ClContext) workGroupSize =
 
         fun (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) (times: Expr<'a -> 'a -> 'a>) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) ->

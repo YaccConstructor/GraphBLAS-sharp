@@ -76,7 +76,7 @@ module internal rec Compression =
 
             let tails =
                 clContext.CreateClArray<int>(
-                    length,
+                    length + 1,
                     hostAccessMode = HostAccessMode.NotAccessible
                 )
 

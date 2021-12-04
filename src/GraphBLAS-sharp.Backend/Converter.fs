@@ -31,18 +31,13 @@ module internal rec Converter =
               Columns = colIndices
               Values = values }
 
-    // TODO: инициализация rows нулями
     let private prepareRows
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
         (matrix: CSRMatrix<'a>) =
 
-        let rows =
-            clContext.CreateClArray(
-                matrix.Columns.Length,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
+        let rows = ClArray.create clContext workGroupSize processor matrix.Columns.Length 0
 
         let rowPointersLength = matrix.RowPointers.Length
 

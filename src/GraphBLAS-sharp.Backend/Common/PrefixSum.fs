@@ -3,7 +3,8 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
-module internal rec PrefixSum =
+// module internal rec PrefixSum =
+module rec PrefixSum =
     let private update (clContext: ClContext) =
         fun (processor: MailboxProcessor<_>)
             workGroupSize
@@ -40,20 +41,20 @@ module internal rec PrefixSum =
 
     let private scanExclusive clContext =
         scanGeneral
-            <@ fun
-                (_: ClArray<'a>)
-                (_: 'a)
-                (_: int)
-                (_: int) ->
+            <@
+                fun (a: ClArray<'a>)
+                    (b: 'a)
+                    (c: int)
+                    (d: int) ->
 
-                let mutable a = 1
-                a <- 1
+                    let mutable x = 1
+                    x <- 1
             @>
             <@
                 fun (resultBuffer: ClArray<'a>)
                     (resultLocalBuffer: 'a[])
                     (inputArrayLength: int)
-                    (_: int)
+                    (smth: int)
                     (i: int)
                     (localID: int) ->
 
@@ -101,6 +102,8 @@ module internal rec PrefixSum =
         (opAdd: Expr<'a -> 'a -> 'a>)
         (zero: 'a) =
 
+        let zero = clContext.CreateClArray([|zero|])
+
         let scan =
             <@ fun
                 (ndRange: Range1D)
@@ -108,11 +111,14 @@ module internal rec PrefixSum =
                 verticesLength
                 (resultBuffer: ClArray<'a>)
                 (verticesBuffer: ClArray<'a>)
-                (totalSumBuffer: ClArray<'a>) ->
+                (totalSumBuffer: ClArray<'a>)
+                (zero: ClArray<'a>) ->
 
                 let resultLocalBuffer = localArray<'a> workGroupSize
                 let i = ndRange.GlobalID0
                 let localID = ndRange.LocalID0
+
+                let zero = zero.[0]
 
                 if i < inputArrayLength then
                     resultLocalBuffer.[localID] <- resultBuffer.[i]
@@ -127,7 +133,8 @@ module internal rec PrefixSum =
                     if localID < workGroupSize / step then
                         let i = step * (localID + 1) - 1
 
-                        resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
+                        let buff = (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
+                        resultLocalBuffer.[i] <- buff
 
                     step <- step <<< 1
 
@@ -151,7 +158,8 @@ module internal rec PrefixSum =
                         let j = i - (step >>> 1)
 
                         let tmp = resultLocalBuffer.[i]
-                        resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i] resultLocalBuffer.[j]
+                        let buff = (%opAdd) tmp resultLocalBuffer.[j]
+                        resultLocalBuffer.[i] <- buff
                         resultLocalBuffer.[j] <- tmp
 
                     step <- step >>> 1
@@ -171,7 +179,8 @@ module internal rec PrefixSum =
                             verticesLength
                             inputArray
                             vertices
-                            totalSum)
+                            totalSum
+                            zero)
         )
         processor.Post(Msg.CreateRunMsg<_, _> kernel)
 

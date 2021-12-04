@@ -19,15 +19,15 @@ module internal ByHeadFlags =
         let total = clContext.CreateClArray<struct('a * int)>(1)
         let plusAdvanced =
             <@
-                    fun ((x1, x2): struct('a * int))
-                        ((y1, y2): struct('a * int)) ->
+                fun ((x1, x2): struct('a * int))
+                    ((y1, y2): struct('a * int)) ->
 
-                        if y2 = 1 then
-                            struct(y1, 1)
-                        else
-                            let buff = (%plus) x1 y1
-                            struct(buff, x2)
-                @>
+                    if y2 = 1 then
+                        struct(y1, 1)
+                    else
+                        let buff = (%plus) x1 y1
+                        struct(buff, x2)
+            @>
 
         PrefixSum.runIncludeInplace
             clContext

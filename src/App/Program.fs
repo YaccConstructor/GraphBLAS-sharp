@@ -10,7 +10,13 @@ open OpenCL.Net
 open System.IO
 open GraphBLAS.FSharp.Predefined
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common.PrefixSum
 
+open System.IO
+open Brahma.FSharp.OpenCL
+open Brahma.FSharp.OpenCL.Translator
+open Brahma.FSharp.OpenCL.Printer.AST
+open FSharp.Quotations
 
 [<EntryPoint>]
 let main argv =
@@ -20,23 +26,28 @@ let main argv =
     let n = 100
     let workGroupSize = 128
 
-    // let opAdd =
-    //     <@
-    //         fun ((x1,x2): struct(int*int))
-    //             ((y1,y2): struct(int*int)) ->
+    let plus = <@ (+) @>
 
-    //             if y2 = 1 then struct(y1,1) else struct(x1+y1,x2)
-    //     @>
+    let plusAdvanced =
+        <@
+            fun ((x1, x2): struct('a * int))
+                ((y1, y2): struct('a * int)) ->
 
+                if y2 = 1 then
+                    struct(y1, 1)
+                else
+                    let buff = (%plus) x1 y1
+                    struct(buff, x2)
+        @>
 
     let frP =
         clContext.CreateClArray(
-            [|0; 1; 3; 3; 6;7|],
+            [|0;0;0;3;3;3;6;6;6|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fc =
         clContext.CreateClArray(
-            [|2;1;3;0;2;3;0|],
+            [|1;5;7;1;2;6|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fv =
@@ -46,7 +57,7 @@ let main argv =
         )
     let fmtx = {
         RowCount = frP.Length - 1
-        ColumnCount = fc.Length
+        ColumnCount = frP.Length - 1
         RowPointers = frP
         Columns = fc
         Values = fv
@@ -54,12 +65,12 @@ let main argv =
 
     let srP =
         clContext.CreateClArray(
-            [|0;0;0;0;1;6|],
+            [|0;0;3;5;9;9;10;13;15|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sc =
         clContext.CreateClArray(
-            [|1;0;1;2;3;4|],
+            [|2;4;5;1;3;2;3;5;7;1;3;4;7;0;1|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sv =
@@ -69,27 +80,37 @@ let main argv =
         )
     let smtx = {
         RowCount = srP.Length - 1
-        ColumnCount = sc.Length
+        ColumnCount = srP.Length - 1
         RowPointers = srP
         Columns = sc
         Values = sv
     }
 
-    let fmtx2 = smtx
+    let heads =
+        clContext.CreateClArray(
+            [| 1;1;0;1;0;0;1 |],
+            hostAccessMode = HostAccessMode.NotAccessible
+        )
 
-    let frPCPU = Array.zeroCreate fmtx2.RowPointers.Length
-    let fcCPU = Array.zeroCreate fmtx2.Columns.Length
-    let fvCPU = Array.zeroCreate fmtx2.Values.Length
+    let rmtx = SpGEMMSimple.run clContext workGroupSize processor fmtx smtx <@ (*) @> <@ (+) @> 0
 
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.RowPointers, frPCPU, ch))
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.Columns, fcCPU, ch))
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.Values, fvCPU, ch))
+    let frPCPU = Array.zeroCreate rmtx.RowPointers.Length
+    let fcCPU = Array.zeroCreate rmtx.Columns.Length
+    let fvCPU = Array.zeroCreate rmtx.Values.Length
 
-    processor.PostAndReply <| MsgNotifyMe
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.RowPointers, frPCPU, ch))
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Columns, fcCPU, ch))
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Values, fvCPU, ch))
+
+    //processor.PostAndReply <| MsgNotifyMe
 
     printfn "%A" frPCPU
     printfn "%A" fcCPU
     printfn "%A" fvCPU
+
+
+
+
 
     // let mtx2 = Converter.toCOO clContext processor workGroupSize mtx
     // let res = Array.zeroCreate mtx2.Rows.Length

@@ -16,10 +16,11 @@ module internal rec RadixSort =
 
             let allPositions =
                 [| for i in 0 .. numberOfArrays - 1 ->
-                    clContext.CreateClArray(
-                        keys.Length,
-                        hostAccessMode = HostAccessMode.NotAccessible
-                    )
+                    ClArray.create clContext workGroupSize processor keys.Length 0
+                    // clContext.CreateClArray(
+                    //     keys.Length,
+                    //     hostAccessMode = HostAccessMode.NotAccessible
+                    // )
                 |]
 
             let sums =

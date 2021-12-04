@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Setup =
     let run (clContext: ClContext) workGroupSize =
@@ -14,7 +15,9 @@ module internal rec Setup =
         fun (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) ->
 
             let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
-            let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths matrixLeft
+            let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
+            let rowLengths' = ByHeadFlags.runInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
+            let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
 
             let resultNNZGpu = clContext.CreateClArray<_>(1)
 
@@ -59,7 +62,7 @@ module internal rec Setup =
 
         let resultRowLengths =
             clContext.CreateClArray(
-                matrixLeft.Columns.Length,
+                matrixLeft.RowPointers.Length,
                 hostAccessMode = HostAccessMode.NotAccessible
             )
 
@@ -72,14 +75,14 @@ module internal rec Setup =
                     (rowLengths: ClArray<int>)
                     (resultRowLengths: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0 + 1
+                    let i = ndRange.GlobalID0
 
-                    if i <= size then
-                        let index = firstRowPointers.[i]
-                        if i = size || index <> firstRowPointers.[i + 1] then
-                            resultRowLengths.[i - 1] <- rowLengths.[index - 1]
+                    if i < size then
+                        let index = firstRowPointers.[i + 1]
+                        if firstRowPointers.[i] <> index then
+                            resultRowLengths.[i] <- rowLengths.[index - 1]
                         else
-                            resultRowLengths.[i - 1] <- 0
+                            resultRowLengths.[i] <- 0
             @>
 
         let kernel = clContext.CreateClKernel(get)
@@ -140,18 +143,13 @@ module internal rec Setup =
 
         rowLengths
 
-    // TODO: инициализировать нулями в начале
     let private getHeadFlags
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
         (matrixLeft: CSRMatrix<'a>) =
 
-        let headFlags =
-            clContext.CreateClArray(
-                matrixLeft.Columns.Length,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
+        let headFlags = ClArray.create clContext workGroupSize processor matrixLeft.Columns.Length 0
 
         let size = matrixLeft.RowCount
 

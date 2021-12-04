@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 module internal rec Sorting =
     let run (clContext: ClContext) workGroupSize =
         fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
+            //необязательно переводить в COO, достаточно знать headFlags для rowPointers
             let matrixCOO = Converter.toCOO clContext processor workGroupSize matrix
 
             let packedIndices = pack clContext workGroupSize processor matrixCOO.Rows matrixCOO.Columns
@@ -75,7 +76,7 @@ module internal rec Sorting =
 
         let length = inputArray.Length
 
-        let pack =
+        let unpack =
             <@
                 fun (ndRange: Range1D)
                     (inputArray: ClArray<uint64>)
@@ -102,7 +103,7 @@ module internal rec Sorting =
                 hostAccessMode = HostAccessMode.NotAccessible
             )
 
-        let kernel = clContext.CreateClKernel(pack)
+        let kernel = clContext.CreateClKernel(unpack)
 
         let ndRange = Range1D.CreateValid(length, workGroupSize)
 
