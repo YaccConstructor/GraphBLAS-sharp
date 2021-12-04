@@ -14,15 +14,17 @@ module internal rec PrepareMatrix =
 
         let positions = preparePositions clContext workGroupSize processor matrixLeft matrixRight
 
-        // TODO: не ипользуется
-        let total = clContext.CreateClArray(1)
+        let resultNNZGpu = clContext.CreateClArray(1)
 
-        PrefixSum.runExcludeInplace clContext workGroupSize processor positions total 0 <@ (+) @> 0
+        PrefixSum.runExcludeInplace clContext workGroupSize processor positions resultNNZGpu 0 <@ (+) @> 0
         |> ignore
 
-        processor.Post(Msg.CreateFreeMsg(total))
+        let resultLength =
+            let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
+            processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
+            res.[0]
 
-        let resultColumns, resultValues = setColumnsAndValues clContext workGroupSize processor matrixLeft positions
+        let resultColumns, resultValues = setColumnsAndValues clContext workGroupSize processor matrixLeft positions resultLength
         setRowPointers clContext workGroupSize processor matrixLeft positions
 
         processor.Post(Msg.CreateFreeMsg(positions))
@@ -42,12 +44,13 @@ module internal rec PrepareMatrix =
         (matrixLeft: CSRMatrix<'a>)
         (matrixRight: CSRMatrix<'a>) =
 
-        let rawPositions = clContext.CreateClArray(
-            matrixLeft.Columns.Length + 1,
-            hostAccessMode = HostAccessMode.NotAccessible
-        )
+        let rawPositions =
+            clContext.CreateClArray(
+                matrixLeft.Columns.Length + 1,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
 
-        let length = matrixLeft.Columns.Length
+        let length = rawPositions.Length
 
         let preparePositions =
             <@
@@ -59,7 +62,7 @@ module internal rec PrepareMatrix =
                     let i = ndRange.GlobalID0
                     if i < length then
                         let column = firstColumns.[i]
-                        if secondRowPointers.[column] = secondRowPointers.[column + 1] then
+                        if i = length - 1 || secondRowPointers.[column] = secondRowPointers.[column + 1] then
                             positions.[i] <- 0
                         else
                             positions.[i] <- 1
@@ -88,17 +91,20 @@ module internal rec PrepareMatrix =
         workGroupSize
         (processor: MailboxProcessor<_>)
         (matrixLeft: CSRMatrix<'a>)
-        (positions: ClArray<int>) =
+        (positions: ClArray<int>)
+        (length: int) =
 
-        let resultColumns = clContext.CreateClArray(
-            matrixLeft.Columns.Length,
-            hostAccessMode = HostAccessMode.NotAccessible
-        )
+        let resultColumns =
+            clContext.CreateClArray(
+                length,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
 
-        let resultValues = clContext.CreateClArray(
-            matrixLeft.Values.Length,
-            hostAccessMode = HostAccessMode.NotAccessible
-        )
+        let resultValues =
+            clContext.CreateClArray(
+                length,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
 
         let length = matrixLeft.Columns.Length
 

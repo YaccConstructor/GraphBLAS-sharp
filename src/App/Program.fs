@@ -29,31 +29,67 @@ let main argv =
     //     @>
 
 
-    let xs =
+    let frP =
         clContext.CreateClArray(
-            [|0; 1; 3; 3; 4|],
+            [|0; 1; 3; 3; 6;7|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
-
-    let ys =
+    let fc =
         clContext.CreateClArray(
-            [|0; 1; 2; 3|],
+            [|2;1;3;0;2;3;0|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
-
-    let zs =
+    let fv =
         clContext.CreateClArray(
-            [|1; 2; 3; 4|],
+            Array.init fc.Length (fun i -> i + 1),
             hostAccessMode = HostAccessMode.NotAccessible
         )
-
-    let mtx = {
-        RowCount = xs.Length
-        ColumnCount = ys.Length
-        RowPointers = xs
-        Columns = ys
-        Values = zs
+    let fmtx = {
+        RowCount = frP.Length - 1
+        ColumnCount = fc.Length
+        RowPointers = frP
+        Columns = fc
+        Values = fv
     }
+
+    let srP =
+        clContext.CreateClArray(
+            [|0;0;0;0;1;6|],
+            hostAccessMode = HostAccessMode.NotAccessible
+        )
+    let sc =
+        clContext.CreateClArray(
+            [|1;0;1;2;3;4|],
+            hostAccessMode = HostAccessMode.NotAccessible
+        )
+    let sv =
+        clContext.CreateClArray(
+            Array.init sc.Length (fun i -> i + 1),
+            hostAccessMode = HostAccessMode.NotAccessible
+        )
+    let smtx = {
+        RowCount = srP.Length - 1
+        ColumnCount = sc.Length
+        RowPointers = srP
+        Columns = sc
+        Values = sv
+    }
+
+    let fmtx2 = smtx
+
+    let frPCPU = Array.zeroCreate fmtx2.RowPointers.Length
+    let fcCPU = Array.zeroCreate fmtx2.Columns.Length
+    let fvCPU = Array.zeroCreate fmtx2.Values.Length
+
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.RowPointers, frPCPU, ch))
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.Columns, fcCPU, ch))
+    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(fmtx2.Values, fvCPU, ch))
+
+    processor.PostAndReply <| MsgNotifyMe
+
+    printfn "%A" frPCPU
+    printfn "%A" fcCPU
+    printfn "%A" fvCPU
 
     // let mtx2 = Converter.toCOO clContext processor workGroupSize mtx
     // let res = Array.zeroCreate mtx2.Rows.Length
@@ -280,13 +316,13 @@ let main argv =
 
     // let _ = ClArray.prefixSumExcludeInplace clContext workGroupSize processor xs totalSum
 
-    let res = Array.zeroCreate xs.Length
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
-    processor.Post(Msg.CreateFreeMsg<_>(xs))
-    processor.Post(Msg.CreateFreeMsg<_>(ys))
+    // let res = Array.zeroCreate xs.Length
+    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
+    // processor.Post(Msg.CreateFreeMsg<_>(xs))
+    // processor.Post(Msg.CreateFreeMsg<_>(ys))
 
-    processor.PostAndReply <| MsgNotifyMe
+    // processor.PostAndReply <| MsgNotifyMe
 
-    printfn "%A" res
+    // printfn "%A" res
 
     0
