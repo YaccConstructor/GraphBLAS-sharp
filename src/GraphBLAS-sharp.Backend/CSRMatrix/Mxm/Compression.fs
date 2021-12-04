@@ -66,6 +66,9 @@ module internal rec Compression =
                         if i < length then
                             if i = 0 || columnsBuffer.[i - 1] <> columnsBuffer.[i] then headsBuffer.[i] <- 1 else headsBuffer.[i] <- 0
                             if i = length - 1 || columnsBuffer.[i] <> columnsBuffer.[i + 1] then tailsBuffer.[i] <- 1 else tailsBuffer.[i] <- 0
+
+                            // TODO: сделать красивее
+                            if i = 0 then tailsBuffer.[length] <- 0
                 @>
 
             let heads =

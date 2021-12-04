@@ -42,12 +42,12 @@ let main argv =
 
     let frP =
         clContext.CreateClArray(
-            [|0;0;0;3;3;3;6;6;6|],
+            [|0;1;3;3;6;7|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fc =
         clContext.CreateClArray(
-            [|1;5;7;1;2;6|],
+            [|2;1;3;0;2;3;0|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fv =
@@ -65,12 +65,12 @@ let main argv =
 
     let srP =
         clContext.CreateClArray(
-            [|0;0;3;5;9;9;10;13;15|],
+            [|0;2;2;5;5;5|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sc =
         clContext.CreateClArray(
-            [|2;4;5;1;3;2;3;5;7;1;3;4;7;0;1|],
+            [|1;3;0;1;4|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sv =
