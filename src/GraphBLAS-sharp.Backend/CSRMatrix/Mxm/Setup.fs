@@ -16,7 +16,7 @@ module internal rec Setup =
 
             let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
             let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
-            let rowLengths' = ByHeadFlags.runInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
+            let rowLengths' = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
             let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
 
             let resultNNZGpu = clContext.CreateClArray<_>(1)

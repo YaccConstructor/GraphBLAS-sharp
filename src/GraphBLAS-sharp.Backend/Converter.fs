@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Converter =
     let toCOO (clContext: ClContext) =
@@ -14,7 +15,7 @@ module internal rec Converter =
             let nnz = clContext.CreateClArray(1)
 
             let rowIndices = prepareRows clContext workGroupSize processor matrix
-            PrefixSum.runIncludeInplace clContext workGroupSize processor rowIndices nnz 0 <@ (+) @> 0
+            PrefixSum.standardIncludeInplace clContext workGroupSize processor rowIndices nnz
             |> ignore
 
             processor.Post(Msg.CreateFreeMsg(nnz))

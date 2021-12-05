@@ -12,7 +12,7 @@ module internal rec Sorting =
 
             let packedIndices = pack clContext workGroupSize processor matrixCOO.Rows matrixCOO.Columns
 
-            RadixSort.sortByKeyInPlace clContext workGroupSize processor packedIndices matrix.Values 2
+            RadixSort.sortByKeyInPlace4 clContext workGroupSize processor packedIndices matrix.Values
 
             let _, sortedColumns = unpack clContext workGroupSize processor packedIndices
 

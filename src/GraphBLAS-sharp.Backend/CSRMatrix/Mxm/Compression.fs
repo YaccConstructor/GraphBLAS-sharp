@@ -4,6 +4,7 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Compression =
     let run (clContext: ClContext) workGroupSize =
@@ -26,10 +27,10 @@ module internal rec Compression =
                 @>
 
             let totalSum = clContext.CreateClArray<struct('a * int)>(1)
-            let scannedValues, _ = PrefixSum.runIncludeInplace clContext workGroupSize processor valuesToScan totalSum 0 opAdd struct(zero, 0)
+            let scannedValues, _ = PrefixSum.runIncludeInplace clContext workGroupSize processor valuesToScan totalSum opAdd struct(zero, 0)
 
             let resultLength = clContext.CreateClArray<int>(1)
-            let positions, resultLength = PrefixSum.runExcludeInplace clContext workGroupSize processor tails resultLength 0 <@ (+) @> 0
+            let positions, resultLength = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLength
 
             let resultLength =
                 let res = [| 0 |]

@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec PrepareMatrix =
     let run
@@ -16,7 +17,7 @@ module internal rec PrepareMatrix =
 
         let resultNNZGpu = clContext.CreateClArray(1)
 
-        PrefixSum.runExcludeInplace clContext workGroupSize processor positions resultNNZGpu 0 <@ (+) @> 0
+        PrefixSum.standardExcludeInplace clContext workGroupSize processor positions resultNNZGpu
         |> ignore
 
         let resultLength =

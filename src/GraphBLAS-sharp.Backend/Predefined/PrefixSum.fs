@@ -5,8 +5,40 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
 // TODO: переставить аргументы
-module internal ByHeadFlags =
-    let runInclude
+module internal PrefixSum =
+    let standardExcludeInplace
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (inputArray: ClArray<int>)
+        (totalSum: ClArray<int>) =
+
+        PrefixSum.runExcludeInplace
+            clContext
+            workGroupSize
+            processor
+            inputArray
+            totalSum
+            <@ (+) @>
+            0
+
+    let standardIncludeInplace
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (inputArray: ClArray<int>)
+        (totalSum: ClArray<int>) =
+
+        PrefixSum.runIncludeInplace
+            clContext
+            workGroupSize
+            processor
+            inputArray
+            totalSum
+            <@ (+) @>
+            0
+
+    let byHeadFlagsInclude
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
@@ -35,7 +67,6 @@ module internal ByHeadFlags =
             processor
             zippedArrays
             total
-            0
             plusAdvanced
             struct(zero, 0)
         |> ignore
@@ -44,4 +75,3 @@ module internal ByHeadFlags =
 
         ClArray.unzip clContext workGroupSize processor zippedArrays
         |> fst
-

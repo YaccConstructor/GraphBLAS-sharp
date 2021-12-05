@@ -42,12 +42,12 @@ let main argv =
 
     let frP =
         clContext.CreateClArray(
-            [|0;1;3;3;6;7|],
+            [|0;0;0;3;3;3;6;6;6|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fc =
         clContext.CreateClArray(
-            [|2;1;3;0;2;3;0|],
+            [|1;5;7;1;2;6|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fv =
@@ -65,12 +65,12 @@ let main argv =
 
     let srP =
         clContext.CreateClArray(
-            [|0;2;2;5;5;5|],
+            [|0;0;3;5;9;9;10;13;15|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sc =
         clContext.CreateClArray(
-            [|1;3;0;1;4|],
+            [|2;4;5;1;3;2;3;5;7;1;3;4;7;0;1|],
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let sv =
@@ -92,6 +92,11 @@ let main argv =
             hostAccessMode = HostAccessMode.NotAccessible
         )
 
+    // let fmtxp = PrepareMatrix.run clContext workGroupSize processor fmtx smtx
+    // let rmtx = Setup.run clContext workGroupSize processor fmtxp smtx
+    // let rmtx = Expansion.run clContext workGroupSize processor fmtxp smtx rmtx <@ (*) @>
+    // let rmtx = Sorting.run clContext workGroupSize processor rmtx
+
     let rmtx = SpGEMMSimple.run clContext workGroupSize processor fmtx smtx <@ (*) @> <@ (+) @> 0
 
     let frPCPU = Array.zeroCreate rmtx.RowPointers.Length
@@ -101,8 +106,6 @@ let main argv =
     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.RowPointers, frPCPU, ch))
     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Columns, fcCPU, ch))
     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Values, fvCPU, ch))
-
-    //processor.PostAndReply <| MsgNotifyMe
 
     printfn "%A" frPCPU
     printfn "%A" fcCPU
@@ -119,6 +122,29 @@ let main argv =
 
     //let totalSum = clContext.CreateClArray(1)
 
+
+
+    // let n = 100
+    // let keys =
+    //     clContext.CreateClArray(
+    //         Array.init n (fun i -> uint64 (n - i)),
+    //         hostAccessMode = HostAccessMode.NotAccessible
+    //     )
+    // let values =
+    //     clContext.CreateClArray(
+    //         Array.init n (fun i -> i),
+    //         hostAccessMode = HostAccessMode.NotAccessible
+    //     )
+    // RadixSort.sortByKeyInPlace4 clContext workGroupSize processor keys values
+    // let res1 = Array.zeroCreate keys.Length
+    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(keys, res1, ch))
+    // let res2 = Array.zeroCreate values.Length
+    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(values, res2, ch))
+    // printfn "%A" res1
+    // printfn "%A" res2
+
+
+
     // let init =
     //     <@
     //         fun (range: Range1D)
@@ -126,14 +152,7 @@ let main argv =
 
     //             let i = range.GlobalID0
     //             if i < n then
-    //                 if i = 0 then buffer.[i] <- 0
-    //                 if i = 1 then buffer.[i] <- 0
-    //                 if i = 2 then buffer.[i] <- 0
-    //                 if i = 3 then buffer.[i] <- 1
-    //                 if i = 4 then buffer.[i] <- 1
-    //                 if i = 5 then buffer.[i] <- 5
-    //                 if i = 6 then buffer.[i] <- 5
-    //                 if i = 7 then buffer.[i] <- 8
+    //                 buffer.[i] <- i
     //     @>
     // let kernel = clContext.CreateClKernel(init)
     // let ndRange = Range1D.CreateValid(n, workGroupSize)
@@ -216,124 +235,11 @@ let main argv =
     // )
     // processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-
-    // let scanGeneral beforeLocalSumClear writeData (clContext: ClContext) workGroupSize =
-    //     fun (processor: MailboxProcessor<_>)
-    //         (inputArray: ClArray<'a>)
-    //         (inputArrayLength: int)
-    //         (vertices: ClArray<'a>)
-    //         (verticesLength: int)
-    //         (totalSum: ClArray<'a>)
-    //         idxToWrite
-    //         (opAdd: Expr<'a -> 'a -> 'a>)
-    //         (zero: 'a) ->
-
-    //         let scan =
-    //             <@ fun
-    //                 (ndRange: Range1D)
-    //                 inputArrayLength
-    //                 verticesLength
-    //                 (resultBuffer: ClArray<'a>)
-    //                 (verticesBuffer: ClArray<'a>)
-    //                 (totalSumBuffer: ClArray<'a>) ->
-
-    //                 let resultLocalBuffer = localArray<'a> workGroupSize
-    //                 let i = ndRange.GlobalID0
-    //                 let localID = ndRange.LocalID0
-
-    //                 if i < inputArrayLength then
-    //                     resultLocalBuffer.[localID] <- resultBuffer.[i]
-    //                 else
-    //                     resultLocalBuffer.[localID] <- zero
-
-    //                 let mutable step = 2
-
-    //                 while step <= workGroupSize do
-    //                     barrier ()
-
-    //                     if localID < workGroupSize / step then
-    //                         let i = step * (localID + 1) - 1
-
-    //                         resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
-
-    //                     step <- step <<< 1
-
-    //                 barrier ()
-
-    //                 if localID = workGroupSize - 1 then
-    //                     if verticesLength <= 1 && localID = i then
-    //                         totalSumBuffer.[idxToWrite] <- resultLocalBuffer.[localID]
-
-    //                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
-    //                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
-    //                     resultLocalBuffer.[localID] <- zero
-
-    //                 step <- workGroupSize
-
-    //                 while step > 1 do
-    //                     barrier ()
-
-    //                     if localID < workGroupSize / step then
-    //                         let i = step * (localID + 1) - 1
-    //                         let j = i - (step >>> 1)
-
-    //                         let tmp = resultLocalBuffer.[i]
-    //                         resultLocalBuffer.[i] <- (%opAdd) resultLocalBuffer.[i] resultLocalBuffer.[j]
-    //                         resultLocalBuffer.[j] <- tmp
-
-    //                     step <- step >>> 1
-
-    //                 barrier ()
-
-    //                 (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
-    //             @>
-
-    //         let kernel = clContext.CreateClKernel scan
-    //         let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
-    //         processor.Post(
-    //             Msg.MsgSetArguments
-    //                 (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength verticesLength inputArray vertices totalSum)
-    //         )
-    //         processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
     // let vertices =
     //     clContext.CreateClArray(
     //         (n - 1) / workGroupSize + 1,
     //         hostAccessMode = HostAccessMode.NotAccessible
     //     )
-
-    // PrefixSum.scanGeneral
-    //     <@
-    //         fun (_: ClArray<'a>)
-    //             (_: 'a)
-    //             (_: int)
-    //             (_: int) ->
-
-    //             let mutable a = 1
-    //             a <- 1
-    //     @>
-    //     <@
-    //         fun (resultBuffer: ClArray<_>)
-    //             (resultLocalBuffer: 'a[])
-    //             (inputArrayLength: int)
-    //             (_: int)
-    //             (i: int)
-    //             (localID: int) ->
-
-    //             if i < inputArrayLength then
-    //                 resultBuffer.[i] <- resultLocalBuffer.[localID]
-    //     @>
-    //     clContext
-    //     workGroupSize
-    //     processor
-    //     xs
-    //     xs.Length
-    //     vertices
-    //     vertices.Length
-    //     totalSum
-    //     0
-    //     <@ (+) @>
-    //     0
 
     // let _ = ClArray.prefixSumExcludeInplace clContext workGroupSize processor xs totalSum
 
@@ -341,8 +247,6 @@ let main argv =
     // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(xs, res, ch))
     // processor.Post(Msg.CreateFreeMsg<_>(xs))
     // processor.Post(Msg.CreateFreeMsg<_>(ys))
-
-    // processor.PostAndReply <| MsgNotifyMe
 
     // printfn "%A" res
 

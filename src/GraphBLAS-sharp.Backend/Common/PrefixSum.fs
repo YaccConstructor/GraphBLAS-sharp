@@ -98,10 +98,10 @@ module rec PrefixSum =
         (vertices: ClArray<'a>)
         (verticesLength: int)
         (totalSum: ClArray<'a>)
-        idxToWrite
         (opAdd: Expr<'a -> 'a -> 'a>)
         (zero: 'a) =
 
+        // TODO: сделать красивее
         let zero = clContext.CreateClArray([|zero|])
 
         let scan =
@@ -142,7 +142,7 @@ module rec PrefixSum =
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.[idxToWrite] <- resultLocalBuffer.[localID]
+                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
@@ -194,7 +194,6 @@ module rec PrefixSum =
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
             (totalSum: ClArray<'a>)
-            (idxToWrite: int)
             (opAdd: Expr<'a -> 'a -> 'a>)
             (zero: 'a) ->
 
@@ -224,7 +223,6 @@ module rec PrefixSum =
                 (fst verticesArrays)
                 verticesLength
                 totalSum
-                idxToWrite
                 opAdd
                 zero
 
@@ -241,7 +239,6 @@ module rec PrefixSum =
                     sndVertices
                     ((verticesLength - 1) / workGroupSize + 1)
                     totalSum
-                    idxToWrite
                     opAdd
                     zero
 

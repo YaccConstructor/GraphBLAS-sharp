@@ -53,7 +53,7 @@ module internal rec Expansion =
 
         let max = <@ fun a b -> if a > b then a else b @>
         let total = clContext.CreateClArray(1)
-        PrefixSum.runIncludeInplace clContext workGroupSize processor positions total 0 max 0
+        PrefixSum.runIncludeInplace clContext workGroupSize processor positions total max 0
         |> ignore
         processor.Post(Msg.CreateFreeMsg(total))
 
@@ -104,7 +104,7 @@ module internal rec Expansion =
 
         let positions = ClArray.create clContext workGroupSize processor resultMatrix.Columns.Length 1
         updateSecondPositions clContext workGroupSize processor p2 p2_ positions
-        ByHeadFlags.runInclude clContext workGroupSize processor headFlags positions <@ (+) @> 0
+        PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags positions <@ (+) @> 0
 
     let private getResultHeadFlags
         (clContext: ClContext)
@@ -225,7 +225,7 @@ module internal rec Expansion =
 
         let p2 = initP2 clContext workGroupSize processor matrixLeft matrixRight
         updateP2 clContext workGroupSize processor matrixLeft matrixRight p2
-        ByHeadFlags.runInclude clContext workGroupSize processor headFlags p2 <@ (+) @> 0
+        PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags p2 <@ (+) @> 0
 
     let private getP2'
         (clContext: ClContext)
@@ -238,7 +238,7 @@ module internal rec Expansion =
 
         let p2_ = initP2' clContext workGroupSize processor matrixLeft matrixRight
         updateP2' clContext workGroupSize processor matrixLeft resultMatrix p2_
-        ByHeadFlags.runInclude clContext workGroupSize processor headFlags p2_ <@ (+) @> 0
+        PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags p2_ <@ (+) @> 0
 
     let private initP2'
         (clContext: ClContext)
