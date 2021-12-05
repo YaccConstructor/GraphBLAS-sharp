@@ -77,7 +77,7 @@ let checkResult op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a
             Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
 
 let testCases =
-    let q = context.Provider.CommandQueue
+    let q = context.CommandQueue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let setSizeForAddFun mAdd =

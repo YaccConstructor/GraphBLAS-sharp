@@ -14,7 +14,7 @@ let context =
     ClContext(platformName, deviceType)
 
 let testCases =
-    let q = context.Provider.CommandQueue
+    let q = context.CommandQueue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let getCopyFun copy =

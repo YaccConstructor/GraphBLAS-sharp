@@ -251,7 +251,65 @@ module internal rec PrefixSum =
 
         inputArray, totalSum
 
-    let runExcludeInplace clContext = runInPlace scanExclusive clContext
+    /// <summary>
+    /// Exclude inplace prefix sum.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 0; 1; 2; 3 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="processor">.</param>
+    ///<param name="inputArray">.</param>
+    ///<param name="totalSum">.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
+    let runExcludeInplace
+        clContext
+        workGroupSize
+        processor
+        inputArray
+        totalSum
+        plus
+        zero =
+        runInPlace
+            scanExclusive
+            clContext
+            workGroupSize
+            processor
+            inputArray
+            totalSum
+            plus
+            zero
 
     // TODO: нужен ли totalSum
+    /// <summary>
+    /// Include inplace prefix sum.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 1; 2; 3; 4 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="processor">.</param>
+    ///<param name="inputArray">.</param>
+    ///<param name="totalSum">.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
     let runIncludeInplace clContext = runInPlace scanInclusive clContext
