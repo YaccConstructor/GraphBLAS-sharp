@@ -3,6 +3,23 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp.OpenCL
 
 module internal Gather =
+    /// <summary>
+    /// Creates a new array obtained from positions replaced with values from the given array at these positions (indices).
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let ps = [| 2; 0; 2; 1 |]
+    /// let arr = [| 1.4; 2.5; 3.6 |]
+    /// let res = run clContext 64 processor ps arr
+    /// ...
+    /// > val res = [| 3.6; 1.4; 3.6; 2.5 |]
+    /// </code>
+    /// </example>
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">.</param>
+    ///<param name="processor">.</param>
+    ///<param name="positions">Indices of the elements from input array.</param>
+    ///<param name="inputArray">Values to gather.</param>
     let run
         (clContext: ClContext)
         workGroupSize

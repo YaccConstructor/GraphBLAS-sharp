@@ -6,31 +6,35 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Converter =
-    let toCOO (clContext: ClContext) =
+    let toCOO
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrix: CSRMatrix<'a>) =
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
+        let nnz = clContext.CreateClArray(1)
 
-            let nnz = clContext.CreateClArray(1)
+        let rowIndices = prepareRows clContext workGroupSize processor matrix
+        PrefixSum.standardIncludeInplace clContext workGroupSize processor rowIndices nnz
+        |> ignore
 
-            let rowIndices = prepareRows clContext workGroupSize processor matrix
-            PrefixSum.standardIncludeInplace clContext workGroupSize processor rowIndices nnz
-            |> ignore
+        processor.Post(Msg.CreateFreeMsg(nnz))
 
-            processor.Post(Msg.CreateFreeMsg(nnz))
+        let colIndices =
+            copy processor workGroupSize matrix.Columns
 
-            let colIndices =
-                copy processor workGroupSize matrix.Columns
+        let values =
+            copyData processor workGroupSize matrix.Values
 
-            let values =
-                copyData processor workGroupSize matrix.Values
-
-            { RowCount = matrix.RowCount
-              ColumnCount = matrix.ColumnCount
-              Rows = rowIndices
-              Columns = colIndices
-              Values = values }
+        {
+            RowCount = matrix.RowCount
+            ColumnCount = matrix.ColumnCount
+            Rows = rowIndices
+            Columns = colIndices
+            Values = values
+        }
 
     let private prepareRows
         (clContext: ClContext)
@@ -49,23 +53,20 @@ module internal rec Converter =
                     (rows: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0 + 1
-
                     if i < rowPointersLength - 1 then atomic (+) rows.[rowPointers.[i]] 1 |> ignore
             @>
 
-        let kernel = clContext.CreateClKernel(prepareRows)
-
-        let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)
-
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () ->
-                    kernel.ArgumentsSetter
-                        ndRange
-                        matrix.RowPointers
-                        rows)
-        )
-
-        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+        if rowPointersLength > 2 then
+            let kernel = clContext.CreateClKernel(prepareRows)
+            let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            matrix.RowPointers
+                            rows)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
         rows

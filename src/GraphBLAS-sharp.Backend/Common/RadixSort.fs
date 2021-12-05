@@ -19,7 +19,7 @@ module internal rec RadixSort =
         (keys: ClArray<uint64>)
         (values: ClArray<'a>) =
 
-        let numberOfStages = 64 / numberOfBits
+        let numberOfStages = (64 - 1) / numberOfBits + 1
 
         // let positions = ClArray.create clContext workGroupSize processor keys.Length zero
         let positions = createPositions clContext workGroupSize processor keys.Length zero
@@ -95,7 +95,6 @@ module internal rec RadixSort =
         (length: int)
         (zero: 'b) =
 
-        // TODO: сделать красивее
         let zero = clContext.CreateClArray([|zero|])
 
         let positions = clContext.CreateClArray(length)
@@ -363,4 +362,50 @@ module internal rec RadixSort =
             @>
             struct(0, 0, 0, 0)
             2
+            clContext
+
+    let sortByKeyInPlace8 clContext =
+        sortByKeyInPlaceGeneral
+            <@
+                fun (struct(x1, x2, x3, x4, x5, x6, x7, x8): struct(int * int * int * int * int * int * int * int))
+                    (struct(y1, y2, y3, y4, y5, y6, y7, y8): struct(int * int * int * int * int * int * int * int)) ->
+                    struct(x1 + y1, x2 + y2, x3 + y3, x4 + y4, x5 + y5, x6 + y6, x7 + y7, x8 + y8)
+            @>
+            <@
+                fun (n: uint64) ->
+                    if n = 0UL then struct(1, 0, 0, 0, 0, 0, 0, 0)
+                    elif n = 1UL then struct(0, 1, 0, 0, 0, 0, 0, 0)
+                    elif n = 2UL then struct(0, 0, 1, 0, 0, 0, 0, 0)
+                    elif n = 3UL then struct(0, 0, 0, 1, 0, 0, 0, 0)
+                    elif n = 4UL then struct(0, 0, 0, 0, 1, 0, 0, 0)
+                    elif n = 5UL then struct(0, 0, 0, 0, 0, 1, 0, 0)
+                    elif n = 6UL then struct(0, 0, 0, 0, 0, 0, 1, 0)
+                    elif n = 7UL then struct(0, 0, 0, 0, 0, 0, 0, 1)
+                    else struct(0, 0, 0, 0, 0, 0, 0, 0)
+            @>
+            <@
+                fun (struct(x1, x2, x3, x4, x5, x6, x7, x8): struct(int * int * int * int * int * int * int * int))
+                    (n: uint64) ->
+                    if n = 0UL then x1
+                    elif n = 1UL then x2
+                    elif n = 2UL then x3
+                    elif n = 3UL then x4
+                    elif n = 4UL then x5
+                    elif n = 5UL then x6
+                    elif n = 6UL then x7
+                    elif n = 7UL then x8
+                    else 0
+            @>
+            <@
+                fun (struct(x1, x2, x3, x4, x5, x6, x7, x8): struct(int * int * int * int * int * int * int * int)) ->
+                    let y2 = x1 + x2
+                    let y3 = y2 + x3
+                    let y4 = y3 + x4
+                    let y5 = y4 + x5
+                    let y6 = y5 + x6
+                    let y7 = y6 + x7
+                    struct(0, x1, y2, y3, y4, y5, y6, y7)
+            @>
+            struct(0, 0, 0, 0, 0, 0, 0, 0)
+            3
             clContext

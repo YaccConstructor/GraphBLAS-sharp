@@ -3,41 +3,41 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
-// module internal rec PrefixSum =
-module rec PrefixSum =
-    let private update (clContext: ClContext) =
-        fun (processor: MailboxProcessor<_>)
-            workGroupSize
-            (inputArray: ClArray<'a>)
-            (inputArrayLength: int)
-            (vertices: ClArray<'a>)
-            (bunchLength: int)
-            (opAdd: Expr<'a -> 'a -> 'a>) ->
+module internal rec PrefixSum =
+    let private update
+        (clContext: ClContext)
+        (processor: MailboxProcessor<_>)
+        workGroupSize
+        (inputArray: ClArray<'a>)
+        (inputArrayLength: int)
+        (vertices: ClArray<'a>)
+        (bunchLength: int)
+        (opAdd: Expr<'a -> 'a -> 'a>) =
 
-            let update =
-                <@
-                    fun (ndRange: Range1D)
-                        (inputArrayLength: int)
-                        (bunchLength: int)
-                        (resultBuffer: ClArray<'a>)
-                        (verticesBuffer: ClArray<'a>) ->
+        let update =
+            <@
+                fun (ndRange: Range1D)
+                    (inputArrayLength: int)
+                    (bunchLength: int)
+                    (resultBuffer: ClArray<'a>)
+                    (verticesBuffer: ClArray<'a>) ->
 
-                        let i = ndRange.GlobalID0 + bunchLength
+                    let i = ndRange.GlobalID0 + bunchLength
 
-                        if i < inputArrayLength then
-                            resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
-                @>
+                    if i < inputArrayLength then
+                        resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
+            @>
 
-            let kernel = clContext.CreateClKernel update
+        let kernel = clContext.CreateClKernel update
 
-            let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
+        let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
-            )
+        processor.Post(
+            Msg.MsgSetArguments
+                (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
+        )
 
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+        processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
     let private scanExclusive clContext =
         scanGeneral
@@ -187,73 +187,71 @@ module rec PrefixSum =
     let private runInPlace
         scan
         (clContext: ClContext)
-        workGroupSize =
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (inputArray: ClArray<'a>)
+        (totalSum: ClArray<'a>)
+        (opAdd: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
 
         let update = update clContext
 
-        fun (processor: MailboxProcessor<_>)
-            (inputArray: ClArray<'a>)
-            (totalSum: ClArray<'a>)
-            (opAdd: Expr<'a -> 'a -> 'a>)
-            (zero: 'a) ->
+        let firstVertices =
+            clContext.CreateClArray<'a>(
+                (inputArray.Length - 1) / workGroupSize + 1,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
 
-            let firstVertices =
-                clContext.CreateClArray<'a>(
-                    (inputArray.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible
-                )
+        let secondVertices =
+            clContext.CreateClArray<'a>(
+                (firstVertices.Length - 1) / workGroupSize + 1,
+                hostAccessMode = HostAccessMode.NotAccessible
+            )
 
-            let secondVertices =
-                clContext.CreateClArray<'a>(
-                    (firstVertices.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible
-                )
+        let mutable verticesArrays = firstVertices, secondVertices
+        let swap (a, b) = (b, a)
+        let mutable verticesLength = firstVertices.Length
+        let mutable bunchLength = workGroupSize
 
-            let mutable verticesArrays = firstVertices, secondVertices
-            let swap (a, b) = (b, a)
-            let mutable verticesLength = firstVertices.Length
-            let mutable bunchLength = workGroupSize
+        scan
+            clContext
+            workGroupSize
+            processor
+            inputArray
+            inputArray.Length
+            (fst verticesArrays)
+            verticesLength
+            totalSum
+            opAdd
+            zero
 
-            scan
+        while verticesLength > 1 do
+            let fstVertices = fst verticesArrays
+            let sndVertices = snd verticesArrays
+
+            scanExclusive
                 clContext
                 workGroupSize
                 processor
-                inputArray
-                inputArray.Length
-                (fst verticesArrays)
+                fstVertices
                 verticesLength
+                sndVertices
+                ((verticesLength - 1) / workGroupSize + 1)
                 totalSum
                 opAdd
                 zero
 
-            while verticesLength > 1 do
-                let fstVertices = fst verticesArrays
-                let sndVertices = snd verticesArrays
+            update processor workGroupSize inputArray inputArray.Length fstVertices bunchLength opAdd
+            bunchLength <- bunchLength * workGroupSize
+            verticesArrays <- swap verticesArrays
+            verticesLength <- (verticesLength - 1) / workGroupSize + 1
 
-                scanExclusive
-                    clContext
-                    workGroupSize
-                    processor
-                    fstVertices
-                    verticesLength
-                    sndVertices
-                    ((verticesLength - 1) / workGroupSize + 1)
-                    totalSum
-                    opAdd
-                    zero
+        processor.Post(Msg.CreateFreeMsg(firstVertices))
+        processor.Post(Msg.CreateFreeMsg(secondVertices))
 
-                update processor workGroupSize inputArray inputArray.Length fstVertices bunchLength opAdd
-                bunchLength <- bunchLength * workGroupSize
-                verticesArrays <- swap verticesArrays
-                verticesLength <- (verticesLength - 1) / workGroupSize + 1
-
-            processor.Post(Msg.CreateFreeMsg(firstVertices))
-            processor.Post(Msg.CreateFreeMsg(secondVertices))
-
-            inputArray, totalSum
+        inputArray, totalSum
 
     let runExcludeInplace clContext = runInPlace scanExclusive clContext
 
-    // TODO: нужен ли здесь totalSum?
-    // TODO: нужен ли здесь zero?
+    // TODO: нужен ли totalSum
     let runIncludeInplace clContext = runInPlace scanInclusive clContext

@@ -4,29 +4,55 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 
-// module internal rec SpGEMMSimple =
-module rec SpGEMMSimple =
-    let run (clContext: ClContext) workGroupSize =
+module internal rec SpGEMMSimple =
+    let run
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrixLeft: CSRMatrix<'a>)
+        (matrixRight: CSRMatrix<'a>)
+        (times: Expr<'a -> 'a -> 'a>)
+        (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
+        if matrixLeft.ColumnCount <> matrixRight.RowCount then
+            invalidArg "matrixRight" "Column count of the left matrix must be equal to row count of the right one"
 
-        fun (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) (times: Expr<'a -> 'a -> 'a>) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) ->
-            if matrixLeft.ColumnCount <> matrixRight.RowCount then
-                invalidArg "matrixRight" "Column count of the left matrix must be equal to row count of the right one"
+        if matrixLeft.Values.Length = 0 || matrixRight.Values.Length = 0 then
+            {
+                RowCount = matrixLeft.RowCount
+                ColumnCount = matrixRight.ColumnCount
+                RowPointers = clContext.CreateClArray(0)
+                Columns = clContext.CreateClArray(0)
+                Values = clContext.CreateClArray(0)
+            }
+        else
+            runNonEmpty clContext workGroupSize processor matrixLeft matrixRight times plus zero
 
-            if matrixLeft.Values.Length = 0 || matrixRight.Values.Length = 0 then
-                {
-                    RowCount = matrixLeft.RowCount
-                    ColumnCount = matrixRight.ColumnCount
-                    RowPointers = clContext.CreateClArray(0)
-                    Columns = clContext.CreateClArray(0)
-                    Values = clContext.CreateClArray(0)
-                }
-            else
-                runNonEmpty clContext workGroupSize processor matrixLeft matrixRight times plus zero
-
-    let private runNonEmpty (clContext: ClContext) workGroupSize (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) (times: Expr<'a -> 'a -> 'a>) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) =
+    let private runNonEmpty
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrixLeft: CSRMatrix<'a>)
+        (matrixRight: CSRMatrix<'a>)
+        (times: Expr<'a -> 'a -> 'a>)
+        (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
         let preparedMatrixLeft = PrepareMatrix.run clContext workGroupSize processor matrixLeft matrixRight
-        let initialResult = Setup.run clContext workGroupSize processor preparedMatrixLeft matrixRight
-        let expandedResult = Expansion.run clContext workGroupSize processor preparedMatrixLeft matrixRight initialResult times
-        let sortedResult = Sorting.run clContext workGroupSize processor expandedResult
 
-        Compression.run clContext workGroupSize processor sortedResult plus zero
+        let initialResult = Setup.run clContext workGroupSize processor preparedMatrixLeft matrixRight
+
+        let expandedResult = Expansion.run clContext workGroupSize processor preparedMatrixLeft matrixRight initialResult times
+        processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.RowPointers))
+        processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.Columns))
+        processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.Values))
+        processor.Post(Msg.CreateFreeMsg<_>(initialResult.Columns))
+        processor.Post(Msg.CreateFreeMsg<_>(initialResult.Values))
+
+        let sortedResult = Sorting.run clContext workGroupSize processor expandedResult
+        processor.Post(Msg.CreateFreeMsg<_>(expandedResult.Columns))
+
+        let result = Compression.run clContext workGroupSize processor sortedResult plus zero
+        processor.Post(Msg.CreateFreeMsg<_>(sortedResult.Columns))
+        processor.Post(Msg.CreateFreeMsg<_>(sortedResult.Values))
+
+        result

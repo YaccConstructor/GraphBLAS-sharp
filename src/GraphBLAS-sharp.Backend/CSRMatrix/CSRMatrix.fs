@@ -18,11 +18,13 @@ module CSRMatrix =
 
         fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
 
-            let m1COO = toCOO processor workGroupSize m1
-            let m2COO = toCOO processor workGroupSize m2
+            let m1COO = toCOO workGroupSize processor m1
+            let m2COO = toCOO workGroupSize processor m2
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
             let m3 = toCSR processor m3COO
 
             m3
+
+    let spgemm = SpGEMMSimple.run

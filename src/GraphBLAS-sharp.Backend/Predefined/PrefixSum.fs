@@ -4,7 +4,6 @@ open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
-// TODO: переставить аргументы
 module internal PrefixSum =
     let standardExcludeInplace
         (clContext: ClContext)
@@ -73,5 +72,8 @@ module internal PrefixSum =
 
         processor.Post(Msg.CreateFreeMsg(total))
 
-        ClArray.unzip clContext workGroupSize processor zippedArrays
-        |> fst
+        let res, heads = ClArray.unzip clContext workGroupSize processor zippedArrays
+        processor.Post(Msg.CreateFreeMsg(zippedArrays))
+        processor.Post(Msg.CreateFreeMsg(heads))
+
+        res

@@ -7,43 +7,33 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Compression =
-    let run (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) (plus: Expr<'a -> 'a -> 'a>) (zero: 'a) ->
+    let run
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrix: CSRMatrix<'a>)
+        (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
+            let rowPointersCompressed = ClArray.removeDuplications clContext workGroupSize processor matrix.RowPointers
+            let heads, tails = createFlags clContext workGroupSize processor rowPointersCompressed matrix.Columns
+            processor.Post(Msg.CreateFreeMsg<_>(rowPointersCompressed))
 
-            let heads, tails = createFlags clContext workGroupSize processor matrix.RowPointers matrix.Columns
-
-            let valuesToScan = ClArray.zip clContext workGroupSize processor matrix.Values heads
-
-            let opAdd =
-                <@
-                    fun ((x1, x2): struct('a * int))
-                        ((y1, y2): struct('a * int)) ->
-
-                        if y2 = 1 then
-                            struct(y1, 1)
-                        else
-                            let buff = (%plus) x1 y1
-                            struct(buff, x2)
-                @>
-
-            let totalSum = clContext.CreateClArray<struct('a * int)>(1)
-            let scannedValues, _ = PrefixSum.runIncludeInplace clContext workGroupSize processor valuesToScan totalSum opAdd struct(zero, 0)
+            let scannedValues = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor heads matrix.Values plus zero
+            processor.Post(Msg.CreateFreeMsg<_>(heads))
 
             let resultLength = clContext.CreateClArray<int>(1)
             let positions, resultLength = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLength
 
             let resultLength =
-                let res = [| 0 |]
-
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultLength, res, ch))
-
+                let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultLength, [|0|], ch))
                 processor.Post(Msg.CreateFreeMsg<_>(resultLength))
-
                 res.[0]
 
-            let resultColumns, resultValues = setColumnsAndValues clContext workGroupSize processor matrix.Columns scannedValues resultLength positions
-            setRowPointers clContext workGroupSize processor matrix.RowPointers positions
+            let resultColumns = Scatter.run clContext workGroupSize processor positions resultLength matrix.Columns
+            let resultValues = Scatter.run clContext workGroupSize processor positions resultLength scannedValues
+            processor.Post(Msg.CreateFreeMsg<_>(scannedValues))
+            ScatterRowPointers.runInPlace clContext workGroupSize processor positions matrix.Columns.Length resultLength matrix.RowPointers
+            processor.Post(Msg.CreateFreeMsg<_>(positions))
 
             {
                 RowCount = matrix.RowCount
@@ -53,8 +43,12 @@ module internal rec Compression =
                 Values = resultValues
             }
 
-    let private initFlags (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>) (columns: ClArray<int>) (length: int) ->
+    let private initFlags
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (columns: ClArray<int>)
+        (length: int) =
             let initFlags =
                 <@
                     fun (range: Range1D)
@@ -65,11 +59,9 @@ module internal rec Compression =
                         let i = range.GlobalID0
 
                         if i < length then
-                            if i = 0 || columnsBuffer.[i - 1] <> columnsBuffer.[i] then headsBuffer.[i] <- 1 else headsBuffer.[i] <- 0
-                            if i = length - 1 || columnsBuffer.[i] <> columnsBuffer.[i + 1] then tailsBuffer.[i] <- 1 else tailsBuffer.[i] <- 0
-
-                            // TODO: сделать красивее
-                            if i = 0 then tailsBuffer.[length] <- 0
+                            let column = columnsBuffer.[i]
+                            if i = 0 || columnsBuffer.[i - 1] <> column then headsBuffer.[i] <- 1 else headsBuffer.[i] <- 0
+                            if i = length - 1 || column <> columnsBuffer.[i + 1] then tailsBuffer.[i] <- 1 else tailsBuffer.[i] <- 0
                 @>
 
             let heads =
@@ -80,7 +72,7 @@ module internal rec Compression =
 
             let tails =
                 clContext.CreateClArray<int>(
-                    length + 1,
+                    length,
                     hostAccessMode = HostAccessMode.NotAccessible
                 )
 
@@ -102,10 +94,12 @@ module internal rec Compression =
 
             heads, tails
 
-    // TODO: оптимальней будет сначала убрать повторяющиеся значения из rowPointers
-    let private createFlags (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>) (rowPointers: ClArray<int>) (columns: ClArray<int>) ->
-
+    let private createFlags
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (rowPointers: ClArray<int>)
+        (columns: ClArray<int>) =
             let length = columns.Length
 
             let heads, tails = initFlags clContext workGroupSize processor columns length
@@ -128,9 +122,7 @@ module internal rec Compression =
                 @>
 
             let kernel = clContext.CreateClKernel(updateFlags)
-
             let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
-
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
@@ -140,106 +132,6 @@ module internal rec Compression =
                             heads
                             tails)
             )
-
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             heads, tails
-
-    let private setColumnsAndValues (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>)
-            (columns: ClArray<int>)
-            (values: ClArray<struct('a*int)>)
-            (length: int)
-            (positions: ClArray<int>) ->
-
-            let columnsLength = positions.Length
-
-            let setColumnsAndValues =
-                <@
-                    fun (ndRange: Range1D)
-                        (columnsBuffer: ClArray<int>)
-                        (valuesBuffer: ClArray<_>)
-                        (resultColumnsBuffer: ClArray<int>)
-                        (resultValuesBuffer: ClArray<'a>)
-                        (positionsBuffer: ClArray<int>) ->
-
-                        let i = ndRange.GlobalID0
-
-                        if i = columnsLength - 1
-                        || i < columnsLength
-                        && positionsBuffer.[i] <> positionsBuffer.[i + 1]
-                        then
-                            let index = positionsBuffer.[i]
-
-                            resultColumnsBuffer.[index] <- columnsBuffer.[i]
-                            let struct(buff, _) = valuesBuffer.[i]
-                            resultValuesBuffer.[index] <- buff
-                @>
-
-            let resultColumns =
-                clContext.CreateClArray(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
-                )
-
-            let resultValues =
-                clContext.CreateClArray(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
-                )
-
-            let kernel = clContext.CreateClKernel(setColumnsAndValues)
-
-            let ndRange = Range1D.CreateValid(positions.Length, workGroupSize)
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            columns
-                            values
-                            resultColumns
-                            resultValues
-                            positions)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultColumns, resultValues
-
-    let private setRowPointers (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>)
-            (rowPointers: ClArray<int>)
-            (positions: ClArray<int>) ->
-
-            let rowPointersLength = rowPointers.Length
-
-            let setRowPointers =
-                <@
-                    fun (ndRange: Range1D)
-                        (rowPointersBuffer: ClArray<int>)
-                        (positionsBuffer: ClArray<int>) ->
-
-                        let i = ndRange.GlobalID0
-
-                        if i < rowPointersLength then
-                            rowPointersBuffer.[i] <- positionsBuffer.[rowPointersBuffer.[i]]
-                @>
-
-            let kernel = clContext.CreateClKernel(setRowPointers)
-
-            let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            rowPointers
-                            positions)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))

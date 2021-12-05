@@ -5,21 +5,6 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module rec ClArray =
-    let create
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (length: int)
-        (value: 'a) =
-        init clContext workGroupSize processor length <@ fun _ -> value @>
-
-    let zeroCreate
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (length: int) =
-        create clContext workGroupSize processor length Unchecked.defaultof<'a>
-
     let init
         (clContext: ClContext)
         workGroupSize
@@ -47,6 +32,21 @@ module rec ClArray =
         processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
         outputArray
+
+    let create
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (length: int)
+        (value: 'a) =
+        init clContext workGroupSize processor length <@ fun _ -> value @>
+
+    let zeroCreate
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (length: int) =
+        create clContext workGroupSize processor length Unchecked.defaultof<'a>
 
     let zipWith
         (clContext: ClContext)
@@ -83,41 +83,58 @@ module rec ClArray =
 
         outputArray
 
+    let unzipWith
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (f: Expr<'a -> struct('b * 'c)>)
+        (inputArray: ClArray<'a>) =
+
+        let length = inputArray.Length
+
+        let unzipWith =
+            <@
+                fun (range: Range1D)
+                    (inputBuffer: ClArray<'a>)
+                    (firstBuffer: ClArray<'b>)
+                    (secondBuffer: ClArray<'c>)->
+
+                    let i = range.GlobalID0
+                    if i < length then
+                        let a = inputBuffer.[i]
+                        let struct(b, c) = (%f) a
+                        firstBuffer.[i] <- b
+                        secondBuffer.[i] <- c
+            @>
+
+        let firstOutputArray = clContext.CreateClArray(inputArray.Length)
+        let secondOutputArray = clContext.CreateClArray(inputArray.Length)
+
+        let kernel = clContext.CreateClKernel(unzipWith)
+
+        let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+        processor.Post(
+            Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray firstOutputArray secondOutputArray)
+        )
+
+        processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+        firstOutputArray, secondOutputArray
+
     let zip clContext workGroupSize processor = zipWith clContext workGroupSize processor <@ fun a b -> struct(a, b) @>
 
-    let unzip (clContext: ClContext) workGroupSize =
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<struct('a * 'b)>) ->
-            let length = inputArray.Length
+    let unzip clContext workGroupSize processor = unzipWith clContext workGroupSize processor <@ fun a -> a @>
 
-            let unzip =
-                <@
-                    fun (range: Range1D)
-                        (inputBuffer: ClArray<_>)
-                        (firstBuffer: ClArray<'a>)
-                        (secondBuffer: ClArray<'b>)->
+    let pack (clContext: ClContext) workGroupSize (processor: MailboxProcessor<_>) =
+        zipWith clContext workGroupSize processor <@ fun a b -> ((uint64 a) <<< 32) ||| (uint64 b) @>
 
-                        let i = range.GlobalID0
-                        if i < length then
-                            let c = inputBuffer.[i]
-                            let struct(a, b) = c
-                            firstBuffer.[i] <- a
-                            secondBuffer.[i] <- b
-                @>
-
-            let firstOutputArray = clContext.CreateClArray(inputArray.Length)
-            let secondOutputArray = clContext.CreateClArray(inputArray.Length)
-
-            let kernel = clContext.CreateClKernel(unzip)
-
-            let ndRange = Range1D.CreateValid(length, workGroupSize)
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray firstOutputArray secondOutputArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            firstOutputArray, secondOutputArray
+    let unpack
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (inputArray: ClArray<uint64>) =
+        unzipWith clContext workGroupSize processor <@ fun n -> struct(int (n >>> 32), int n) @> inputArray
 
     let copy (clContext: ClContext) =
         let copy =

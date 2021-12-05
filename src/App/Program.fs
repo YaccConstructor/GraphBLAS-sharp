@@ -10,7 +10,6 @@ open OpenCL.Net
 open System.IO
 open GraphBLAS.FSharp.Predefined
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common.PrefixSum
 
 open System.IO
 open Brahma.FSharp.OpenCL
@@ -26,20 +25,6 @@ let main argv =
     let n = 100
     let workGroupSize = 128
 
-    let plus = <@ (+) @>
-
-    let plusAdvanced =
-        <@
-            fun ((x1, x2): struct('a * int))
-                ((y1, y2): struct('a * int)) ->
-
-                if y2 = 1 then
-                    struct(y1, 1)
-                else
-                    let buff = (%plus) x1 y1
-                    struct(buff, x2)
-        @>
-
     let frP =
         clContext.CreateClArray(
             [|0;0;0;3;3;3;6;6;6|],
@@ -52,7 +37,7 @@ let main argv =
         )
     let fv =
         clContext.CreateClArray(
-            Array.init fc.Length (fun i -> i + 1),
+            Array.init fc.Length (fun i -> float (i + 1)),
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let fmtx = {
@@ -75,7 +60,7 @@ let main argv =
         )
     let sv =
         clContext.CreateClArray(
-            Array.init sc.Length (fun i -> i + 1),
+            Array.init sc.Length (fun i -> float (i + 1)),
             hostAccessMode = HostAccessMode.NotAccessible
         )
     let smtx = {
@@ -86,30 +71,44 @@ let main argv =
         Values = sv
     }
 
-    let heads =
-        clContext.CreateClArray(
-            [| 1;1;0;1;0;0;1 |],
-            hostAccessMode = HostAccessMode.NotAccessible
-        )
+    let times =
+        <@
+            fun (a: float)
+                (b: float) ->
+                a * b
+        @>
 
-    // let fmtxp = PrepareMatrix.run clContext workGroupSize processor fmtx smtx
-    // let rmtx = Setup.run clContext workGroupSize processor fmtxp smtx
-    // let rmtx = Expansion.run clContext workGroupSize processor fmtxp smtx rmtx <@ (*) @>
-    // let rmtx = Sorting.run clContext workGroupSize processor rmtx
+    let plus =
+        <@
+            fun (a: float)
+                (b: float) ->
+                a + b
+        @>
 
-    let rmtx = SpGEMMSimple.run clContext workGroupSize processor fmtx smtx <@ (*) @> <@ (+) @> 0
+    // [|0..0|]
+    // |> Array.iter (fun i ->
+        // let fmtxp = PrepareMatrix.run clContext workGroupSize processor fmtx smtx
+        // let rmtx = Setup.run clContext workGroupSize processor fmtxp smtx
+        // let rmtx = Expansion.run clContext workGroupSize processor fmtxp smtx rmtx <@ (*) @>
+        // let rmtx = Sorting.run clContext workGroupSize processor rmtx
 
-    let frPCPU = Array.zeroCreate rmtx.RowPointers.Length
-    let fcCPU = Array.zeroCreate rmtx.Columns.Length
-    let fvCPU = Array.zeroCreate rmtx.Values.Length
+        // let rmtx = SpGEMMSimple.run clContext workGroupSize processor fmtx smtx times plus 0.0
 
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.RowPointers, frPCPU, ch))
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Columns, fcCPU, ch))
-    let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Values, fvCPU, ch))
+        // let frPCPU = Array.zeroCreate rmtx.RowPointers.Length
+        // let fcCPU = Array.zeroCreate rmtx.Columns.Length
+        // let fvCPU = Array.zeroCreate rmtx.Values.Length
 
-    printfn "%A" frPCPU
-    printfn "%A" fcCPU
-    printfn "%A" fvCPU
+        // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.RowPointers, frPCPU, ch))
+        // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Columns, fcCPU, ch))
+        // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rmtx.Values, fvCPU, ch))
+
+        // printfn "%A" rmtx.RowCount
+        // printfn "%A" rmtx.ColumnCount
+        // printfn "%A" frPCPU
+        // printfn "%A" fcCPU
+        // printfn "%A" fvCPU
+    // )
+
 
 
 

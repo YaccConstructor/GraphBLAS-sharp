@@ -5,53 +5,52 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Predefined
 
 module internal rec Setup =
-    let run (clContext: ClContext) workGroupSize =
+    let run
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrixLeft: CSRMatrix<'a>)
+        (matrixRight: CSRMatrix<'a>) =
 
-        let sum =
-            ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
+        let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
+        let rowLengths' = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
+        processor.Post(Msg.CreateFreeMsg<_>(headFlags))
+        processor.Post(Msg.CreateFreeMsg<_>(rowLengths))
 
-        let resultNNZ = [| 0 |]
+        let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
+        processor.Post(Msg.CreateFreeMsg<_>(rowLengths'))
 
-        fun (processor: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'a>) ->
+        let resultNNZGpu = clContext.CreateClArray<_>(1)
+        PrefixSum.standardExcludeInplace clContext workGroupSize processor resultRowPointers resultNNZGpu
+        |> ignore
 
-            let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
-            let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
-            let rowLengths' = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
-            let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
+        let resultNNZ =
+            let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
+            processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
+            res.[0]
 
-            let resultNNZGpu = clContext.CreateClArray<_>(1)
+        let resultColumns =
+            clContext.CreateClArray(
+                resultNNZ,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                deviceAccessMode = DeviceAccessMode.WriteOnly
+            )
 
-            let _, r = sum processor resultRowPointers resultNNZGpu
+        let resultValues =
+            clContext.CreateClArray(
+                resultNNZ,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                deviceAccessMode = DeviceAccessMode.WriteOnly
+            )
 
-            let resultNNZ =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultNNZ, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
-
-            let resultColumns =
-                clContext.CreateClArray(
-                    resultNNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
-                )
-
-            let resultValues =
-                clContext.CreateClArray(
-                    resultNNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
-                )
-
-            {
-                RowCount = matrixLeft.RowCount
-                ColumnCount = matrixRight.ColumnCount
-                RowPointers = resultRowPointers
-                Columns = resultColumns
-                Values = resultValues
-            }
+        {
+            RowCount = matrixLeft.RowCount
+            ColumnCount = matrixRight.ColumnCount
+            RowPointers = resultRowPointers
+            Columns = resultColumns
+            Values = resultValues
+        }
 
     let private getRowLengths
         (clContext: ClContext)
@@ -66,7 +65,7 @@ module internal rec Setup =
                 hostAccessMode = HostAccessMode.NotAccessible
             )
 
-        let size = matrixLeft.RowCount
+        let size = matrixLeft.RowPointers.Length
 
         let get =
             <@
@@ -79,7 +78,7 @@ module internal rec Setup =
 
                     if i < size then
                         let index = firstRowPointers.[i + 1]
-                        if firstRowPointers.[i] <> index then
+                        if i < size - 1 && firstRowPointers.[i] <> index then
                             resultRowLengths.[i] <- rowLengths.[index - 1]
                         else
                             resultRowLengths.[i] <- 0
@@ -161,8 +160,7 @@ module internal rec Setup =
 
                     let i = ndRange.GlobalID0
 
-                    if i < size then
-                        heads.[rowPointers.[i]] <- 1
+                    if i < size then heads.[rowPointers.[i]] <- 1
             @>
 
         let kernel = clContext.CreateClKernel(init)
