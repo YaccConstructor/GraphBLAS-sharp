@@ -3,13 +3,15 @@ open BenchmarkDotNet.Running
 
 [<EntryPoint>]
 let main argv =
-    let benchmarks = BenchmarkSwitcher [|
-        // typeof<EWiseAddBenchmarks4Float32>
-        // typeof<EWiseAddBenchmarks4Bool>
-        //typeof<BFSBenchmarks>
-        typeof<MxvBenchmarks>
-        //typeof<TransposeBenchmarks>
-    |]
+    let benchmarks =
+        BenchmarkSwitcher [| typeof<EWiseAddBenchmarks4Float32COO>
+                             typeof<EWiseAddBenchmarks4Float32CSR>
+                             typeof<EWiseAddBenchmarks4BoolCOO>
+                             typeof<EWiseAddBenchmarks4BoolCSR>
+                             //typeof<BFSBenchmarks>
+                             //typeof<MxvBenchmarks>
+                             //typeof<TransposeBenchmarks>
+                              |]
 
     benchmarks.Run argv |> ignore
     0
