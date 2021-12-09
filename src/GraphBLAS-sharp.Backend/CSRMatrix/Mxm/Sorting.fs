@@ -4,7 +4,7 @@ open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
-module internal rec Sorting =
+module internal Sorting =
     let run
         (clContext: ClContext)
         workGroupSize

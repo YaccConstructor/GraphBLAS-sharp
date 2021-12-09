@@ -4,59 +4,7 @@ open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Predefined
 
-module internal rec Setup =
-    let run
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (matrixLeft: CSRMatrix<'a>)
-        (matrixRight: CSRMatrix<'a>) =
-
-        let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
-        let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
-        let rowLengths' = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
-        processor.Post(Msg.CreateFreeMsg<_>(headFlags))
-        processor.Post(Msg.CreateFreeMsg<_>(rowLengths))
-
-        let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
-        processor.Post(Msg.CreateFreeMsg<_>(rowLengths'))
-
-        // let resultNNZGpu = clContext.CreateClArray<_>(1)
-        let resultNNZGpu = clContext.CreateClCell()
-        PrefixSum.standardExcludeInplace clContext workGroupSize processor resultRowPointers resultNNZGpu
-        |> ignore
-
-        // let resultNNZ =
-        //     let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
-        //     processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
-        //     res.[0]
-        let resultNNZ =
-            ClCell.toHost resultNNZGpu
-            |> ClTask.runSync clContext
-        processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
-
-        let resultColumns =
-            clContext.CreateClArray(
-                resultNNZ,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                deviceAccessMode = DeviceAccessMode.WriteOnly
-            )
-
-        let resultValues =
-            clContext.CreateClArray(
-                resultNNZ,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                deviceAccessMode = DeviceAccessMode.WriteOnly
-            )
-
-        {
-            RowCount = matrixLeft.RowCount
-            ColumnCount = matrixRight.ColumnCount
-            RowPointers = resultRowPointers
-            Columns = resultColumns
-            Values = resultValues
-        }
-
+module internal Setup =
     let private getRowLengths
         (clContext: ClContext)
         workGroupSize
@@ -181,3 +129,50 @@ module internal rec Setup =
         processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
         headFlags
+
+    let run
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrixLeft: CSRMatrix<'a>)
+        (matrixRight: CSRMatrix<'a>) =
+
+        let rowLengths = initRowLengths clContext workGroupSize processor matrixLeft matrixRight
+        let headFlags = getHeadFlags clContext workGroupSize processor matrixLeft
+        let rowLengths' = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor headFlags rowLengths <@ (+) @> 0
+        processor.Post(Msg.CreateFreeMsg<_>(headFlags))
+        processor.Post(Msg.CreateFreeMsg<_>(rowLengths))
+
+        let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
+        processor.Post(Msg.CreateFreeMsg<_>(rowLengths'))
+
+        let resultNNZGpu = clContext.CreateClCell()
+        PrefixSum.standardExcludeInplace clContext workGroupSize processor resultRowPointers resultNNZGpu
+        |> ignore
+
+        let resultNNZ =
+            ClCell.toHost resultNNZGpu
+            |> ClTask.runSync clContext
+        processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
+
+        let resultColumns =
+            clContext.CreateClArray(
+                resultNNZ,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                deviceAccessMode = DeviceAccessMode.WriteOnly
+            )
+
+        let resultValues =
+            clContext.CreateClArray(
+                resultNNZ,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                deviceAccessMode = DeviceAccessMode.WriteOnly
+            )
+
+        {
+            RowCount = matrixLeft.RowCount
+            ColumnCount = matrixRight.ColumnCount
+            RowPointers = resultRowPointers
+            Columns = resultColumns
+            Values = resultValues
+        }

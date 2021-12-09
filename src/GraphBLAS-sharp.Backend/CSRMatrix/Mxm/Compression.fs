@@ -6,48 +6,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 
-module internal rec Compression =
-    let run
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (matrix: CSRMatrix<'a>)
-        (plus: Expr<'a -> 'a -> 'a>)
-        (zero: 'a) =
-            let rowPointersCompressed = ClArray.removeDuplications clContext workGroupSize processor matrix.RowPointers
-            let heads, tails = createFlags clContext workGroupSize processor rowPointersCompressed matrix.Columns
-            processor.Post(Msg.CreateFreeMsg<_>(rowPointersCompressed))
-
-            let scannedValues = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor heads matrix.Values plus zero
-            processor.Post(Msg.CreateFreeMsg<_>(heads))
-
-            // let resultLength = clContext.CreateClArray<int>(1)
-            let resultLengthGpu = clContext.CreateClCell()
-            let positions, _ = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLengthGpu
-
-            // let resultLength =
-            //     let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultLength, [|0|], ch))
-            //     processor.Post(Msg.CreateFreeMsg<_>(resultLength))
-            //     res.[0]
-            let resultLength =
-                ClCell.toHost resultLengthGpu
-                |> ClTask.runSync clContext
-            processor.Post(Msg.CreateFreeMsg<_>(resultLengthGpu))
-
-            let resultColumns = Scatter.run clContext workGroupSize processor positions resultLength matrix.Columns
-            let resultValues = Scatter.run clContext workGroupSize processor positions resultLength scannedValues
-            processor.Post(Msg.CreateFreeMsg<_>(scannedValues))
-            ScatterRowPointers.runInPlace clContext workGroupSize processor positions matrix.Columns.Length resultLength matrix.RowPointers
-            processor.Post(Msg.CreateFreeMsg<_>(positions))
-
-            {
-                RowCount = matrix.RowCount
-                ColumnCount = matrix.ColumnCount
-                RowPointers = matrix.RowPointers
-                Columns = resultColumns
-                Values = resultValues
-            }
-
+module internal Compression =
     let private initFlags
         (clContext: ClContext)
         workGroupSize
@@ -140,3 +99,39 @@ module internal rec Compression =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             heads, tails
+
+    let run
+        (clContext: ClContext)
+        workGroupSize
+        (processor: MailboxProcessor<_>)
+        (matrix: CSRMatrix<'a>)
+        (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a) =
+            let rowPointersCompressed = ClArray.removeDuplications clContext workGroupSize processor matrix.RowPointers
+            let heads, tails = createFlags clContext workGroupSize processor rowPointersCompressed matrix.Columns
+            processor.Post(Msg.CreateFreeMsg<_>(rowPointersCompressed))
+
+            let scannedValues = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor heads matrix.Values plus zero
+            processor.Post(Msg.CreateFreeMsg<_>(heads))
+
+            let resultLengthGpu = clContext.CreateClCell()
+            let positions, _ = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLengthGpu
+
+            let resultLength =
+                ClCell.toHost resultLengthGpu
+                |> ClTask.runSync clContext
+            processor.Post(Msg.CreateFreeMsg<_>(resultLengthGpu))
+
+            let resultColumns = Scatter.run clContext workGroupSize processor positions resultLength matrix.Columns
+            let resultValues = Scatter.run clContext workGroupSize processor positions resultLength scannedValues
+            processor.Post(Msg.CreateFreeMsg<_>(scannedValues))
+            ScatterRowPointers.runInPlace clContext workGroupSize processor positions matrix.Columns.Length resultLength matrix.RowPointers
+            processor.Post(Msg.CreateFreeMsg<_>(positions))
+
+            {
+                RowCount = matrix.RowCount
+                ColumnCount = matrix.ColumnCount
+                RowPointers = matrix.RowPointers
+                Columns = resultColumns
+                Values = resultValues
+            }

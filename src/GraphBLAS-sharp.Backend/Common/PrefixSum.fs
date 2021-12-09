@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
-module internal rec PrefixSum =
+module internal PrefixSum =
     let private update
         (clContext: ClContext)
         (processor: MailboxProcessor<_>)
@@ -38,54 +38,6 @@ module internal rec PrefixSum =
         )
 
         processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-    let private scanExclusive clContext =
-        scanGeneral
-            <@
-                fun (a: ClArray<'a>)
-                    (b: 'a)
-                    (c: int)
-                    (d: int) ->
-
-                    let mutable x = 1
-                    x <- 1
-            @>
-            <@
-                fun (resultBuffer: ClArray<'a>)
-                    (resultLocalBuffer: 'a[])
-                    (inputArrayLength: int)
-                    (smth: int)
-                    (i: int)
-                    (localID: int) ->
-
-                    if i < inputArrayLength then
-                        resultBuffer.[i] <- resultLocalBuffer.[localID]
-            @>
-            clContext
-
-    let private scanInclusive clContext =
-        scanGeneral
-            <@
-                fun (resultBuffer: ClArray<'a>)
-                    (value: 'a)
-                    (inputArrayLength: int)
-                    (i: int) ->
-
-                    if i < inputArrayLength then
-                        resultBuffer.[i] <- value
-            @>
-            <@
-                fun (resultBuffer: ClArray<'a>)
-                    (resultLocalBuffer: 'a[])
-                    (inputArrayLength: int)
-                    (workGroupSize: int)
-                    (i: int)
-                    (localID: int) ->
-
-                    if i < inputArrayLength && localID < workGroupSize - 1 then
-                        resultBuffer.[i] <- resultLocalBuffer.[localID + 1]
-            @>
-            clContext
 
     let private scanGeneral
         beforeLocalSumClear
@@ -183,6 +135,54 @@ module internal rec PrefixSum =
                             zero)
         )
         processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+    let private scanExclusive clContext =
+        scanGeneral
+            <@
+                fun (a: ClArray<'a>)
+                    (b: 'a)
+                    (c: int)
+                    (d: int) ->
+
+                    let mutable x = 1
+                    x <- 1
+            @>
+            <@
+                fun (resultBuffer: ClArray<'a>)
+                    (resultLocalBuffer: 'a[])
+                    (inputArrayLength: int)
+                    (smth: int)
+                    (i: int)
+                    (localID: int) ->
+
+                    if i < inputArrayLength then
+                        resultBuffer.[i] <- resultLocalBuffer.[localID]
+            @>
+            clContext
+
+    let private scanInclusive clContext =
+        scanGeneral
+            <@
+                fun (resultBuffer: ClArray<'a>)
+                    (value: 'a)
+                    (inputArrayLength: int)
+                    (i: int) ->
+
+                    if i < inputArrayLength then
+                        resultBuffer.[i] <- value
+            @>
+            <@
+                fun (resultBuffer: ClArray<'a>)
+                    (resultLocalBuffer: 'a[])
+                    (inputArrayLength: int)
+                    (workGroupSize: int)
+                    (i: int)
+                    (localID: int) ->
+
+                    if i < inputArrayLength && localID < workGroupSize - 1 then
+                        resultBuffer.[i] <- resultLocalBuffer.[localID + 1]
+            @>
+            clContext
 
     let private runInPlace
         scan
