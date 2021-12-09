@@ -58,6 +58,9 @@ module rec ClArray =
 
         let length = firstArray.Length
 
+        if length <> secondArray.Length then
+            invalidArg "secondArray" "Lengths of the input arrays must be equal"
+
         let zipWith =
             <@
                 fun (range: Range1D)
