@@ -97,7 +97,7 @@ module internal rec PrefixSum =
         (inputArrayLength: int)
         (vertices: ClArray<'a>)
         (verticesLength: int)
-        (totalSum: ClArray<'a>)
+        (totalSum: ClCell<'a>)
         (opAdd: Expr<'a -> 'a -> 'a>)
         (zero: 'a) =
 
@@ -111,7 +111,7 @@ module internal rec PrefixSum =
                 verticesLength
                 (resultBuffer: ClArray<'a>)
                 (verticesBuffer: ClArray<'a>)
-                (totalSumBuffer: ClArray<'a>)
+                (totalSumBuffer: ClCell<'a>)
                 (zero: ClArray<'a>) ->
 
                 let resultLocalBuffer = localArray<'a> workGroupSize
@@ -142,7 +142,7 @@ module internal rec PrefixSum =
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
@@ -190,7 +190,7 @@ module internal rec PrefixSum =
         workGroupSize
         (processor: MailboxProcessor<_>)
         (inputArray: ClArray<'a>)
-        (totalSum: ClArray<'a>)
+        (totalSum: ClCell<'a>)
         (opAdd: Expr<'a -> 'a -> 'a>)
         (zero: 'a) =
 

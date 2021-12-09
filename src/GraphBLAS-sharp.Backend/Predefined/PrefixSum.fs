@@ -10,7 +10,7 @@ module internal PrefixSum =
         workGroupSize
         (processor: MailboxProcessor<_>)
         (inputArray: ClArray<int>)
-        (totalSum: ClArray<int>) =
+        (totalSum: ClCell<int>) =
 
         PrefixSum.runExcludeInplace
             clContext
@@ -26,7 +26,7 @@ module internal PrefixSum =
         workGroupSize
         (processor: MailboxProcessor<_>)
         (inputArray: ClArray<int>)
-        (totalSum: ClArray<int>) =
+        (totalSum: ClCell<int>) =
 
         PrefixSum.runIncludeInplace
             clContext
@@ -47,7 +47,7 @@ module internal PrefixSum =
         zero =
 
         let zippedArrays = ClArray.zip clContext workGroupSize processor inputArray headFlags
-        let total = clContext.CreateClArray<struct('a * int)>(1)
+        let total = clContext.CreateClCell<struct('a * int)>()
         let plusAdvanced =
             <@
                 fun ((x1, x2): struct('a * int))

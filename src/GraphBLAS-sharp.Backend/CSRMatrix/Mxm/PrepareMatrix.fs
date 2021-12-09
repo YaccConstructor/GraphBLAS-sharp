@@ -15,15 +15,20 @@ module internal rec PrepareMatrix =
 
         let positions = preparePositions clContext workGroupSize processor matrixLeft matrixRight
 
-        let resultNNZGpu = clContext.CreateClArray(1)
+        // let resultNNZGpu = clContext.CreateClArray(1)
+        let resultNNZGpu = clContext.CreateClCell()
 
         PrefixSum.standardExcludeInplace clContext workGroupSize processor positions resultNNZGpu
         |> ignore
 
+        // let resultLength =
+        //     let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
+        //     processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
+        //     res.[0]
         let resultLength =
-            let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
-            processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
-            res.[0]
+            ClCell.toHost resultNNZGpu
+            |> ClTask.runSync clContext
+        processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
 
         let resultColumns = Scatter.run clContext workGroupSize processor positions resultLength matrixLeft.Columns
         let resultValues = Scatter.run clContext workGroupSize processor positions resultLength matrixLeft.Values

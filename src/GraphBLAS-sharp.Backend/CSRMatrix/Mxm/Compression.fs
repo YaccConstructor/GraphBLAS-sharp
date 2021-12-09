@@ -21,13 +21,18 @@ module internal rec Compression =
             let scannedValues = PrefixSum.byHeadFlagsInclude clContext workGroupSize processor heads matrix.Values plus zero
             processor.Post(Msg.CreateFreeMsg<_>(heads))
 
-            let resultLength = clContext.CreateClArray<int>(1)
-            let positions, resultLength = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLength
+            // let resultLength = clContext.CreateClArray<int>(1)
+            let resultLengthGpu = clContext.CreateClCell()
+            let positions, _ = PrefixSum.standardExcludeInplace clContext workGroupSize processor tails resultLengthGpu
 
+            // let resultLength =
+            //     let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultLength, [|0|], ch))
+            //     processor.Post(Msg.CreateFreeMsg<_>(resultLength))
+            //     res.[0]
             let resultLength =
-                let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultLength, [|0|], ch))
-                processor.Post(Msg.CreateFreeMsg<_>(resultLength))
-                res.[0]
+                ClCell.toHost resultLengthGpu
+                |> ClTask.runSync clContext
+            processor.Post(Msg.CreateFreeMsg<_>(resultLengthGpu))
 
             let resultColumns = Scatter.run clContext workGroupSize processor positions resultLength matrix.Columns
             let resultValues = Scatter.run clContext workGroupSize processor positions resultLength scannedValues

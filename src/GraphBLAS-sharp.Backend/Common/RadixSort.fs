@@ -23,7 +23,7 @@ module internal rec RadixSort =
 
         // let positions = ClArray.create clContext workGroupSize processor keys.Length zero
         let positions = createPositions clContext workGroupSize processor keys.Length zero
-        let sums = clContext.CreateClArray(1)
+        let sums = clContext.CreateClCell()
 
         let auxiliaryKeys =
             if numberOfStages % 2 = 0 then
@@ -183,18 +183,18 @@ module internal rec RadixSort =
         (processor: MailboxProcessor<_>)
         (positions: ClArray<_>)
         positionsLength
-        (sums: ClArray<_>) =
+        (sums: ClCell<_>) =
 
         let updatePositions =
             <@
                 fun (ndRange: Range1D)
                     (positions: ClArray<_>)
-                    (sums: ClArray<_>) ->
+                    (sums: ClCell<_>) ->
 
                     let i = ndRange.GlobalID0
-                    let sums = sums.[0]
 
                     if i < positionsLength then
+                        let sums = sums.Value
                         let buff = positions.[i]
                         positions.[i] <- (%plus) buff sums
             @>
@@ -257,17 +257,17 @@ module internal rec RadixSort =
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
-        (sums: ClArray<_>) =
+        (sums: ClCell<_>) =
 
         let update =
             <@
                 fun (ndRange: Range1D)
-                    (sums: ClArray<'b>) ->
+                    (sums: ClCell<'b>) ->
 
                     let i = ndRange.GlobalID0
                     if i = 0 then
-                        let a = sums.[0]
-                        sums.[0] <- (%scan) a
+                        let a = sums.Value
+                        sums.Value <- (%scan) a
             @>
 
         let ndRange = Range1D(workGroupSize)
@@ -291,7 +291,7 @@ module internal rec RadixSort =
         (processor: MailboxProcessor<_>)
         (keys: ClArray<uint64>)
         (positions: ClArray<_>)
-        (sums: ClArray<_>)
+        (sums: ClCell<_>)
         (numberOfBits: int)
         (stage: int) =
 

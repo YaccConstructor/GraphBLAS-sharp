@@ -14,7 +14,8 @@ module internal rec Converter =
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        let nnz = clContext.CreateClArray(1)
+        // let nnz = clContext.CreateClArray(1)
+        let nnz = clContext.CreateClCell()
 
         let rowIndices = prepareRows clContext workGroupSize processor matrix
         PrefixSum.standardIncludeInplace clContext workGroupSize processor rowIndices nnz

@@ -60,7 +60,8 @@ module internal rec Expansion =
         updateFirstPositions clContext workGroupSize processor positionsForResCols positions
 
         let max = <@ fun a b -> if a > b then a else b @>
-        let total = clContext.CreateClArray(1)
+        // let total = clContext.CreateClArray(1)
+        let total = clContext.CreateClCell()
         PrefixSum.runIncludeInplace clContext workGroupSize processor positions total max 0
         |> ignore
         processor.Post(Msg.CreateFreeMsg(total))

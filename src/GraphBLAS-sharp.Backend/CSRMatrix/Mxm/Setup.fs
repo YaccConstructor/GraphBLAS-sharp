@@ -21,14 +21,19 @@ module internal rec Setup =
         let resultRowPointers = getRowLengths clContext workGroupSize processor rowLengths' matrixLeft
         processor.Post(Msg.CreateFreeMsg<_>(rowLengths'))
 
-        let resultNNZGpu = clContext.CreateClArray<_>(1)
+        // let resultNNZGpu = clContext.CreateClArray<_>(1)
+        let resultNNZGpu = clContext.CreateClCell()
         PrefixSum.standardExcludeInplace clContext workGroupSize processor resultRowPointers resultNNZGpu
         |> ignore
 
+        // let resultNNZ =
+        //     let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
+        //     processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
+        //     res.[0]
         let resultNNZ =
-            let res = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultNNZGpu, [|0|], ch))
-            processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
-            res.[0]
+            ClCell.toHost resultNNZGpu
+            |> ClTask.runSync clContext
+        processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
 
         let resultColumns =
             clContext.CreateClArray(
