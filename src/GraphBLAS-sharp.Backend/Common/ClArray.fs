@@ -4,7 +4,7 @@ open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
-module rec ClArray =
+module ClArray =
     let init
         (clContext: ClContext)
         workGroupSize
