@@ -351,23 +351,23 @@ module COOMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let getTuples (clContext: ClContext) =
+    let getTuples (clContext: ClContext) workGroupSize =
 
         let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
         let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: COOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
 
-            let resultRows = copy processor workGroupSize matrix.Rows
+            let resultRows = copy processor matrix.Rows
 
             let resultColumns =
-                copy processor workGroupSize matrix.Columns
+                copy processor matrix.Columns
 
             let resultValues =
-                copyData processor workGroupSize matrix.Values
+                copyData processor matrix.Values
 
 
             { RowIndices = resultRows
@@ -502,20 +502,20 @@ module COOMatrix =
         let compressRows = compressRows clContext workGroupSize
 
         let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
         let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
             let compressedRows =
                 compressRows processor matrix.Rows matrix.RowCount
 
             let cols =
-                copy processor workGroupSize matrix.Columns
+                copy processor matrix.Columns
 
             let vals =
-                copyData processor workGroupSize matrix.Values
+                copyData processor matrix.Values
 
             { RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount

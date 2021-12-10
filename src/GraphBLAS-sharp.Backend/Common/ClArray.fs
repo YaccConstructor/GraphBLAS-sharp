@@ -8,30 +8,32 @@ module rec ClArray =
     let init
         (clContext: ClContext)
         workGroupSize
-        (processor: MailboxProcessor<_>)
-        (length: int)
         (f: Expr<int -> 'a>) =
 
         let init =
             <@
                 fun (range: Range1D)
-                    (outputBuffer: ClArray<'a>) ->
+                    (outputBuffer: ClArray<'a>)
+                    (length: int) ->
 
                     let i = range.GlobalID0
                     if i < length then
                         outputBuffer.[i] <- (%f) i
             @>
-
-        let outputArray = clContext.CreateClArray(length)
-
         let kernel = clContext.CreateClKernel init
-        let ndRange = Range1D.CreateValid(length, workGroupSize)
-        processor.Post(
-            Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange outputArray)
-        )
-        processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-        outputArray
+        fun (processor: MailboxProcessor<_>)
+            (length: int) ->
+
+            let outputArray = clContext.CreateClArray(length)
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange outputArray length)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            outputArray
 
     let create
         (clContext: ClContext)
@@ -39,7 +41,7 @@ module rec ClArray =
         (processor: MailboxProcessor<_>)
         (length: int)
         (value: 'a) =
-        init clContext workGroupSize processor length <@ fun _ -> value @>
+        init clContext workGroupSize <@ fun _ -> value @> processor length
 
     let zeroCreate
         (clContext: ClContext)
@@ -49,23 +51,16 @@ module rec ClArray =
         create clContext workGroupSize processor length Unchecked.defaultof<'a>
 
     let zipWith
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
         (f: Expr<'a -> 'b -> 'c>)
-        (firstArray: ClArray<'a>)
-        (secondArray: ClArray<'b>) =
-
-        let length = firstArray.Length
-
-        if length <> secondArray.Length then
-            invalidArg "secondArray" "Lengths of the input arrays must be equal"
+        (clContext: ClContext)
+        workGroupSize =
 
         let zipWith =
             <@
                 fun (range: Range1D)
                     (firstBuffer: ClArray<'a>)
                     (secondBuffer: ClArray<'b>)
+                    (length: int)
                     (outputBuffer: ClArray<_>) ->
 
                     let i = range.GlobalID0
@@ -74,33 +69,38 @@ module rec ClArray =
                         let b = secondBuffer.[i]
                         outputBuffer.[i] <- (%f) a b
             @>
-
-        let outputArray = clContext.CreateClArray(firstArray.Length)
-
         let kernel = clContext.CreateClKernel zipWith
-        let ndRange = Range1D.CreateValid(length, workGroupSize)
-        processor.Post(
-            Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange firstArray secondArray outputArray)
-        )
-        processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-        outputArray
+        fun (processor: MailboxProcessor<_>)
+            (firstArray: ClArray<'a>)
+            (secondArray: ClArray<'b>) ->
+
+            let length = firstArray.Length
+            if length <> secondArray.Length then
+                invalidArg "secondArray" "Lengths of the input arrays must be equal"
+
+            let outputArray = clContext.CreateClArray(length)
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange firstArray secondArray length outputArray)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            outputArray
 
     let unzipWith
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
         (f: Expr<'a -> struct('b * 'c)>)
-        (inputArray: ClArray<'a>) =
-
-        let length = inputArray.Length
+        (clContext: ClContext)
+        workGroupSize =
 
         let unzipWith =
             <@
                 fun (range: Range1D)
                     (inputBuffer: ClArray<'a>)
+                    (length: int)
                     (firstBuffer: ClArray<'b>)
-                    (secondBuffer: ClArray<'c>)->
+                    (secondBuffer: ClArray<'c>) ->
 
                     let i = range.GlobalID0
                     if i < length then
@@ -109,37 +109,40 @@ module rec ClArray =
                         firstBuffer.[i] <- b
                         secondBuffer.[i] <- c
             @>
-
-        let firstOutputArray = clContext.CreateClArray(inputArray.Length)
-        let secondOutputArray = clContext.CreateClArray(inputArray.Length)
-
         let kernel = clContext.CreateClKernel(unzipWith)
 
-        let ndRange = Range1D.CreateValid(length, workGroupSize)
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>) ->
 
-        processor.Post(
-            Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray firstOutputArray secondOutputArray)
-        )
+            let length = inputArray.Length
 
-        processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            let firstOutputArray = clContext.CreateClArray(length)
+            let secondOutputArray = clContext.CreateClArray(length)
 
-        firstOutputArray, secondOutputArray
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
 
-    let zip clContext workGroupSize processor = zipWith clContext workGroupSize processor <@ fun a b -> struct(a, b) @>
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray length firstOutputArray secondOutputArray)
+            )
 
-    let unzip clContext workGroupSize processor = unzipWith clContext workGroupSize processor <@ fun a -> a @>
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-    let pack (clContext: ClContext) workGroupSize (processor: MailboxProcessor<_>) =
-        zipWith clContext workGroupSize processor <@ fun a b -> ((uint64 a) <<< 32) ||| (uint64 b) @>
+            firstOutputArray, secondOutputArray
+
+    let zip clContext = zipWith <@ fun a b -> struct(a, b) @> clContext
+
+    let unzip clContext = unzipWith <@ fun a -> a @> clContext
+
+    let pack clContext = zipWith <@ fun a b -> ((uint64 a) <<< 32) ||| (uint64 b) @> clContext
 
     let unpack
         (clContext: ClContext)
         workGroupSize
         (processor: MailboxProcessor<_>)
         (inputArray: ClArray<uint64>) =
-        unzipWith clContext workGroupSize processor <@ fun n -> struct(int (n >>> 32), int n) @> inputArray
+        unzipWith <@ fun n -> struct(int (n >>> 32), int n) @> clContext workGroupSize processor inputArray
 
-    let copy (clContext: ClContext) =
+    let copy (clContext: ClContext) workGroupSize =
         let copy =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
 
@@ -150,7 +153,7 @@ module rec ClArray =
 
         let kernel = clContext.CreateClKernel copy
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
@@ -353,13 +356,13 @@ module rec ClArray =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExclude (clContext: ClContext) workGroupSize =
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         let prefixSumExcludeInplace =
             prefixSumExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
-            let copiedArray = copy processor workGroupSize inputArray
+            let copiedArray = copy processor inputArray
 
             let totalSum = clContext.CreateClArray [| 0 |]
             prefixSumExcludeInplace processor copiedArray totalSum
@@ -378,13 +381,13 @@ module rec ClArray =
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
         let kernel = clContext.CreateClKernel kernel
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         let prefixSumExcludeInplace =
             prefixSumExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
-            let copiedArray = copy processor workGroupSize inputArray
+            let copiedArray = copy processor inputArray
             let inputArrayLength = inputArray.Length
             let totalSum = clContext.CreateClArray [| 0 |]
 

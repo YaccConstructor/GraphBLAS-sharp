@@ -9,6 +9,8 @@ module internal Scatter =
     /// </summary>
     /// <remarks>
     /// If there are several elements with same indices, the last one of them will be at the common index.
+    /// The very first element of the positions array must be zero.
+    /// Every element of the positions array must not be less than the previous one.
     /// </remarks>
     /// <example>
     /// <code>
@@ -19,31 +21,15 @@ module internal Scatter =
     /// > val res = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">Values to scatter.</param>
-    ///<param name="positions">
-    /// Indices of the elements in the output array.
-    /// The very first index must be zero.
-    /// Every index must be the same as the previous one or more by one.
-    /// </param>
-    ///<param name="length">Length of the result array.</param>
-    ///<param name="inputArray">Values to scatter.</param>
     let run
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (positions: ClArray<int>)
-        (length: int)
-        (inputArray: ClArray<'a>) =
-
-        let positionsLength = positions.Length
+        workGroupSize =
 
         let scatter =
             <@
                 fun (ndRange: Range1D)
                     (positions: ClArray<int>)
+                    (positionsLength: int)
                     (inputArray: ClArray<'a>)
                     (outputArray: ClArray<'a>)
                     (length: int) ->
@@ -58,29 +44,34 @@ module internal Scatter =
                         if index <> buff then
                             outputArray.[index] <- inputArray.[i]
             @>
-
-        let outputArray =
-            clContext.CreateClArray(
-                length,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                deviceAccessMode = DeviceAccessMode.WriteOnly
-            )
-
         let kernel = clContext.CreateClKernel(scatter)
 
-        let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
+        fun (processor: MailboxProcessor<_>)
+            (positions: ClArray<int>)
+            (length: int)
+            (inputArray: ClArray<'a>) ->
 
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () ->
-                    kernel.ArgumentsSetter
-                        ndRange
-                        positions
-                        inputArray
-                        outputArray
-                        length)
-        )
+            let positionsLength = positions.Length
 
-        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            let outputArray =
+                clContext.CreateClArray(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                )
+            let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
 
-        outputArray
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            positions
+                            positionsLength
+                            inputArray
+                            outputArray
+                            length)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            outputArray

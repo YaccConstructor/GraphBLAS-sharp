@@ -7,23 +7,32 @@ open GraphBLAS.FSharp.Backend.Common
 module internal Sorting =
     let run
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (matrix: CSRMatrix<'a>) =
-            //необязательно переводить в COO, достаточно знать headFlags для rowPointers
-            let matrixCOO = Converter.toCOO clContext workGroupSize processor matrix
+        workGroupSize =
 
-            let packedIndices = ClArray.pack clContext workGroupSize processor matrixCOO.Rows matrixCOO.Columns
+        //необязательно переводить в COO, достаточно знать headFlags для rowPointers
+        let toCOO = Converter.toCOO clContext workGroupSize
+        let pack = ClArray.pack clContext workGroupSize
+        let unpack = ClArray.unpack clContext workGroupSize
+        // TODO: возможность выбрать число бит
+        let sortByKeyInPlace = RadixSort.sortByKeyInPlace8 clContext workGroupSize
 
-            RadixSort.sortByKeyInPlace8 clContext workGroupSize processor packedIndices matrix.Values
+        fun (processor: MailboxProcessor<_>)
+            (matrix: CSRMatrix<'a>) ->
+                let matrixCOO = toCOO processor matrix
 
-            let sortedRows, sortedColumns = ClArray.unpack clContext workGroupSize processor packedIndices
+                let packedIndices = pack processor matrixCOO.Rows matrixCOO.Columns
 
-            processor.Post(Msg.CreateFreeMsg<_>(packedIndices))
-            processor.Post(Msg.CreateFreeMsg<_>(sortedRows))
+                sortByKeyInPlace processor packedIndices matrix.Values
 
-            { RowCount = matrix.RowCount
-              ColumnCount = matrix.ColumnCount
-              RowPointers = matrix.RowPointers
-              Columns = sortedColumns
-              Values = matrix.Values }
+                let sortedRows, sortedColumns = unpack processor packedIndices
+
+                processor.Post(Msg.CreateFreeMsg<_>(packedIndices))
+                processor.Post(Msg.CreateFreeMsg<_>(sortedRows))
+
+                {
+                    RowCount = matrix.RowCount
+                    ColumnCount = matrix.ColumnCount
+                    RowPointers = matrix.RowPointers
+                    Columns = sortedColumns
+                    Values = matrix.Values
+                }

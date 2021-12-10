@@ -8,66 +8,74 @@ open GraphBLAS.FSharp.Backend.Predefined
 module internal rec Converter =
     let toCOO
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (matrix: CSRMatrix<'a>) =
-        let copy = ClArray.copy clContext
-        let copyData = ClArray.copy clContext
+        workGroupSize =
 
-        // let nnz = clContext.CreateClArray(1)
-        let nnz = clContext.CreateClCell()
+        let prepareRows = prepareRows clContext workGroupSize
+        let scanIncludeInPlace = PrefixSum.standardIncludeInplace clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
-        let rowIndices = prepareRows clContext workGroupSize processor matrix
-        PrefixSum.standardIncludeInplace clContext workGroupSize processor rowIndices nnz
-        |> ignore
+        fun (processor: MailboxProcessor<_>)
+            (matrix: CSRMatrix<'a>) ->
 
-        processor.Post(Msg.CreateFreeMsg(nnz))
+            let nnz = clContext.CreateClCell()
 
-        let colIndices =
-            copy processor workGroupSize matrix.Columns
+            let rowIndices = prepareRows processor matrix
+            scanIncludeInPlace processor rowIndices nnz
+            |> ignore
 
-        let values =
-            copyData processor workGroupSize matrix.Values
+            processor.Post(Msg.CreateFreeMsg(nnz))
 
-        {
-            RowCount = matrix.RowCount
-            ColumnCount = matrix.ColumnCount
-            Rows = rowIndices
-            Columns = colIndices
-            Values = values
-        }
+            let colIndices =
+                copy processor matrix.Columns
+
+            let values =
+                copyData processor matrix.Values
+
+            {
+                RowCount = matrix.RowCount
+                ColumnCount = matrix.ColumnCount
+                Rows = rowIndices
+                Columns = colIndices
+                Values = values
+            }
 
     let private prepareRows
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (matrix: CSRMatrix<'a>) =
+        workGroupSize =
 
-        let rows = ClArray.create clContext workGroupSize processor matrix.Columns.Length 0
-
-        let rowPointersLength = matrix.RowPointers.Length
+        let create = ClArray.create clContext workGroupSize
 
         let prepareRows =
             <@
                 fun (ndRange: Range1D)
                     (rowPointers: ClArray<int>)
+                    (rowPointersLength: int)
                     (rows: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0 + 1
                     if i < rowPointersLength - 1 then atomic (+) rows.[rowPointers.[i]] 1 |> ignore
             @>
+        let kernel = clContext.CreateClKernel(prepareRows)
 
-        if rowPointersLength > 2 then
-            let kernel = clContext.CreateClKernel(prepareRows)
-            let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            matrix.RowPointers
-                            rows)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+        fun (processor: MailboxProcessor<_>)
+            (matrix: CSRMatrix<'a>) ->
 
-        rows
+            let rows = create processor matrix.Columns.Length 0
+
+            let rowPointersLength = matrix.RowPointers.Length
+
+            if rowPointersLength > 2 then
+                let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.ArgumentsSetter
+                                ndRange
+                                matrix.RowPointers
+                                rowPointersLength
+                                rows)
+                )
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            rows

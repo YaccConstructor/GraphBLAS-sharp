@@ -19,19 +19,13 @@ module internal ScatterRowPointers =
     ///<param name="rowPointers">.</param>
     let runInPlace
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (positions: ClArray<int>)
-        (initialLength: int)
-        (length: int)
-        (rowPointers: ClArray<int>) =
-
-        let rowPointersLength = rowPointers.Length
+        workGroupSize =
 
         let setPositions =
             <@
                 fun (ndRange: Range1D)
                     (rowPointers: ClArray<int>)
+                    (rowPointersLength: int)
                     (positions: ClArray<int>)
                     (initialLength: int)
                     (length: int) ->
@@ -44,17 +38,26 @@ module internal ScatterRowPointers =
                         else
                             rowPointers.[i] <- positions.[buff]
             @>
-
         let kernel = clContext.CreateClKernel(setPositions)
-        let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () ->
-                    kernel.ArgumentsSetter
-                        ndRange
-                        rowPointers
-                        positions
-                        initialLength
-                        length)
-        )
-        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+        fun (processor: MailboxProcessor<_>)
+            (positions: ClArray<int>)
+            (initialLength: int)
+            (length: int)
+            (rowPointers: ClArray<int>) ->
+
+            let rowPointersLength = rowPointers.Length
+
+            let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            rowPointers
+                            rowPointersLength
+                            positions
+                            initialLength
+                            length)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))

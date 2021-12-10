@@ -15,49 +15,47 @@ module internal Gather =
     /// > val res = [| 3.6; 1.4; 3.6; 2.5 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">.</param>
-    ///<param name="processor">.</param>
-    ///<param name="positions">Indices of the elements from input array.</param>
-    ///<param name="inputArray">Values to gather.</param>
     let run
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (positions: ClArray<int>)
-        (inputArray: ClArray<'a>) =
-
-        let outputArray =
-            clContext.CreateClArray(
-                positions.Length,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
-
-        let size = outputArray.Length
+        workGroupSize =
 
         let gather =
             <@
                 fun (ndRange: Range1D)
                     (positions: ClArray<int>)
                     (inputArray: ClArray<'a>)
-                    (outputArray: ClArray<'a>) ->
+                    (outputArray: ClArray<'a>)
+                    (size: int) ->
 
                     let i = ndRange.GlobalID0
 
                     if i < size then outputArray.[i] <- inputArray.[positions.[i]]
             @>
-
         let kernel = clContext.CreateClKernel(gather)
-        let ndRange = Range1D.CreateValid(size, workGroupSize)
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () ->
-                    kernel.ArgumentsSetter
-                        ndRange
-                        positions
-                        inputArray
-                        outputArray)
-        )
-        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-        outputArray
+        fun (processor: MailboxProcessor<_>)
+            (positions: ClArray<int>)
+            (inputArray: ClArray<'a>) ->
+
+            let outputArray =
+                clContext.CreateClArray(
+                    positions.Length,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
+
+            let size = outputArray.Length
+
+            let ndRange = Range1D.CreateValid(size, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            positions
+                            inputArray
+                            outputArray
+                            size)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            outputArray

@@ -5,14 +5,9 @@ open Microsoft.FSharp.Quotations
 
 module internal PrefixSum =
     let private update
+        (opAdd: Expr<'a -> 'a -> 'a>)
         (clContext: ClContext)
-        (processor: MailboxProcessor<_>)
-        workGroupSize
-        (inputArray: ClArray<'a>)
-        (inputArrayLength: int)
-        (vertices: ClArray<'a>)
-        (bunchLength: int)
-        (opAdd: Expr<'a -> 'a -> 'a>) =
+        workGroupSize =
 
         let update =
             <@
@@ -27,34 +22,27 @@ module internal PrefixSum =
                     if i < inputArrayLength then
                         resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
             @>
-
         let kernel = clContext.CreateClKernel update
 
-        let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (inputArrayLength: int)
+            (vertices: ClArray<'a>)
+            (bunchLength: int) ->
 
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
-        )
-
-        processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
     let private scanGeneral
         beforeLocalSumClear
         writeData
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (inputArray: ClArray<'a>)
-        (inputArrayLength: int)
-        (vertices: ClArray<'a>)
-        (verticesLength: int)
-        (totalSum: ClCell<'a>)
         (opAdd: Expr<'a -> 'a -> 'a>)
-        (zero: 'a) =
-
-        // TODO: сделать красивее
-        let zero = clContext.CreateClArray([|zero|])
+        (clContext: ClContext)
+        workGroupSize =
 
         let scan =
             <@ fun
@@ -64,13 +52,13 @@ module internal PrefixSum =
                 (resultBuffer: ClArray<'a>)
                 (verticesBuffer: ClArray<'a>)
                 (totalSumBuffer: ClCell<'a>)
-                (zero: ClArray<'a>) ->
+                (zero: ClCell<'a>) ->
 
                 let resultLocalBuffer = localArray<'a> workGroupSize
                 let i = ndRange.GlobalID0
                 let localID = ndRange.LocalID0
 
-                let zero = zero.[0]
+                let zero = zero.Value
 
                 if i < inputArrayLength then
                     resultLocalBuffer.[localID] <- resultBuffer.[i]
@@ -120,23 +108,35 @@ module internal PrefixSum =
 
                 (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
             @>
-
         let kernel = clContext.CreateClKernel scan
-        let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
-        processor.Post(
-            Msg.MsgSetArguments
-                (fun () -> kernel.ArgumentsSetter
-                            ndRange
-                            inputArrayLength
-                            verticesLength
-                            inputArray
-                            vertices
-                            totalSum
-                            zero)
-        )
-        processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-    let private scanExclusive clContext =
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (inputArrayLength: int)
+            (vertices: ClArray<'a>)
+            (verticesLength: int)
+            (totalSum: ClCell<'a>)
+            (zero: 'a) ->
+
+            // TODO: передавать zero как константу
+            let zero = clContext.CreateClCell(zero)
+
+            let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.ArgumentsSetter
+                                ndRange
+                                inputArrayLength
+                                verticesLength
+                                inputArray
+                                vertices
+                                totalSum
+                                zero)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            processor.Post(Msg.CreateFreeMsg(zero))
+
+    let private scanExclusive<'a when 'a: struct> =
         scanGeneral
             <@
                 fun (a: ClArray<'a>)
@@ -158,9 +158,8 @@ module internal PrefixSum =
                     if i < inputArrayLength then
                         resultBuffer.[i] <- resultLocalBuffer.[localID]
             @>
-            clContext
 
-    let private scanInclusive clContext =
+    let private scanInclusive<'a when 'a: struct> =
         scanGeneral
             <@
                 fun (resultBuffer: ClArray<'a>)
@@ -182,74 +181,70 @@ module internal PrefixSum =
                     if i < inputArrayLength && localID < workGroupSize - 1 then
                         resultBuffer.[i] <- resultLocalBuffer.[localID + 1]
             @>
-            clContext
 
     let private runInPlace
         scan
-        (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (inputArray: ClArray<'a>)
-        (totalSum: ClCell<'a>)
         (opAdd: Expr<'a -> 'a -> 'a>)
-        (zero: 'a) =
+        (clContext: ClContext)
+        workGroupSize =
 
-        let update = update clContext
+        let scan = scan opAdd clContext workGroupSize
+        let scanExclusive = scanExclusive opAdd clContext workGroupSize
+        let update = update opAdd clContext workGroupSize
 
-        let firstVertices =
-            clContext.CreateClArray<'a>(
-                (inputArray.Length - 1) / workGroupSize + 1,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (totalSum: ClCell<'a>)
+            (zero: 'a) ->
 
-        let secondVertices =
-            clContext.CreateClArray<'a>(
-                (firstVertices.Length - 1) / workGroupSize + 1,
-                hostAccessMode = HostAccessMode.NotAccessible
-            )
+            let firstVertices =
+                clContext.CreateClArray<'a>(
+                    (inputArray.Length - 1) / workGroupSize + 1,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
 
-        let mutable verticesArrays = firstVertices, secondVertices
-        let swap (a, b) = (b, a)
-        let mutable verticesLength = firstVertices.Length
-        let mutable bunchLength = workGroupSize
+            let secondVertices =
+                clContext.CreateClArray<'a>(
+                    (firstVertices.Length - 1) / workGroupSize + 1,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
 
-        scan
-            clContext
-            workGroupSize
-            processor
-            inputArray
-            inputArray.Length
-            (fst verticesArrays)
-            verticesLength
-            totalSum
-            opAdd
-            zero
+            let mutable verticesArrays = firstVertices, secondVertices
+            let swap (a, b) = (b, a)
+            let mutable verticesLength = firstVertices.Length
+            let mutable bunchLength = workGroupSize
 
-        while verticesLength > 1 do
-            let fstVertices = fst verticesArrays
-            let sndVertices = snd verticesArrays
-
-            scanExclusive
-                clContext
-                workGroupSize
+            scan
                 processor
-                fstVertices
+                inputArray
+                inputArray.Length
+                (fst verticesArrays)
                 verticesLength
-                sndVertices
-                ((verticesLength - 1) / workGroupSize + 1)
                 totalSum
-                opAdd
                 zero
 
-            update processor workGroupSize inputArray inputArray.Length fstVertices bunchLength opAdd
-            bunchLength <- bunchLength * workGroupSize
-            verticesArrays <- swap verticesArrays
-            verticesLength <- (verticesLength - 1) / workGroupSize + 1
+            while verticesLength > 1 do
+                let fstVertices = fst verticesArrays
+                let sndVertices = snd verticesArrays
 
-        processor.Post(Msg.CreateFreeMsg(firstVertices))
-        processor.Post(Msg.CreateFreeMsg(secondVertices))
+                scanExclusive
+                    processor
+                    fstVertices
+                    verticesLength
+                    sndVertices
+                    ((verticesLength - 1) / workGroupSize + 1)
+                    totalSum
+                    zero
 
-        inputArray, totalSum
+                update processor inputArray inputArray.Length fstVertices bunchLength
+                bunchLength <- bunchLength * workGroupSize
+                verticesArrays <- swap verticesArrays
+                verticesLength <- (verticesLength - 1) / workGroupSize + 1
+
+            processor.Post(Msg.CreateFreeMsg(firstVertices))
+            processor.Post(Msg.CreateFreeMsg(secondVertices))
+
+            inputArray, totalSum
 
     /// <summary>
     /// Exclude inplace prefix sum.
@@ -272,23 +267,7 @@ module internal PrefixSum =
     ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
-    let runExcludeInplace
-        clContext
-        workGroupSize
-        processor
-        inputArray
-        totalSum
-        plus
-        zero =
-        runInPlace
-            scanExclusive
-            clContext
-            workGroupSize
-            processor
-            inputArray
-            totalSum
-            plus
-            zero
+    let runExcludeInplace plus = runInPlace scanExclusive plus
 
     // TODO: нужен ли totalSum
     /// <summary>
@@ -312,4 +291,4 @@ module internal PrefixSum =
     ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
-    let runIncludeInplace clContext = runInPlace scanInclusive clContext
+    let runIncludeInplace plus = runInPlace scanInclusive plus
