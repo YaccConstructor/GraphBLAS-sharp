@@ -172,7 +172,7 @@ module Utils =
             match reader.ReadLine() with
             | "Cpu" -> DeviceType.Cpu
             | "Gpu" -> DeviceType.Gpu
-            | "All" -> DeviceType.All
+            | "Default" -> DeviceType.Default
             | _ -> failwith "Unsupported"
 
         let mutable e = ErrorCode.Unknown
@@ -205,19 +205,25 @@ module Utils =
                         .GetDeviceInfo(device, DeviceInfo.Platform, &e)
                         .CastTo<Platform>()
 
-                let platformName =
+                let clPlatform =
                     Cl
                         .GetPlatformInfo(platform, PlatformInfo.Name, &e)
                         .ToString()
+                    |> ClPlatform.Custom
 
                 let deviceType =
                     Cl
                         .GetDeviceInfo(device, DeviceInfo.Type, &e)
                         .CastTo<DeviceType>()
 
-                failwith "fix me"
-                //OpenCLEvaluationContext(platformName, deviceType) |> ClContext
-                Brahma.FSharp.OpenCL.ClContext() |> ClContext)
+                let clDeviceType =
+                    match deviceType with
+                    | DeviceType.Cpu -> ClDeviceType.CPU
+                    | DeviceType.Gpu -> ClDeviceType.GPU
+                    | DeviceType.Default -> ClDeviceType.Default
+                    | _ -> failwith "Unsupported"
+
+                Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
 
     let nextSingle (random: System.Random) =
         let buffer = Array.zeroCreate<byte> 4

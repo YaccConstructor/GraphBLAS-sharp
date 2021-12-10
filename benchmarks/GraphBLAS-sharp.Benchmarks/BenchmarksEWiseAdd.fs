@@ -41,80 +41,20 @@ type EWiseAddBenchmarks() =
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
+    member val WorkGroupSize = 128
+
     //[<GlobalCleanup>]
     //member this.ClearContext() =
     //    let (ClContext context) = this.OclContext
     //    context.D
 
-    static member AvaliableContexts =
-        let pathToConfig =
-            Path.Combine [| __SOURCE_DIRECTORY__
-                            "Configs"
-                            "Context.txt" |]
-            |> Path.GetFullPath
+    static member AvaliableContexts = Utils.avaliableContexts
 
-        use reader = new StreamReader(pathToConfig)
-        let platformRegex = Regex <| reader.ReadLine()
-
-        let deviceType =
-            match reader.ReadLine() with
-            | "Cpu" -> DeviceType.Cpu
-            | "Gpu" -> DeviceType.Gpu
-            | "Default" -> DeviceType.Default
-            | _ -> failwith "Unsupported"
-
-        let mutable e = ErrorCode.Unknown
-
-        Cl.GetPlatformIDs &e
-        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
-        |> Seq.ofArray
-        |> Seq.distinctBy
-            (fun device ->
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Name, &e)
-                    .ToString())
-        |> Seq.filter
-            (fun device ->
-                let platform =
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                        .CastTo<Platform>()
-
-                let platformName =
-                    Cl
-                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                        .ToString()
-
-                platformRegex.IsMatch platformName)
-        |> Seq.map
-            (fun device ->
-                let platform =
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                        .CastTo<Platform>()
-
-                let clPlatform =
-                    Cl
-                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                        .ToString()
-                    |> ClPlatform.Custom
-
-                let deviceType =
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                        .CastTo<DeviceType>()
-
-                let clDeviceType =
-                    match deviceType with
-                    | DeviceType.Cpu -> ClDeviceType.CPU
-                    | DeviceType.Gpu -> ClDeviceType.GPU
-                    | DeviceType.Default -> ClDeviceType.Default
-                    | _ -> failwith "Unsupported"
-
-                ClContext(clPlatform, clDeviceType))
-
-type EWiseAddBenchmarks4Float32COO() =
+type EWiseAddBenchmarks4Float32COO() as this =
     inherit EWiseAddBenchmarks()
+
+    let _eWiseAdd =
+        Backend.COOMatrix.eWiseAdd (this.OclContext) <@ (+) @> // 128 //this.Processor
 
     let mutable leftCOO =
         Unchecked.defaultof<Backend.COOMatrix<float32>>
@@ -129,9 +69,9 @@ type EWiseAddBenchmarks4Float32COO() =
     member val SecondMatrix = Unchecked.defaultof<COOMatrix<float32>> with get, set
 
     member this.Processor = this.OclContext.Provider.CommandQueue
-    // To do: set the correct workGroupSize
+
     member this.eWiseAdd =
-        Backend.COOMatrix.eWiseAdd (this.OclContext) <@ (+) @> 128 this.Processor
+        Backend.COOMatrix.eWiseAdd (this.OclContext) <@ (+) @> this.WorkGroupSize this.Processor
 
     [<IterationCleanup>]
     member this.ClearBuffers() =
@@ -360,8 +300,11 @@ type EWiseAddBenchmarks4BoolCOO() =
                 | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "EWiseAdd" matrixFilename)
                 | _ -> failwith "Unsupported matrix format")
 
-type EWiseAddBenchmarks4Float32CSR() =
+type EWiseAddBenchmarks4Float32CSR() as this =
     inherit EWiseAddBenchmarks()
+
+    let _eWiseAdd =
+        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (+) @>
 
     let mutable leftCSR =
         Unchecked.defaultof<Backend.CSRMatrix<float32>>
@@ -376,9 +319,9 @@ type EWiseAddBenchmarks4Float32CSR() =
     member val SecondMatrix = Unchecked.defaultof<CSRMatrix<float32>> with get, set
 
     member this.Processor = this.OclContext.Provider.CommandQueue
-    // To do: set the correct workGroupSize
+
     member this.eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (+) @> 128 this.Processor
+        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (+) @>
 
     [<IterationCleanup>]
     member this.ClearBuffers() =
@@ -397,24 +340,25 @@ type EWiseAddBenchmarks4Float32CSR() =
     member this.FormInputData() =
         this.Processor.Error.Add(fun e -> failwithf "%A" e)
 
-        let matrixWrapped =
-            match this.InputMatrixReader.Field with
-            | Real
-            | Integer -> this.InputMatrixReader.ReadMatrix(float32)
-            | Pattern ->
-                let rand = System.Random()
+        let SquaredMatrixReader =
+            MtxReader(Utils.getFullPathToMatrix "EWiseAdd" ("squared_" + this.InputMatrixReader.ToString()))
 
-                let nextSingle (random: System.Random) =
-                    let buffer = Array.zeroCreate<byte> 4
-                    random.NextBytes buffer
-                    System.BitConverter.ToSingle(buffer, 0)
-
-                this.InputMatrixReader.ReadMatrixBoolean(fun _ -> nextSingle rand)
-            | _ -> failwith "Unsupported matrix format"
+        let matrixWrapped, matrixWrapped1 =
+            match this.InputMatrixReader.Field, SquaredMatrixReader.Field with
+            | Pattern, Pattern ->
+                this.InputMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random())),
+                SquaredMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random()))
+            | Pattern, _ ->
+                this.InputMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random())),
+                SquaredMatrixReader.ReadMatrix(float32)
+            | _, Pattern ->
+                this.InputMatrixReader.ReadMatrix(float32),
+                SquaredMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random()))
+            | _, _ -> this.InputMatrixReader.ReadMatrix(float32), SquaredMatrixReader.ReadMatrix(float32)
 
         let matrix, matrix1 =
-            match matrixWrapped with
-            | MatrixCOO m ->
+            match matrixWrapped, matrixWrapped1 with
+            | MatrixCOO m, MatrixCOO m1 ->
                 let mnMatrix =
                     MathNet.Numerics.LinearAlgebra.Matrix<float32>.Build.SparseFromCoordinateFormat
                         (m.RowCount, m.ColumnCount, m.Values.Length, m.Rows, m.Columns, m.Values)
@@ -422,7 +366,9 @@ type EWiseAddBenchmarks4Float32CSR() =
                 let mnMatrixCSR =
                     MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix.Storage)
 
-                let mnMatrix1 = mnMatrix.Multiply(mnMatrix)
+                let mnMatrix1 =
+                    MathNet.Numerics.LinearAlgebra.Matrix<float32>.Build.SparseFromCoordinateFormat
+                        (m1.RowCount, m1.ColumnCount, m1.Values.Length, m1.Rows, m1.Columns, m1.Values)
 
                 let mnMatrix1CSR =
                     MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix1.Storage)
@@ -442,7 +388,7 @@ type EWiseAddBenchmarks4Float32CSR() =
                       Values = mnMatrix1CSR.Values }
 
                 m, m1
-            | _ -> failwith "Unsupported matrix format"
+            | _ -> failwith "Unsupported matrix format2"
 
         this.FirstMatrix <- matrix
         this.SecondMatrix <- matrix1
@@ -487,7 +433,7 @@ type EWiseAddBenchmarks4Float32CSR() =
 
     [<Benchmark>]
     member this.EWiseAdditionCSRFloat32() =
-        resultCSR <- this.eWiseAdd leftCSR rightCSR
+        resultCSR <- this.eWiseAdd this.WorkGroupSize this.Processor leftCSR rightCSR
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Float32CSR.txt"
