@@ -49,6 +49,72 @@ type EWiseAddBenchmarks() =
 
     static member AvaliableContexts = Utils.avaliableContexts
 
+    static member getBuffersOfMatrixCSR(matrix: Backend.CSRMatrix<'a>) =
+        matrix.RowPointers, matrix.Columns, matrix.Values
+
+    static member getBuffersOfMatrixCOO(matrix: Backend.COOMatrix<'a>) =
+        matrix.Rows, matrix.Columns, matrix.Values
+
+    static member buffersCleanup (processor: MailboxProcessor<_>) getBuffersFun matrix =
+        let buffers = getBuffersFun matrix
+
+        match buffers with
+        | b1, b2, b3 ->
+            processor.Post(Msg.CreateFreeMsg<_>(b1))
+            processor.Post(Msg.CreateFreeMsg<_>(b2))
+            processor.Post(Msg.CreateFreeMsg<_>(b3))
+
+        processor.PostAndReply(Msg.MsgNotifyMe)
+
+    member this.readMatrixAndSquaredCSR (context: Brahma.FSharp.OpenCL.ClContext) converter converterBool toCSR =
+        let squaredMatrixReader =
+            MtxReader(Utils.getFullPathToMatrix this.DatasetFolder ("squared_" + this.InputMatrixReader.ToString()))
+
+        let matrixWrapped, matrixWrapped1 =
+            match this.InputMatrixReader.Field, squaredMatrixReader.Field with
+            | Pattern, Pattern ->
+                this.InputMatrixReader.ReadMatrixBoolean(converterBool),
+                squaredMatrixReader.ReadMatrixBoolean(converterBool)
+            | Pattern, _ ->
+                this.InputMatrixReader.ReadMatrixBoolean(converterBool), squaredMatrixReader.ReadMatrix(converter)
+            | _, Pattern ->
+                this.InputMatrixReader.ReadMatrix(converter), squaredMatrixReader.ReadMatrixBoolean(converterBool)
+            | _, _ -> this.InputMatrixReader.ReadMatrix(converter), squaredMatrixReader.ReadMatrix(converter)
+
+        let matrix, matrix1 =
+            match matrixWrapped, matrixWrapped1 with
+            | MatrixCOO matrix, MatrixCOO matrix1 ->
+                let leftRows = context.CreateClArray(matrix.Rows)
+
+                let leftCols = context.CreateClArray matrix.Columns
+
+                let leftVals = context.CreateClArray matrix.Values
+
+                let left =
+                    { Backend.COOMatrix.RowCount = matrix.RowCount
+                      Backend.COOMatrix.ColumnCount = matrix.ColumnCount
+                      Backend.COOMatrix.Rows = leftRows
+                      Backend.COOMatrix.Columns = leftCols
+                      Backend.COOMatrix.Values = leftVals }
+
+                let rightRows = context.CreateClArray matrix1.Rows
+
+                let rightCols = context.CreateClArray matrix1.Columns
+
+                let rightVals = context.CreateClArray matrix1.Values
+
+                let right =
+                    { Backend.COOMatrix.RowCount = matrix1.RowCount
+                      Backend.COOMatrix.ColumnCount = matrix1.ColumnCount
+                      Backend.COOMatrix.Rows = rightRows
+                      Backend.COOMatrix.Columns = rightCols
+                      Backend.COOMatrix.Values = rightVals }
+
+                right, left
+            | _ -> failwith "Unsupported matrix format"
+
+        toCSR matrix, toCSR matrix1
+
 type EWiseAddBenchmarks4Float32COO() as this =
     inherit EWiseAddBenchmarks()
 
@@ -325,28 +391,22 @@ type EWiseAddBenchmarks4Float32CSR() as this =
     [<GlobalCleanup>]
     member this.GlobalCleanup() =
         leftCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
         rightCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
-    member this.IterCleanuo() =
+    member this.IterCleanup() =
         resultCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
         processor.Error.Add(fun e -> failwithf "%A" e)
 
         let m, m1 =
-            EWiseAdd.readMatrixAndSquaredCSR
-                context
-                this.InputMatrixReader
-                this.DatasetFolder
-                (float32)
-                (fun _ -> Utils.nextSingle (System.Random()))
-                toCSR
+            this.readMatrixAndSquaredCSR context (float32) (fun _ -> Utils.nextSingle (System.Random())) toCSR
 
         leftCSR <- m
         rightCSR <- m1
@@ -390,28 +450,22 @@ type EWiseAddBenchmarks4BoolCSR() as this =
     [<GlobalCleanup>]
     member this.GlobalCleanup() =
         leftCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
         rightCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
-    member this.IterCleanuo() =
+    member this.IterCleanup() =
         resultCSR
-        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAddBenchmarks.buffersCleanup processor EWiseAddBenchmarks.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
         processor.Error.Add(fun e -> failwithf "%A" e)
 
         let m, m1 =
-            EWiseAdd.readMatrixAndSquaredCSR
-                context
-                this.InputMatrixReader
-                this.DatasetFolder
-                (fun _ -> true)
-                (fun _ -> true)
-                toCSR
+            this.readMatrixAndSquaredCSR context (fun _ -> true) (fun _ -> true) toCSR
 
         leftCSR <- m
         rightCSR <- m1
