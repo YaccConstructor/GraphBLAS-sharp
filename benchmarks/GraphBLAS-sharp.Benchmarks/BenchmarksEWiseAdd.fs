@@ -41,12 +41,11 @@ type EWiseAddBenchmarks() =
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
+    member this.Processor = this.OclContext.Provider.CommandQueue
+
     member val WorkGroupSize = 128
 
-    //[<GlobalCleanup>]
-    //member this.ClearContext() =
-    //    let (ClContext context) = this.OclContext
-    //    context.D
+    member val DatasetFolder = "EWiseAdd"
 
     static member AvaliableContexts = Utils.avaliableContexts
 
@@ -303,9 +302,6 @@ type EWiseAddBenchmarks4BoolCOO() =
 type EWiseAddBenchmarks4Float32CSR() as this =
     inherit EWiseAddBenchmarks()
 
-    let _eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (+) @>
-
     let mutable leftCSR =
         Unchecked.defaultof<Backend.CSRMatrix<float32>>
 
@@ -315,121 +311,43 @@ type EWiseAddBenchmarks4Float32CSR() as this =
     let mutable resultCSR =
         Unchecked.defaultof<Backend.CSRMatrix<float32>>
 
-    member val FirstMatrix = Unchecked.defaultof<CSRMatrix<float32>> with get, set
-    member val SecondMatrix = Unchecked.defaultof<CSRMatrix<float32>> with get, set
-
-    member this.Processor = this.OclContext.Provider.CommandQueue
+    let _eWiseAdd =
+        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (+) @>
 
     member this.eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (+) @>
+        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (+) @>
+
+    member this.toCSR =
+        Backend.COOMatrix.toCSR this.OclContext this.WorkGroupSize this.Processor
+
+    [<GlobalCleanup>]
+    member this.GlobalCleanup() =
+        leftCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+
+        rightCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
-    member this.ClearBuffers() =
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.Values))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.Values))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.Values))
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+    member this.IterCleanuo() =
+        resultCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
         this.Processor.Error.Add(fun e -> failwithf "%A" e)
 
-        let SquaredMatrixReader =
-            MtxReader(Utils.getFullPathToMatrix "EWiseAdd" ("squared_" + this.InputMatrixReader.ToString()))
+        let m, m1 =
+            EWiseAdd.readMatrixAndSquaredCSR
+                this.OclContext
+                this.InputMatrixReader
+                this.DatasetFolder
+                (float32)
+                (fun _ -> Utils.nextSingle (System.Random()))
+                this.toCSR
 
-        let matrixWrapped, matrixWrapped1 =
-            match this.InputMatrixReader.Field, SquaredMatrixReader.Field with
-            | Pattern, Pattern ->
-                this.InputMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random())),
-                SquaredMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random()))
-            | Pattern, _ ->
-                this.InputMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random())),
-                SquaredMatrixReader.ReadMatrix(float32)
-            | _, Pattern ->
-                this.InputMatrixReader.ReadMatrix(float32),
-                SquaredMatrixReader.ReadMatrixBoolean(fun _ -> Utils.nextSingle (System.Random()))
-            | _, _ -> this.InputMatrixReader.ReadMatrix(float32), SquaredMatrixReader.ReadMatrix(float32)
-
-        let matrix, matrix1 =
-            match matrixWrapped, matrixWrapped1 with
-            | MatrixCOO m, MatrixCOO m1 ->
-                let mnMatrix =
-                    MathNet.Numerics.LinearAlgebra.Matrix<float32>.Build.SparseFromCoordinateFormat
-                        (m.RowCount, m.ColumnCount, m.Values.Length, m.Rows, m.Columns, m.Values)
-
-                let mnMatrixCSR =
-                    MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix.Storage)
-
-                let mnMatrix1 =
-                    MathNet.Numerics.LinearAlgebra.Matrix<float32>.Build.SparseFromCoordinateFormat
-                        (m1.RowCount, m1.ColumnCount, m1.Values.Length, m1.Rows, m1.Columns, m1.Values)
-
-                let mnMatrix1CSR =
-                    MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix1.Storage)
-
-                let m =
-                    { CSRMatrix.ColumnCount = mnMatrixCSR.ColumnCount
-                      RowCount = mnMatrixCSR.RowCount
-                      ColumnIndices = mnMatrixCSR.ColumnIndices
-                      RowPointers = mnMatrixCSR.RowPointers.[..mnMatrixCSR.RowPointers.Length - 2]
-                      Values = mnMatrixCSR.Values }
-
-                let m1 =
-                    { CSRMatrix.ColumnCount = mnMatrix1CSR.ColumnCount
-                      RowCount = mnMatrix1CSR.RowCount
-                      ColumnIndices = mnMatrix1CSR.ColumnIndices
-                      RowPointers = mnMatrix1CSR.RowPointers.[..mnMatrix1CSR.RowPointers.Length - 2]
-                      Values = mnMatrix1CSR.Values }
-
-                m, m1
-            | _ -> failwith "Unsupported matrix format2"
-
-        this.FirstMatrix <- matrix
-        this.SecondMatrix <- matrix1
-
-    [<IterationSetup>]
-    member this.BuildCSR() =
-        let leftRowPointers =
-            this.OclContext.CreateClArray this.FirstMatrix.RowPointers
-
-        let leftCols =
-            this.OclContext.CreateClArray this.FirstMatrix.ColumnIndices
-
-        let leftVals =
-            this.OclContext.CreateClArray this.FirstMatrix.Values
-
-        let left =
-            { Backend.CSRMatrix.RowCount = this.FirstMatrix.RowCount
-              Backend.CSRMatrix.ColumnCount = this.FirstMatrix.ColumnCount
-              Backend.CSRMatrix.RowPointers = leftRowPointers
-              Backend.CSRMatrix.Columns = leftCols
-              Backend.CSRMatrix.Values = leftVals }
-
-        leftCSR <- left
-
-        let rightRowPointers =
-            this.OclContext.CreateClArray this.SecondMatrix.RowPointers
-
-        let rightCols =
-            this.OclContext.CreateClArray this.SecondMatrix.ColumnIndices
-
-        let rightVals =
-            this.OclContext.CreateClArray this.SecondMatrix.Values
-
-        let right =
-            { Backend.CSRMatrix.RowCount = this.SecondMatrix.RowCount
-              Backend.CSRMatrix.ColumnCount = this.SecondMatrix.ColumnCount
-              Backend.CSRMatrix.RowPointers = rightRowPointers
-              Backend.CSRMatrix.Columns = rightCols
-              Backend.CSRMatrix.Values = rightVals }
-
-        rightCSR <- right
+        leftCSR <- m
+        rightCSR <- m1
 
     [<Benchmark>]
     member this.EWiseAdditionCSRFloat32() =
@@ -456,115 +374,44 @@ type EWiseAddBenchmarks4BoolCSR() =
     let mutable resultCSR =
         Unchecked.defaultof<Backend.CSRMatrix<bool>>
 
-    member val FirstMatrix = Unchecked.defaultof<CSRMatrix<bool>> with get, set
-    member val SecondMatrix = Unchecked.defaultof<CSRMatrix<bool>> with get, set
-
-    member this.Processor = this.OclContext.Provider.CommandQueue
-    // To do: set the correct workGroupSize
     member this.eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd (this.OclContext) <@ (||) @> 128 this.Processor
+        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (||) @>
+
+    member this.toCSR =
+        Backend.COOMatrix.toCSR this.OclContext this.WorkGroupSize this.Processor
+
+    [<GlobalCleanup>]
+    member this.GlobalCleanup() =
+        leftCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+
+        rightCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
-    member this.ClearBuffers() =
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(leftCSR.Values))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(rightCSR.Values))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.RowPointers))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.Columns))
-        this.Processor.Post(Msg.CreateFreeMsg<_>(resultCSR.Values))
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+    member this.IterCleanuo() =
+        resultCSR
+        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
         this.Processor.Error.Add(fun e -> failwithf "%A" e)
 
-        let matrixWrapped =
-            this.InputMatrixReader.ReadMatrix(fun _ -> true)
+        let m, m1 =
+            EWiseAdd.readMatrixAndSquaredCSR
+                this.OclContext
+                this.InputMatrixReader
+                this.DatasetFolder
+                (fun _ -> true)
+                (fun _ -> true)
+                this.toCSR
 
-        let matrix, matrix1 =
-            match matrixWrapped with
-            | MatrixCOO m ->
-                let mnMatrix =
-                    MathNet.Numerics.LinearAlgebra.Matrix<float32>.Build.SparseFromCoordinateFormat
-                        (m.RowCount,
-                         m.ColumnCount,
-                         m.Values.Length,
-                         m.Rows,
-                         m.Columns,
-                         Array.map (fun _ -> 1.0f) m.Values)
-
-                let mnMatrixCSR =
-                    MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix.Storage)
-
-                let mnMatrix1 = mnMatrix.Multiply(mnMatrix)
-
-                let mnMatrix1CSR =
-                    MathNet.Numerics.LinearAlgebra.Storage.SparseCompressedRowMatrixStorage.OfMatrix(mnMatrix1.Storage)
-
-                let m =
-                    { CSRMatrix.ColumnCount = mnMatrixCSR.ColumnCount
-                      RowCount = mnMatrixCSR.RowCount
-                      ColumnIndices = mnMatrixCSR.ColumnIndices
-                      RowPointers = mnMatrixCSR.RowPointers.[..mnMatrixCSR.RowPointers.Length - 2]
-                      Values = Array.map (fun _ -> true) mnMatrixCSR.Values }
-
-                let m1 =
-                    { CSRMatrix.ColumnCount = mnMatrix1CSR.ColumnCount
-                      RowCount = mnMatrix1CSR.RowCount
-                      ColumnIndices = mnMatrix1CSR.ColumnIndices
-                      RowPointers = mnMatrix1CSR.RowPointers.[..mnMatrix1CSR.RowPointers.Length - 2]
-                      Values = Array.map (fun _ -> true) mnMatrix1CSR.Values }
-
-                m, m1
-            | _ -> failwith "Unsupported matrix format"
-
-        this.FirstMatrix <- matrix
-        this.SecondMatrix <- matrix1
-
-    [<IterationSetup>]
-    member this.BuildCSR() =
-        let leftRowPointers =
-            this.OclContext.CreateClArray this.FirstMatrix.RowPointers
-
-        let leftCols =
-            this.OclContext.CreateClArray this.FirstMatrix.ColumnIndices
-
-        let leftVals =
-            this.OclContext.CreateClArray this.FirstMatrix.Values
-
-        let left =
-            { Backend.CSRMatrix.RowCount = this.FirstMatrix.RowCount
-              Backend.CSRMatrix.ColumnCount = this.FirstMatrix.ColumnCount
-              Backend.CSRMatrix.RowPointers = leftRowPointers
-              Backend.CSRMatrix.Columns = leftCols
-              Backend.CSRMatrix.Values = leftVals }
-
-        leftCSR <- left
-
-        let rightRowPointers =
-            this.OclContext.CreateClArray this.SecondMatrix.RowPointers
-
-        let rightCols =
-            this.OclContext.CreateClArray this.SecondMatrix.ColumnIndices
-
-        let rightVals =
-            this.OclContext.CreateClArray this.SecondMatrix.Values
-
-        let right =
-            { Backend.CSRMatrix.RowCount = this.SecondMatrix.RowCount
-              Backend.CSRMatrix.ColumnCount = this.SecondMatrix.ColumnCount
-              Backend.CSRMatrix.RowPointers = rightRowPointers
-              Backend.CSRMatrix.Columns = rightCols
-              Backend.CSRMatrix.Values = rightVals }
-
-        rightCSR <- right
+        leftCSR <- m
+        rightCSR <- m1
 
     [<Benchmark>]
     member this.EWiseAdditionCSRBool() =
-        resultCSR <- this.eWiseAdd leftCSR rightCSR
+        resultCSR <- this.eWiseAdd this.WorkGroupSize this.Processor leftCSR rightCSR
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4BoolCSR.txt"
