@@ -302,6 +302,11 @@ type EWiseAddBenchmarks4BoolCOO() =
 type EWiseAddBenchmarks4Float32CSR() as this =
     inherit EWiseAddBenchmarks()
 
+    let context =
+        ClContext(ClPlatform.Nvidia, ClDeviceType.GPU)
+
+    let processor = context.Provider.CommandQueue
+
     let mutable leftCSR =
         Unchecked.defaultof<Backend.CSRMatrix<float32>>
 
@@ -311,47 +316,44 @@ type EWiseAddBenchmarks4Float32CSR() as this =
     let mutable resultCSR =
         Unchecked.defaultof<Backend.CSRMatrix<float32>>
 
-    let _eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (+) @>
+    let eWiseAdd =
+        Backend.CSRMatrix.eWiseAdd context <@ (+) @> this.WorkGroupSize
 
-    member this.eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (+) @>
-
-    member this.toCSR =
-        Backend.COOMatrix.toCSR this.OclContext this.WorkGroupSize this.Processor
+    let toCSR =
+        Backend.COOMatrix.toCSR context this.WorkGroupSize processor
 
     [<GlobalCleanup>]
     member this.GlobalCleanup() =
         leftCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
         rightCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
     member this.IterCleanuo() =
         resultCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
-        this.Processor.Error.Add(fun e -> failwithf "%A" e)
+        processor.Error.Add(fun e -> failwithf "%A" e)
 
         let m, m1 =
             EWiseAdd.readMatrixAndSquaredCSR
-                this.OclContext
+                context
                 this.InputMatrixReader
                 this.DatasetFolder
                 (float32)
                 (fun _ -> Utils.nextSingle (System.Random()))
-                this.toCSR
+                toCSR
 
         leftCSR <- m
         rightCSR <- m1
 
     [<Benchmark>]
     member this.EWiseAdditionCSRFloat32() =
-        resultCSR <- this.eWiseAdd this.WorkGroupSize this.Processor leftCSR rightCSR
+        resultCSR <- eWiseAdd processor leftCSR rightCSR
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4Float32CSR.txt"
@@ -362,8 +364,13 @@ type EWiseAddBenchmarks4Float32CSR() as this =
                 | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "EWiseAdd" matrixFilename)
                 | _ -> failwith "Unsupported matrix format")
 
-type EWiseAddBenchmarks4BoolCSR() =
+type EWiseAddBenchmarks4BoolCSR() as this =
     inherit EWiseAddBenchmarks()
+
+    let context =
+        ClContext(ClPlatform.Nvidia, ClDeviceType.GPU)
+
+    let processor = context.Provider.CommandQueue
 
     let mutable leftCSR =
         Unchecked.defaultof<Backend.CSRMatrix<bool>>
@@ -374,44 +381,44 @@ type EWiseAddBenchmarks4BoolCSR() =
     let mutable resultCSR =
         Unchecked.defaultof<Backend.CSRMatrix<bool>>
 
-    member this.eWiseAdd =
-        Backend.CSRMatrix.eWiseAdd this.OclContext <@ (||) @>
+    let eWiseAdd =
+        Backend.CSRMatrix.eWiseAdd context <@ (||) @> this.WorkGroupSize
 
-    member this.toCSR =
-        Backend.COOMatrix.toCSR this.OclContext this.WorkGroupSize this.Processor
+    let toCSR =
+        Backend.COOMatrix.toCSR context this.WorkGroupSize processor
 
     [<GlobalCleanup>]
     member this.GlobalCleanup() =
         leftCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
         rightCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<IterationCleanup>]
     member this.IterCleanuo() =
         resultCSR
-        |> EWiseAdd.buffersCleanup this.Processor EWiseAdd.getBuffersOfMatrixCSR
+        |> EWiseAdd.buffersCleanup processor EWiseAdd.getBuffersOfMatrixCSR
 
     [<GlobalSetup>]
     member this.FormInputData() =
-        this.Processor.Error.Add(fun e -> failwithf "%A" e)
+        processor.Error.Add(fun e -> failwithf "%A" e)
 
         let m, m1 =
             EWiseAdd.readMatrixAndSquaredCSR
-                this.OclContext
+                context
                 this.InputMatrixReader
                 this.DatasetFolder
                 (fun _ -> true)
                 (fun _ -> true)
-                this.toCSR
+                toCSR
 
         leftCSR <- m
         rightCSR <- m1
 
     [<Benchmark>]
     member this.EWiseAdditionCSRBool() =
-        resultCSR <- this.eWiseAdd this.WorkGroupSize this.Processor leftCSR rightCSR
+        resultCSR <- eWiseAdd processor leftCSR rightCSR
 
     static member InputMatricesProvider =
         "EWiseAddBenchmarks4BoolCSR.txt"
