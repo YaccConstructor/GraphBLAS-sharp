@@ -15,11 +15,19 @@ type Config() =
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun matrix -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun matrix -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn("RowCount", (fun (matrix,_) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn("ColumnCount", (fun (matrix,_) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
             MatrixShapeColumn(
                 "NNZ",
-                fun matrix ->
+                fun (matrix,_) ->
+                    match matrix.Format with
+                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Array -> 0
+            )
+            :> IColumn,
+            MatrixShapeColumn(
+                "SqrNNZ",
+                fun (_,matrix) ->
                     match matrix.Format with
                     | Coordinate -> matrix.ReadMatrixShape().Nnz
                     | Array -> 0
@@ -31,7 +39,8 @@ type Config() =
         )
         |> ignore
 
-[<IterationCount(5)>]
+
+[<IterationCount(10)>]
 [<WarmupCount(3)>]
 [<Config(typeof<Config>)>]
 type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(buildFunToBenchmark, converter: string -> 'elem, converterBool, buildMatrix) =

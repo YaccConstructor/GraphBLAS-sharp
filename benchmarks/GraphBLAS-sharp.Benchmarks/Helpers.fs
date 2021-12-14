@@ -17,9 +17,10 @@ type CommonConfig() =
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun mtxReader -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun mtxReader -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn("NNZ", (fun mtxReader -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            MatrixShapeColumn("RowCount", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn("ColumnCount", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn("NNZ", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            MatrixShapeColumn("SqrNNZ", (fun (_,mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
             TEPSColumn() :> IColumn,
             StatisticColumn.Min,
             StatisticColumn.Max
@@ -71,7 +72,7 @@ type ClContext =
 
             sprintf "%s, %s" platformName deviceType
 
-type MatrixShapeColumn(columnName: string, getShape: MtxReader -> int) =
+type MatrixShapeColumn(columnName: string, getShape: (MtxReader*MtxReader) -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
@@ -79,7 +80,7 @@ type MatrixShapeColumn(columnName: string, getShape: MtxReader -> int) =
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrix =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader
+                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader*MtxReader
 
             sprintf "%i" <| getShape inputMatrix
 
@@ -104,7 +105,7 @@ type TEPSColumn() =
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrixReader =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader
+                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader*MtxReader |> fst
 
             let matrixShape = inputMatrixReader.ReadMatrixShape()
 
