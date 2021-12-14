@@ -176,55 +176,60 @@ module Utils =
             | "Default" -> DeviceType.Default
             | _ -> failwith "Unsupported"
 
+        let workGroupSize = reader.ReadLine() |> int
+
         let mutable e = ErrorCode.Unknown
 
-        Cl.GetPlatformIDs &e
-        |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
-        |> Seq.ofArray
-        |> Seq.distinctBy
-            (fun device ->
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Name, &e)
-                    .ToString())
-        |> Seq.filter
-            (fun device ->
-                let platform =
+        let context = 
+            Cl.GetPlatformIDs &e
+            |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
+            |> Seq.ofArray
+            |> Seq.distinctBy
+                (fun device ->
                     Cl
-                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                        .CastTo<Platform>()
+                        .GetDeviceInfo(device, DeviceInfo.Name, &e)
+                        .ToString())
+            |> Seq.filter
+                (fun device ->
+                    let platform =
+                        Cl
+                            .GetDeviceInfo(device, DeviceInfo.Platform, &e)
+                            .CastTo<Platform>()
 
-                let platformName =
-                    Cl
-                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                        .ToString()
+                    let platformName =
+                        Cl
+                            .GetPlatformInfo(platform, PlatformInfo.Name, &e)
+                            .ToString()
 
-                platformRegex.IsMatch platformName)
-        |> Seq.map
-            (fun device ->
-                let platform =
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                        .CastTo<Platform>()
+                    platformRegex.IsMatch platformName)
+            |> Seq.map
+                (fun device ->
+                    let platform =
+                        Cl
+                            .GetDeviceInfo(device, DeviceInfo.Platform, &e)
+                            .CastTo<Platform>()
 
-                let clPlatform =
-                    Cl
-                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                        .ToString()
-                    |> ClPlatform.Custom
+                    let clPlatform =
+                        Cl
+                            .GetPlatformInfo(platform, PlatformInfo.Name, &e)
+                            .ToString()
+                        |> ClPlatform.Custom
 
-                let deviceType =
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                        .CastTo<DeviceType>()
+                    let deviceType =
+                        Cl
+                            .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                            .CastTo<DeviceType>()
 
-                let clDeviceType =
-                    match deviceType with
-                    | DeviceType.Cpu -> ClDeviceType.CPU
-                    | DeviceType.Gpu -> ClDeviceType.GPU
-                    | DeviceType.Default -> ClDeviceType.Default
-                    | _ -> failwith "Unsupported"
+                    let clDeviceType =
+                        match deviceType with
+                        | DeviceType.Cpu -> ClDeviceType.CPU
+                        | DeviceType.Gpu -> ClDeviceType.GPU
+                        | DeviceType.Default -> ClDeviceType.Default
+                        | _ -> failwith "Unsupported"
 
-                Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+                    Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+                    
+        context, workGroupSize
 
     let nextSingle (random: System.Random) =
         let buffer = Array.zeroCreate<byte> 4
