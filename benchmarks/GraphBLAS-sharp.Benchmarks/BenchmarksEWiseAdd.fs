@@ -142,8 +142,8 @@ module M =
     let inline buildCsrMatrix (context:ClContext) matrix =
         match matrix with
         | MatrixCOO m ->
-            let rows =
-                context.CreateClArray m.Rows
+            let rowPointers =
+                context.CreateClArray (Utils.rowIndices2rowPointers m.Rows m.RowCount)
 
             let cols =
                 context.CreateClArray m.Columns
@@ -154,8 +154,7 @@ module M =
             { Backend.CSRMatrix.Context = context
               Backend.CSRMatrix.RowCount = m.RowCount
               Backend.CSRMatrix.ColumnCount = m.ColumnCount
-              /// !!!! FIXME
-              Backend.CSRMatrix.RowPointers = rows
+              Backend.CSRMatrix.RowPointers = rowPointers
               Backend.CSRMatrix.Columns = cols
               Backend.CSRMatrix.Values = vals }                
 
