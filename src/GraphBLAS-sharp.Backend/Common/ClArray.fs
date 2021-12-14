@@ -293,7 +293,12 @@ module ClArray =
             let ndRange =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
-            let bitmap = clContext.CreateClArray inputLength
+            let bitmap =
+                clContext.CreateClArray(
+                    inputLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
