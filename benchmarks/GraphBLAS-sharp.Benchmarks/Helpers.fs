@@ -176,11 +176,11 @@ module Utils =
             | "Default" -> DeviceType.Default
             | _ -> failwith "Unsupported"
 
-        let workGroupSize = reader.ReadLine() |> int
+        let workGroupSizes = reader.ReadLine() |> (fun s -> s.Split ' ') |> Seq.map int
 
         let mutable e = ErrorCode.Unknown
 
-        let context = 
+        let contexts = 
             Cl.GetPlatformIDs &e
             |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
             |> Seq.ofArray
@@ -228,8 +228,12 @@ module Utils =
                         | _ -> failwith "Unsupported"
 
                     Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
-                    
-        context, workGroupSize
+
+        seq {
+            for wgSize in workGroupSizes do
+                for context in contexts do
+                    yield (context, wgSize)
+        }
 
     let nextSingle (random: System.Random) =
         let buffer = Array.zeroCreate<byte> 4
