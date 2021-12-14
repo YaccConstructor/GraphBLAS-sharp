@@ -17,10 +17,10 @@ type CommonConfig() =
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn("NNZ", (fun (mtxReader,_) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            MatrixShapeColumn("SqrNNZ", (fun (_,mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            MatrixShapeColumn("RowCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn("ColumnCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn("NNZ", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            MatrixShapeColumn("SqrNNZ", (fun (_, mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
             TEPSColumn() :> IColumn,
             StatisticColumn.Min,
             StatisticColumn.Max
@@ -72,7 +72,7 @@ type ClContext =
 
             sprintf "%s, %s" platformName deviceType
 
-type MatrixShapeColumn(columnName: string, getShape: (MtxReader*MtxReader) -> int) =
+type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
@@ -80,7 +80,7 @@ type MatrixShapeColumn(columnName: string, getShape: (MtxReader*MtxReader) -> in
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrix =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader*MtxReader
+                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
 
             sprintf "%i" <| getShape inputMatrix
 
@@ -105,7 +105,8 @@ type TEPSColumn() =
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrixReader =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader*MtxReader |> fst
+                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
+                |> fst
 
             let matrixShape = inputMatrixReader.ReadMatrixShape()
 
@@ -177,11 +178,14 @@ module Utils =
             | "Default" -> DeviceType.Default
             | _ -> failwith "Unsupported"
 
-        let workGroupSizes = reader.ReadLine() |> (fun s -> s.Split ' ') |> Seq.map int
+        let workGroupSizes =
+            reader.ReadLine()
+            |> (fun s -> s.Split ' ')
+            |> Seq.map int
 
         let mutable e = ErrorCode.Unknown
 
-        let contexts = 
+        let contexts =
             Cl.GetPlatformIDs &e
             |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
             |> Seq.ofArray
@@ -252,3 +256,14 @@ module Utils =
                 |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i))
 
         rowIndices
+
+    let rowIndices2rowPointers (rowIndices: int []) rowCount =
+        let nnzPerRow = Array.zeroCreate rowCount
+        let rowPointers = Array.zeroCreate rowCount
+
+        Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
+
+        for i in 1 .. rowCount - 1 do
+            rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
+
+        rowPointers
