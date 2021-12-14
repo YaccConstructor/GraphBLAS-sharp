@@ -46,7 +46,8 @@ module CSRMatrix =
             let values =
                 copyData processor workGroupSize matrix.Values
 
-            { RowCount = matrix.RowCount
+            { Context = clContext
+              RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
               Rows = rowIndices
               Columns = colIndices
@@ -68,6 +69,17 @@ module CSRMatrix =
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
+            processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m1COO.Columns))
+            processor.Post(Msg.CreateFreeMsg(m1COO.Values))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Columns))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Values))
+
             let m3 = toCSR processor m3COO
+
+            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m3COO.Columns))
+            processor.Post(Msg.CreateFreeMsg(m3COO.Values))
 
             m3

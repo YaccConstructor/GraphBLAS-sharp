@@ -101,7 +101,8 @@ let testCases =
                 use clValues1 = context.CreateClArray mtx1.Values
 
                 let m1 =
-                    { Backend.COOMatrix.RowCount = mtx1.RowCount
+                    { Context = context
+                      Backend.COOMatrix.RowCount = mtx1.RowCount
                       ColumnCount = mtx1.ColumnCount
                       Rows = clRows1
                       Columns = clColumns1
@@ -112,7 +113,8 @@ let testCases =
                 use clValues2 = context.CreateClArray mtx2.Values
 
                 let m2 =
-                    { Backend.COOMatrix.RowCount = mtx2.RowCount
+                    { Context = context
+                      Backend.COOMatrix.RowCount = mtx2.RowCount
                       ColumnCount = mtx2.ColumnCount
                       Rows = clRows2
                       Columns = clColumns2
@@ -162,7 +164,8 @@ let testCases =
                 use clValues1 = context.CreateClArray mtx1.Values
 
                 let m1 =
-                    { Backend.CSRMatrix.RowCount = mtx1.RowCount
+                    { Context = context
+                      Backend.CSRMatrix.RowCount = mtx1.RowCount
                       ColumnCount = mtx1.ColumnCount
                       RowPointers = clRows1
                       Columns = clColumns1
@@ -173,7 +176,8 @@ let testCases =
                 use clValues2 = context.CreateClArray mtx2.Values
 
                 let m2 =
-                    { Backend.CSRMatrix.RowCount = mtx2.RowCount
+                    { Context = context
+                      Backend.CSRMatrix.RowCount = mtx2.RowCount
                       ColumnCount = mtx2.ColumnCount
                       RowPointers = clRows2
                       Columns = clColumns2
