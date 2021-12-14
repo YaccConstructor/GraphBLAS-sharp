@@ -46,7 +46,8 @@ module CSRMatrix =
             let values =
                 copyData processor workGroupSize matrix.Values
 
-            { RowCount = matrix.RowCount
+            { Context = clContext
+              RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
               Rows = rowIndices
               Columns = colIndices

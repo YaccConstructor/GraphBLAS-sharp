@@ -345,7 +345,8 @@ module COOMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
 
-            { RowCount = matrixLeft.RowCount
+            { Context = clContext
+              RowCount = matrixLeft.RowCount
               ColumnCount = matrixLeft.ColumnCount
               Rows = resultRows
               Columns = resultColumns
@@ -370,7 +371,8 @@ module COOMatrix =
                 copyData processor workGroupSize matrix.Values
 
 
-            { RowIndices = resultRows
+            { Context = clContext
+              RowIndices = resultRows
               ColumnIndices = resultColumns
               Values = resultValues }
 
@@ -524,7 +526,8 @@ module COOMatrix =
             let vals =
                 copyData processor workGroupSize matrix.Values
 
-            { RowCount = matrix.RowCount
+            { Context = clContext
+              RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
               RowPointers = compressedRows
               Columns = cols
