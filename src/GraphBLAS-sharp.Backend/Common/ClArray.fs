@@ -7,6 +7,7 @@ module ClArray =
 
     let copy (clContext: ClContext) =
         let copy =
+
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
 
                 let i = ndRange.GlobalID0
@@ -21,7 +22,7 @@ module ClArray =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArray(inputArray.Length)
+                clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange inputArray outputArray inputArray.Length)
@@ -32,6 +33,7 @@ module ClArray =
             outputArray
 
     let replicate (clContext: ClContext) =
+
         let replicate =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength outputArrayLength ->
 
@@ -46,7 +48,7 @@ module ClArray =
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArray outputArrayLength
+                clContext.CreateClArray(outputArrayLength, allocationMode = AllocationMode.Default)
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
@@ -171,6 +173,7 @@ module ClArray =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExcludeInplace (clContext: ClContext) workGroupSize =
+
         let scan = scan clContext workGroupSize
         let update = update clContext
 
@@ -178,13 +181,15 @@ module ClArray =
             let firstVertices =
                 clContext.CreateClArray<int>(
                     (inputArray.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let secondVertices =
                 clContext.CreateClArray<int>(
                     (firstVertices.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let mutable verticesArrays = firstVertices, secondVertices
@@ -219,6 +224,7 @@ module ClArray =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExclude (clContext: ClContext) workGroupSize =
+
         let copy = copy clContext
 
         let prefixSumExcludeInplace =
@@ -233,6 +239,7 @@ module ClArray =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumInclude (clContext: ClContext) workGroupSize =
+
         let kernel =
             <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClArray<int>) (outputArray: ClArray<int>) ->
 
@@ -257,7 +264,8 @@ module ClArray =
             let _, totalSum =
                 prefixSumExcludeInplace processor copiedArray totalSum
 
-            let outputArray = clContext.CreateClArray inputArrayLength
+            let outputArray =
+                clContext.CreateClArray(inputArrayLength, allocationMode = AllocationMode.Default)
 
             let ndRange =
                 Range1D.CreateValid(inputArrayLength, workGroupSize)
@@ -273,6 +281,7 @@ module ClArray =
 
 
     let getUniqueBitmap (clContext: ClContext) =
+
         let getUniqueBitmap =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
 
@@ -293,7 +302,8 @@ module ClArray =
             let ndRange =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
-            let bitmap = clContext.CreateClArray inputLength
+            let bitmap =
+                clContext.CreateClArray(inputLength, allocationMode = AllocationMode.Default)
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
@@ -305,6 +315,7 @@ module ClArray =
 
 
     let setPositions (clContext: ClContext) =
+
         let setPositions =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
 
@@ -320,7 +331,8 @@ module ClArray =
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
-            let outputArray = clContext.CreateClArray outputArraySize
+            let outputArray =
+                clContext.CreateClArray(outputArraySize, allocationMode = AllocationMode.Default)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -336,6 +348,7 @@ module ClArray =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
+
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
         let prefixSumExclude = prefixSumExclude clContext workGroupSize

@@ -40,8 +40,8 @@ type Config() =
         |> ignore
 
 
-[<IterationCount(10)>]
-[<WarmupCount(3)>]
+[<IterationCount(100)>]
+[<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
 type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(buildFunToBenchmark, converter: string -> 'elem, converterBool, buildMatrix) =
 
@@ -99,6 +99,7 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
     [<Benchmark>]
     member this.EWiseAddition() =
         resultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalSetup>]
     member this.PrepareInputData () =
@@ -122,13 +123,13 @@ module M =
         match matrix with
         | MatrixCOO m ->
             let rows =
-                context.CreateClArray m.Rows
+                context.CreateClArray (m.Rows,hostAccessMode = HostAccessMode.ReadOnly,deviceAccessMode = DeviceAccessMode.ReadOnly)
 
             let cols =
-                context.CreateClArray m.Columns
+                context.CreateClArray (m.Columns,hostAccessMode = HostAccessMode.ReadOnly,deviceAccessMode = DeviceAccessMode.ReadOnly)
 
             let vals =
-                context.CreateClArray m.Values
+                context.CreateClArray (m.Values,hostAccessMode = HostAccessMode.ReadOnly,deviceAccessMode = DeviceAccessMode.ReadOnly)
             
             { Backend.COOMatrix.Context = context
               Backend.COOMatrix.RowCount = m.RowCount

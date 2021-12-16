@@ -47,24 +47,27 @@ module COOMatrix =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArray(
+                clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let resultColumns =
-                clContext.CreateClArray(
+                clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let resultValues =
                 clContext.CreateClArray(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRange =
@@ -118,7 +121,11 @@ module COOMatrix =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rawPositionsGpu =
-                clContext.CreateClArray<int>(length, hostAccessMode = HostAccessMode.NotAccessible)
+                clContext.CreateClArray<int>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -266,21 +273,24 @@ module COOMatrix =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let allColumns =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let allValues =
                 clContext.CreateClArray<'a>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRange =
@@ -332,7 +342,6 @@ module COOMatrix =
                     matrixRight.Rows
                     matrixRight.Columns
                     matrixRight.Values
-
 
             let rawPositions =
                 preparePositions queue allRows allColumns allValues
