@@ -447,8 +447,19 @@ module COOMatrix =
 
             let totalSum = hostTotalSum.[0]
 
-            let nonZeroRowsIndices = clContext.CreateClArray totalSum
-            let nonZeroRowsPointers = clContext.CreateClArray totalSum
+            let nonZeroRowsIndices =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
+
+            let nonZeroRowsPointers =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             let nnz = rowIndices.Length
             let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
@@ -470,7 +481,12 @@ module COOMatrix =
             processor.Post(Msg.CreateFreeMsg(bitmap))
             processor.Post(Msg.CreateFreeMsg(positions))
 
-            let nnzPerRowSparse = clContext.CreateClArray totalSum
+            let nnzPerRowSparse =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             let ndRangeCNPRSandENPR =
                 Range1D.CreateValid(totalSum, workGroupSize)
@@ -488,7 +504,11 @@ module COOMatrix =
             processor.Post(Msg.CreateRunMsg<_, _> kernelCalcNnzPerRowSparse)
 
             let expandedNnzPerRow =
-                clContext.CreateClArray(Array.zeroCreate rowCount)
+                clContext.CreateClArray(
+                    Array.zeroCreate rowCount,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             processor.Post(
                 Msg.MsgSetArguments
