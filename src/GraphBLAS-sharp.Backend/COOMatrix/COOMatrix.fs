@@ -387,7 +387,7 @@ module COOMatrix =
 
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let private compressRows (clContext: ClContext) workGroupSize =
+    let compressRows (clContext: ClContext) workGroupSize =
 
         let calcHyperSparseRows =
             <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
@@ -451,14 +451,16 @@ module COOMatrix =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let nonZeroRowsPointers =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let nnz = rowIndices.Length
@@ -485,7 +487,8 @@ module COOMatrix =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRangeCNPRSandENPR =
