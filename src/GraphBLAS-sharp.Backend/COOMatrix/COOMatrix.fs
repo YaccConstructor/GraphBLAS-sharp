@@ -451,14 +451,16 @@ module COOMatrix =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let nonZeroRowsPointers =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let nnz = rowIndices.Length
@@ -485,7 +487,8 @@ module COOMatrix =
                 clContext.CreateClArray(
                     totalSum,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRangeCNPRSandENPR =
@@ -561,3 +564,20 @@ module COOMatrix =
               RowPointers = compressedRows
               Columns = cols
               Values = vals }
+
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let toCSRInplace (clContext: ClContext) workGroupSize =
+
+        let compressRows = compressRows clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
+            let compressedRows =
+                compressRows processor matrix.Rows matrix.RowCount
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              RowPointers = compressedRows
+              Columns = matrix.Columns
+              Values = matrix.Values }
