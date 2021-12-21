@@ -39,7 +39,7 @@ type Config() =
         )
         |> ignore
 
-
+[<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
@@ -48,7 +48,10 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
     let mutable funToBenchmark = None
     let mutable firstMatrix = Unchecked.defaultof<'matrixT>
     let mutable secondMatrix = Unchecked.defaultof<'matrixT>
-    let mutable resultMatrix = Unchecked.defaultof<'matrixT>
+    let mutable firstMatrixHost = Unchecked.defaultof<_>
+    let mutable secondMatrixHost = Unchecked.defaultof<_>
+    //let mutable resultMatrix = Unchecked.defaultof<'matrixT>
+    member val ResultMatrix = Unchecked.defaultof<'matrixT> with get,set
     
     [<ParamsSource("AvaliableContexts")>]    
     member val OclContextInfo = Unchecked.defaultof<_> with get, set
@@ -64,7 +67,7 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
         p.Error.Add(fun e -> failwithf "%A" e)
         p    
 
-    static member AvaliableContexts = Utils.avaliableContexts    
+    static member AvaliableContexts = Utils.avaliableContexts
 
     static member InputMatricesProviderBuilder pathToConfig =
         let datasetFolder = "EWiseAdd"
@@ -95,28 +98,52 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
             | _ -> converter
         
         reader.ReadMatrix converter
-
-    [<Benchmark>]
+    
     member this.EWiseAddition() =
-        resultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        this.ResultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
 
-    [<GlobalSetup>]
-    member this.PrepareInputData () =
+    member this.ClearInputMatrices() =
+        (firstMatrix :> System.IDisposable).Dispose()
+        (secondMatrix :> System.IDisposable).Dispose()
+
+    member this.ClearResult() =
+        (this.ResultMatrix :> System.IDisposable).Dispose()
+
+    member this.ReadMatrices() =
         let leftMatrixReader = fst this.InputMatrixReader
         let rightMatrixReader = snd this.InputMatrixReader
-        firstMatrix <- buildMatrix this.OclContext <| this.ReadMatrix leftMatrixReader 
-        secondMatrix <- buildMatrix this.OclContext <| this.ReadMatrix rightMatrixReader 
-    
+        firstMatrixHost <- this.ReadMatrix leftMatrixReader 
+        secondMatrixHost <- this.ReadMatrix rightMatrixReader 
+
+    member this.LoadMatricesToGPU () =        
+        firstMatrix <- buildMatrix this.OclContext firstMatrixHost
+        secondMatrix <- buildMatrix this.OclContext secondMatrixHost 
+
+    abstract member GlobalSetup : unit -> unit 
+
+   (* [<GlobalSetup>]
+    default this.GlobalSetup() =
+        this.PrepareInputData ()
+*)
+    abstract member IterationCleanup : unit -> unit 
+(*
     [<IterationCleanup>]
-    member this.ClearResult() =
-        (resultMatrix :> System.IDisposable).Dispose()
-
+    default this.IterationCleanup () = 
+        this.ClearResult()
+*)
+    abstract member GlobalCleanup : unit -> unit 
+(*
     [<GlobalCleanup>]
-    member this.ClearInputMatrices() =
-        (firstMatrix :> System.IDisposable).Dispose()        
-        (secondMatrix :> System.IDisposable).Dispose()        
-
+    default this.GlobalCleanup () = 
+        this.ClearInputMatrices()
+  *)  
+    abstract member Benchmark : unit -> unit 
+(*
+    [<Benchmark>]
+    default this.Benchmark () =
+        this.EWiseAddition()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+*)
 
 module M = 
     let inline buildCooMatrix (context:ClContext) matrix =
@@ -186,6 +213,76 @@ type EWiseAddBenchmarks4Float32COO() =
         EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
 
+type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
+    inherit EWiseAddBenchmarks4Float32COO()
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrices ()
+        this.LoadMatricesToGPU ()
+    
+    [<IterationCleanup>]
+    override this.IterationCleanup () = 
+        this.ClearResult()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () = 
+        this.ClearInputMatrices()
+
+    [<Benchmark>]
+    override this.Benchmark () =
+        this.EWiseAddition()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
+        
+    inherit EWiseAddBenchmarks4Float32COO()
+    
+    member this.ResultToHost () =
+        let cols =
+            let a = Array.zeroCreate this.ResultMatrix.ColumnCount
+            this.Processor.Post(Msg.CreateToHostMsg<_>(this.ResultMatrix.Columns,a))
+            a
+        let rows =
+            let a = Array.zeroCreate this.ResultMatrix.RowCount
+            this.Processor.Post(Msg.CreateToHostMsg(this.ResultMatrix.Rows,a))
+            a
+        let vals =
+            let a = Array.zeroCreate this.ResultMatrix.Values.Length
+            this.Processor.Post(Msg.CreateToHostMsg(this.ResultMatrix.Values,a))
+            a
+
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+        {
+            RowCount = this.ResultMatrix.RowCount
+            ColumnCount = this.ResultMatrix.ColumnCount
+            Rows = rows
+            Columns = cols
+            Values = vals
+        }
+
+    [<GlobalSetup>]
+    override this.GlobalSetup () = 
+        this.ReadMatrices ()        
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () = ()
+    
+    [<IterationCleanup>]
+    override this.IterationCleanup () = 
+        this.ClearInputMatrices()
+        this.ClearResult()
+
+    [<Benchmark>]
+    override this.Benchmark () = 
+        this.LoadMatricesToGPU ()
+        this.EWiseAddition()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)        
+        let res = this.ResultToHost ()        
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+(*
 type EWiseAddBenchmarks4BoolCOO() =
         
     inherit EWiseAddBenchmarks<Backend.COOMatrix<bool>,bool>(
@@ -223,3 +320,4 @@ type EWiseAddBenchmarks4BoolCSR() =
 
     static member InputMatricesProvider =
         EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+*)
