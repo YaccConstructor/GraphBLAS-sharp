@@ -43,18 +43,18 @@ type Config() =
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
-type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
-    buildFunToBenchmark,
-    converter: string -> 'elem,
-    converterBool,
-    buildMatrix) =
+type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix) =
 
     let mutable funToBenchmark = None
     let mutable firstMatrix = Unchecked.defaultof<'matrixT>
     let mutable secondMatrix = Unchecked.defaultof<'matrixT>
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
-    //let mutable resultMatrix = Unchecked.defaultof<'matrixT>
+    
     member val ResultMatrix = Unchecked.defaultof<'matrixT> with get,set
     
     [<ParamsSource("AvaliableContexts")>]    
@@ -107,11 +107,11 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
         this.ResultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
 
     member this.ClearInputMatrices() =
-        (firstMatrix :> System.IDisposable).Dispose()
-        (secondMatrix :> System.IDisposable).Dispose()
+        (firstMatrix :> Backend.IDeviceMemObject).Dispose()
+        (secondMatrix :> Backend.IDeviceMemObject).Dispose()
 
     member this.ClearResult() =
-        (this.ResultMatrix :> System.IDisposable).Dispose()
+        (this.ResultMatrix :> Backend.IDeviceMemObject).Dispose()
 
     member this.ReadMatrices() =
         let leftMatrixReader = fst this.InputMatrixReader
@@ -131,7 +131,7 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
 
     abstract member Benchmark : unit -> unit 
 
-type EWiseAddBenchmarksWithoutDataTransfer <'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
+type EWiseAddBenchmarksWithoutDataTransfer<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
@@ -161,7 +161,7 @@ type EWiseAddBenchmarksWithoutDataTransfer <'matrixT, 'elem when 'matrixT :> Sys
         this.EWiseAddition()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-type EWiseAddBenchmarksWithDataTransfer <'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
+type EWiseAddBenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,

@@ -2,6 +2,9 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 
+type IDeviceMemObject =
+    abstract Dispose : unit -> unit
+
 type CSRMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowCount: int
@@ -10,7 +13,7 @@ type CSRMatrix<'elem when 'elem: struct> =
       Columns: ClArray<int>
       Values: ClArray<'elem> }
 
-    interface System.IDisposable with
+    interface IDeviceMemObject with
         member this.Dispose() =
             let q = this.Context.Provider.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
@@ -24,7 +27,7 @@ type TupleMatrix<'elem when 'elem: struct> =
       ColumnIndices: ClArray<int>
       Values: ClArray<'elem> }
 
-    interface System.IDisposable with
+    interface IDeviceMemObject with
         member this.Dispose() =
             let q = this.Context.Provider.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))
@@ -40,7 +43,7 @@ type COOMatrix<'elem when 'elem: struct> =
       Columns: ClArray<int>
       Values: ClArray<'elem> }
 
-    interface System.IDisposable with
+    interface IDeviceMemObject with
         member this.Dispose() =
             let q = this.Context.Provider.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
