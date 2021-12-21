@@ -387,7 +387,7 @@ module COOMatrix =
 
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let compressRows (clContext: ClContext) workGroupSize =
+    let private compressRows (clContext: ClContext) workGroupSize =
 
         let calcHyperSparseRows =
             <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
