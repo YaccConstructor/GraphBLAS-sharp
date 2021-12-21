@@ -43,7 +43,11 @@ type Config() =
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
-type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(buildFunToBenchmark, converter: string -> 'elem, converterBool, buildMatrix) =
+type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
+    buildFunToBenchmark,
+    converter: string -> 'elem,
+    converterBool,
+    buildMatrix) =
 
     let mutable funToBenchmark = None
     let mutable firstMatrix = Unchecked.defaultof<'matrixT>
@@ -121,29 +125,74 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> System.IDisposable and 
 
     abstract member GlobalSetup : unit -> unit 
 
-   (* [<GlobalSetup>]
-    default this.GlobalSetup() =
-        this.PrepareInputData ()
-*)
     abstract member IterationCleanup : unit -> unit 
-(*
-    [<IterationCleanup>]
-    default this.IterationCleanup () = 
-        this.ClearResult()
-*)
+
     abstract member GlobalCleanup : unit -> unit 
-(*
-    [<GlobalCleanup>]
-    default this.GlobalCleanup () = 
-        this.ClearInputMatrices()
-  *)  
+
     abstract member Benchmark : unit -> unit 
-(*
+
+type EWiseAddBenchmarksWithoutDataTransfer <'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix) =
+
+    inherit EWiseAddBenchmarks<'matrixT, 'elem>(
+        buildFunToBenchmark,
+        converter,
+        converterBool,
+        buildMatrix)
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrices ()
+        this.LoadMatricesToGPU ()
+    
+    [<IterationCleanup>]
+    override this.IterationCleanup () = 
+        this.ClearResult()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () = 
+        this.ClearInputMatrices()
+
     [<Benchmark>]
-    default this.Benchmark () =
+    override this.Benchmark () =
         this.EWiseAddition()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
-*)
+
+type EWiseAddBenchmarksWithDataTransfer <'matrixT, 'elem when 'matrixT :> System.IDisposable and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix,
+        resultToHost) =
+
+    inherit EWiseAddBenchmarks<'matrixT, 'elem>(
+        buildFunToBenchmark,
+        converter,
+        converterBool,
+        buildMatrix)
+
+    [<GlobalSetup>]
+    override this.GlobalSetup () = 
+        this.ReadMatrices ()        
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () = ()
+    
+    [<IterationCleanup>]
+    override this.IterationCleanup () = 
+        this.ClearInputMatrices()
+        this.ClearResult()
+
+    [<Benchmark>]
+    override this.Benchmark () = 
+        this.LoadMatricesToGPU()
+        this.EWiseAddition()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
+        let res = resultToHost this.ResultMatrix this.Processor
+        this.Processor.PostAndReply Msg.MsgNotifyMe
 
 module M = 
     let inline buildCooMatrix (context:ClContext) matrix =
@@ -200,9 +249,31 @@ module M =
 
         | x -> failwith "Unsupported matrix format: %A"
 
-type EWiseAddBenchmarks4Float32COO() =
+    let resultToHostCOO (resultMatrix:Backend.COOMatrix<'a>) (procesor:MailboxProcessor<_>) =
+        let cols =
+            let a = Array.zeroCreate resultMatrix.ColumnCount
+            procesor.Post(Msg.CreateToHostMsg<_>(resultMatrix.Columns,a))
+            a
+        let rows =
+            let a = Array.zeroCreate resultMatrix.RowCount
+            procesor.Post(Msg.CreateToHostMsg(resultMatrix.Rows,a))
+            a
+        let vals =
+            let a = Array.zeroCreate resultMatrix.Values.Length
+            procesor.Post(Msg.CreateToHostMsg(resultMatrix.Values,a))
+            a       
+        {
+            RowCount = resultMatrix.RowCount
+            ColumnCount = resultMatrix.ColumnCount
+            Rows = rows
+            Columns = cols
+            Values = vals
+        }
+
+
+type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
         
-    inherit EWiseAddBenchmarks<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (+) @> wgSize),
         float32, 
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -212,80 +283,23 @@ type EWiseAddBenchmarks4Float32COO() =
     static member InputMatricesProvider =
         EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-
-type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
-    inherit EWiseAddBenchmarks4Float32COO()
-
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrices ()
-        this.LoadMatricesToGPU ()
-    
-    [<IterationCleanup>]
-    override this.IterationCleanup () = 
-        this.ClearResult()
-
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () = 
-        this.ClearInputMatrices()
-
-    [<Benchmark>]
-    override this.Benchmark () =
-        this.EWiseAddition()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
-
 type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
         
-    inherit EWiseAddBenchmarks4Float32COO()
-    
-    member this.ResultToHost () =
-        let cols =
-            let a = Array.zeroCreate this.ResultMatrix.ColumnCount
-            this.Processor.Post(Msg.CreateToHostMsg<_>(this.ResultMatrix.Columns,a))
-            a
-        let rows =
-            let a = Array.zeroCreate this.ResultMatrix.RowCount
-            this.Processor.Post(Msg.CreateToHostMsg(this.ResultMatrix.Rows,a))
-            a
-        let vals =
-            let a = Array.zeroCreate this.ResultMatrix.Values.Length
-            this.Processor.Post(Msg.CreateToHostMsg(this.ResultMatrix.Values,a))
-            a
+    inherit EWiseAddBenchmarksWithDataTransfer<Backend.COOMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (+) @> wgSize),
+        float32, 
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCooMatrix,
+        M.resultToHostCOO
+        )
 
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-        {
-            RowCount = this.ResultMatrix.RowCount
-            ColumnCount = this.ResultMatrix.ColumnCount
-            Rows = rows
-            Columns = cols
-            Values = vals
-        }
 
-    [<GlobalSetup>]
-    override this.GlobalSetup () = 
-        this.ReadMatrices ()        
-
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () = ()
-    
-    [<IterationCleanup>]
-    override this.IterationCleanup () = 
-        this.ClearInputMatrices()
-        this.ClearResult()
-
-    [<Benchmark>]
-    override this.Benchmark () = 
-        this.LoadMatricesToGPU ()
-        this.EWiseAddition()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)        
-        let res = this.ResultToHost ()        
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
-
-(*
-type EWiseAddBenchmarks4BoolCOO() =
+type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
         
-    inherit EWiseAddBenchmarks<Backend.COOMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (||) @> wgSize),
         (fun _ -> true), 
         (fun _ -> true),
@@ -296,9 +310,9 @@ type EWiseAddBenchmarks4BoolCOO() =
         EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
 
 
-type EWiseAddBenchmarks4Float32CSR() =
+type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
         
-    inherit EWiseAddBenchmarks<Backend.CSRMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context <@ (+) @> wgSize),
         float32, 
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -309,9 +323,9 @@ type EWiseAddBenchmarks4Float32CSR() =
         EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
 
 
-type EWiseAddBenchmarks4BoolCSR() =
+type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
         
-    inherit EWiseAddBenchmarks<Backend.CSRMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context <@ (||) @> wgSize),
         (fun _ -> true), 
         (fun _ -> true),
@@ -320,4 +334,3 @@ type EWiseAddBenchmarks4BoolCSR() =
 
     static member InputMatricesProvider =
         EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
-*)
