@@ -43,13 +43,13 @@ module CSRMatrix =
 
             rowIndices
 
-    let toCOO (clContext: ClContext) =
+    let toCOO (clContext: ClContext) workGroupSize =
 
         let expandRows = expandRows clContext
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
 
             let rowIndices =
                 expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
@@ -66,6 +66,22 @@ module CSRMatrix =
               Rows = rowIndices
               Columns = colIndices
               Values = values }
+
+    let toCOOInplace (clContext: ClContext) workGroupSize =
+
+        let expandRows = expandRows clContext
+
+        fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
+
+            let rowIndices =
+                expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rowIndices
+              Columns = matrix.Columns
+              Values = matrix.Values }
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
 
@@ -117,6 +133,31 @@ module CSRMatrix =
                   RowPointers = m3RowPointers
                   Values = m3COO.Values }
 
+            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
+
+            m3
+
+    let eWiseAdd2 (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
+
+        let toCOOInplace = toCOOInplace clContext workGroupSize
+
+        let eWiseCOO =
+            COOMatrix.eWiseAdd clContext opAdd workGroupSize
+
+        let toCSRInplace =
+            COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
+
+            let m1COO = toCOOInplace processor m1
+            let m2COO = toCOOInplace processor m2
+
+            let m3COO = eWiseCOO processor m1COO m2COO
+
+            processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
+
+            let m3 = toCSRInplace processor m3COO
             processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
 
             m3
