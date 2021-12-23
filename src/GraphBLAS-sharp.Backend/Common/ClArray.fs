@@ -277,6 +277,8 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
+            processor.Post(Msg.CreateFreeMsg(copiedArray))
+
             outputArray, totalSum
 
 
