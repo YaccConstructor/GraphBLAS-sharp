@@ -4,30 +4,31 @@ open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
 module Matrix =
-    let toCSR (clContext: ClContext) workGroupSize processor matrix =
-        let toCSR =
-            COOMatrix.toCSR clContext workGroupSize processor
+    let toCSR (clContext: ClContext) workGroupSize =
+        let toCSR = COOMatrix.toCSR clContext workGroupSize
 
-        match matrix with
-        | MatrixCOO m -> toCSR m |> MatrixCSR
-        | MatrixCSR _ -> matrix
+        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+            match matrix with
+            | MatrixCOO m -> toCSR processor m |> MatrixCSR
+            | MatrixCSR _ -> matrix
 
-    let toCOO (clContext: ClContext) workGroupSize processor matrix =
-        let toCOO =
-            CSRMatrix.toCOO clContext processor workGroupSize
+    let toCOO (clContext: ClContext) workGroupSize =
+        let toCOO = CSRMatrix.toCOO clContext
 
-        match matrix with
-        | MatrixCOO _ -> matrix
-        | MatrixCSR m -> toCOO m |> MatrixCOO
+        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+            match matrix with
+            | MatrixCOO _ -> matrix
+            | MatrixCSR m -> toCOO processor workGroupSize m |> MatrixCOO
 
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize processor matrix1 matrix2 =
+    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
         let COOeWiseAdd =
-            COOMatrix.eWiseAdd clContext opAdd workGroupSize processor
+            COOMatrix.eWiseAdd clContext opAdd workGroupSize
 
         let CSReWiseAdd =
-            CSRMatrix.eWiseAdd clContext opAdd workGroupSize processor
+            CSRMatrix.eWiseAdd clContext opAdd workGroupSize
 
-        match matrix1, matrix2 with
-        | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd m1 m2 |> MatrixCOO
-        | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd m1 m2 |> MatrixCSR
-        | _ -> failwith "Matrix formats are not matching"
+        fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
+            match matrix1, matrix2 with
+            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
+            | _ -> failwith "Matrix formats are not matching"
