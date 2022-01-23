@@ -18,7 +18,7 @@ module Matrix =
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
             | MatrixCOO _ -> matrix
-            | MatrixCSR m -> toCOO processor workGroupSize m |> MatrixCOO
+            | MatrixCSR m -> toCOO workGroupSize processor m |> MatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
         let COOeWiseAdd =
