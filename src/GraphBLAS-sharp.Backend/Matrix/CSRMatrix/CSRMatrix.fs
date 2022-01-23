@@ -5,8 +5,7 @@ open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let toCOO (clContext: ClContext) =
-
+    let private expandRows (clContext: ClContext) =
         let expandRows =
             <@ fun (range: Range1D) workGroupSize (rowPointers: ClArray<int>) (rowIndices: ClArray<int>) ->
 
@@ -24,21 +23,36 @@ module CSRMatrix =
                     i <- i + workGroupSize @>
 
         let kernel = clContext.CreateClKernel expandRows
-        let copy = ClArray.copy clContext
-        let copyData = ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: CSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize rowPointers rowCount (nnz: int) ->
             let ndRange =
-                Range1D.CreateValid(matrix.RowCount * workGroupSize, workGroupSize)
+                Range1D.CreateValid(rowCount * workGroupSize, workGroupSize)
 
             let rowIndices =
-                clContext.CreateClArray matrix.Values.Length
+                clContext.CreateClArray(
+                    nnz,
+                    hostAccessMode = HostAccessMode.ReadWrite,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange workGroupSize matrix.RowPointers rowIndices)
+                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange workGroupSize rowPointers rowIndices)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            rowIndices
+
+    let toCOO (clContext: ClContext) workGroupSize =
+
+        let expandRows = expandRows clContext
+        let copy = ClArray.copy clContext
+        let copyData = ClArray.copy clContext
+
+        fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
+
+            let rowIndices =
+                expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
 
             let colIndices =
                 copy processor workGroupSize matrix.Columns
@@ -46,28 +60,50 @@ module CSRMatrix =
             let values =
                 copyData processor workGroupSize matrix.Values
 
-            { RowCount = matrix.RowCount
+            { Context = clContext
+              RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
               Rows = rowIndices
               Columns = colIndices
               Values = values }
 
+    let toCOOInplace (clContext: ClContext) workGroupSize =
+
+        let expandRows = expandRows clContext
+
+        fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
+
+            let rowIndices =
+                expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rowIndices
+              Columns = matrix.Columns
+              Values = matrix.Values }
+
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
 
-        let toCOO = toCOO clContext
+        let toCOOInplace = toCOOInplace clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
 
-        let toCSR = COOMatrix.toCSR clContext workGroupSize
+        let toCSRInplace =
+            COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'a>) ->
 
-            let m1COO = toCOO processor workGroupSize m1
-            let m2COO = toCOO processor workGroupSize m2
+            let m1COO = toCOOInplace processor m1
+            let m2COO = toCOOInplace processor m2
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
-            let m3 = toCSR processor m3COO
+            processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
+
+            let m3 = toCSRInplace processor m3COO
+            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
 
             m3

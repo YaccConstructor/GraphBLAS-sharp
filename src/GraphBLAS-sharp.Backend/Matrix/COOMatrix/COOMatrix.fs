@@ -47,24 +47,27 @@ module COOMatrix =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArray(
+                clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let resultColumns =
-                clContext.CreateClArray(
+                clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let resultValues =
                 clContext.CreateClArray(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRange =
@@ -118,7 +121,11 @@ module COOMatrix =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rawPositionsGpu =
-                clContext.CreateClArray<int>(length, hostAccessMode = HostAccessMode.NotAccessible)
+                clContext.CreateClArray<int>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -266,21 +273,24 @@ module COOMatrix =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let allColumns =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let allValues =
                 clContext.CreateClArray<'a>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
                 )
 
             let ndRange =
@@ -333,7 +343,6 @@ module COOMatrix =
                     matrixRight.Columns
                     matrixRight.Values
 
-
             let rawPositions =
                 preparePositions queue allRows allColumns allValues
 
@@ -345,8 +354,9 @@ module COOMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
 
-            { RowCount = matrixLeft.RowCount
-              ColumnCount = matrixLeft.ColumnCount
+            { Context = clContext
+              RowCount = resultRows.Length
+              ColumnCount = resultColumns.Length
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
@@ -370,7 +380,8 @@ module COOMatrix =
                 copyData processor workGroupSize matrix.Values
 
 
-            { RowIndices = resultRows
+            { Context = clContext
+              RowIndices = resultRows
               ColumnIndices = resultColumns
               Values = resultValues }
 
@@ -436,8 +447,21 @@ module COOMatrix =
 
             let totalSum = hostTotalSum.[0]
 
-            let nonZeroRowsIndices = clContext.CreateClArray totalSum
-            let nonZeroRowsPointers = clContext.CreateClArray totalSum
+            let nonZeroRowsIndices =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let nonZeroRowsPointers =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
 
             let nnz = rowIndices.Length
             let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
@@ -456,8 +480,16 @@ module COOMatrix =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernelCalcHyperSparseRows)
+            processor.Post(Msg.CreateFreeMsg(bitmap))
+            processor.Post(Msg.CreateFreeMsg(positions))
 
-            let nnzPerRowSparse = clContext.CreateClArray totalSum
+            let nnzPerRowSparse =
+                clContext.CreateClArray(
+                    totalSum,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
 
             let ndRangeCNPRSandENPR =
                 Range1D.CreateValid(totalSum, workGroupSize)
@@ -475,7 +507,11 @@ module COOMatrix =
             processor.Post(Msg.CreateRunMsg<_, _> kernelCalcNnzPerRowSparse)
 
             let expandedNnzPerRow =
-                clContext.CreateClArray(Array.zeroCreate rowCount)
+                clContext.CreateClArray(
+                    Array.zeroCreate rowCount,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite
+                )
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -492,6 +528,11 @@ module COOMatrix =
 
             let rowPointers, _ =
                 getRowPointers processor expandedNnzPerRow
+
+            processor.Post(Msg.CreateFreeMsg(expandedNnzPerRow))
+            processor.Post(Msg.CreateFreeMsg(nnzPerRowSparse))
+            processor.Post(Msg.CreateFreeMsg(nonZeroRowsIndices))
+            processor.Post(Msg.CreateFreeMsg(nonZeroRowsPointers))
 
             rowPointers
 
@@ -517,8 +558,26 @@ module COOMatrix =
             let vals =
                 copyData processor workGroupSize matrix.Values
 
-            { RowCount = matrix.RowCount
+            { Context = clContext
+              RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
               RowPointers = compressedRows
               Columns = cols
               Values = vals }
+
+    ///<param name="clContext">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let toCSRInplace (clContext: ClContext) workGroupSize =
+
+        let compressRows = compressRows clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
+            let compressedRows =
+                compressRows processor matrix.Rows matrix.RowCount
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              RowPointers = compressedRows
+              Columns = matrix.Columns
+              Values = matrix.Values }
