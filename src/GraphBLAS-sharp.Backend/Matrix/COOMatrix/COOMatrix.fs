@@ -355,8 +355,8 @@ module COOMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
 
             { Context = clContext
-              RowCount = resultRows.Length
-              ColumnCount = resultColumns.Length
+              RowCount = matrixLeft.RowCount
+              ColumnCount = matrixLeft.ColumnCount
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
