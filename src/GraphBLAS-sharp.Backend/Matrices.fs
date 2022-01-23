@@ -54,3 +54,17 @@ and COOMatrix<'elem when 'elem: struct> =
             q.Post(Msg.CreateFreeMsg<_>(this.Columns))
             q.Post(Msg.CreateFreeMsg<_>(this.Rows))
             q.PostAndReply(Msg.MsgNotifyMe)
+
+and TupleMatrix<'elem when 'elem: struct> =
+    { Context: ClContext
+      RowIndices: ClArray<int>
+      ColumnIndices: ClArray<int>
+      Values: ClArray<'elem> }
+
+    interface IDeviceMemObject with
+        member this.Dispose() =
+            let q = this.Context.Provider.CommandQueue
+            q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))
+            q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
+            q.Post(Msg.CreateFreeMsg<_>(this.Values))
+            q.PostAndReply(Msg.MsgNotifyMe)
