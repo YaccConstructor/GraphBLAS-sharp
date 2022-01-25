@@ -7,13 +7,19 @@ open Microsoft.FSharp.Quotations
 module CSRMatrix =
     let private expandRows (clContext: ClContext) =
         let expandRows =
-            <@ fun (range: Range1D) workGroupSize (rowPointers: ClArray<int>) (rowIndices: ClArray<int>) ->
+            <@ fun (range: Range1D) workGroupSize (rowPointers: ClArray<int>) (rowIndices: ClArray<int>) rowCount nnz ->
 
                 let lid = range.LocalID0
                 let groupId = range.GlobalID0 / workGroupSize
 
                 let rowStart = rowPointers.[groupId]
-                let rowEnd = rowPointers.[groupId + 1]
+
+                let rowEnd =
+                    if groupId <> rowCount - 1 then
+                        rowPointers.[groupId + 1]
+                    else
+                        nnz
+
                 let rowLength = rowEnd - rowStart
 
                 let mutable i = lid
@@ -36,7 +42,8 @@ module CSRMatrix =
                 )
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange workGroupSize rowPointers rowIndices)
+                Msg.MsgSetArguments
+                    (fun () -> kernel.SetArguments ndRange workGroupSize rowPointers rowIndices rowCount nnz)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
