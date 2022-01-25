@@ -5,8 +5,11 @@ open Microsoft.FSharp.Quotations
 
 module Matrix =
     let copy (clContext: ClContext) =
-        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
-        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+        let copy =
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+
+        let copyData =
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext
 
         fun (processor: MailboxProcessor<_>) workGroupSize (matrix: Matrix<'a>) ->
             match matrix with
@@ -17,8 +20,8 @@ module Matrix =
                       ColumnCount = m.ColumnCount
                       Rows = copy processor workGroupSize m.Rows
                       Columns = copy processor workGroupSize m.Columns
-                      Values = copyData processor workGroupSize m.Values
-                    }
+                      Values = copyData processor workGroupSize m.Values }
+
                 MatrixCOO res
             | MatrixCSR m ->
                 let res =
@@ -27,8 +30,8 @@ module Matrix =
                       ColumnCount = m.ColumnCount
                       RowPointers = copy processor workGroupSize m.RowPointers
                       Columns = copy processor workGroupSize m.Columns
-                      Values = copyData processor workGroupSize m.Values
-                    }
+                      Values = copyData processor workGroupSize m.Values }
+
                 MatrixCSR res
 
     let toCSR (clContext: ClContext) workGroupSize =

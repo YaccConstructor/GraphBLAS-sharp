@@ -429,11 +429,10 @@ module Utils =
     type OperationCase =
         { ClContext: ClContext
           MatrixCase: MatrixFromat }
-    
+
     let testCases =
         [ avaliableContexts "" |> Seq.map box
-          listOfUnionCases<MatrixFromat>
-          |> Seq.map box ]
+          listOfUnionCases<MatrixFromat> |> Seq.map box ]
         |> List.map List.ofSeq
         |> cartesian
         |> List.map
