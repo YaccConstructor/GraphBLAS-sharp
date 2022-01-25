@@ -426,6 +426,21 @@ module Utils =
 
                 Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
 
+    type OperationCase =
+        { ClContext: ClContext
+          MatrixCase: MatrixFromat }
+    
+    let testCases =
+        [ avaliableContexts "" |> Seq.map box
+          listOfUnionCases<MatrixFromat>
+          |> Seq.map box ]
+        |> List.map List.ofSeq
+        |> cartesian
+        |> List.map
+            (fun list ->
+                { ClContext = unbox list.[0]
+                  MatrixCase = unbox list.[1] })
+
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
         | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)

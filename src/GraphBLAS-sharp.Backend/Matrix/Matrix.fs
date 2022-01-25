@@ -41,13 +41,13 @@ module Matrix =
             | MatrixCSR _ -> copy processor workGroupSize matrix
 
     let toCOO (clContext: ClContext) workGroupSize =
-        let toCOO = CSRMatrix.toCOO clContext
+        let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
             | MatrixCOO _ -> copy processor workGroupSize matrix
-            | MatrixCSR m -> toCOO workGroupSize processor m |> MatrixCOO
+            | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
         let COOeWiseAdd =
