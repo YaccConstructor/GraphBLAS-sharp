@@ -406,19 +406,39 @@ module Utils =
                         .GetDeviceInfo(device, DeviceInfo.Platform, &e)
                         .CastTo<Platform>()
 
-                let platformName =
+                let clPlatform =
                     Cl
                         .GetPlatformInfo(platform, PlatformInfo.Name, &e)
                         .ToString()
+                    |> ClPlatform.Custom
 
                 let deviceType =
                     Cl
                         .GetDeviceInfo(device, DeviceInfo.Type, &e)
                         .CastTo<DeviceType>()
 
-                failwith "fix me"
-                //ClContext(platformName, deviceType)
-                ClContext())
+                let clDeviceType =
+                    match deviceType with
+                    | DeviceType.Cpu -> ClDeviceType.CPU
+                    | DeviceType.Gpu -> ClDeviceType.GPU
+                    | DeviceType.Default -> ClDeviceType.Default
+                    | _ -> failwith "Unsupported"
+
+                Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+
+    type OperationCase =
+        { ClContext: ClContext
+          MatrixCase: MatrixFromat }
+
+    let testCases =
+        [ avaliableContexts "" |> Seq.map box
+          listOfUnionCases<MatrixFromat> |> Seq.map box ]
+        |> List.map List.ofSeq
+        |> cartesian
+        |> List.map
+            (fun list ->
+                { ClContext = unbox list.[0]
+                  MatrixCase = unbox list.[1] })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with

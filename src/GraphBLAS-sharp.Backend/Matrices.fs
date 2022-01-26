@@ -23,6 +23,11 @@ type Matrix<'a when 'a: struct> =
         | MatrixCSR matrix -> matrix.ColumnCount
         | MatrixCOO matrix -> matrix.ColumnCount
 
+    member this.Dispose() =
+        match this with
+        | MatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose()
+        | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose()
+
 and CSRMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowCount: int
