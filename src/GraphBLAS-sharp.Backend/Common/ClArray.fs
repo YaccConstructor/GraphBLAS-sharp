@@ -6,9 +6,9 @@ open Microsoft.FSharp.Quotations
 
 module ClArray =
     let init
+        (initializer: Expr<int -> 'a>)
         (clContext: ClContext)
-        workGroupSize
-        (f: Expr<int -> 'a>) =
+        workGroupSize =
 
         let init =
             <@
@@ -18,7 +18,7 @@ module ClArray =
 
                     let i = range.GlobalID0
                     if i < length then
-                        outputBuffer.[i] <- (%f) i
+                        outputBuffer.[i] <- (%initializer) i
             @>
         let kernel = clContext.CreateClKernel init
 
@@ -36,19 +36,25 @@ module ClArray =
             outputArray
 
     let create
+        (value: 'a)
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (length: int)
-        (value: 'a) =
-        init clContext workGroupSize <@ fun _ -> value @> processor length
+        workGroupSize =
+
+        let init = init <@ fun _ -> value @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (length: int) ->
+            init processor length
 
     let zeroCreate
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (length: int) =
-        create clContext workGroupSize processor length Unchecked.defaultof<'a>
+        workGroupSize =
+
+        let create = create Unchecked.defaultof<'a> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (length: int) ->
+            create processor length
 
     let zipWith
         (f: Expr<'a -> 'b -> 'c>)
@@ -137,10 +143,88 @@ module ClArray =
 
     let unpack
         (clContext: ClContext)
-        workGroupSize
-        (processor: MailboxProcessor<_>)
-        (inputArray: ClArray<uint64>) =
-        unzipWith <@ fun n -> struct(int (n >>> 32), int n) @> clContext workGroupSize processor inputArray
+        workGroupSize =
+
+        let unzipWith = unzipWith <@ fun n -> struct(int (n >>> 32), int n) @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<uint64>) ->
+            unzipWith processor inputArray
+
+    let map
+        (f: Expr<'a -> 'b>)
+        (clContext: ClContext)
+        workGroupSize =
+
+        let map =
+            <@
+                fun (range: Range1D)
+                    (inputBuffer: ClArray<'a>)
+                    (outputBuffer: ClArray<'b>)
+                    (length: int) ->
+
+                    let i = range.GlobalID0
+                    if i < length then
+                        let a = inputBuffer.[i]
+                        outputBuffer.[i] <- (%f) a
+            @>
+        let kernel = clContext.CreateClKernel(map)
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>) ->
+
+            let length = inputArray.Length
+
+            let outputArray = clContext.CreateClArray(length)
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange inputArray outputArray length)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            outputArray
+
+    let setHeadFlags
+        (clContext: ClContext)
+        workGroupSize =
+
+        let create = create 0 clContext workGroupSize
+
+        let init =
+            <@
+                fun (ndRange: Range1D)
+                    (inputArray: ClArray<'a>)
+                    (heads: ClArray<int>)
+                    (size: int) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < size then
+                        let value = inputArray.[i]
+                        if i = 0 || inputArray.[i - 1] <> value then heads.[i] <- 1
+            @>
+        let kernel = clContext.CreateClKernel(init)
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (outputArray: ClArray<int>) ->
+
+            let size = inputArray.Length
+
+            let ndRange = Range1D.CreateValid(size, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.ArgumentsSetter
+                            ndRange
+                            inputArray
+                            outputArray
+                            size)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let copy (clContext: ClContext) workGroupSize =
         let copy =

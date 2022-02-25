@@ -292,3 +292,45 @@ module internal PrefixSum =
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
     let runIncludeInplace plus = runInPlace scanInclusive plus
+
+    let runExclude
+        plus
+        (clContext: ClContext)
+        workGroupSize =
+
+        let runExcludeInplace = runExcludeInplace plus clContext workGroupSize
+        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (totalSum: ClCell<'a>)
+            (zero: 'a) ->
+
+            let outputArray = copy processor inputArray
+
+            runExcludeInplace
+                processor
+                outputArray
+                totalSum
+                zero
+
+    let runInclude
+        plus
+        (clContext: ClContext)
+        workGroupSize =
+
+        let runIncludeInplace = runIncludeInplace plus clContext workGroupSize
+        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<'a>)
+            (totalSum: ClCell<'a>)
+            (zero: 'a) ->
+
+            let outputArray = copy processor inputArray
+
+            runIncludeInplace
+                processor
+                outputArray
+                totalSum
+                zero

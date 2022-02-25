@@ -24,19 +24,19 @@ module internal SpGEMMSimple =
 
             let preparedMatrixLeft = prepareMatrix processor matrixLeft matrixRight
 
-            let initialResult = setup processor preparedMatrixLeft matrixRight
+            let initialResult, headFlags = setup processor preparedMatrixLeft matrixRight
 
-            let expandedResult = expand processor preparedMatrixLeft matrixRight initialResult
+            let expandedResult = expand processor headFlags preparedMatrixLeft matrixRight initialResult
             processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.RowPointers))
             processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.Columns))
             processor.Post(Msg.CreateFreeMsg<_>(preparedMatrixLeft.Values))
             processor.Post(Msg.CreateFreeMsg<_>(initialResult.Columns))
             processor.Post(Msg.CreateFreeMsg<_>(initialResult.Values))
 
-            let sortedResult = sort processor expandedResult
+            let sortedResult, resultHeadFlags = sort processor expandedResult
             processor.Post(Msg.CreateFreeMsg<_>(expandedResult.Columns))
 
-            let result = compress processor sortedResult zero
+            let result = compress processor sortedResult resultHeadFlags zero
             processor.Post(Msg.CreateFreeMsg<_>(sortedResult.Columns))
             processor.Post(Msg.CreateFreeMsg<_>(sortedResult.Values))
 

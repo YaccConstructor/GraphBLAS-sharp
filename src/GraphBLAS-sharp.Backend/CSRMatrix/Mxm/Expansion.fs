@@ -7,51 +7,12 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 
 module internal Expansion =
-    let private updateSecondPositions
-        (clContext: ClContext)
-        workGroupSize =
-
-        let update =
-            <@
-                fun (ndRange: Range1D)
-                    (rowPtrsForCols: ClArray<int>)
-                    (positionsForResCols: ClArray<int>)
-                    (size: int)
-                    (positions: ClArray<int>) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < size then
-                        positions.[positionsForResCols.[i]] <- rowPtrsForCols.[i]
-            @>
-        let kernel = clContext.CreateClKernel(update)
-
-        fun (processor: MailboxProcessor<_>)
-            (rowPtrsForCols: ClArray<int>)
-            (positionsForResCols: ClArray<int>)
-            (positions: ClArray<int>) ->
-
-            let size = positionsForResCols.Length
-
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            rowPtrsForCols
-                            positionsForResCols
-                            size
-                            positions)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
     let private getSecondPositions
         (clContext: ClContext)
         workGroupSize =
 
-        let create = ClArray.create clContext workGroupSize
-        let updateSecondPositions = updateSecondPositions clContext workGroupSize
+        let create = ClArray.create 1 clContext workGroupSize
+        let scatterArray = Scatter.arrayInPlace clContext workGroupSize
         let scanByHeadFlagsInclude = PrefixSum.byHeadFlagsInclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
@@ -60,54 +21,18 @@ module internal Expansion =
             (headFlags: ClArray<int>)
             (resultMatrix: CSRMatrix<'a>) ->
 
-            let positions = create processor resultMatrix.Columns.Length 1
-            updateSecondPositions processor rowPtrsForCols positionsForResCols positions
+            let positions = create processor resultMatrix.Columns.Length
+            scatterArray processor positionsForResCols rowPtrsForCols positions
             let resPositions = scanByHeadFlagsInclude processor headFlags positions 0
             processor.Post(Msg.CreateFreeMsg<_>(positions))
             resPositions
-
-    let private updateFirstPositions
-        (clContext: ClContext)
-        workGroupSize =
-
-        let update =
-            <@
-                fun (ndRange: Range1D)
-                    (positionsForResCols: ClArray<int>)
-                    (size: int)
-                    (positions: ClArray<int>) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < size then
-                        positions.[positionsForResCols.[i]] <- i
-            @>
-        let kernel = clContext.CreateClKernel(update)
-
-        fun (processor: MailboxProcessor<_>)
-            (positionsForResCols: ClArray<int>)
-            (positions: ClArray<int>) ->
-
-            let size = positionsForResCols.Length
-
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            positionsForResCols
-                            size
-                            positions)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let private getFirstPositions
         (clContext: ClContext)
         workGroupSize =
 
-        let create = ClArray.create clContext workGroupSize
-        let updateFirstPositions = updateFirstPositions clContext workGroupSize
+        let create = ClArray.create 0 clContext workGroupSize
+        let scatterInit = Scatter.initInPlace <@ fun i -> i @> clContext workGroupSize
         let max = <@ fun a b -> if a > b then a else b @>
         let scanIncludeInPlace = PrefixSum.runIncludeInplace max clContext workGroupSize
 
@@ -115,9 +40,9 @@ module internal Expansion =
             (positionsForResCols: ClArray<int>)
             (resultMatrix: CSRMatrix<'a>) ->
 
-            let positions = create processor resultMatrix.Columns.Length 0
+            let positions = create processor resultMatrix.Columns.Length
 
-            updateFirstPositions processor positionsForResCols positions
+            scatterInit processor positionsForResCols positions
 
             let total = clContext.CreateClCell()
             scanIncludeInPlace processor positions total 0
@@ -125,47 +50,6 @@ module internal Expansion =
             processor.Post(Msg.CreateFreeMsg(total))
 
             positions
-
-    let private getResultHeadFlags
-        (clContext: ClContext)
-        workGroupSize =
-
-        let create = ClArray.create clContext workGroupSize
-
-        let init =
-            <@
-                fun (ndRange: Range1D)
-                    (positionsForResCols: ClArray<int>)
-                    (size: int)
-                    (heads: ClArray<int>) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < size then
-                        heads.[positionsForResCols.[i]] <- 1
-            @>
-        let kernel = clContext.CreateClKernel(init)
-
-        fun (processor: MailboxProcessor<_>)
-            (positionsForResCols: ClArray<int>)
-            (size: int)
-            (resultMatrix: CSRMatrix<'a>) ->
-
-            let headFlags = create processor resultMatrix.Columns.Length 0
-
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            positionsForResCols
-                            size
-                            headFlags)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            headFlags
 
     let private initPositionsForResCols
         (clContext: ClContext)
@@ -212,53 +96,12 @@ module internal Expansion =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             positionsForResCols
 
-    let private updatePositionsForResCols
-        (clContext: ClContext)
-        workGroupSize =
-
-        let update =
-            <@
-                fun (ndRange: Range1D)
-                    (firstRowPointers: ClArray<int>)
-                    (size: int)
-                    (resultRowPointers: ClArray<int>)
-                    (positionsForResCols: ClArray<int>) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < size then
-                        let index = firstRowPointers.[i]
-                        if index <> firstRowPointers.[i + 1] then
-                            positionsForResCols.[index] <- resultRowPointers.[i]
-            @>
-        let kernel = clContext.CreateClKernel(update)
-
-        fun (processor: MailboxProcessor<_>)
-            (matrixLeft: CSRMatrix<'a>)
-            (resultMatrix: CSRMatrix<'a>)
-            (positionsForResCols: ClArray<int>) ->
-
-            let size = matrixLeft.RowCount
-
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            matrixLeft.RowPointers
-                            size
-                            resultMatrix.RowPointers
-                            positionsForResCols)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
     let private getPositionsForResCols
         (clContext: ClContext)
         workGroupSize =
 
         let initPositionsForResCols = initPositionsForResCols clContext workGroupSize
-        let updatePositionsForResCols = updatePositionsForResCols clContext workGroupSize
+        let scatterArray = Scatter.arrayInPlace clContext workGroupSize
         let scanByHeadFlagsInclude = PrefixSum.byHeadFlagsInclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
@@ -268,7 +111,7 @@ module internal Expansion =
             (resultMatrix: CSRMatrix<'a>) ->
 
             let positionsForResCols = initPositionsForResCols processor matrixLeft matrixRight
-            updatePositionsForResCols processor matrixLeft resultMatrix positionsForResCols
+            scatterArray processor matrixLeft.RowPointers resultMatrix.RowPointers positionsForResCols
             let resPositionsForResCols = scanByHeadFlagsInclude processor headFlags positionsForResCols 0
             processor.Post(Msg.CreateFreeMsg<_>(positionsForResCols))
             resPositionsForResCols
@@ -381,56 +224,15 @@ module internal Expansion =
             processor.Post(Msg.CreateFreeMsg<_>(rowPtrsForCols))
             resRowPtrsForCols
 
-    let private getHeadFlags
-        (clContext: ClContext)
-        workGroupSize =
-
-        let create = ClArray.create clContext workGroupSize
-
-        let init =
-            <@
-                fun (ndRange: Range1D)
-                    (rowPointers: ClArray<int>)
-                    (size: int)
-                    (heads: ClArray<int>) ->
-
-                    let i = ndRange.GlobalID0
-
-                    if i < size then
-                        heads.[rowPointers.[i]] <- 1
-            @>
-        let kernel = clContext.CreateClKernel(init)
-
-        fun (processor: MailboxProcessor<_>)
-            (matrixLeft: CSRMatrix<'a>) ->
-
-            let headFlags = create processor matrixLeft.Columns.Length 0
-
-            let size = matrixLeft.RowCount
-
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.ArgumentsSetter
-                            ndRange
-                            matrixLeft.RowPointers
-                            size
-                            headFlags)
-            )
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            headFlags
-
     let run
         (times: Expr<'a -> 'a -> 'a>)
         (clContext: ClContext)
         workGroupSize =
 
-        let getHeadFlags = getHeadFlags clContext workGroupSize
+        let create = ClArray.create 0 clContext workGroupSize
+        let scatterConst = Scatter.constInPlace 1 clContext workGroupSize
         let getRowPtrsForCols = getRowPtrsForCols clContext workGroupSize
         let getPositionsForResCols = getPositionsForResCols clContext workGroupSize
-        let getResultHeadFlags = getResultHeadFlags clContext workGroupSize
         let getFirstPositions = getFirstPositions clContext workGroupSize
         let getSecondPositions = getSecondPositions clContext workGroupSize
         let gather = Gather.run clContext workGroupSize
@@ -438,17 +240,17 @@ module internal Expansion =
         let zipWith = ClArray.zipWith times clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
+            (headFlags: ClArray<int>)
             (matrixLeft: CSRMatrix<'a>)
             (matrixRight: CSRMatrix<'a>)
             (resultMatrix: CSRMatrix<'a>) ->
-
-            let headFlags = getHeadFlags processor matrixLeft
 
             let rowPtrsForCols = getRowPtrsForCols processor headFlags matrixLeft matrixRight
             let positionsForResCols = getPositionsForResCols processor headFlags matrixLeft matrixRight resultMatrix
             processor.Post(Msg.CreateFreeMsg<_>(headFlags))
 
-            let resultHeadFlags = getResultHeadFlags processor positionsForResCols matrixLeft.Columns.Length resultMatrix
+            let resultHeadFlags = create processor resultMatrix.Columns.Length
+            scatterConst processor positionsForResCols resultHeadFlags
 
             let secondPositions = getSecondPositions processor rowPtrsForCols positionsForResCols resultHeadFlags resultMatrix
             processor.Post(Msg.CreateFreeMsg<_>(rowPtrsForCols))

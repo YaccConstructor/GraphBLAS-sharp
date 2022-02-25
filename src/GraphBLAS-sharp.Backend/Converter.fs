@@ -10,7 +10,7 @@ module internal Converter =
         (clContext: ClContext)
         workGroupSize =
 
-        let create = ClArray.create clContext workGroupSize
+        let create = ClArray.create 0 clContext workGroupSize
 
         let prepareRows =
             <@
@@ -27,7 +27,7 @@ module internal Converter =
         fun (processor: MailboxProcessor<_>)
             (matrix: CSRMatrix<'a>) ->
 
-            let rows = create processor matrix.Columns.Length 0
+            let rows = create processor matrix.Columns.Length
 
             let rowPointersLength = matrix.RowPointers.Length
 

@@ -61,8 +61,8 @@ module internal PrepareMatrix =
 
         let preparePositions = preparePositions clContext workGroupSize
         let scanExcludeInPlace = PrefixSum.standardExcludeInplace clContext workGroupSize
-        let scatter = Scatter.run clContext workGroupSize
-        let scatterData = Scatter.run clContext workGroupSize
+        let scatter = Scatter.arrayInPlace clContext workGroupSize
+        let scatterData = Scatter.arrayInPlace clContext workGroupSize
         let scatterRowPointers = ScatterRowPointers.runInPlace clContext workGroupSize
         let copy = ClArray.copy clContext workGroupSize
 
@@ -81,8 +81,20 @@ module internal PrepareMatrix =
                 |> ClTask.runSync clContext
             processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
 
-            let resultColumns = scatter processor positions resultLength matrixLeft.Columns
-            let resultValues = scatterData processor positions resultLength matrixLeft.Values
+            let resultColumns =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
+
+            let resultValues =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible
+                )
+
+            scatter processor positions matrixLeft.Columns resultColumns
+            scatterData processor positions matrixLeft.Values resultValues
             let resultRowPointers = copy processor matrixLeft.RowPointers
             scatterRowPointers processor positions matrixLeft.Columns.Length resultLength resultRowPointers
 

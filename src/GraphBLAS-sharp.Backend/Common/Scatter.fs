@@ -1,64 +1,43 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp.OpenCL
+open Microsoft.FSharp.Quotations
 
 module internal Scatter =
-    /// <summary>
-    /// Creates a new array from the given one where it is indicated by array of positions at which position in the new array
-    /// should be a value from the given one.
-    /// </summary>
-    /// <remarks>
-    /// If there are several elements with same indices, the last one of them will be at the common index.
-    /// The very first element of the positions array must be zero.
-    /// Every element of the positions array must not be less than the previous one.
-    /// </remarks>
-    /// <example>
-    /// <code>
-    /// let ps = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
-    /// let arr = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
-    /// let res = run clContext 64 processor ps arr
-    /// ...
-    /// > val res = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
-    /// </code>
-    /// </example>
-    let run
+    let private runInPlace
+        getter
         (clContext: ClContext)
         workGroupSize =
 
-        let scatter =
+        let run =
             <@
                 fun (ndRange: Range1D)
                     (positions: ClArray<int>)
                     (positionsLength: int)
-                    (inputArray: ClArray<'a>)
-                    (outputArray: ClArray<'a>)
-                    (length: int) ->
+                    (values: ClArray<'a>)
+                    (result: ClArray<'a>)
+                    (resultLength: int) ->
 
                     let i = ndRange.GlobalID0
 
                     if i < positionsLength then
-                        let mutable buff = length
-                        if i < positionsLength - 1 then
-                            buff <- positions.[i + 1]
                         let index = positions.[i]
-                        if index <> buff then
-                            outputArray.[index] <- inputArray.[i]
+                        if 0 <= index && index < resultLength then
+                            if i < positionsLength - 1 then
+                                if index <> positions.[i + 1] then
+                                    result.[index] <- (%getter) values i
+                            else
+                                result.[index] <- (%getter) values i
             @>
-        let kernel = clContext.CreateClKernel(scatter)
+        let kernel = clContext.CreateClKernel(run)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)
-            (length: int)
-            (inputArray: ClArray<'a>) ->
+            (values: ClArray<'a>)
+            (result: ClArray<'a>) ->
 
             let positionsLength = positions.Length
 
-            let outputArray =
-                clContext.CreateClArray(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly
-                )
             let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
 
             processor.Post(
@@ -68,10 +47,78 @@ module internal Scatter =
                             ndRange
                             positions
                             positionsLength
-                            inputArray
-                            outputArray
-                            length)
+                            values
+                            result
+                            result.Length)
             )
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            outputArray
+    /// <summary>
+    /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+    /// should be a value from the given one.
+    /// </summary>
+    /// <remarks>
+    /// Every element of the positions array must not be less than the previous one.
+    /// If there are several elements with the same indices, the last one of them will be at the common index.
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let ps = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
+    /// let arr = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
+    /// let res = run clContext 64 processor ps arr 5
+    /// ...
+    /// > val res = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
+    /// </code>
+    /// </example>
+    /// <returns>
+    ///
+    /// </returns>
+    let arrayInPlace clContext =
+        runInPlace
+            <@
+                fun (values: ClArray<'a>)
+                    (i: int) ->
+                    values.[i]
+            @>
+            clContext
+
+    let initInPlace
+        (initializer: Expr<int -> 'a>)
+        clContext
+        workGroupSize =
+
+        let runInPlace =
+            runInPlace
+                <@
+                    fun (_: ClArray<'a>)
+                        (i: int) ->
+                        (%initializer) i
+                @>
+                clContext
+                workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (positions: ClArray<int>)
+            (result: ClArray<'a>) ->
+
+            let a = clContext.CreateClArray(1)
+            runInPlace processor positions a result
+            processor.Post(Msg.CreateFreeMsg(a))
+
+    let constInPlace
+        constant
+        clContext
+        workGroupSize =
+
+        let initInPlace =
+            initInPlace
+                <@ fun _ -> constant @>
+                clContext
+                workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (positions: ClArray<int>)
+            (result: ClArray<'a>) ->
+
+            initInPlace processor positions result
