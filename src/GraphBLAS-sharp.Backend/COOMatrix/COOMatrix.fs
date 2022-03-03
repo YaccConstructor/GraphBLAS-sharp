@@ -522,3 +522,5 @@ module COOMatrix =
               RowPointers = compressedRows
               Columns = cols
               Values = vals }
+
+    let spgemm a b c d e f g h = failwith "Not implemented"

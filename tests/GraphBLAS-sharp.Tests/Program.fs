@@ -13,10 +13,11 @@ let allTests =
         "All tests"
         [ //Backend.PrefixSum.tests
           //Backend.BitonicSort.tests
-          Backend.RemoveDuplicates.tests
-          Backend.Copy.tests
-          Backend.Replicate.tests
-          Backend.EwiseAdd.tests
+          //Backend.RemoveDuplicates.tests
+          //Backend.Copy.tests
+          //Backend.Replicate.tests
+          //Backend.EwiseAdd.tests
+          Backend.SPGEMM.tests
           //Matrix.EWiseAdd.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
