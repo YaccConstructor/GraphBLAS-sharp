@@ -8,7 +8,7 @@ open BenchmarkDotNet.Columns
 open System.IO
 open System
 open System.Text.RegularExpressions
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open QuickGraph
@@ -29,8 +29,9 @@ type BFSBenchmarks() =
     [<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
     member this.Context =
-        let (ClContext context) = this.OclContext
-        context
+        failwith "fix me"
+        //let (ClContext context) = this.OclContext
+        //context
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
@@ -39,14 +40,16 @@ type BFSBenchmarks() =
     member this.BuildGraph() =
         let inputMatrix = this.InputMatrixReader.ReadMatrix(fun _ -> 1)
 
-        matrix <-
+        failwith "fix me"
+        (*matrix <-
             graphblas {
-                return! Matrix.switch CSR inputMatrix
-                >>= Matrix.synchronizeAndReturn
+                failwith "fix me"
+                //return! Matrix.switch CSR inputMatrix
+                //>>= Matrix.synchronizeAndReturn
             }
             |> EvalGB.withClContext this.Context
             |> EvalGB.runSync
-
+        *)
         match inputMatrix with
         | MatrixCSR csr -> failwith "Not implemented"
         | MatrixCOO coo ->
@@ -69,7 +72,8 @@ type BFSBenchmarks() =
     member this.QuickGraphBFS() =
         bfs.Compute(source)
 
-    [<IterationCleanup>]
+    //TODO fix me
+    (*[<IterationCleanup>]
     member this.ClearBuffers() =
         this.Context.Provider.CloseAllBuffers()
 
@@ -77,6 +81,8 @@ type BFSBenchmarks() =
     member this.ClearContext() =
         let (ClContext context) = this.OclContext
         context.Provider.Dispose()
+
+        *)
 
     static member AvaliableContextsProvider = Utils.avaliableContexts
 

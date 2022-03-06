@@ -4,7 +4,5 @@ open GraphBLAS.FSharp
 
 module AnyAll =
     let bool: Semiring<bool> =
-        {
-            PlusMonoid = Any.bool
-            TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (&&) @> }
-        }
+        { PlusMonoid = Any.bool
+          TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (&&) @> } }

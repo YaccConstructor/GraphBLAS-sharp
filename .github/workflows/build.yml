@@ -21,7 +21,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.302
+          dotnet-version: 5.0.401
          
       - name: Install OpenCL
         run: |
@@ -31,16 +31,7 @@ jobs:
           set OCL_ROOT=%NUGETDIR%\opencl-nug.0.777.77\build\native
           # Install OpenCL Runtime
           choco install opencl-intel-cpu-runtime
-          
-      - name: Download "clinfo.exe"
-        uses: carlosperate/download-file-action@v1.0.3
-        with:
-          file-url: https://ci.appveyor.com/api/projects/oblomov/clinfo/artifacts/clinfo.exe?job=platform:+x64
-          file-name: clinfo.exe
-          
-      - name: OpenCL Info
-        run: clinfo.exe    
-          
+                          
       - name: Build
         run: ./build.cmd
         env:
