@@ -73,6 +73,7 @@ module internal Converter =
                 copyData processor matrix.Values
 
             {
+                Context = clContext
                 RowCount = matrix.RowCount
                 ColumnCount = matrix.ColumnCount
                 Rows = rowIndices

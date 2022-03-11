@@ -101,6 +101,7 @@ module internal PrepareMatrix =
             processor.Post(Msg.CreateFreeMsg(positions))
 
             {
+                Context = clContext
                 RowCount = matrixLeft.RowCount
                 ColumnCount = matrixLeft.ColumnCount
                 RowPointers = resultRowPointers

@@ -60,6 +60,7 @@ module internal SpGEMMSimple =
 
             if matrixLeft.Values.Length = 0 || matrixRight.Values.Length = 0 then
                 {
+                    Context = clContext
                     RowCount = matrixLeft.RowCount
                     ColumnCount = matrixRight.ColumnCount
                     RowPointers = clContext.CreateClArray([|0|])

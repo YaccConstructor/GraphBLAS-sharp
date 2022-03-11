@@ -1,6 +1,9 @@
 namespace GraphBLAS.FSharp
 
-type MatrixFromat =
+open Brahma.FSharp.OpenCL
+open GraphBLAS.FSharp.Backend
+
+type MatrixFormat =
     | CSR
     | COO
 
@@ -17,6 +20,89 @@ type Matrix<'a when 'a: struct> =
         match this with
         | MatrixCSR matrix -> matrix.ColumnCount
         | MatrixCOO matrix -> matrix.ColumnCount
+
+    member this.NNZCount =
+        match this with
+        | MatrixCOO m -> m.Values.Length
+        | MatrixCSR m -> m.Values.Length
+
+    member this.ToBackend(context: ClContext) =
+        match this with
+        | MatrixCOO m ->
+            let rows = context.CreateClArray m.Rows
+            let columns = context.CreateClArray m.Columns
+            let values = context.CreateClArray m.Values
+
+            let result =
+                { Backend.COOMatrix.Context = context
+                  RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  Rows = rows
+                  Columns = columns
+                  Values = values }
+
+            Backend.MatrixCOO result
+        | MatrixCSR m ->
+            let rows = context.CreateClArray m.RowPointers
+            let columns = context.CreateClArray m.ColumnIndices
+            let values = context.CreateClArray m.Values
+
+            let result =
+                { Backend.CSRMatrix.Context = context
+                  RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  RowPointers = rows
+                  Columns = columns
+                  Values = values }
+
+            Backend.MatrixCSR result
+
+    static member FromBackend (q: MailboxProcessor<_>) matrix =
+        match matrix with
+        | Backend.MatrixCOO m ->
+            let rows = Array.zeroCreate m.Rows.Length
+            let columns = Array.zeroCreate m.Columns.Length
+            let values = Array.zeroCreate m.Values.Length
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.Rows, rows))
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.Columns, columns))
+
+            let _ =
+                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
+
+            let result =
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  Rows = rows
+                  Columns = columns
+                  Values = values }
+
+            MatrixCOO result
+        | Backend.MatrixCSR m ->
+            let rows = Array.zeroCreate m.RowPointers.Length
+            let columns = Array.zeroCreate m.Columns.Length
+            let values = Array.zeroCreate m.Values.Length
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.RowPointers, rows))
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.Columns, columns))
+
+            let _ =
+                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
+
+            let result =
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  RowPointers = rows
+                  ColumnIndices = columns
+                  Values = values }
+
+            MatrixCSR result
 
 and CSRMatrix<'a> =
     { RowCount: int

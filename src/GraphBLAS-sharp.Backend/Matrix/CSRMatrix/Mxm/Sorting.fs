@@ -38,6 +38,7 @@ module internal Sorting =
                 processor.Post(Msg.CreateFreeMsg<_>(sortedRows))
 
                 {
+                    Context = clContext
                     RowCount = matrix.RowCount
                     ColumnCount = matrix.ColumnCount
                     RowPointers = matrix.RowPointers

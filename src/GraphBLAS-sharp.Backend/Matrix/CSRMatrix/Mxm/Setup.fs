@@ -154,6 +154,7 @@ module internal Setup =
                 )
 
             {
+                Context = clContext
                 RowCount = matrixLeft.RowCount
                 ColumnCount = matrixRight.ColumnCount
                 RowPointers = resultRowPointers

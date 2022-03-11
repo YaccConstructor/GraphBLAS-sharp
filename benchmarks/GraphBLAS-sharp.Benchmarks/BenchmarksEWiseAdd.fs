@@ -3,242 +3,334 @@ namespace GraphBLAS.FSharp.Benchmarks
 open System.IO
 open System.Text.RegularExpressions
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Predefined
+open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
-open BenchmarkDotNet.Filters
 open Brahma.FSharp.OpenCL
 open OpenCL.Net
 
-type A = class end
+type Config() =
+    inherit ManualConfig()
 
-// type Config() =
-//     inherit ManualConfig()
+    do
+        base.AddColumn(
+            MatrixShapeColumn("RowCount", (fun (matrix,_) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn("ColumnCount", (fun (matrix,_) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn(
+                "NNZ",
+                fun (matrix,_) ->
+                    match matrix.Format with
+                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Array -> 0
+            )
+            :> IColumn,
+            MatrixShapeColumn(
+                "SqrNNZ",
+                fun (_,matrix) ->
+                    match matrix.Format with
+                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Array -> 0
+            )
+            :> IColumn,
+            TEPSColumn() :> IColumn,
+            StatisticColumn.Min,
+            StatisticColumn.Max
+        )
+        |> ignore
 
-//     do
-//         base.AddColumn(
-//             MatrixShapeColumn("RowCount", fun matrix -> matrix.RowCount) :> IColumn,
-//             MatrixShapeColumn("ColumnCount", fun matrix -> matrix.ColumnCount) :> IColumn,
-//             MatrixShapeColumn("NNZ", fun matrix ->
-//                 match matrix.Format with
-//                 | "coordinate" -> matrix.Size.[2]
-//                 | "array" -> 0
-//                 | _ -> failwith "Unsupported") :> IColumn,
-//             TEPSColumn() :> IColumn,
-//             StatisticColumn.Min,
-//             StatisticColumn.Max
-//         ) |> ignore
+[<AbstractClass>]
+[<IterationCount(100)>]
+[<WarmupCount(10)>]
+[<Config(typeof<Config>)>]
+type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix) =
 
-//         base.AddFilter(
-//             DisjunctionFilter(
-//                 NameFilter(fun name -> name.Contains "COO") :> IFilter
-//             )
-//         ) |> ignore
+    let mutable funToBenchmark = None
+    let mutable firstMatrix = Unchecked.defaultof<'matrixT>
+    let mutable secondMatrix = Unchecked.defaultof<'matrixT>
+    let mutable firstMatrixHost = Unchecked.defaultof<_>
+    let mutable secondMatrixHost = Unchecked.defaultof<_>
 
-// [<IterationCount(5)>]
-// [<WarmupCount(3)>]
-// [<Config(typeof<Config>)>]
-// type EWiseAddBenchmarks() =
-//     [<ParamsSource("AvaliableContexts")>]
-//     member val OclContext = Unchecked.defaultof<ClContext> with get, set
+    member val ResultMatrix = Unchecked.defaultof<'matrixT> with get,set
 
-//     [<ParamsSource("InputMatricesProvider")>]
-//     member val InputMatrix = Unchecked.defaultof<MtxShape> with get, set
+    [<ParamsSource("AvaliableContexts")>]
+    member val OclContextInfo = Unchecked.defaultof<_> with get, set
 
-//     [<IterationCleanup>]
-//     member this.ClearBuffers() =
-//         let (ClContext context) = this.OclContext
-//         context.Provider.CloseAllBuffers()
+    [<ParamsSource("InputMatricesProvider")>]
+    member val InputMatrixReader = Unchecked.defaultof<MtxReader*MtxReader> with get, set
 
-//     [<GlobalCleanup>]
-//     member this.ClearContext() =
-//         let (ClContext context) = this.OclContext
-//         context.Provider.Dispose()
+    member this.OclContext:ClContext = fst this.OclContextInfo
+    member this.WorkGroupSize = snd this.OclContextInfo
 
-//     static member AvaliableContexts =
-//         let pathToConfig =
-//             Path.Combine [|
-//                 __SOURCE_DIRECTORY__
-//                 "Configs"
-//                 "Context.txt"
-//             |] |> Path.GetFullPath
+    member this.Processor =
+        let p = this.OclContext.CommandQueue
+        p.Error.Add(fun e -> failwithf "%A" e)
+        p
 
-//         use reader = new StreamReader(pathToConfig)
-//         let platformRegex = Regex <| reader.ReadLine()
-//         let deviceType =
-//             match reader.ReadLine() with
-//             | "Cpu" -> DeviceType.Cpu
-//             | "Gpu" -> DeviceType.Gpu
-//             | "All" -> DeviceType.All
-//             | _ -> failwith "Unsupported"
+    static member AvaliableContexts = Utils.avaliableContexts
 
-//         let mutable e = ErrorCode.Unknown
-//         Cl.GetPlatformIDs &e
-//         |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
-//         |> Seq.ofArray
-//         |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
-//         |> Seq.filter
-//             (fun device ->
-//                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-//                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-//                 platformRegex.IsMatch platformName
-//             )
-//         |> Seq.map
-//             (fun device ->
-//                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-//                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-//                 let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
-//                 OpenCLEvaluationContext(platformName, deviceType) |> ClContext
-//             )
+    static member InputMatricesProviderBuilder pathToConfig =
+        let datasetFolder = "EWiseAdd"
+        pathToConfig
+        |> Utils.getMatricesFilenames
+        |> Seq.map
+            (fun matrixFilename ->
+                printfn "%A" matrixFilename
 
-// type EWiseAddBenchmarks4Float32() =
-//     inherit EWiseAddBenchmarks()
+                match Path.GetExtension matrixFilename with
+                | ".mtx" ->
+                    MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename)
+                    , MtxReader(Utils.getFullPathToMatrix datasetFolder ("squared_" + matrixFilename))
+                | _ -> failwith "Unsupported matrix format")
 
-//     let mutable leftCOO = Unchecked.defaultof<Matrix<float32>>
-//     let mutable rightCOO = Unchecked.defaultof<Matrix<float32>>
+    member this.FunToBenchmark =
+        match funToBenchmark with
+        | None ->
+            let x = buildFunToBenchmark this.OclContext this.WorkGroupSize
+            funToBenchmark <- Some x
+            x
+        | Some x -> x
 
-//     member val FirstMatrix = Unchecked.defaultof<COOMatrix<float32>> with get, set
-//     member val SecondMatrix = Unchecked.defaultof<COOMatrix<float32>> with get, set
+    member this.ReadMatrix (reader:MtxReader) =
+        let converter =
+            match reader.Field with
+            | Pattern -> converterBool
+            | _ -> converter
 
-//     [<GlobalSetup>]
-//     member this.FormInputData() =
-//         let mtxFormat = MtxReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
-//         let cooMatrix =
-//             match mtxFormat.Shape.Format, mtxFormat.Shape.Field with
-//             | "coordinate", "real" -> Utils.makeCOO mtxFormat <| FromString float32
-//             | "coordinate", "integer" -> Utils.makeCOO mtxFormat <| FromString float32
-//             | "coordinate", "pattern" ->
-//                 let rand = System.Random()
-//                 let nextSingle (random: System.Random) =
-//                     let buffer = Array.zeroCreate<byte> 4
-//                     random.NextBytes buffer
-//                     System.BitConverter.ToSingle(buffer, 0)
+        reader.ReadMatrix converter
 
-//                 Utils.makeCOO mtxFormat <| FromUnit (fun () -> nextSingle rand)
-//             | _ -> failwith "Unsupported matrix format"
+    member this.EWiseAddition() =
+        this.ResultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
 
-//         this.FirstMatrix <- cooMatrix
-//         this.SecondMatrix <- cooMatrix |> Utils.transposeCOO
+    member this.ClearInputMatrices() =
+        (firstMatrix :> Backend.IDeviceMemObject).Dispose()
+        (secondMatrix :> Backend.IDeviceMemObject).Dispose()
 
-//     [<IterationSetup>]
-//     member this.BuildCOO() =
-//         let leftRows = Array.zeroCreate<int> this.FirstMatrix.Rows.Length
-//         let leftCols = Array.zeroCreate<int> this.FirstMatrix.Columns.Length
-//         let leftVals = Array.zeroCreate<float32> this.FirstMatrix.Values.Length
-//         Array.blit this.FirstMatrix.Rows 0 leftRows 0 this.FirstMatrix.Rows.Length
-//         Array.blit this.FirstMatrix.Columns 0 leftCols 0 this.FirstMatrix.Columns.Length
-//         Array.blit this.FirstMatrix.Values 0 leftVals 0 this.FirstMatrix.Values.Length
+    member this.ClearResult() =
+        (this.ResultMatrix :> Backend.IDeviceMemObject).Dispose()
 
-//         leftCOO <-
-//             COOMatrix.FromTuples(
-//                 this.FirstMatrix.RowCount,
-//                 this.FirstMatrix.ColumnCount,
-//                 leftRows,
-//                 leftCols,
-//                 leftVals
-//             ) |> MatrixCOO
+    member this.ReadMatrices() =
+        let leftMatrixReader = fst this.InputMatrixReader
+        let rightMatrixReader = snd this.InputMatrixReader
+        firstMatrixHost <- this.ReadMatrix leftMatrixReader
+        secondMatrixHost <- this.ReadMatrix rightMatrixReader
 
-//         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
-//         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
-//         let rightVals = Array.zeroCreate<float32> this.SecondMatrix.Values.Length
-//         Array.blit this.SecondMatrix.Rows 0 rightRows 0 this.SecondMatrix.Rows.Length
-//         Array.blit this.SecondMatrix.Columns 0 rightCols 0 this.SecondMatrix.Columns.Length
-//         Array.blit this.SecondMatrix.Values 0 rightVals 0 this.SecondMatrix.Values.Length
+    member this.LoadMatricesToGPU () =
+        firstMatrix <- buildMatrix this.OclContext firstMatrixHost
+        secondMatrix <- buildMatrix this.OclContext secondMatrixHost
 
-//         rightCOO <-
-//             COOMatrix.FromTuples(
-//                 this.SecondMatrix.RowCount,
-//                 this.SecondMatrix.ColumnCount,
-//                 rightRows,
-//                 rightCols,
-//                 rightVals
-//             ) |> MatrixCOO
+    abstract member GlobalSetup : unit -> unit
 
-//     [<Benchmark>]
-//     member this.EWiseAdditionCOOFloat32() =
-//         let (ClContext context) = this.OclContext
-//         (leftCOO, rightCOO) ||> Matrix.eWiseAdd AddMult.float32
-//         |> EvalGB.withClContext context
-//         |> EvalGB.runSync
+    abstract member IterationCleanup : unit -> unit
 
-//     static member InputMatricesProvider =
-//         "EWiseAddBenchmarks4Float32.txt"
-//         |> Utils.getMatricesFilenames
-//         |> Seq.map
-//             (fun matrixFilename ->
-//                 match Path.GetExtension matrixFilename with
-//                 | ".mtx" -> MtxReader.readShape <| Utils.getFullPathToMatrix matrixFilename
-//                 | _ -> failwith "Unsupported matrix format"
-//             )
+    abstract member GlobalCleanup : unit -> unit
 
-// type EWiseAddBenchmarks4Bool() =
-//     inherit EWiseAddBenchmarks()
+    abstract member Benchmark : unit -> unit
 
-//     let mutable leftCOO = Unchecked.defaultof<Matrix<bool>>
-//     let mutable rightCOO = Unchecked.defaultof<Matrix<bool>>
+type EWiseAddBenchmarksWithoutDataTransfer<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix) =
 
-//     member val FirstMatrix = Unchecked.defaultof<COOMatrix<bool>> with get, set
-//     member val SecondMatrix = Unchecked.defaultof<COOMatrix<bool>> with get, set
+    inherit EWiseAddBenchmarks<'matrixT, 'elem>(
+        buildFunToBenchmark,
+        converter,
+        converterBool,
+        buildMatrix)
 
-//     [<GlobalSetup>]
-//     member this.FormInputData() =
-//         let mtxFormat = MtxReader.readMtx <| Utils.getFullPathToMatrix this.InputMatrix.Filename
-//         let cooMatrix =
-//             match mtxFormat.Shape.Format, mtxFormat.Shape.Field with
-//             | "coordinate", "real" -> Utils.makeCOO mtxFormat <| FromString (fun _ -> true)
-//             | "coordinate", "integer" -> Utils.makeCOO mtxFormat <| FromString (fun _ -> true)
-//             | "coordinate", "pattern" -> Utils.makeCOO mtxFormat <| FromUnit (fun _ -> true)
-//             | _ -> failwith "Unsupported matrix format"
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrices ()
+        this.LoadMatricesToGPU ()
 
-//         this.FirstMatrix <- cooMatrix
-//         this.SecondMatrix <- cooMatrix |> Utils.transposeCOO
+    [<IterationCleanup>]
+    override this.IterationCleanup () =
+        this.ClearResult()
 
-//     [<IterationSetup>]
-//     member this.BuildCOO() =
-//         let leftRows = Array.zeroCreate<int> this.FirstMatrix.Rows.Length
-//         let leftCols = Array.zeroCreate<int> this.FirstMatrix.Columns.Length
-//         let leftVals = Array.create<bool> this.FirstMatrix.Values.Length true
-//         Array.blit this.FirstMatrix.Rows 0 leftRows 0 this.FirstMatrix.Rows.Length
-//         Array.blit this.FirstMatrix.Columns 0 leftCols 0 this.FirstMatrix.Columns.Length
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () =
+        this.ClearInputMatrices()
 
-//         leftCOO <-
-//             COOMatrix.FromTuples(
-//                 this.FirstMatrix.RowCount,
-//                 this.FirstMatrix.ColumnCount,
-//                 leftRows,
-//                 leftCols,
-//                 leftVals
-//             ) |> MatrixCOO
+    [<Benchmark>]
+    override this.Benchmark () =
+        this.EWiseAddition()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-//         let rightRows = Array.zeroCreate<int> this.SecondMatrix.Rows.Length
-//         let rightCols = Array.zeroCreate<int> this.SecondMatrix.Columns.Length
-//         let rightVals = Array.create<bool> this.SecondMatrix.Values.Length true
-//         Array.blit this.SecondMatrix.Rows 0 rightRows 0 this.SecondMatrix.Rows.Length
-//         Array.blit this.SecondMatrix.Columns 0 rightCols 0 this.SecondMatrix.Columns.Length
+type EWiseAddBenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix,
+        resultToHost) =
 
-//         rightCOO <-
-//             COOMatrix.FromTuples(
-//                 this.SecondMatrix.RowCount,
-//                 this.SecondMatrix.ColumnCount,
-//                 rightRows,
-//                 rightCols,
-//                 rightVals
-//             ) |> MatrixCOO
+    inherit EWiseAddBenchmarks<'matrixT, 'elem>(
+        buildFunToBenchmark,
+        converter,
+        converterBool,
+        buildMatrix)
 
-//     [<Benchmark>]
-//     member this.EWiseAdditionCOOBool() =
-//         let (ClContext context) = this.OclContext
-//         (leftCOO, rightCOO) ||> Matrix.eWiseAdd AnyAll.bool
-//         |> EvalGB.withClContext context
-//         |> EvalGB.runSync
+    [<GlobalSetup>]
+    override this.GlobalSetup () =
+        this.ReadMatrices ()
 
-//     static member InputMatricesProvider =
-//         "EWiseAddBenchmarks4Bool.txt"
-//         |> Utils.getMatricesFilenames
-//         |> Seq.map
-//             (fun matrixFilename ->
-//                 match Path.GetExtension matrixFilename with
-//                 | ".mtx" -> MtxReader.readShape <| Utils.getFullPathToMatrix matrixFilename
-//                 | _ -> failwith "Unsupported matrix format"
-//             )
+    [<GlobalCleanup>]
+    override this.GlobalCleanup () = ()
+
+    [<IterationCleanup>]
+    override this.IterationCleanup () =
+        this.ClearInputMatrices()
+        this.ClearResult()
+
+    [<Benchmark>]
+    override this.Benchmark () =
+        this.LoadMatricesToGPU()
+        this.EWiseAddition()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
+        let res = resultToHost this.ResultMatrix this.Processor
+        this.Processor.PostAndReply Msg.MsgNotifyMe
+
+module M =
+    let inline buildCooMatrix (context:ClContext) matrix =
+        match matrix with
+        | MatrixCOO m ->
+            let rows =
+                context.CreateClArray (m.Rows, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (m.Columns, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.COOMatrix.Context = context
+              Backend.COOMatrix.RowCount = m.RowCount
+              Backend.COOMatrix.ColumnCount = m.ColumnCount
+              Backend.COOMatrix.Rows = rows
+              Backend.COOMatrix.Columns = cols
+              Backend.COOMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"
+
+    let inline buildCsrMatrix (context:ClContext) matrix =
+        match matrix with
+        | MatrixCOO m ->
+            let rowPointers =
+                context.CreateClArray(
+                    Utils.rowIndices2rowPointers m.Rows m.RowCount
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (
+                    m.Columns
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (
+                    m.Values
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.CSRMatrix.Context = context
+              Backend.CSRMatrix.RowCount = m.RowCount
+              Backend.CSRMatrix.ColumnCount = m.ColumnCount
+              Backend.CSRMatrix.RowPointers = rowPointers
+              Backend.CSRMatrix.Columns = cols
+              Backend.CSRMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"
+
+    let resultToHostCOO (resultMatrix:Backend.COOMatrix<'a>) (procesor:MailboxProcessor<_>) =
+        let cols =
+            let a = Array.zeroCreate resultMatrix.ColumnCount
+            procesor.Post(Msg.CreateToHostMsg<_>(resultMatrix.Columns,a))
+            a
+        let rows =
+            let a = Array.zeroCreate resultMatrix.RowCount
+            procesor.Post(Msg.CreateToHostMsg(resultMatrix.Rows,a))
+            a
+        let vals =
+            let a = Array.zeroCreate resultMatrix.Values.Length
+            procesor.Post(Msg.CreateToHostMsg(resultMatrix.Values,a))
+            a
+        {
+            RowCount = resultMatrix.RowCount
+            ColumnCount = resultMatrix.ColumnCount
+            Rows = rows
+            Columns = cols
+            Values = vals
+        }
+
+
+type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (+) @> wgSize),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCooMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+
+type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithDataTransfer<Backend.COOMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (+) @> wgSize),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCooMatrix,
+        M.resultToHostCOO
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+
+
+type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd context <@ (||) @> wgSize),
+        (fun _ -> true),
+        (fun _ -> true),
+        M.buildCooMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
+
+
+type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context <@ (+) @> wgSize),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCsrMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
+
+
+type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+        (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context <@ (||) @> wgSize),
+        (fun _ -> true),
+        (fun _ -> true),
+        M.buildCsrMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"

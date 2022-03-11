@@ -89,7 +89,7 @@ let testCases =
                 |> Array.max
 
             // mMult (if wgSize = 1 then 2 else wgSize) q
-            mMult 128 q
+            mMult 32 q
 
     let makeTest (context: ClContext) generator size mFormat times plus qTimes qPlus zero =
         let mtx1, mtx2, baseMtx1, baseMtx2 =
@@ -103,7 +103,8 @@ let testCases =
                 use clValues1 = context.CreateClArray mtx1.Values
 
                 let m1 =
-                    { Backend.COOMatrix.RowCount = mtx1.RowCount
+                    { Backend.COOMatrix.Context = context
+                      Backend.COOMatrix.RowCount = mtx1.RowCount
                       ColumnCount = mtx1.ColumnCount
                       Rows = clRows1
                       Columns = clColumns1
@@ -114,7 +115,8 @@ let testCases =
                 use clValues2 = context.CreateClArray mtx2.Values
 
                 let m2 =
-                    { Backend.COOMatrix.RowCount = mtx2.RowCount
+                    { Backend.COOMatrix.Context = context
+                      Backend.COOMatrix.RowCount = mtx2.RowCount
                       ColumnCount = mtx2.ColumnCount
                       Rows = clRows2
                       Columns = clColumns2
@@ -164,7 +166,8 @@ let testCases =
                 use clValues1 = context.CreateClArray mtx1.Values
 
                 let m1 =
-                    { Backend.CSRMatrix.RowCount = mtx1.RowCount
+                    { Backend.CSRMatrix.Context = context
+                      Backend.CSRMatrix.RowCount = mtx1.RowCount
                       ColumnCount = mtx1.ColumnCount
                       RowPointers = clRows1
                       Columns = clColumns1
@@ -175,7 +178,8 @@ let testCases =
                 use clValues2 = context.CreateClArray mtx2.Values
 
                 let m2 =
-                    { Backend.CSRMatrix.RowCount = mtx2.RowCount
+                    { Backend.CSRMatrix.Context = context
+                      Backend.CSRMatrix.RowCount = mtx2.RowCount
                       ColumnCount = mtx2.ColumnCount
                       RowPointers = clRows2
                       Columns = clColumns2
@@ -187,7 +191,9 @@ let testCases =
                 let mult = getMultFun mtx1.Values
 
                 let actual =
+                    printfn "JOJO REFERENCE"
                     let res: Backend.CSRMatrix<'a> = mult m1 m2 zero
+                    printfn "REFERENCE JOJO"
                     let actualRows = Array.zeroCreate res.RowPointers.Length
                     let actualColumns = Array.zeroCreate res.Columns.Length
                     let actualValues = Array.zeroCreate res.Values.Length
@@ -223,14 +229,16 @@ let testCases =
     [ testProperty "Correctness test on random int matrices CSR"
       <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.IntType()) size CSR (*) (+) <@ (*) @> <@ (+) @> 0)
 
-      testProperty "Correctness test on random bool matrices CSR"
-      <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.BoolType()) size CSR (&&) (||) <@ (&&) @> <@ (||) @> false)
+    //   testProperty "Correctness test on random bool matrices CSR"
+    //   <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.BoolType()) size CSR (&&) (||) <@ (&&) @> <@ (||) @> false)
 
-      testProperty "Correctness test on random float matrices CSR"
-      <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.FloatType()) size CSR (*) (+) <@ (*) @> <@ (+) @> 0.0)
+    //   testProperty "Correctness test on random float matrices CSR"
+    //   <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.FloatType()) size CSR (*) (+) <@ (*) @> <@ (+) @> 0.0)
 
-      testProperty "Correctness test on random byte matrices CSR"
-      <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.ByteType()) size CSR (*) (+) <@ (*) @> <@ (+) @> 0uy) ]
+    //   testProperty "Correctness test on random byte matrices CSR"
+    //   <| (fun size -> makeTest context (PairOfMatricesOfCompatibleSize.ByteType()) size CSR (*) (+) <@ (*) @> <@ (+) @> 0uy) ]
+    ]
 
 let tests =
+    printfn "%A" (testCases |> testList "Backend.EwiseAdd tests")
     testCases |> testList "Backend.EwiseAdd tests"

@@ -1,246 +1,141 @@
 module Backend.EwiseAdd
 
-open FsCheck
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Tests.Generators
 open GraphBLAS.FSharp.Tests.Utils
+open OpenCL.Net
 
 let logger = Log.create "EwiseAdd.Tests"
 
-let context =
-    let deviceType = ClDeviceType.Default
-    let platformName = ClPlatform.Any
-    ClContext(platformName, deviceType)
-
-let getMatricesToAdd generator size isZero mFormat =
-    let gen = generator |> Arb.toGen
-    let m1, m2 = (Gen.sample (abs size) 1 gen).[0]
-
-    let mtx1, mtx2 =
-        createMatrixFromArray2D mFormat m1 isZero, createMatrixFromArray2D mFormat m2 isZero
-
-    mtx1, mtx2, m1, m2
-
-let checkResult op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
+let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
     let rows = Array2D.length1 baseMtx1
     let columns = Array2D.length2 baseMtx1
     Expect.equal columns actual.ColumnCount "The number of columns should be the same."
     Expect.equal rows actual.RowCount "The number of rows should be the same."
 
-    let expected = Array2D.create rows columns zero
+    let expected2D = Array2D.create rows columns zero
 
     for i in 0 .. rows - 1 do
         for j in 0 .. columns - 1 do
-            expected.[i, j] <- op baseMtx1.[i, j] baseMtx2.[i, j]
+            expected2D.[i, j] <- op baseMtx1.[i, j] baseMtx2.[i, j]
 
-    let actual2D =
-        Array2D.create actual.RowCount actual.ColumnCount zero
+    let actual2D = Array2D.create rows columns zero
 
-    let actual2D =
-        match actual with
-        | MatrixCOO actual ->
-            for i in 0 .. actual.Rows.Length - 1 do
-                actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
-
-            actual2D
-        | MatrixCSR actual ->
-            let rowIndices =
-                Array.create actual.ColumnIndices.Length 0
-
-            for i in 0 .. actual.RowCount - 1 do
-                if i < actual.RowCount - 1 then
-                    let rowStart = actual.RowPointers.[i]
-                    let rowEnd = actual.RowPointers.[i + 1]
-                    let rowLength = rowEnd - rowStart
-
-                    for j in 0 .. rowLength - 1 do
-                        rowIndices.[rowStart + j] <- i
-                else
-                    let rowStart = actual.RowPointers.[actual.RowCount - 1]
-                    let rowLength = rowIndices.Length - rowStart
-
-                    for j in 0 .. rowLength - 1 do
-                        rowIndices.[rowStart + j] <- i
-
-            for i in 0 .. rowIndices.Length - 1 do
-                actual2D.[rowIndices.[i], actual.ColumnIndices.[i]] <- actual.Values.[i]
-
-            actual2D
+    match actual with
+    | MatrixCOO actual ->
+        for i in 0 .. actual.Rows.Length - 1 do
+            actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
+    | _ -> failwith "Impossible case."
 
     for i in 0 .. rows - 1 do
         for j in 0 .. columns - 1 do
-            Expect.equal actual2D.[i, j] expected.[i, j] "Elements of matrices should be equals."
+            Expect.isTrue (isEqual actual2D.[i, j] expected2D.[i, j]) "Values should be the same."
 
-let testCases =
-    let q = context.CommandQueue
+let correctnessGenericTest
+    zero
+    op
+    (addFun: MailboxProcessor<Msg> -> Backend.Matrix<'a> -> Backend.Matrix<'a> -> Backend.Matrix<'a>)
+    toCOOFun
+    (isEqual: 'a -> 'a -> bool)
+    (case: OperationCase)
+    (leftMatrix: 'a [,], rightMatrix: 'a [,])
+    =
+    let q = case.ClContext.CommandQueue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let setSizeForAddFun mAdd =
-        fun (array: array<_>) ->
-            let wgSize =
-                [| for i in 0 .. 5 -> pown 2 i |]
-                |> Array.filter (fun i -> array.Length % i = 0)
-                |> Array.max
+    let mtx1 =
+        createMatrixFromArray2D case.MatrixCase leftMatrix (isEqual zero)
 
-            mAdd (if wgSize = 1 then 2 else wgSize) q
+    let mtx2 =
+        createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
 
-    let makeTest (context: ClContext) generator size mFormat op qOp zero =
-        let mtx1, mtx2, baseMtx1, baseMtx2 =
-            getMatricesToAdd generator size ((=) zero) mFormat
+    if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
+        let m1 = mtx1.ToBackend case.ClContext
+        let m2 = mtx2.ToBackend case.ClContext
 
-        match mtx1, mtx2 with
-        | MatrixCOO mtx1, MatrixCOO mtx2 ->
-            if mtx1.Values.Length > 0 && mtx2.Values.Length > 0 then
-                use clRows1 = context.CreateClArray mtx1.Rows
-                use clColumns1 = context.CreateClArray mtx1.Columns
-                use clValues1 = context.CreateClArray mtx1.Values
+        let res = addFun q m1 m2
 
-                let m1 =
-                    { Backend.COOMatrix.RowCount = mtx1.RowCount
-                      ColumnCount = mtx1.ColumnCount
-                      Rows = clRows1
-                      Columns = clColumns1
-                      Values = clValues1 }
+        m1.Dispose()
+        m2.Dispose()
 
-                use clRows2 = context.CreateClArray mtx2.Rows
-                use clColumns2 = context.CreateClArray mtx2.Columns
-                use clValues2 = context.CreateClArray mtx2.Values
+        let cooRes = toCOOFun q res
+        let actual = Matrix.FromBackend q cooRes
 
-                let m2 =
-                    { Backend.COOMatrix.RowCount = mtx2.RowCount
-                      ColumnCount = mtx2.ColumnCount
-                      Rows = clRows2
-                      Columns = clColumns2
-                      Values = clValues2 }
+        cooRes.Dispose()
+        res.Dispose()
 
-                let getAddFun =
-                    COOMatrix.eWiseAdd context qOp |> setSizeForAddFun
+        logger.debug (
+            eventX "Actual is {actual}"
+            >> setField "actual" (sprintf "%A" actual)
+        )
 
-                let add = getAddFun mtx1.Values
+        checkResult isEqual op zero leftMatrix rightMatrix actual
 
-                let actual =
-                    let res: Backend.COOMatrix<'a> = add m1 m2
-                    let actualRows = Array.zeroCreate res.Rows.Length
-                    let actualColumns = Array.zeroCreate res.Columns.Length
-                    let actualValues = Array.zeroCreate res.Values.Length
+let testFixtures case =
+    [ let config = defaultConfig
+      let wgSize = 128
+      //Test name on multiple devices can be duplicated due to the ClContext.toString
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
 
-                    let _ =
-                        q.Post(Msg.CreateToHostMsg(res.Rows, actualRows))
+      let boolAdd =
+          Matrix.eWiseAdd case.ClContext <@ (||) @> wgSize
 
-                    let _ =
-                        q.Post(Msg.CreateToHostMsg(res.Columns, actualColumns))
+      let boolToCOO = Matrix.toCOO case.ClContext wgSize
 
-                    let _ =
-                        q.PostAndReply(fun ch -> Msg.CreateToHostMsg(res.Values, actualValues, ch))
+      case
+      |> correctnessGenericTest false (||) boolAdd boolToCOO (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-                    q.Post(Msg.CreateFreeMsg<_>(res.Columns))
-                    q.Post(Msg.CreateFreeMsg<_>(res.Rows))
-                    q.Post(Msg.CreateFreeMsg<_>(res.Values))
+      let intAdd =
+          Matrix.eWiseAdd case.ClContext <@ (+) @> wgSize
 
-                    { RowCount = res.RowCount
-                      ColumnCount = res.ColumnCount
-                      Rows = actualRows
-                      Columns = actualColumns
-                      Values = actualValues }
+      let intToCOO = Matrix.toCOO case.ClContext wgSize
 
-                logger.debug (
-                    eventX "Actual is {actual}"
-                    >> setField "actual" (sprintf "%A" actual)
-                )
+      case
+      |> correctnessGenericTest 0 (+) intAdd intToCOO (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-                checkResult op zero baseMtx1 baseMtx2 (MatrixCOO actual)
+      let floatAdd =
+          Matrix.eWiseAdd case.ClContext <@ (+) @> wgSize
 
-        | MatrixCSR mtx1, MatrixCSR mtx2 ->
-            if mtx1.Values.Length > 0 && mtx2.Values.Length > 0 then
-                use clRows1 = context.CreateClArray mtx1.RowPointers
-                use clColumns1 = context.CreateClArray mtx1.ColumnIndices
-                use clValues1 = context.CreateClArray mtx1.Values
+      let floatToCOO = Matrix.toCOO case.ClContext wgSize
 
-                let m1 =
-                    { Backend.CSRMatrix.RowCount = mtx1.RowCount
-                      ColumnCount = mtx1.ColumnCount
-                      RowPointers = clRows1
-                      Columns = clColumns1
-                      Values = clValues1 }
+      case
+      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-                use clRows2 = context.CreateClArray mtx2.RowPointers
-                use clColumns2 = context.CreateClArray mtx2.ColumnIndices
-                use clValues2 = context.CreateClArray mtx2.Values
+      let byteAdd =
+          Matrix.eWiseAdd case.ClContext <@ (+) @> wgSize
 
-                let m2 =
-                    { Backend.CSRMatrix.RowCount = mtx2.RowCount
-                      ColumnCount = mtx2.ColumnCount
-                      RowPointers = clRows2
-                      Columns = clColumns2
-                      Values = clValues2 }
+      let byteToCOO = Matrix.toCOO case.ClContext wgSize
 
-                let getAddFun =
-                    CSRMatrix.eWiseAdd context qOp |> setSizeForAddFun
-
-                let add = getAddFun mtx1.Values
-
-                let actual =
-                    let res: Backend.CSRMatrix<'a> = add m1 m2
-                    let actualRows = Array.zeroCreate res.RowPointers.Length
-                    let actualColumns = Array.zeroCreate res.Columns.Length
-                    let actualValues = Array.zeroCreate res.Values.Length
-
-                    let _ =
-                        q.Post(Msg.CreateToHostMsg(res.RowPointers, actualRows))
-
-                    let _ =
-                        q.Post(Msg.CreateToHostMsg(res.Columns, actualColumns))
-
-                    let _ =
-                        q.PostAndReply(fun ch -> Msg.CreateToHostMsg(res.Values, actualValues, ch))
-
-                    q.Post(Msg.CreateFreeMsg<_>(res.Columns))
-                    q.Post(Msg.CreateFreeMsg<_>(res.RowPointers))
-                    q.Post(Msg.CreateFreeMsg<_>(res.Values))
-
-                    { CSRMatrix.RowCount = res.RowCount
-                      ColumnCount = res.ColumnCount
-                      RowPointers = actualRows
-                      ColumnIndices = actualColumns
-                      Values = actualValues }
-
-                logger.debug (
-                    eventX "Actual is {actual}"
-                    >> setField "actual" (sprintf "%A" actual)
-                )
-
-                checkResult op zero baseMtx1 baseMtx2 (MatrixCSR(actual))
-
-        | _ -> failwith "No other types of matrices tested yet."
-
-    [ testProperty "Correctness test on random int matrices COO"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size COO (+) <@ (+) @> 0)
-
-      testProperty "Correctness test on random bool matrices COO"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size COO (||) <@ (||) @> false)
-
-      testProperty "Correctness test on random float matrices COO"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size COO (+) <@ (+) @> 0.0)
-
-      testProperty "Correctness test on random byte matrices COO"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size COO (+) <@ (+) @> 0uy)
-
-      testProperty "Correctness test on random int matrices CSR"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.IntType()) size CSR (+) <@ (+) @> 0)
-
-      testProperty "Correctness test on random bool matrices CSR"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.BoolType()) size CSR (||) <@ (||) @> false)
-
-      testProperty "Correctness test on random float matrices CSR"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.FloatType()) size CSR (+) <@ (+) @> 0.0)
-
-      testProperty "Correctness test on random byte matrices CSR"
-      <| (fun size -> makeTest context (PairOfSparseMatricesOfEqualSize.ByteType()) size CSR (+) <@ (+) @> 0uy) ]
+      case
+      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=)
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
-    testCases |> testList "Backend.EwiseAdd tests"
+    // testCases
+    // |> List.filter
+    //     (fun case ->
+    //         let mutable e = ErrorCode.Unknown
+    //         let device = case.ClContext.Device
+
+    //         let deviceType =
+    //             Cl
+    //                 .GetDeviceInfo(device, DeviceInfo.Type, &e)
+    //                 .CastTo<DeviceType>()
+
+    //         deviceType = DeviceType.Default)
+    [ {
+        ClContext =
+            let deviceType = ClDeviceType.Default
+            let platformName = ClPlatform.Any
+            ClContext(platformName, deviceType)
+        MatrixCase = COO } ]
+    |> List.collect testFixtures
+    |> testList "Backend.Matrix.eWiseAdd tests"

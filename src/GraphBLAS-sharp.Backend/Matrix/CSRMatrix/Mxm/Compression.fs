@@ -59,6 +59,7 @@ module internal Compression =
                 processor.Post(Msg.CreateFreeMsg<_>(positions))
 
                 {
+                    Context = clContext
                     RowCount = matrix.RowCount
                     ColumnCount = matrix.ColumnCount
                     RowPointers = matrix.RowPointers

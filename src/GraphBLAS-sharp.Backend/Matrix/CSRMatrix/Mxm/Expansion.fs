@@ -269,6 +269,7 @@ module internal Expansion =
             processor.Post(Msg.CreateFreeMsg<_>(secondValues))
 
             {
+                Context = clContext
                 RowCount = resultMatrix.RowCount
                 ColumnCount = resultMatrix.ColumnCount
                 RowPointers = resultMatrix.RowPointers
