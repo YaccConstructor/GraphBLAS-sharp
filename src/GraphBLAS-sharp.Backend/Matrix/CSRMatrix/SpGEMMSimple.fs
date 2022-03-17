@@ -8,6 +8,7 @@ module internal SpGEMMSimple =
     let private runNonEmpty
         (times: Expr<'a -> 'a -> 'a>)
         (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a)
         (clContext: ClContext)
         workGroupSize =
 
@@ -19,8 +20,7 @@ module internal SpGEMMSimple =
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
-            (matrixRight: CSRMatrix<'a>)
-            (zero: 'a) ->
+            (matrixRight: CSRMatrix<'a>) ->
 
             let preparedMatrixLeft = prepareMatrix processor matrixLeft matrixRight
 
@@ -45,15 +45,15 @@ module internal SpGEMMSimple =
     let run
         (times: Expr<'a -> 'a -> 'a>)
         (plus: Expr<'a -> 'a -> 'a>)
+        (zero: 'a)
         (clContext: ClContext)
         workGroupSize =
 
-        let runNonEmpty = runNonEmpty times plus clContext workGroupSize
+        let runNonEmpty = runNonEmpty times plus zero clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
-            (matrixRight: CSRMatrix<'a>)
-            (zero: 'a) ->
+            (matrixRight: CSRMatrix<'a>) ->
 
             if matrixLeft.ColumnCount <> matrixRight.RowCount then
                 invalidArg "matrixRight" "Column count of the left matrix must be equal to row count of the right one"
@@ -68,4 +68,4 @@ module internal SpGEMMSimple =
                     Values = clContext.CreateClArray([||])
                 }
             else
-                runNonEmpty processor matrixLeft matrixRight zero
+                runNonEmpty processor matrixLeft matrixRight
