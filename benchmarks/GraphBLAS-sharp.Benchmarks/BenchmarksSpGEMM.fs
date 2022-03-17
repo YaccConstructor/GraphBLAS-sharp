@@ -44,6 +44,7 @@ type Config() =
 [<IterationCount(100)>]
 [<WarmupCount(5)>]
 [<Config(typeof<Config>)>]
+[<CsvExporter>]
 type SpGEMMBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
