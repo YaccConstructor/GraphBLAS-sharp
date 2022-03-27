@@ -68,7 +68,7 @@ module internal Expansion =
                     if i < size then
                         positionsForResCols.[i] <- secondRowPointers.[firstColumns.[i - 1] + 1] - secondRowPointers.[firstColumns.[i - 1]]
             @>
-        let kernel = clContext.CreateClKernel(init)
+        let kernel = clContext.CreateClProgram(init).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -86,7 +86,7 @@ module internal Expansion =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixRight.RowPointers
                             matrixLeft.Columns
@@ -133,7 +133,7 @@ module internal Expansion =
                     if i < size then
                         rowPtrsForCols.[i] <- secondRowPointers.[firstColumns.[i]] - secondRowPointers.[firstColumns.[i - 1]]
             @>
-        let kernel = clContext.CreateClKernel(init)
+        let kernel = clContext.CreateClProgram(init).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -151,7 +151,7 @@ module internal Expansion =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixRight.RowPointers
                             matrixLeft.Columns
@@ -182,7 +182,7 @@ module internal Expansion =
                         if index <> firstRowPointers.[i + 1] then
                             rowPtrsForCols.[index] <- secondRowPointers.[firstColumns.[index]]
             @>
-        let kernel = clContext.CreateClKernel(update)
+        let kernel = clContext.CreateClProgram(update).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -195,7 +195,7 @@ module internal Expansion =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixLeft.RowPointers
                             size

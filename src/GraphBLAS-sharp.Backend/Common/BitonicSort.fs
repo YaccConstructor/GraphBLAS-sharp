@@ -68,7 +68,7 @@ module internal rec BitonicSort =
                     if readIdx < length then
                         localValues.[lid + wgSize] <- values.[readIdx]
 
-                    barrier ()
+                    barrierLocal ()
 
                     let mutable segmentLength = 1
 
@@ -93,7 +93,7 @@ module internal rec BitonicSort =
                             localValues.[lineId] <- localValues.[twinId]
                             localValues.[twinId] <- tmpValue
 
-                        barrier ()
+                        barrierLocal ()
 
                         let mutable j = segmentLength / 2
 
@@ -113,7 +113,7 @@ module internal rec BitonicSort =
                                 localValues.[lineId] <- localValues.[twinId]
                                 localValues.[twinId] <- tmpValue
 
-                            barrier ()
+                            barrierLocal ()
 
                             j <- j >>> 1
 
@@ -221,7 +221,7 @@ module internal rec BitonicSort =
                     if readIdx < length then
                         localValues.[lid + wgSize] <- values.[readIdx]
 
-                    barrier ()
+                    barrierLocal ()
 
                     let mutable segmentLength = processedSize
                     let mutable j = segmentLength
@@ -242,7 +242,7 @@ module internal rec BitonicSort =
                             localValues.[lineId] <- localValues.[twinId]
                             localValues.[twinId] <- tmpValue
 
-                        barrier ()
+                        barrierLocal ()
 
                         j <- j >>> 1
 

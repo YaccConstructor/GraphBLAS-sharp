@@ -26,7 +26,7 @@ module internal PrepareMatrix =
                         else
                             positions.[i] <- 1
             @>
-        let kernel = clContext.CreateClKernel(preparePositions)
+        let kernel = clContext.CreateClProgram(preparePositions).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -44,7 +44,7 @@ module internal PrepareMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixLeft.Columns
                             matrixRight.RowPointers

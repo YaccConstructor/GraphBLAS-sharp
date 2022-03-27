@@ -186,14 +186,12 @@ let testCases =
                       Values = clValues2 }
 
                 let getMultFun =
-                    CSRMatrix.spgemm qTimes qPlus context |> setSizeForMultFun
+                    CSRMatrix.spgemm zero qTimes qPlus context |> setSizeForMultFun
 
                 let mult = getMultFun mtx1.Values
 
                 let actual =
-                    printfn "JOJO REFERENCE"
-                    let res: Backend.CSRMatrix<'a> = mult m1 m2 zero
-                    printfn "REFERENCE JOJO"
+                    let res: Backend.CSRMatrix<'a> = mult m1 m2
                     let actualRows = Array.zeroCreate res.RowPointers.Length
                     let actualColumns = Array.zeroCreate res.Columns.Length
                     let actualValues = Array.zeroCreate res.Values.Length

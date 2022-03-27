@@ -35,7 +35,7 @@ module internal RadixSort =
                         resultKeys.[index] <- keys.[i]
                         resultValues.[index] <- values.[i]
             @>
-        let kernel = clContext.CreateClKernel setPositions
+        let kernel = clContext.CreateClProgram(setPositions).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<_>)
@@ -54,7 +54,7 @@ module internal RadixSort =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             keys
                             values
@@ -86,7 +86,7 @@ module internal RadixSort =
                         let buff = positions.[i]
                         positions.[i] <- (%plus) buff sums
             @>
-        let kernel = clContext.CreateClKernel updatePositions
+        let kernel = clContext.CreateClProgram(updatePositions).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<_>)
@@ -96,7 +96,7 @@ module internal RadixSort =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange positions positionsLength sums)
+                    (fun () -> kernel.KernelFunc ndRange positions positionsLength sums)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -116,7 +116,7 @@ module internal RadixSort =
                         let a = sums.Value
                         sums.Value <- (%scan) a
             @>
-        let kernel = clContext.CreateClKernel update
+        let kernel = clContext.CreateClProgram(update).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (sums: ClCell<_>) ->
@@ -125,7 +125,7 @@ module internal RadixSort =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange sums)
+                    (fun () -> kernel.KernelFunc ndRange sums)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
@@ -154,7 +154,7 @@ module internal RadixSort =
                         //let buff = keys.[i]
                         //positions.[i] <- (%get) ((buff >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits))
             @>
-        let kernel = clContext.CreateClKernel init
+        let kernel = clContext.CreateClProgram(init).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<uint64>)
@@ -169,7 +169,7 @@ module internal RadixSort =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange keys keysLength positions numberOfBits offset)
+                    (fun () -> kernel.KernelFunc ndRange keys keysLength positions numberOfBits offset)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
@@ -219,7 +219,7 @@ module internal RadixSort =
                     if i < length then
                         positions.[i] <- zero
             @>
-        let kernel = clContext.CreateClKernel init
+        let kernel = clContext.CreateClProgram(init).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (length: int)
@@ -232,7 +232,7 @@ module internal RadixSort =
             let ndRange = Range1D.CreateValid(length, workGroupSize)
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.ArgumentsSetter ndRange zero positions length)
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange zero positions length)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 

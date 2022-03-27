@@ -22,7 +22,7 @@ module internal PrefixSum =
                     if i < inputArrayLength then
                         resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
             @>
-        let kernel = clContext.CreateClKernel update
+        let kernel = clContext.CreateClProgram(update).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
@@ -33,7 +33,7 @@ module internal PrefixSum =
             let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter ndRange inputArrayLength bunchLength inputArray vertices)
+                    (fun () -> kernel.KernelFunc ndRange inputArrayLength bunchLength inputArray vertices)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
@@ -68,7 +68,7 @@ module internal PrefixSum =
                 let mutable step = 2
 
                 while step <= workGroupSize do
-                    barrier ()
+                    barrierLocal ()
 
                     if localID < workGroupSize / step then
                         let i = step * (localID + 1) - 1
@@ -78,7 +78,7 @@ module internal PrefixSum =
 
                     step <- step <<< 1
 
-                barrier ()
+                barrierLocal ()
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
@@ -91,7 +91,7 @@ module internal PrefixSum =
                 step <- workGroupSize
 
                 while step > 1 do
-                    barrier ()
+                    barrierLocal ()
 
                     if localID < workGroupSize / step then
                         let i = step * (localID + 1) - 1
@@ -104,11 +104,11 @@ module internal PrefixSum =
 
                     step <- step >>> 1
 
-                barrier ()
+                barrierLocal ()
 
                 (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
             @>
-        let kernel = clContext.CreateClKernel scan
+        let kernel = clContext.CreateClProgram(scan).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
@@ -124,7 +124,7 @@ module internal PrefixSum =
             let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.ArgumentsSetter
+                    (fun () -> kernel.KernelFunc
                                 ndRange
                                 inputArrayLength
                                 verticesLength

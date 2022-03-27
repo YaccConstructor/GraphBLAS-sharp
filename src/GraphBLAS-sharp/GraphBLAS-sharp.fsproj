@@ -37,7 +37,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Brahma.FSharp" Version="2.0.0-alpha9.2" />
+    <PackageReference Include="Brahma.FSharp" Version="2.0.0-alpha9.3" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -27,7 +27,7 @@ module internal Setup =
                         else
                             resultRowLengths.[i] <- 0
             @>
-        let kernel = clContext.CreateClKernel(get)
+        let kernel = clContext.CreateClProgram(get).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (rowLengths: ClArray<int>)
@@ -45,7 +45,7 @@ module internal Setup =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixLeft.RowPointers
                             size
@@ -74,7 +74,7 @@ module internal Setup =
                         let column = firstColumns.[i]
                         lenghts.[i] <- secondRowPointers.[column + 1] - secondRowPointers.[column]
             @>
-        let kernel = clContext.CreateClKernel(init)
+        let kernel = clContext.CreateClProgram(init).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -92,7 +92,7 @@ module internal Setup =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             matrixRight.RowPointers
                             matrixLeft.Columns

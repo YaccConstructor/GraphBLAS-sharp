@@ -29,7 +29,7 @@ module internal Scatter =
                             else
                                 result.[index] <- (%getter) values i
             @>
-        let kernel = clContext.CreateClKernel(run)
+        let kernel = clContext.CreateClProgram(run).GetKernel()
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)
@@ -43,7 +43,7 @@ module internal Scatter =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.ArgumentsSetter
+                        kernel.KernelFunc
                             ndRange
                             positions
                             positionsLength
