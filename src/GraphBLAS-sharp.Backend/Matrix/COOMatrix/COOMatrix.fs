@@ -92,14 +92,25 @@ module COOMatrix =
 
             resultRows, resultColumns, resultValues, resultLength
 
-    let private preparePositions<'a when 'a: struct>
+    let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
-        (opAdd: Expr<'a -> 'a -> 'a>)
+        (opAdd: Expr<'a -> 'b -> 'c>)
         workGroupSize
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (rawPositionsBuffer: ClArray<int>) ->
+            <@ fun (ndRange: Range1D)
+                length
+                (allRowsBuffer: ClArray<int>)
+                (allColumnsBuffer: ClArray<int>)
+                (leftValuesBuffer: ClArray<'a>)
+                (rightValuesBuffer: ClArray<'b>)
+                (allValuesBuffer: ClArray<'c>)
+                (rawPositionsBuffer: ClArray<int>)
+                (isLeftBitmap: ClArray<int>)
+                (leftZero: ClArray<'a>)
+                (rightZero: ClArray<'b>)
+                (resultZero: ClArray<'c>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -107,15 +118,33 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
                     rawPositionsBuffer.[i] <- 0
-                    allValuesBuffer.[i + 1] <- (%opAdd) allValuesBuffer.[i] allValuesBuffer.[i + 1]
+                    let resValue = (%opAdd) leftValuesBuffer.[i + 1] rightValuesBuffer.[i]
+                    allValuesBuffer.[i + 1] <- resValue
+                else if (i > 0
+                    && allRowsBuffer.[i] = allRowsBuffer.[i - 1]
+                    && allColumnsBuffer.[i] = allColumnsBuffer.[i - 1]) then
+                    rawPositionsBuffer.[i] <- 1
                 else
-                    (rawPositionsBuffer.[i] <- 1) @>
+                    rawPositionsBuffer.[i] <- 1
+                    if isLeftBitmap.[i] = 1 then
+                        allValuesBuffer.[i] <- (%opAdd) leftValuesBuffer.[i] rightZero.[0]
+                    else
+                        allValuesBuffer.[i] <- (%opAdd) leftZero.[0] rightValuesBuffer.[i]
+            @>
 
         let kernel =
             clContext.CreateClProgram(preparePositions).GetKernel()
 
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) ->
-            let length = allValues.Length
+        fun (processor: MailboxProcessor<_>)
+            (allRows: ClArray<int>)
+            (allColumns: ClArray<int>)
+            (leftValues: ClArray<'a>)
+            (rightValues: ClArray<'b>)
+            (isLeft: ClArray<int>)
+            (leftZero: ClArray<'a>)
+            (rightZero: ClArray<'b>)
+            (resultZero: ClArray<'c>) ->
+            let length = leftValues.Length
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
@@ -127,18 +156,25 @@ module COOMatrix =
                     allocationMode = AllocationMode.Default
                 )
 
+            let allValues =
+                clContext.CreateClArray<'c>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns allValues rawPositionsGpu)
+                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns leftValues rightValues allValues rawPositionsGpu isLeft leftZero rightZero resultZero)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            rawPositionsGpu
+            rawPositionsGpu, allValues
 
-    let private merge<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
-            <@ fun (ndRange: Range1D) firstSide secondSide sumOfSides (firstRowsBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowsBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'a>) (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) firstSide secondSide sumOfSides (firstRowsBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowsBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -255,15 +291,17 @@ module COOMatrix =
                     if not isValidX || isValidY && fstIdx < sndIdx then
                         allRowsBuffer.[i] <- int (sndIdx >>> 32)
                         allColumnsBuffer.[i] <- int sndIdx
-                        allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                        rightMergedValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                        isLeftBitmap.[i] <- 0
                     else
                         allRowsBuffer.[i] <- int (fstIdx >>> 32)
                         allColumnsBuffer.[i] <- int fstIdx
-                        allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX] @>
+                        leftMergedValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
+                        isLeftBitmap.[i] <- 1 @>
 
         let kernel = clContext.CreateClProgram(merge).GetKernel()
 
-        fun (processor: MailboxProcessor<_>) (matrixLeftRows: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRows: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrixLeftRows: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRows: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'b>) ->
 
             let firstSide = matrixLeftValues.Length
             let secondSide = matrixRightValues.Length
@@ -285,8 +323,24 @@ module COOMatrix =
                     allocationMode = AllocationMode.Default
                 )
 
-            let allValues =
+            let leftMergedValues =
                 clContext.CreateClArray<'a>(
+                    sumOfSides,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let rightMergedValues =
+                clContext.CreateClArray<'b>(
+                    sumOfSides,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let isLeft =
+                clContext.CreateClArray<int>(
                     sumOfSides,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
@@ -312,28 +366,30 @@ module COOMatrix =
                             matrixRightValues
                             allRows
                             allColumns
-                            allValues)
+                            leftMergedValues
+                            rightMergedValues
+                            isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            allRows, allColumns, allValues
+            allRows, allColumns, leftMergedValues, rightMergedValues, isLeft
 
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'a -> 'a>) workGroupSize =
+    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c:struct and 'c: equality> (clContext: ClContext) (opAdd: Expr<'a -> 'b -> 'c>) workGroupSize =
 
         let merge = merge clContext workGroupSize
 
         let preparePositions =
             preparePositions clContext opAdd workGroupSize
 
-        let setPositions = setPositions<'a> clContext workGroupSize
+        let setPositions = setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'a>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'b>) (leftZero: ClArray<'a>) (rightZero: ClArray<'b>) (resultZero: ClArray<'c>) ->
 
-            let allRows, allColumns, allValues =
+            let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
                     queue
                     matrixLeft.Rows
@@ -343,8 +399,8 @@ module COOMatrix =
                     matrixRight.Columns
                     matrixRight.Values
 
-            let rawPositions =
-                preparePositions queue allRows allColumns allValues
+            let rawPositions, allValues =
+                preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft leftZero rightZero resultZero
 
             let resultRows, resultColumns, resultValues, resultLength =
                 setPositions queue allRows allColumns allValues rawPositions
