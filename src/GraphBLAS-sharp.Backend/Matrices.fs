@@ -38,7 +38,7 @@ and CSRMatrix<'elem when 'elem: struct> =
 
     interface IDeviceMemObject with
         member this.Dispose() =
-            let q = this.Context.Provider.CommandQueue
+            let q = this.Context.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
             q.Post(Msg.CreateFreeMsg<_>(this.Columns))
             q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
@@ -54,7 +54,7 @@ and COOMatrix<'elem when 'elem: struct> =
 
     interface IDeviceMemObject with
         member this.Dispose() =
-            let q = this.Context.Provider.CommandQueue
+            let q = this.Context.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
             q.Post(Msg.CreateFreeMsg<_>(this.Columns))
             q.Post(Msg.CreateFreeMsg<_>(this.Rows))
@@ -68,7 +68,7 @@ and TupleMatrix<'elem when 'elem: struct> =
 
     interface IDeviceMemObject with
         member this.Dispose() =
-            let q = this.Context.Provider.CommandQueue
+            let q = this.Context.CommandQueue
             q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))
             q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
             q.Post(Msg.CreateFreeMsg<_>(this.Values))

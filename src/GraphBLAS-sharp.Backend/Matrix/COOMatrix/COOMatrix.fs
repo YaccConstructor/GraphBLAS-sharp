@@ -24,7 +24,7 @@ module COOMatrix =
                     resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
                     resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
 
-        let kernel = clContext.CreateClKernel(setPositions)
+        let kernel = clContext.CreateClProgram(setPositions).GetKernel()
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
@@ -76,7 +76,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.KernelFunc
                             ndRange
                             prefixSumArrayLength
                             allRows
@@ -112,7 +112,7 @@ module COOMatrix =
                     (rawPositionsBuffer.[i] <- 1) @>
 
         let kernel =
-            clContext.CreateClKernel(preparePositions)
+            clContext.CreateClProgram(preparePositions).GetKernel()
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) ->
             let length = allValues.Length
@@ -129,7 +129,7 @@ module COOMatrix =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange length allRows allColumns allValues rawPositionsGpu)
+                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns allValues rawPositionsGpu)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -185,7 +185,7 @@ module COOMatrix =
                     else
                         endIdxLocal <- leftEdge
 
-                barrier ()
+                barrierLocal ()
 
                 let beginIdx = beginIdxLocal
                 let endIdx = endIdxLocal
@@ -212,7 +212,7 @@ module COOMatrix =
                         ((uint64 secondRowsBuffer.[i - beginIdx]) <<< 32)
                         ||| (uint64 secondColumnsBuffer.[i - beginIdx])
 
-                barrier ()
+                barrierLocal ()
 
                 if i < sumOfSides then
                     let mutable leftEdge = localID + 1 - secondLocalLength
@@ -261,7 +261,7 @@ module COOMatrix =
                         allColumnsBuffer.[i] <- int fstIdx
                         allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX] @>
 
-        let kernel = clContext.CreateClKernel(merge)
+        let kernel = clContext.CreateClProgram(merge).GetKernel()
 
         fun (processor: MailboxProcessor<_>) (matrixLeftRows: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRows: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'a>) ->
 
@@ -299,7 +299,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.SetArguments
+                        kernel.KernelFunc
                             ndRange
                             firstSide
                             secondSide
@@ -419,12 +419,12 @@ module COOMatrix =
                     expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
 
         let kernelCalcHyperSparseRows =
-            clContext.CreateClKernel calcHyperSparseRows
+            clContext.CreateClProgram(calcHyperSparseRows).GetKernel()
 
         let kernelCalcNnzPerRowSparse =
-            clContext.CreateClKernel calcNnzPerRowSparse
+            clContext.CreateClProgram(calcNnzPerRowSparse).GetKernel()
 
-        let kernelExpandNnzPerRow = clContext.CreateClKernel expandNnzPerRow
+        let kernelExpandNnzPerRow = clContext.CreateClProgram(expandNnzPerRow).GetKernel()
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 
@@ -469,7 +469,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCalcHyperSparseRows.SetArguments
+                        kernelCalcHyperSparseRows.KernelFunc
                             ndRangeCHSR
                             rowIndices
                             bitmap
@@ -497,7 +497,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelCalcNnzPerRowSparse.SetArguments
+                        kernelCalcNnzPerRowSparse.KernelFunc
                             ndRangeCNPRSandENPR
                             nonZeroRowsPointers
                             nnzPerRowSparse
@@ -516,7 +516,7 @@ module COOMatrix =
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernelExpandNnzPerRow.SetArguments
+                        kernelExpandNnzPerRow.KernelFunc
                             ndRangeCNPRSandENPR
                             totalSum
                             nnzPerRowSparse

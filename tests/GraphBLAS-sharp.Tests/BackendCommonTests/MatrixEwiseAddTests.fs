@@ -44,7 +44,7 @@ let correctnessGenericTest
     (case: OperationCase)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
-    let q = case.ClContext.Provider.CommandQueue
+    let q = case.ClContext.CommandQueue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let mtx1 =

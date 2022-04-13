@@ -84,7 +84,7 @@ module internal rec Sum =
                     let mutable step = 2
 
                     while step <= workGroupSize do
-                        barrier ()
+                        barrierLocal ()
 
                         if localID < workGroupSize / step then
                             let i = step * (localID + 1) - 1
@@ -92,7 +92,7 @@ module internal rec Sum =
 
                         step <- step <<< 1
 
-                    barrier ()
+                    barrierLocal ()
 
                     if localID = workGroupSize - 1 then
                         verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID] @>
