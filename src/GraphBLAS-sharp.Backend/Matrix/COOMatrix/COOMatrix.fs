@@ -133,7 +133,7 @@ module COOMatrix =
             @>
 
         let kernel =
-            clContext.CreateClProgram(preparePositions).GetKernel()
+            clContext.CreateClProgram(preparePositions)
 
         fun (processor: MailboxProcessor<_>)
             (allRows: ClArray<int>)
@@ -162,6 +162,8 @@ module COOMatrix =
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -299,7 +301,7 @@ module COOMatrix =
                         leftMergedValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                         isLeftBitmap.[i] <- 1 @>
 
-        let kernel = clContext.CreateClProgram(merge).GetKernel()
+        let kernel = clContext.CreateClProgram(merge)
 
         fun (processor: MailboxProcessor<_>) (matrixLeftRows: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRows: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'b>) ->
 
@@ -349,6 +351,8 @@ module COOMatrix =
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -475,12 +479,12 @@ module COOMatrix =
                     expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
 
         let kernelCalcHyperSparseRows =
-            clContext.CreateClProgram(calcHyperSparseRows).GetKernel()
+            clContext.CreateClProgram(calcHyperSparseRows)
 
         let kernelCalcNnzPerRowSparse =
-            clContext.CreateClProgram(calcNnzPerRowSparse).GetKernel()
+            clContext.CreateClProgram(calcNnzPerRowSparse)
 
-        let kernelExpandNnzPerRow = clContext.CreateClProgram(expandNnzPerRow).GetKernel()
+        let kernelExpandNnzPerRow = clContext.CreateClProgram(expandNnzPerRow)
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 
@@ -522,6 +526,8 @@ module COOMatrix =
             let nnz = rowIndices.Length
             let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
 
+            let kernelCalcHyperSparseRows = kernelCalcHyperSparseRows.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
@@ -550,6 +556,8 @@ module COOMatrix =
             let ndRangeCNPRSandENPR =
                 Range1D.CreateValid(totalSum, workGroupSize)
 
+            let kernelCalcNnzPerRowSparse = kernelCalcNnzPerRowSparse.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
@@ -568,6 +576,8 @@ module COOMatrix =
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite
                 )
+
+            let kernelExpandNnzPerRow = kernelExpandNnzPerRow.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments

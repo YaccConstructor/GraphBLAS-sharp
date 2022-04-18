@@ -28,7 +28,7 @@ module CSRMatrix =
                     rowIndices.[rowStart + i] <- groupId
                     i <- i + workGroupSize @>
 
-        let kernel = clContext.CreateClProgram(expandRows).GetKernel()
+        let kernel = clContext.CreateClProgram(expandRows)
 
         fun (processor: MailboxProcessor<_>) workGroupSize rowPointers rowCount (nnz: int) ->
             let ndRange =
@@ -40,6 +40,8 @@ module CSRMatrix =
                     hostAccessMode = HostAccessMode.ReadWrite,
                     deviceAccessMode = DeviceAccessMode.ReadWrite
                 )
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
