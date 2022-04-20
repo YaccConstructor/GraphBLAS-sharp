@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
+open OpenCL.Net
 
 module Matrix =
     let copy (clContext: ClContext) =
@@ -52,15 +53,15 @@ module Matrix =
             | MatrixCOO _ -> copy processor workGroupSize matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'b -> 'c>) workGroupSize =
+    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOeWiseAdd =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
 
         let CSReWiseAdd =
             CSRMatrix.eWiseAdd clContext opAdd workGroupSize
 
-        fun (processor: MailboxProcessor<_>) matrix1 matrix2 (leftZero: ClArray<'a>) (rightZero: ClArray<'b>) (resultZero: ClArray<'c>)  ->
+        fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 leftZero rightZero resultZero |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 leftZero rightZero resultZero |> MatrixCSR
+            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"

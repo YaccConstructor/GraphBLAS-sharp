@@ -92,7 +92,7 @@ module CSRMatrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a -> 'b -> 'c>) workGroupSize =
+    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
         let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
         let toCOOInplaceRight = toCOOInplace clContext workGroupSize
@@ -103,12 +103,12 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'b>) (leftZero: ClArray<'a>) (rightZero: ClArray<'b>) (resultZero: ClArray<'c>)  ->
+        fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'b>) ->
 
             let m1COO = toCOOInplaceLeft processor m1
             let m2COO = toCOOInplaceRight processor m2
 
-            let m3COO = eWiseCOO processor m1COO m2COO leftZero rightZero resultZero
+            let m3COO = eWiseCOO processor m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))

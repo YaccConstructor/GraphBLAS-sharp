@@ -94,7 +94,7 @@ module COOMatrix =
 
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
-        (opAdd: Expr<'a -> 'b -> 'c>)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
 
@@ -107,10 +107,7 @@ module COOMatrix =
                 (rightValuesBuffer: ClArray<'b>)
                 (allValuesBuffer: ClArray<'c>)
                 (rawPositionsBuffer: ClArray<int>)
-                (isLeftBitmap: ClArray<int>)
-                (leftZero: ClArray<'a>)
-                (rightZero: ClArray<'b>)
-                (resultZero: ClArray<'c>) ->
+                (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -118,18 +115,32 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
                     rawPositionsBuffer.[i] <- 0
-                    let resValue = (%opAdd) leftValuesBuffer.[i + 1] rightValuesBuffer.[i]
-                    allValuesBuffer.[i + 1] <- resValue
-                else if (i > 0
-                    && allRowsBuffer.[i] = allRowsBuffer.[i - 1]
-                    && allColumnsBuffer.[i] = allColumnsBuffer.[i - 1]) then
-                    rawPositionsBuffer.[i] <- 1
-                else
+                    rawPositionsBuffer.[i + 1] <- 1
+                    match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
+                    | Some v -> allValuesBuffer.[i + 1] <- v
+                    | None -> ()
+                else if (i > 0 && i < length
+                    && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                    || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1])) then
                     rawPositionsBuffer.[i] <- 1
                     if isLeftBitmap.[i] = 1 then
-                        allValuesBuffer.[i] <- (%opAdd) leftValuesBuffer.[i] rightZero.[0]
+                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
+                        | Some v -> allValuesBuffer.[i] <- v
+                        | None -> ()
                     else
-                        allValuesBuffer.[i] <- (%opAdd) leftZero.[0] rightValuesBuffer.[i]
+                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
+                        | Some v -> allValuesBuffer.[i] <- v
+                        | None -> ()
+                else if i = 0 then
+                    rawPositionsBuffer.[i] <- 1
+                    if isLeftBitmap.[i] = 1 then
+                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
+                        | Some v -> allValuesBuffer.[i] <- v
+                        | None -> ()
+                    else
+                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
+                        | Some v -> allValuesBuffer.[i] <- v
+                        | None -> ()
             @>
 
         let kernel =
@@ -140,10 +151,7 @@ module COOMatrix =
             (allColumns: ClArray<int>)
             (leftValues: ClArray<'a>)
             (rightValues: ClArray<'b>)
-            (isLeft: ClArray<int>)
-            (leftZero: ClArray<'a>)
-            (rightZero: ClArray<'b>)
-            (resultZero: ClArray<'c>) ->
+            (isLeft: ClArray<int>) ->
             let length = leftValues.Length
 
             let ndRange =
@@ -167,7 +175,7 @@ module COOMatrix =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns leftValues rightValues allValues rawPositionsGpu isLeft leftZero rightZero resultZero)
+                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns leftValues rightValues allValues rawPositionsGpu isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -382,7 +390,7 @@ module COOMatrix =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c:struct and 'c: equality> (clContext: ClContext) (opAdd: Expr<'a -> 'b -> 'c>) workGroupSize =
+    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c:struct and 'c: equality> (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
         let merge = merge clContext workGroupSize
 
@@ -391,7 +399,7 @@ module COOMatrix =
 
         let setPositions = setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'b>) (leftZero: ClArray<'a>) (rightZero: ClArray<'b>) (resultZero: ClArray<'c>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
@@ -404,7 +412,7 @@ module COOMatrix =
                     matrixRight.Values
 
             let rawPositions, allValues =
-                preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft leftZero rightZero resultZero
+                preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft
 
             let resultRows, resultColumns, resultValues, resultLength =
                 setPositions queue allRows allColumns allValues rawPositions
