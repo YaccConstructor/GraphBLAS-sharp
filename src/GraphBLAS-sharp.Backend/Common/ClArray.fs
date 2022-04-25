@@ -15,7 +15,8 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let kernel = clContext.CreateClProgram(copy).GetKernel()
+        let kernel =
+            clContext.CreateClProgram(copy)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
             let ndRange =
@@ -23,6 +24,8 @@ module ClArray =
 
             let outputArray =
                 clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray outputArray inputArray.Length)
@@ -42,7 +45,8 @@ module ClArray =
                 if i < outputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i % inputArrayLength] @>
 
-        let kernel = clContext.CreateClProgram(replicate).GetKernel()
+        let kernel =
+            clContext.CreateClProgram(replicate)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
@@ -52,6 +56,8 @@ module ClArray =
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -301,7 +307,8 @@ module ClArray =
                 else
                     isUniqueBitmap.[i] <- 1 @>
 
-        let kernel = clContext.CreateClProgram(getUniqueBitmap)
+        let kernel =
+            clContext.CreateClProgram(getUniqueBitmap)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
@@ -320,9 +327,7 @@ module ClArray =
 
             let kernel = kernel.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap)
-            )
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap))
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
