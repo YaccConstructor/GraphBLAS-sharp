@@ -23,7 +23,10 @@ module COOMatrix =
                     resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
                     resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
 
-        let kernel = clContext.CreateClProgram(setPositions).GetKernel()
+        let kernel =
+            clContext
+                .CreateClProgram(setPositions)
+                .GetKernel()
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
@@ -98,15 +101,7 @@ module COOMatrix =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D)
-                length
-                (allRowsBuffer: ClArray<int>)
-                (allColumnsBuffer: ClArray<int>)
-                (leftValuesBuffer: ClArray<'a>)
-                (rightValuesBuffer: ClArray<'b>)
-                (allValuesBuffer: ClArray<'c>)
-                (rawPositionsBuffer: ClArray<int>)
-                (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (leftValuesBuffer: ClArray<'a>) (rightValuesBuffer: ClArray<'b>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -114,16 +109,17 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
                     rawPositionsBuffer.[i] <- 0
+
                     match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
                     | Some v ->
                         allValuesBuffer.[i + 1] <- v
                         rawPositionsBuffer.[i + 1] <- 1
-                    | None ->
-                        rawPositionsBuffer.[i + 1] <- 0
-                else if (i > 0 && i < length
-                    && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                    || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                    || i = 0 then
+                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                else if (i > 0
+                         && i < length
+                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                        || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValuesBuffer.[i]) None with
                         | Some v ->
@@ -135,18 +131,12 @@ module COOMatrix =
                         | Some v ->
                             allValuesBuffer.[i] <- v
                             rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
-            @>
+                        | None -> rawPositionsBuffer.[i] <- 0 @>
 
         let kernel =
             clContext.CreateClProgram(preparePositions)
 
-        fun (processor: MailboxProcessor<_>)
-            (allRows: ClArray<int>)
-            (allColumns: ClArray<int>)
-            (leftValues: ClArray<'a>)
-            (rightValues: ClArray<'b>)
-            (isLeft: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
             let length = leftValues.Length
 
             let ndRange =
@@ -170,7 +160,17 @@ module COOMatrix =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange length allRows allColumns leftValues rightValues allValues rawPositionsGpu isLeft)
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            length
+                            allRows
+                            allColumns
+                            leftValues
+                            rightValues
+                            allValues
+                            rawPositionsGpu
+                            isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -385,7 +385,11 @@ module COOMatrix =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c:struct and 'c: equality> (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
 
         let merge = merge clContext workGroupSize
 
@@ -487,7 +491,8 @@ module COOMatrix =
         let kernelCalcNnzPerRowSparse =
             clContext.CreateClProgram(calcNnzPerRowSparse)
 
-        let kernelExpandNnzPerRow = clContext.CreateClProgram(expandNnzPerRow)
+        let kernelExpandNnzPerRow =
+            clContext.CreateClProgram(expandNnzPerRow)
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 

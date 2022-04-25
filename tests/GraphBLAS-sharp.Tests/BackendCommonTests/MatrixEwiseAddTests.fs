@@ -31,13 +31,17 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
     match actual with
     | MatrixCOO actual ->
         for i in 0 .. actual.Rows.Length - 1 do
-            if isEqual zero actual.Values.[i] then failwith "Resulting zeroes should be filtered."
+            if isEqual zero actual.Values.[i] then
+                failwith "Resulting zeroes should be filtered."
+
             actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
     | _ -> failwith "Resulting matrix should be converted to COO format."
 
     for i in 0 .. rows - 1 do
         for j in 0 .. columns - 1 do
-            Expect.isTrue (isEqual actual2D.[i, j] expected2D.[i, j]) $"Values should be the same. Actual is {actual2D.[i, j]}, expected {expected2D.[i, j]}."
+            Expect.isTrue
+                (isEqual actual2D.[i, j] expected2D.[i, j])
+                $"Values should be the same. Actual is {actual2D.[i, j]}, expected {expected2D.[i, j]}."
 
 let correctnessGenericTest
     zero
@@ -114,14 +118,13 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.eWiseAdd case.ClContext byteSum  wgSize
+          Matrix.eWiseAdd case.ClContext byteSum wgSize
 
       let byteToCOO = Matrix.toCOO case.ClContext wgSize
 
       case
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=)
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-      ]
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
     testCases
@@ -135,7 +138,6 @@ let tests =
                     .GetDeviceInfo(device, DeviceInfo.Type, &e)
                     .CastTo<DeviceType>()
 
-            deviceType = DeviceType.Gpu
-            )
+            deviceType = DeviceType.Gpu)
     |> List.collect testFixtures
     |> testList "Backend.Matrix.eWiseAdd tests"
