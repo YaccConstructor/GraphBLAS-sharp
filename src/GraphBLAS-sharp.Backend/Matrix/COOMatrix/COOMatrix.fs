@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common
 
 module COOMatrix =
     ///<param name="clContext">.</param>
@@ -115,32 +114,28 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
                     rawPositionsBuffer.[i] <- 0
-                    rawPositionsBuffer.[i + 1] <- 1
                     match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
-                    | Some v -> allValuesBuffer.[i + 1] <- v
-                    | None -> ()
+                    | Some v ->
+                        allValuesBuffer.[i + 1] <- v
+                        rawPositionsBuffer.[i + 1] <- 1
+                    | None ->
+                        rawPositionsBuffer.[i + 1] <- 0
                 else if (i > 0 && i < length
                     && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                    || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1])) then
-                    rawPositionsBuffer.[i] <- 1
+                    || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                    || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValuesBuffer.[i]) None with
-                        | Some v -> allValuesBuffer.[i] <- v
-                        | None -> ()
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0
                     else
                         match (%opAdd) None (Some rightValuesBuffer.[i]) with
-                        | Some v -> allValuesBuffer.[i] <- v
-                        | None -> ()
-                else if i = 0 then
-                    rawPositionsBuffer.[i] <- 1
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
-                        | Some v -> allValuesBuffer.[i] <- v
-                        | None -> ()
-                    else
-                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
-                        | Some v -> allValuesBuffer.[i] <- v
-                        | None -> ()
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0
             @>
 
         let kernel =
