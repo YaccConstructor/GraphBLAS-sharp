@@ -413,9 +413,13 @@ module COOMatrix =
             let rawPositions, allValues =
                 preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft
 
+            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
+            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+
             let resultRows, resultColumns, resultValues, resultLength =
                 setPositions queue allRows allColumns allValues rawPositions
 
+            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
