@@ -36,7 +36,7 @@ module COOMatrix =
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let prefixSumArrayLength = positions.Length
 
-            let resultLengthGpu = clContext.CreateClArray<_>(1)
+            let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
 

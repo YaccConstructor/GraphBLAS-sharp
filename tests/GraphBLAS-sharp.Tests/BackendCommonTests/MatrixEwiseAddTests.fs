@@ -138,6 +138,6 @@ let tests =
                     .GetDeviceInfo(device, DeviceInfo.Type, &e)
                     .CastTo<DeviceType>()
 
-            deviceType = DeviceType.Gpu)
+            deviceType = DeviceType.Default)
     |> List.collect testFixtures
     |> testList "Backend.Matrix.eWiseAdd tests"

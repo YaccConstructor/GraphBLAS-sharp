@@ -15,8 +15,7 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let kernel =
-            clContext.CreateClProgram(copy)
+        let kernel = clContext.CreateClProgram(copy)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
             let ndRange =
@@ -45,8 +44,7 @@ module ClArray =
                 if i < outputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i % inputArrayLength] @>
 
-        let kernel =
-            clContext.CreateClProgram(replicate)
+        let kernel = clContext.CreateClProgram(replicate)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
@@ -98,7 +96,7 @@ module ClArray =
     let private scan (clContext: ClContext) workGroupSize =
 
         let scan =
-            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClCell<int>) ->
 
                 let resultLocalBuffer = localArray<int> workGroupSize
                 let i = ndRange.GlobalID0
@@ -127,7 +125,7 @@ module ClArray =
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                     resultLocalBuffer.[localID] <- 0
@@ -154,7 +152,7 @@ module ClArray =
 
         let kernel = clContext.CreateClProgram(scan)
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClCell<int>) ->
             let ndRange =
                 Range1D.CreateValid(inputArrayLength, workGroupSize)
 
@@ -187,7 +185,7 @@ module ClArray =
         let scan = scan clContext workGroupSize
         let update = update clContext
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
             let firstVertices =
                 clContext.CreateClArray<int>(
                     (inputArray.Length - 1) / workGroupSize + 1,
@@ -243,7 +241,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let copiedArray = copy processor workGroupSize inputArray
 
-            let totalSum = clContext.CreateClArray [| 0 |]
+            let totalSum = clContext.CreateClCell 0
             prefixSumExcludeInplace processor copiedArray totalSum
 
     ///<param name="clContext">.</param>
@@ -251,12 +249,12 @@ module ClArray =
     let prefixSumInclude (clContext: ClContext) workGroupSize =
 
         let kernel =
-            <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClArray<int>) (outputArray: ClArray<int>) ->
+            <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClCell<int>) (outputArray: ClArray<int>) ->
 
                 let gid = range.GlobalID0
 
                 if gid = inputArrayLength - 1 then
-                    outputArray.[gid] <- totalSum.[0]
+                    outputArray.[gid] <- totalSum.Value
                 elif gid < inputArrayLength - 1 then
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
@@ -269,7 +267,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let copiedArray = copy processor workGroupSize inputArray
             let inputArrayLength = inputArray.Length
-            let totalSum = clContext.CreateClArray [| 0 |]
+            let totalSum = clContext.CreateClCell 0
 
             let _, totalSum =
                 prefixSumExcludeInplace processor copiedArray totalSum
