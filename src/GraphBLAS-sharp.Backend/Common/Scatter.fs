@@ -66,7 +66,7 @@ module internal Scatter =
     /// <code>
     /// let ps = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
     /// let arr = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
-    /// let res = run clContext 64 processor ps arr 5
+    /// let res = run clContext 64 processor ps arr
     /// ...
     /// > val res = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
     /// </code>

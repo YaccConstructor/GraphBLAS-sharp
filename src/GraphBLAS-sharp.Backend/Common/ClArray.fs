@@ -20,12 +20,14 @@ module ClArray =
                     if i < length then
                         outputBuffer.[i] <- (%initializer) i
             @>
-        let kernel = clContext.CreateClProgram(init).GetKernel()
+        let program = clContext.CreateClProgram(init)
 
         fun (processor: MailboxProcessor<_>)
             (length: int) ->
 
             let outputArray = clContext.CreateClArray(length)
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
             processor.Post(

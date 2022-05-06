@@ -53,6 +53,22 @@ module internal PrefixSum =
                 totalSum
                 0
 
+    let standardExclude
+        (clContext: ClContext)
+        workGroupSize =
+
+        let scan = PrefixSum.runExclude <@ (+) @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (inputArray: ClArray<int>)
+            (totalSum: ClCell<int>) ->
+
+            scan
+                processor
+                inputArray
+                totalSum
+                0
+
     let byHeadFlagsInclude
         plus
         (clContext: ClContext)
