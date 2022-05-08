@@ -10,7 +10,7 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open OpenCL.Net
-open StandardOperations
+open Backend.Common.StandardOperations
 
 let logger = Log.create "EwiseAdd.Tests"
 
