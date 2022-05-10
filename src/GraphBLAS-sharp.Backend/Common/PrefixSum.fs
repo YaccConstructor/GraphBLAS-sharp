@@ -22,13 +22,15 @@ module internal PrefixSum =
                     if i < inputArrayLength then
                         resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
             @>
-        let kernel = clContext.CreateClProgram(update).GetKernel()
+        let program = clContext.CreateClProgram(update)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
             (inputArrayLength: int)
             (vertices: ClArray<'a>)
             (bunchLength: int) ->
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
             processor.Post(
@@ -108,7 +110,7 @@ module internal PrefixSum =
 
                 (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
             @>
-        let kernel = clContext.CreateClProgram(scan).GetKernel()
+        let program = clContext.CreateClProgram(scan)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
@@ -120,6 +122,8 @@ module internal PrefixSum =
 
             // TODO: передавать zero как константу
             let zero = clContext.CreateClCell(zero)
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
             processor.Post(

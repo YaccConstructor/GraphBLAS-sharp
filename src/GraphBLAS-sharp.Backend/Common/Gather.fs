@@ -31,7 +31,7 @@ module internal Gather =
 
                     if i < size then outputArray.[i] <- inputArray.[positions.[i]]
             @>
-        let kernel = clContext.CreateClProgram(gather).GetKernel()
+        let program = clContext.CreateClProgram(gather)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)
@@ -44,6 +44,8 @@ module internal Gather =
                 )
 
             let size = outputArray.Length
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(size, workGroupSize)
             processor.Post(

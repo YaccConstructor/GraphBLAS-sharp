@@ -38,7 +38,7 @@ module internal ScatterRowPointers =
                         else
                             rowPointers.[i] <- positions.[buff]
             @>
-        let kernel = clContext.CreateClProgram(setPositions).GetKernel()
+        let program = clContext.CreateClProgram(setPositions)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)
@@ -47,6 +47,8 @@ module internal ScatterRowPointers =
             (rowPointers: ClArray<int>) ->
 
             let rowPointersLength = rowPointers.Length
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(rowPointersLength, workGroupSize)
             processor.Post(

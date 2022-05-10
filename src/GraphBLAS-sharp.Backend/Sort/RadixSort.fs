@@ -37,7 +37,7 @@ module RadixSort =
                         resultKeys.[index] <- keys.[i]
                         resultValues.[index] <- values.[i]
             @>
-        let kernel = clContext.CreateClProgram(setPositions).GetKernel()
+        let program = clContext.CreateClProgram(setPositions)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<_>)
@@ -52,6 +52,8 @@ module RadixSort =
             let offset = numberOfBits * stage
 
             let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
+
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -88,13 +90,15 @@ module RadixSort =
                         let buff = positions.[i]
                         positions.[i] <- (%plus) buff sums
             @>
-        let kernel = clContext.CreateClProgram(updatePositions).GetKernel()
+        let program = clContext.CreateClProgram(updatePositions)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<_>)
             (positionsLength: int)
             (sums: ClCell<_>) ->
             let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
+
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -118,12 +122,14 @@ module RadixSort =
                         let a = sums.Value
                         sums.Value <- (%scan) a
             @>
-        let kernel = clContext.CreateClProgram(update).GetKernel()
+        let program = clContext.CreateClProgram(update)
 
         fun (processor: MailboxProcessor<_>)
             (sums: ClCell<_>) ->
 
             let ndRange = Range1D(workGroupSize)
+
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -156,7 +162,7 @@ module RadixSort =
                         //let buff = keys.[i]
                         //positions.[i] <- (%get) ((buff >>> offset) &&& ~~~(0xFFFFFFFFFFFFFFFFUL <<< numberOfBits))
             @>
-        let kernel = clContext.CreateClProgram(init).GetKernel()
+        let program = clContext.CreateClProgram(init)
 
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<uint64>)
@@ -168,6 +174,8 @@ module RadixSort =
             let offset = numberOfBits * stage
 
             let ndRange = Range1D.CreateValid(keysLength, workGroupSize)
+
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -221,7 +229,7 @@ module RadixSort =
                     if i < length then
                         positions.[i] <- zero
             @>
-        let kernel = clContext.CreateClProgram(init).GetKernel()
+        let program = clContext.CreateClProgram(init)
 
         fun (processor: MailboxProcessor<_>)
             (length: int)
@@ -232,6 +240,8 @@ module RadixSort =
             let positions = clContext.CreateClArray(length)
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange zero positions length)
@@ -1940,7 +1950,7 @@ module RadixSort =
                 let mutable isFinished = false
                 while not isFinished do
                 // if true then
-                    printfn "globalStep = %A" globalStep
+                    // printfn "globalStep = %A" globalStep
                     let firstKeys = fst keyArrays
                     let mutable secondKeys = snd keyArrays
 
@@ -1962,11 +1972,11 @@ module RadixSort =
                         |> ClTask.runSync clContext
                     processor.Post(Msg.CreateFreeMsg<_>(isFinishedGPU))
 
-                    // keyArrays <- secondKeys, firstKeys
+                    keyArrays <- secondKeys, firstKeys
                     // let keysAncilla = clContext.CreateClArray(secondKeys.Length)
-                    let keysAncilla = ClArray.create 99UL clContext workGroupSize processor secondKeys.Length
-                    keyArrays <- secondKeys, keysAncilla
-                    processor.Post(Msg.CreateFreeMsg<_>(firstKeys))
+                    // let keysAncilla = ClArray.create 99UL clContext workGroupSize processor secondKeys.Length
+                    // keyArrays <- secondKeys, keysAncilla
+                    // processor.Post(Msg.CreateFreeMsg<_>(firstKeys))
 
                 histograms
                 |> List.iter (fun hist ->

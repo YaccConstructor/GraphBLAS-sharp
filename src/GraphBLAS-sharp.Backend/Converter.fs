@@ -22,7 +22,7 @@ module internal Converter =
                     let i = ndRange.GlobalID0 + 1
                     if i < rowPointersLength - 1 then atomic (+) rows.[rowPointers.[i]] 1 |> ignore
             @>
-        let kernel = clContext.CreateClProgram(prepareRows).GetKernel()
+        let program = clContext.CreateClProgram(prepareRows)
 
         fun (processor: MailboxProcessor<_>)
             (matrix: CSRMatrix<'a>) ->
@@ -30,6 +30,8 @@ module internal Converter =
             let rows = create processor matrix.Columns.Length
 
             let rowPointersLength = matrix.RowPointers.Length
+
+            let kernel = program.GetKernel()
 
             if rowPointersLength > 2 then
                 let ndRange = Range1D.CreateValid(rowPointersLength - 2, workGroupSize)

@@ -26,7 +26,7 @@ module internal PrepareMatrix =
                         else
                             positions.[i] <- 1
             @>
-        let kernel = clContext.CreateClProgram(preparePositions).GetKernel()
+        let program = clContext.CreateClProgram(preparePositions)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -39,6 +39,8 @@ module internal PrepareMatrix =
                 )
 
             let length = rawPositions.Length
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
             processor.Post(

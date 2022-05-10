@@ -68,7 +68,7 @@ module internal Expansion =
                     if i < size then
                         positionsForResCols.[i] <- secondRowPointers.[firstColumns.[i - 1] + 1] - secondRowPointers.[firstColumns.[i - 1]]
             @>
-        let kernel = clContext.CreateClProgram(init).GetKernel()
+        let program = clContext.CreateClProgram(init)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -81,6 +81,8 @@ module internal Expansion =
                 )
 
             let size = positionsForResCols.Length
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(size - 1, workGroupSize)
             processor.Post(
@@ -133,7 +135,7 @@ module internal Expansion =
                     if i < size then
                         rowPtrsForCols.[i] <- secondRowPointers.[firstColumns.[i]] - secondRowPointers.[firstColumns.[i - 1]]
             @>
-        let kernel = clContext.CreateClProgram(init).GetKernel()
+        let program = clContext.CreateClProgram(init)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -146,6 +148,8 @@ module internal Expansion =
                 )
 
             let size = rowPtrsForCols.Length
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(size - 1, workGroupSize)
             processor.Post(
@@ -182,7 +186,7 @@ module internal Expansion =
                         if index <> firstRowPointers.[i + 1] then
                             rowPtrsForCols.[index] <- secondRowPointers.[firstColumns.[index]]
             @>
-        let kernel = clContext.CreateClProgram(update).GetKernel()
+        let program = clContext.CreateClProgram(update)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -190,6 +194,8 @@ module internal Expansion =
             (rowPtrsForCols: ClArray<int>) ->
 
             let size = matrixLeft.RowCount
+
+            let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(size, workGroupSize)
             processor.Post(
