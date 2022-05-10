@@ -66,7 +66,8 @@ module internal Expansion =
                     let i = ndRange.GlobalID0 + 1
 
                     if i < size then
-                        positionsForResCols.[i] <- secondRowPointers.[firstColumns.[i - 1] + 1] - secondRowPointers.[firstColumns.[i - 1]]
+                        let idx = firstColumns.[i - 1]
+                        positionsForResCols.[i] <- secondRowPointers.[idx + 1] - secondRowPointers.[idx]
             @>
         let program = clContext.CreateClProgram(init)
 

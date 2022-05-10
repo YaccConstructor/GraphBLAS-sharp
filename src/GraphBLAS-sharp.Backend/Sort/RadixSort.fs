@@ -6,8 +6,7 @@ open Microsoft.FSharp.Core.Operators
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Predefined
 
-// module internal RadixSort =
-module RadixSort =
+module internal RadixSort =
     let private setPositions
         (getBy: Expr<'b -> uint64 -> int>)
         (clContext: ClContext)
@@ -447,7 +446,7 @@ module RadixSort =
             3
             clContext
 
-    let createHistograms
+    let private createHistograms
         clContext
         workGroupSize =
 
@@ -458,7 +457,7 @@ module RadixSort =
         let createHistograms =
             <@
                 fun (range: Range1D)
-                    (keys: ClArray<uint64>)
+                    (keys: ClArray<int>)
                     (sectorIndices: ClArray<int>)
                     (sectorPointers: ClArray<int>)
                     (histograms00: ClArray<int>)
@@ -535,7 +534,7 @@ module RadixSort =
         let program = clContext.CreateClProgram(createHistograms)
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
+            (keys: ClArray<int>)
             (sectorTails: ClArray<int>)
             (globalStep: int) ->
 
@@ -574,22 +573,22 @@ module RadixSort =
                             histograms.[0b01]
                             histograms.[0b10]
                             histograms.[0b11]
-                            (64 - ((globalStep + 1) <<< 1))
+                            (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             sectorIndices, sectorPointers, histograms
 
-    let permute
+    let private permute
         (clContext: ClContext)
         workGroupSize =
 
         // Shift cyclically the part of the array to the right. Begin index inclusive, end index exclusive
         let doShift =
             <@
-                fun (input: uint64[])
-                    (output: uint64[])
+                fun (input: int[])
+                    (output: int[])
                     (length: int)
                     (beginIdx: int)
                     (endIdx: int)
@@ -608,8 +607,8 @@ module RadixSort =
 
         // let changeState =
         //     <@
-        //         fun (input: uint64[])
-        //             (output: uint64[])
+        //         fun (input: int[])
+        //             (output: int[])
         //             (histogram: int[])
         //             (length: int)
         //             (initState: int)
@@ -640,7 +639,8 @@ module RadixSort =
         let permute =
             <@
                 fun (range: Range1D)
-                    (keys: ClArray<uint64>)
+                    (keys: ClArray<int>)
+                    (values: ClArray<'a>)
                     (sectorIndices: ClArray<int>)
                     (sectorPointers: ClArray<int>)
                     (histograms00: ClArray<int>)
@@ -792,7 +792,7 @@ module RadixSort =
                         barrierLocal()
 
                         // Load data to the local array
-                        let keysLocal = localArray<uint64> workGroupSize
+                        let keysLocal = localArray<int> workGroupSize
                         if localID < sum then
                             let mutable j = 0
                             let mutable k = localID
@@ -806,7 +806,7 @@ module RadixSort =
 
                         // Sort local array
                         let actualHistogram = localArray<int> 4
-                        let keysLocalAncilla = localArray<uint64> workGroupSize
+                        let keysLocalAncilla = localArray<int> workGroupSize
                         let bitmap = localArray<int> workGroupSize
                         let offsets = localArray<int> 2
                         if localID < 2 then
@@ -982,7 +982,8 @@ module RadixSort =
         let copy = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
+            (keys: ClArray<int>)
+            (values: ClArray<'a>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
             (histograms: list<ClArray<int>>)
@@ -1000,6 +1001,7 @@ module RadixSort =
                         kernel.KernelFunc
                             ndRange
                             keys
+                            values
                             sectorIndices
                             sectorPointers
                             histograms.[0b00]
@@ -1011,19 +1013,19 @@ module RadixSort =
                             garbage.[0b10]
                             garbage.[0b11]
                             isFinished
-                            (64 - ((globalStep + 1) <<< 1))
+                            (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    // let computeGarbage
+    // let private computeGarbage
     //     (clContext: ClContext)
     //     workGroupSize =
 
     //     let computeGarbage =
     //         <@
     //             fun (range: Range1D)
-    //                 (keys: ClArray<uint64>)
+    //                 (keys: ClArray<int>)
     //                 (sectorIndices: ClArray<int>)
     //                 (sectorPointers: ClArray<int>)
     //                 (histograms00: ClArray<int>)
@@ -1239,7 +1241,7 @@ module RadixSort =
     //     let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
     //     fun (processor: MailboxProcessor<_>)
-    //         (keys: ClArray<uint64>)
+    //         (keys: ClArray<int>)
     //         (sectorIndices: ClArray<int>)
     //         (sectorPointers: ClArray<int>)
     //         (histograms: list<ClArray<int>>)
@@ -1287,15 +1289,15 @@ module RadixSort =
 
     //         garbageOffsets
 
-    // let repair
+    // let private repair
     //     (clContext: ClContext)
     //     workGroupSize =
 
     //     let repair =
     //         <@
     //             fun (range: Range1D)
-    //                 (keys: ClArray<uint64>)
-    //                 (keysAncilla: ClArray<uint64>)
+    //                 (keys: ClArray<int>)
+    //                 (keysAncilla: ClArray<int>)
     //                 (sectorTails: ClArray<int>)
     //                 (sectorIndices: ClArray<int>)
     //                 (sectorPointers: ClArray<int>)
@@ -1468,26 +1470,6 @@ module RadixSort =
     //                 let i = range.GlobalID0 - shift
     //                 k <- i - sectorPtr
 
-    //                 // //debug
-    //                 // if range.GlobalID0 / workGroupSize = 8 then
-    //                 // // if 8 <= range.GlobalID0 / workGroupSize && range.GlobalID0 / workGroupSize < 12 then
-    //                 //     // if k <= bucketEdge then
-    //                 //     //     keysAncilla.[i] <- uint64 (9999)
-    //                 //     keysAncilla.[localID] <- uint64 k
-    //                 //     // keysAncilla.[localID + 4] <- uint64 bucketEdge
-    //                 //     // else
-    //                 //         // keysAncilla.[localID + 4*(range.GlobalID0 / workGroupSize - 8)] <- uint64 (0)
-    //                 //     // keysAncilla.[localID] <- uint64 (sectorPtr + bucketPtr + offset + bitmap.[localID])
-
-    //                 //     // let workGroupNumber = (k - bucketPtr) / workGroupSize
-    //                 //     // let idx =
-    //                 //         // sectorPtr + bucketPtr + sum + (workGroupSize * workGroupNumber - offset) +
-    //                 //         // localID - bitmap.[localID]
-    //                 //     // keysAncilla.[localID] <- uint64 (sectorPtr)
-    //                 //     // keysAncilla.[localID + 4] <- uint64 (idx)
-    //                 //     // keysAncilla.[localID + 8] <- uint64 (bucket)
-    //                 // //debug
-
     //                 // Update tails
     //                 if localID = 0 then
     //                     sectorTails.[sectorPtr + bucketEdge] <- 1
@@ -1590,8 +1572,8 @@ module RadixSort =
     //     let program = clContext.CreateClProgram(repair)
 
     //     fun (processor: MailboxProcessor<_>)
-    //         (keys: ClArray<uint64>)
-    //         (keysAncilla: ClArray<uint64>)
+    //         (keys: ClArray<int>)
+    //         (keysAncilla: ClArray<int>)
     //         (sectorTails: ClArray<int>)
     //         (sectorIndices: ClArray<int>)
     //         (sectorPointers: ClArray<int>)
@@ -1628,14 +1610,14 @@ module RadixSort =
     //         )
     //         processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let computeGarbage
+    let private computeGarbage
         (clContext: ClContext)
         workGroupSize =
 
         let computeGarbage =
             <@
                 fun (range: Range1D)
-                    (keys: ClArray<uint64>)
+                    (keys: ClArray<int>)
                     (sectorIndices: ClArray<int>)
                     (sectorPointers: ClArray<int>)
                     (histograms00: ClArray<int>)
@@ -1696,7 +1678,7 @@ module RadixSort =
         let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
+            (keys: ClArray<int>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
             (histograms: list<ClArray<int>>)
@@ -1721,35 +1703,29 @@ module RadixSort =
                             histograms.[0b11]
                             garbageLengths
                             bucketHeads
-                            (64 - ((globalStep + 1) <<< 1))
+                            (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            // let arr = Array.zeroCreate garbageLengths.Length
-            // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(garbageLengths, arr, ch))
-            // printfn "garbageLengths \n%A" arr
-
             let garbageOffsets = scan processor bucketHeads garbageLengths 0
-
-            // let arr = Array.zeroCreate bucketHeads.Length
-            // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(bucketHeads, arr, ch))
-            // printfn "bucketHeads \n%A" arr
 
             processor.Post(Msg.CreateFreeMsg<_>(garbageLengths))
             processor.Post(Msg.CreateFreeMsg<_>(bucketHeads))
 
             garbageOffsets
 
-    let repair
+    let private repair
         (clContext: ClContext)
         workGroupSize =
 
         let repair =
             <@
                 fun (range: Range1D)
-                    (keys: ClArray<uint64>)
-                    (keysAncilla: ClArray<uint64>)
+                    (keys: ClArray<int>)
+                    (values: ClArray<'a>)
+                    (keysAncilla: ClArray<int>)
+                    (valuesAncilla: ClArray<'a>)
                     (sectorTails: ClArray<int>)
                     (sectorIndices: ClArray<int>)
                     (sectorPointers: ClArray<int>)
@@ -1823,8 +1799,10 @@ module RadixSort =
         let program = clContext.CreateClProgram(repair)
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
-            (keysAncilla: ClArray<uint64>)
+            (keys: ClArray<int>)
+            (values: ClArray<'a>)
+            (keysAncilla: ClArray<int>)
+            (valuesAncilla: ClArray<'a>)
             (sectorTails: ClArray<int>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
@@ -1841,7 +1819,9 @@ module RadixSort =
                         kernel.KernelFunc
                             ndRange
                             keys
+                            values
                             keysAncilla
+                            valuesAncilla
                             sectorTails
                             sectorIndices
                             sectorPointers
@@ -1854,12 +1834,12 @@ module RadixSort =
                             garbage.[0b10]
                             garbage.[0b11]
                             garbageOffsets
-                            (64 - ((globalStep + 1) <<< 1))
+                            (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let takeStep
+    let private takeStep
         (clContext: ClContext)
         workGroupSize =
 
@@ -1868,8 +1848,10 @@ module RadixSort =
         let repair = repair clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
-            (keysAncilla: ClArray<uint64>)
+            (keys: ClArray<int>)
+            (values: ClArray<'a>)
+            (keysAncilla: ClArray<int>)
+            (valuesAncilla: ClArray<'a>)
             (sectorTails: ClArray<int>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
@@ -1878,28 +1860,11 @@ module RadixSort =
             (isFinished: ClCell<bool>)
             (globalStep: int) ->
 
-            permute processor keys sectorIndices sectorPointers histograms garbage isFinished globalStep
-
-            // let arr = Array.zeroCreate garbage.[0].Length
-            // printfn "garbage \n%A" arr
-            // garbage
-            // |> List.iter (fun gar ->
-            //     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(gar, arr, ch))
-            //     printfn "%A" arr
-            //     // printfn "%A" (Array.fold (fun s a -> s + a) 0 arr)
-            // )
-
-            // let arr = Array.zeroCreate keys.Length
-            // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(keys, arr, ch))
-            // printfn "keys after permute \n%A" arr
+            permute processor keys values sectorIndices sectorPointers histograms garbage isFinished globalStep
 
             let garbageOffsets = computeGarbage processor keys sectorIndices sectorPointers histograms globalStep
 
-            // let arr = Array.zeroCreate garbageOffsets.Length
-            // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(garbageOffsets, arr, ch))
-            // printfn "garbageOffsets \n%A" arr
-
-            repair processor keys keysAncilla sectorTails sectorIndices sectorPointers histograms garbage garbageOffsets globalStep
+            repair processor keys values keysAncilla valuesAncilla sectorTails sectorIndices sectorPointers histograms garbage garbageOffsets globalStep
 
             processor.Post(Msg.CreateFreeMsg<_>(garbageOffsets))
 
@@ -1912,29 +1877,22 @@ module RadixSort =
         let copy = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
-            (keys: ClArray<uint64>)
+            (keys: ClArray<int>)
+            (values: ClArray<'a>)
             (sectorTails: ClArray<int>)
             (maxValue: int) ->
 
             let mutable log = 0
-            while log < 64 && (1 <<< log) <= maxValue do
+            while log < 32 && (1 <<< log) <= maxValue do
                 log <- log + 1
 
             let keysAncilla = clContext.CreateClArray(keys.Length)
+            let valuesAncilla = clContext.CreateClArray(values.Length)
             let mutable keyArrays = keys, keysAncilla
+            let mutable valuesArrays = values, valuesAncilla
 
-            for globalStep in (64 - log) / 2 .. 64 / 2 - 1 do
-            // for globalStep in 31 .. 31 do
+            for globalStep in (32 - log) / 2 .. 32 / 2 - 1 do
                 let sectorIndices, sectorPointers, histograms = createHistograms processor (fst keyArrays) sectorTails globalStep
-
-                // let arr = Array.zeroCreate histograms.[0].Length
-                // printfn "Hsitograms"
-                // histograms
-                // |> List.iter (fun hist ->
-                //     let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(hist, arr, ch))
-                //     printfn "%A" arr
-                //     // printfn "%A" (Array.fold (fun s a -> s + a) 0 arr)
-                // )
 
                 let garbage =
                     [0..3]
@@ -1949,23 +1907,16 @@ module RadixSort =
 
                 let mutable isFinished = false
                 while not isFinished do
-                // if true then
-                    // printfn "globalStep = %A" globalStep
                     let firstKeys = fst keyArrays
                     let mutable secondKeys = snd keyArrays
+
+                    let firstValues = fst valuesArrays
+                    let mutable secondValues = snd valuesArrays
 
                     isFinished <- true
                     let isFinishedGPU = clContext.CreateClCell<bool>(isFinished)
 
-                    takeStep processor firstKeys secondKeys sectorTails sectorIndices sectorPointers histograms garbage isFinishedGPU globalStep
-
-                    // let arr = Array.zeroCreate secondKeys.Length
-                    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(secondKeys, arr, ch))
-                    // printfn "secondKeys \n%A" arr
-
-                    // let arr = Array.zeroCreate sectorTails.Length
-                    // let _ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(sectorTails, arr, ch))
-                    // printfn "sectorTails \n%A" arr
+                    takeStep processor firstKeys firstValues secondKeys secondValues sectorTails sectorIndices sectorPointers histograms garbage isFinishedGPU globalStep
 
                     isFinished <-
                         ClCell.toHost isFinishedGPU
@@ -1973,10 +1924,7 @@ module RadixSort =
                     processor.Post(Msg.CreateFreeMsg<_>(isFinishedGPU))
 
                     keyArrays <- secondKeys, firstKeys
-                    // let keysAncilla = clContext.CreateClArray(secondKeys.Length)
-                    // let keysAncilla = ClArray.create 99UL clContext workGroupSize processor secondKeys.Length
-                    // keyArrays <- secondKeys, keysAncilla
-                    // processor.Post(Msg.CreateFreeMsg<_>(firstKeys))
+                    valuesArrays <- secondValues, firstValues
 
                 histograms
                 |> List.iter (fun hist ->
@@ -1990,6 +1938,7 @@ module RadixSort =
                 processor.Post(Msg.CreateFreeMsg<_>(sectorPointers))
 
             processor.Post(Msg.CreateFreeMsg<_>(snd keyArrays))
+            processor.Post(Msg.CreateFreeMsg<_>(snd valuesArrays))
 
-            fst keyArrays
+            fst keyArrays, fst valuesArrays
 
