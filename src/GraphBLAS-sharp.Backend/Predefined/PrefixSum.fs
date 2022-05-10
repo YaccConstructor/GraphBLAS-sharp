@@ -112,3 +112,47 @@ module internal PrefixSum =
             processor.Post(Msg.CreateFreeMsg(heads))
 
             res
+
+    let byTailFlagsInclude
+        plus
+        zero
+        (clContext: ClContext)
+        workGroupSize =
+
+        let plusAdvanced =
+            <@
+                fun ((x1, x2): struct('a * int))
+                    ((y1, y2): struct('a * int)) ->
+
+                    if x2 = 1 then
+                        struct(y1, y2)
+                    else
+                        let buff = (%plus) x1 y1
+                        struct(buff, y2)
+            @>
+
+        let zip = ClArray.zip clContext workGroupSize
+        let unzip = ClArray.unzip clContext workGroupSize
+        let scanIncludeInPlace = PrefixSum.runIncludeInplace plusAdvanced clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (tailFlags: ClArray<int>)
+            (inputArray: ClArray<'a>) ->
+
+            let zippedArrays = zip processor inputArray tailFlags
+            let total = clContext.CreateClCell<struct('a * int)>()
+
+            scanIncludeInPlace
+                processor
+                zippedArrays
+                total
+                struct(zero, 0)
+            |> ignore
+
+            processor.Post(Msg.CreateFreeMsg(total))
+
+            let res, tails = unzip processor zippedArrays
+            processor.Post(Msg.CreateFreeMsg(zippedArrays))
+            processor.Post(Msg.CreateFreeMsg(tails))
+
+            res
