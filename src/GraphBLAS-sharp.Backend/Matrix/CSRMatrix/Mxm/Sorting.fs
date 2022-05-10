@@ -12,30 +12,19 @@ module internal Sorting =
 
         let create = ClArray.create 0 clContext workGroupSize
         let scatter = Scatter.constInPlace 1 clContext workGroupSize
-        let scan = PrefixSum.standardInclude clContext workGroupSize
-        let pack = ClArray.pack clContext workGroupSize
-        let unpack = ClArray.unpack clContext workGroupSize
-        // TODO: возможность выбрать число бит
-        let sortByKeyInPlace = RadixSort.sortByKeyInPlace8 clContext workGroupSize
+        let sort = RadixSort.runInplace clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
             (matrix: CSRMatrix<'a>) ->
                 let headFlags = create processor matrix.Columns.Length
                 scatter processor matrix.RowPointers headFlags
 
-                let sum = clContext.CreateClCell()
-                let keys, _ = scan processor headFlags sum
-                processor.Post(Msg.CreateFreeMsg<_>(sum))
+                let headFlags' = copy processor headFlags
 
-                let packedIndices = pack processor keys matrix.Columns
-                processor.Post(Msg.CreateFreeMsg<_>(keys))
+                let sortedColumns, sortedValues = sort processor matrix.Columns matrix.Values headFlags' (matrix.ColumnCount - 1)
 
-                sortByKeyInPlace processor packedIndices matrix.Values
-
-                let sortedRows, sortedColumns = unpack processor packedIndices
-
-                processor.Post(Msg.CreateFreeMsg<_>(packedIndices))
-                processor.Post(Msg.CreateFreeMsg<_>(sortedRows))
+                processor.Post(Msg.CreateFreeMsg<_>(headFlags'))
 
                 {
                     Context = clContext
@@ -43,6 +32,6 @@ module internal Sorting =
                     ColumnCount = matrix.ColumnCount
                     RowPointers = matrix.RowPointers
                     Columns = sortedColumns
-                    Values = matrix.Values
+                    Values = sortedValues
                 },
                 headFlags

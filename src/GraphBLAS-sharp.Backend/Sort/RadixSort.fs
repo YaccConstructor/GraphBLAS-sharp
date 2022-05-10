@@ -450,7 +450,7 @@ module internal RadixSort =
         clContext
         workGroupSize =
 
-        let scanExclude = PrefixSum.runExclude <@ (+) @> clContext workGroupSize
+        let scanInclude = PrefixSum.runInclude <@ (+) @> clContext workGroupSize
         let scatter = Scatter.initInPlace <@ fun i -> i @> clContext workGroupSize
         let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
@@ -464,6 +464,7 @@ module internal RadixSort =
                     (histograms01: ClArray<int>)
                     (histograms10: ClArray<int>)
                     (histograms11: ClArray<int>)
+                    (sectorsAmount: int)
                     (offset: int)
                     (length: int) ->
 
@@ -478,16 +479,20 @@ module internal RadixSort =
                         if i >= length then
                             // It's additional workgroup
                             sector <- (i - length) / workGroupSize + 1
-                            let ptr = sectorPointers.[sector - 1] + 1
-                            sectorEdge <- sectorPointers.[sector]
+                            sectorEdge <- length
+                            if sector < sectorsAmount then
+                                sectorEdge <- sectorPointers.[sector + 1]
+                            let ptr = sectorPointers.[sector] + 1
                             shift <- i - (ptr + workGroupSize * (sectorEdge / workGroupSize - (ptr - 1) / workGroupSize))
                         else
-                            sector <- sectorIndices.[i]
-                            sectorEdge <- sectorPointers.[sector]
+                            sector <- sectorIndices.[i] - 1
+                            sectorEdge <- length
+                            if sector < sectorsAmount then
+                                sectorEdge <- sectorPointers.[sector + 1]
                             if sector = 0 then
                                 shift <- 0
                             else
-                                let ptr = sectorPointers.[sector - 1] + 1
+                                let ptr = sectorPointers.[sector] + 1
                                 shift <- (i - ptr) % workGroupSize
                     barrierLocal()
                     let i = range.GlobalID0 - shift
@@ -535,16 +540,16 @@ module internal RadixSort =
 
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<int>)
-            (sectorTails: ClArray<int>)
+            (sectorHeads: ClArray<int>)
             (globalStep: int) ->
 
-            let sectorIndices, sectorsAmountGPU = scanExclude processor sectorTails (clContext.CreateClCell()) 0
+            let sectorIndices, sectorsAmountGPU = scanInclude processor sectorHeads (clContext.CreateClCell()) 0
             let sectorsAmount =
                 ClCell.toHost sectorsAmountGPU
                 |> ClTask.runSync clContext
             processor.Post(Msg.CreateFreeMsg<_>(sectorsAmountGPU))
 
-            // sectorPointers.[i] points on the last element of the i-th sector
+            // sectorPointers.[i] points on the last element of the (i - 1)-th sector
             let sectorPointers = zeroCreate processor sectorsAmount
             scatter processor sectorIndices sectorPointers
 
@@ -573,6 +578,7 @@ module internal RadixSort =
                             histograms.[0b01]
                             histograms.[0b10]
                             histograms.[0b11]
+                            sectorsAmount
                             (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
@@ -652,6 +658,7 @@ module internal RadixSort =
                     (garbage10: ClArray<int>)
                     (garbage11: ClArray<int>)
                     (isFinished: ClCell<bool>)
+                    (sectorsAmount: int)
                     (offset: int)
                     (length: int) ->
 
@@ -671,18 +678,26 @@ module internal RadixSort =
                         if i >= length then
                             // It's additional workgroup
                             sector <- (i - length) / workGroupSize + 1
-                            sectorPtr <- sectorPointers.[sector - 1] + 1
-                            sectorEdge <- sectorPointers.[sector]
+                            sectorPtr <- 0
+                            if sector > 0 then
+                                sectorPtr <- sectorPointers.[sector] + 1
+                            sectorEdge <- length
+                            if sector < sectorsAmount then
+                                sectorEdge <- sectorPointers.[sector + 1]
                             shift <- i - (sectorPtr + workGroupSize *
                                 (sectorEdge / workGroupSize - (sectorPtr - 1) / workGroupSize))
                         else
-                            sector <- sectorIndices.[i]
-                            sectorEdge <- sectorPointers.[sector]
+                            sector <- sectorIndices.[i] - 1
+                            sectorEdge <- length
+                            if sector < sectorsAmount then
+                                sectorEdge <- sectorPointers.[sector + 1]
                             if sector = 0 then
                                 sectorPtr <- 0
                                 shift <- 0
                             else
-                                sectorPtr <- sectorPointers.[sector - 1] + 1
+                                sectorPtr <- 0
+                                if sector > 0 then
+                                    sectorPtr <- sectorPointers.[sector] + 1
                                 shift <- (i - sectorPtr) % workGroupSize
 
                         sectorHistogram.[0b00] <- histograms00.[sector]
@@ -1016,6 +1031,7 @@ module internal RadixSort =
                             garbage.[0b10]
                             garbage.[0b11]
                             isFinished
+                            sectorsAmount
                             (32 - ((globalStep + 1) <<< 1))
                             keys.Length)
             )
@@ -1637,11 +1653,11 @@ module internal RadixSort =
 
                     let mutable sector = 0
                     if i < length then
-                        sector <- sectorIndices.[i]
+                        sector <- sectorIndices.[i] - 1
 
                     let mutable sectorPtr = 0
                     if sector > 0 then
-                        sectorPtr <- sectorPointers.[sector - 1] + 1
+                        sectorPtr <- sectorPointers.[sector] + 1
 
                     let mutable bucket = 0
                     let mutable bucketPtr = 0
@@ -1729,7 +1745,7 @@ module internal RadixSort =
                     (values: ClArray<'a>)
                     (keysAncilla: ClArray<int>)
                     (valuesAncilla: ClArray<'a>)
-                    (sectorTails: ClArray<int>)
+                    (sectorHeads: ClArray<int>)
                     (sectorIndices: ClArray<int>)
                     (sectorPointers: ClArray<int>)
                     (histograms00: ClArray<int>)
@@ -1748,11 +1764,11 @@ module internal RadixSort =
 
                     let mutable sector = 0
                     if i < length then
-                        sector <- sectorIndices.[i]
+                        sector <- sectorIndices.[i] - 1
 
                     let mutable sectorPtr = 0
                     if sector > 0 then
-                        sectorPtr <- sectorPointers.[sector - 1] + 1
+                        sectorPtr <- sectorPointers.[sector] + 1
 
                     let mutable bucket = 0
                     let mutable bucketPtr = 0
@@ -1775,9 +1791,9 @@ module internal RadixSort =
                             bucketPtr <- bucketEdge + 1
                             bucketEdge <- bucketEdge + histograms11.[sector]
 
-                    // Update tails
-                    if i - sectorPtr = bucketEdge then
-                        sectorTails.[i] <- 1
+                    // Update heads
+                    if i - sectorPtr = bucketPtr then
+                        sectorHeads.[i] <- 1
 
                     let mutable sum = 0
                     if bucket = 0 then
@@ -1808,7 +1824,7 @@ module internal RadixSort =
             (values: ClArray<'a>)
             (keysAncilla: ClArray<int>)
             (valuesAncilla: ClArray<'a>)
-            (sectorTails: ClArray<int>)
+            (sectorHeads: ClArray<int>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
             (histograms: list<ClArray<int>>)
@@ -1827,7 +1843,7 @@ module internal RadixSort =
                             values
                             keysAncilla
                             valuesAncilla
-                            sectorTails
+                            sectorHeads
                             sectorIndices
                             sectorPointers
                             histograms.[0b00]
@@ -1857,7 +1873,7 @@ module internal RadixSort =
             (values: ClArray<'a>)
             (keysAncilla: ClArray<int>)
             (valuesAncilla: ClArray<'a>)
-            (sectorTails: ClArray<int>)
+            (sectorHeads: ClArray<int>)
             (sectorIndices: ClArray<int>)
             (sectorPointers: ClArray<int>)
             (histograms: list<ClArray<int>>)
@@ -1869,11 +1885,11 @@ module internal RadixSort =
 
             let garbageOffsets = computeGarbage processor keys sectorIndices sectorPointers histograms globalStep
 
-            repair processor keys values keysAncilla valuesAncilla sectorTails sectorIndices sectorPointers histograms garbage garbageOffsets globalStep
+            repair processor keys values keysAncilla valuesAncilla sectorHeads sectorIndices sectorPointers histograms garbage garbageOffsets globalStep
 
             processor.Post(Msg.CreateFreeMsg<_>(garbageOffsets))
 
-    let run
+    let runInplace
         (clContext: ClContext)
         workGroupSize =
 
@@ -1884,7 +1900,7 @@ module internal RadixSort =
         fun (processor: MailboxProcessor<_>)
             (keys: ClArray<int>)
             (values: ClArray<'a>)
-            (sectorTails: ClArray<int>)
+            (sectorHeads: ClArray<int>)
             (maxValue: int) ->
 
             let mutable log = 0
@@ -1897,7 +1913,7 @@ module internal RadixSort =
             let mutable valuesArrays = values, valuesAncilla
 
             for globalStep in (32 - log) / 2 .. 32 / 2 - 1 do
-                let sectorIndices, sectorPointers, histograms = createHistograms processor (fst keyArrays) sectorTails globalStep
+                let sectorIndices, sectorPointers, histograms = createHistograms processor (fst keyArrays) sectorHeads globalStep
 
                 let garbage =
                     [0..3]
@@ -1921,7 +1937,7 @@ module internal RadixSort =
                     isFinished <- true
                     let isFinishedGPU = clContext.CreateClCell<bool>(isFinished)
 
-                    takeStep processor firstKeys firstValues secondKeys secondValues sectorTails sectorIndices sectorPointers histograms garbage isFinishedGPU globalStep
+                    takeStep processor firstKeys firstValues secondKeys secondValues sectorHeads sectorIndices sectorPointers histograms garbage isFinishedGPU globalStep
 
                     isFinished <-
                         ClCell.toHost isFinishedGPU
