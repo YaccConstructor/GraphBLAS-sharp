@@ -76,83 +76,90 @@ module internal PrefixSum =
 
         let plusAdvanced =
             <@
-                fun ((x1, x2): struct('a * int))
-                    ((y1, y2): struct('a * int)) ->
+                fun (x1: 'a)
+                    (x2: 'int)
+                    (y1: 'a)
+                    (y2: 'int) ->
 
                     if y2 = 1 then
-                        struct(y1, 1)
+                        (y1, 1)
                     else
                         let buff = (%plus) x1 y1
-                        struct(buff, x2)
+                        (buff, x2)
             @>
 
-        let zip = ClArray.zip clContext workGroupSize
-        let unzip = ClArray.unzip clContext workGroupSize
-        let scanIncludeInPlace = PrefixSum.runIncludeInplace plusAdvanced clContext workGroupSize
+        let copy0 = ClArray.copy clContext workGroupSize
+        let copy1 = ClArray.copy clContext workGroupSize
+        let scanIncludeInPlace = PrefixSum2.runIncludeInplace plusAdvanced clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
             (headFlags: ClArray<int>)
             (inputArray: ClArray<'a>)
             zero ->
 
-            let zippedArrays = zip processor inputArray headFlags
-            let total = clContext.CreateClCell<struct('a * int)>()
+            let total0 = clContext.CreateClCell<'a>()
+            let total1 = clContext.CreateClCell<int>()
+
+            let inputArrayCopied = copy0 processor inputArray
+            let headsCopied = copy1 processor headFlags
 
             scanIncludeInPlace
                 processor
-                zippedArrays
-                total
-                struct(zero, 0)
+                inputArrayCopied
+                headsCopied
+                total0
+                total1
+                zero
+                0
             |> ignore
 
-            processor.Post(Msg.CreateFreeMsg(total))
+            processor.Post(Msg.CreateFreeMsg(total0))
+            processor.Post(Msg.CreateFreeMsg(total1))
 
-            let res, heads = unzip processor zippedArrays
-            processor.Post(Msg.CreateFreeMsg(zippedArrays))
-            processor.Post(Msg.CreateFreeMsg(heads))
+            processor.Post(Msg.CreateFreeMsg(headsCopied))
 
-            res
+            inputArrayCopied
 
-    let byTailFlagsInclude
-        plus
-        zero
-        (clContext: ClContext)
-        workGroupSize =
+    // let byHeadFlagsInclude
+    //     plus
+    //     (clContext: ClContext)
+    //     workGroupSize =
 
-        let plusAdvanced =
-            <@
-                fun ((x1, x2): struct('a * int))
-                    ((y1, y2): struct('a * int)) ->
+    //     let plusAdvanced =
+    //         <@
+    //             fun ((x1, x2): struct('a * int))
+    //                 ((y1, y2): struct('a * int)) ->
 
-                    if x2 = 1 then
-                        struct(y1, y2)
-                    else
-                        let buff = (%plus) x1 y1
-                        struct(buff, y2)
-            @>
+    //                 if y2 = 1 then
+    //                     struct(y1, 1)
+    //                 else
+    //                     let buff = (%plus) x1 y1
+    //                     struct(buff, x2)
+    //         @>
 
-        let zip = ClArray.zip clContext workGroupSize
-        let unzip = ClArray.unzip clContext workGroupSize
-        let scanIncludeInPlace = PrefixSum.runIncludeInplace plusAdvanced clContext workGroupSize
+    //     let zip = ClArray.zip clContext workGroupSize
+    //     let unzip = ClArray.unzip clContext workGroupSize
+    //     let scanIncludeInPlace = PrefixSum.runIncludeInplace plusAdvanced clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>)
-            (tailFlags: ClArray<int>)
-            (inputArray: ClArray<'a>) ->
+    //     fun (processor: MailboxProcessor<_>)
+    //         (headFlags: ClArray<int>)
+    //         (inputArray: ClArray<'a>)
+    //         zero ->
 
-            let zippedArrays = zip processor inputArray tailFlags
-            let total = clContext.CreateClCell<struct('a * int)>()
+    //         let zippedArrays = zip processor inputArray headFlags
+    //         let total = clContext.CreateClCell<struct('a * int)>()
 
-            scanIncludeInPlace
-                processor
-                zippedArrays
-                total
-                struct(zero, 0)
-            |> ignore
+    //         scanIncludeInPlace
+    //             processor
+    //             zippedArrays
+    //             total
+    //             struct(zero, 0)
+    //         |> ignore
 
-            processor.Post(Msg.CreateFreeMsg(total))
+    //         processor.Post(Msg.CreateFreeMsg(total))
 
-            let res, tails = unzip processor zippedArrays
-            processor.Post(Msg.CreateFreeMsg(zippedArrays))
-            processor.Post(Msg.CreateFreeMsg(tails))
+    //         let res, heads = unzip processor zippedArrays
+    //         processor.Post(Msg.CreateFreeMsg(zippedArrays))
+    //         processor.Post(Msg.CreateFreeMsg(heads))
 
-            res
+    //         res
