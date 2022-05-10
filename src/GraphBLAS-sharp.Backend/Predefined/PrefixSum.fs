@@ -77,9 +77,9 @@ module internal PrefixSum =
         let plusAdvanced =
             <@
                 fun (x1: 'a)
-                    (x2: 'int)
+                    (x2: int)
                     (y1: 'a)
-                    (y2: 'int) ->
+                    (y2: int) ->
 
                     if y2 = 1 then
                         (y1, 1)
