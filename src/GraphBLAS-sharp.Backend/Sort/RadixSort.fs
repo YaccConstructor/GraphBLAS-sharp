@@ -793,6 +793,7 @@ module internal RadixSort =
 
                         // Load data to the local array
                         let keysLocal = localArray<int> workGroupSize
+                        let valuesLocal = localArray<'a> workGroupSize
                         if localID < sum then
                             let mutable j = 0
                             let mutable k = localID
@@ -802,6 +803,7 @@ module internal RadixSort =
                                 j <- j + 1
                                 m <- localHistogram.[j]
                             keysLocal.[localID] <- keys.[globalBucketPtrs.[j] + k]
+                            valuesLocal.[localID] <- values.[globalBucketPtrs.[j] + k]
                         barrierLocal()
 
                         // Sort local array
@@ -975,6 +977,7 @@ module internal RadixSort =
                                 j <- j + 1
                                 m <- localHistogram.[j]
                             keys.[globalBucketPtrs.[j] + k] <- keysLocal.[localID]
+                            values.[globalBucketPtrs.[j] + k] <- valuesLocal.[localID]
                         barrierLocal()
             @>
         let program = clContext.CreateClProgram(permute)
@@ -1793,8 +1796,10 @@ module internal RadixSort =
                             idx <- garbageOffsets.[i - 1]
                         if int (keys.[i] >>> offset) &&& 0b11 = bucket then
                             keysAncilla.[sectorPtr + bucketPtr + sum + i - sectorPtr - bucketPtr - idx] <- keys.[i]
+                            valuesAncilla.[sectorPtr + bucketPtr + sum + i - sectorPtr - bucketPtr - idx] <- values.[i]
                         else
                             keysAncilla.[sectorPtr + bucketPtr + idx] <- keys.[i]
+                            valuesAncilla.[sectorPtr + bucketPtr + idx] <- values.[i]
             @>
         let program = clContext.CreateClProgram(repair)
 
