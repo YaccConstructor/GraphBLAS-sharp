@@ -23,7 +23,6 @@ module internal Sorting =
                 let headFlags' = copy processor headFlags
 
                 let sortedColumns, sortedValues = sort processor matrix.Columns matrix.Values headFlags' (matrix.ColumnCount - 1)
-
                 processor.Post(Msg.CreateFreeMsg<_>(headFlags'))
 
                 {

@@ -34,7 +34,7 @@ module internal SpGEMMSimple =
             processor.Post(Msg.CreateFreeMsg<_>(initialResult.Values))
 
             let sortedResult, resultHeadFlags = sort processor expandedResult
-            processor.Post(Msg.CreateFreeMsg<_>(expandedResult.Columns))
+            // processor.Post(Msg.CreateFreeMsg<_>(expandedResult.Columns))
 
             let result = compress processor sortedResult resultHeadFlags zero
             processor.Post(Msg.CreateFreeMsg<_>(sortedResult.Columns))
