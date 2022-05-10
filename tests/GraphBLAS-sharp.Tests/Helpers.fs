@@ -1,9 +1,12 @@
 namespace GraphBLAS.FSharp.Tests
 
+open Brahma.FSharp.OpenCL.Shared
+open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
+open Brahma.FSharp.ClContextExtensions
 open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message
@@ -410,7 +413,7 @@ module Utils =
                     Cl
                         .GetPlatformInfo(platform, PlatformInfo.Name, &e)
                         .ToString()
-                    |> ClPlatform.Custom
+                    |> Platform.Custom
 
                 let deviceType =
                     Cl
@@ -419,12 +422,15 @@ module Utils =
 
                 let clDeviceType =
                     match deviceType with
-                    | DeviceType.Cpu -> ClDeviceType.CPU
-                    | DeviceType.Gpu -> ClDeviceType.GPU
+                    | DeviceType.Cpu -> ClDeviceType.Cpu
+                    | DeviceType.Gpu -> ClDeviceType.Gpu
                     | DeviceType.Default -> ClDeviceType.Default
                     | _ -> failwith "Unsupported"
 
-                Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+                let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
+                let translator = FSQuotationToOpenCLTranslator device
+
+                ClContext(device, translator))
 
     type OperationCase =
         { ClContext: ClContext

@@ -1,6 +1,7 @@
 module Backend.EwiseAdd
 
 open System
+open Brahma.FSharp.OpenCL.Shared
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
@@ -46,14 +47,15 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<Msg> -> Backend.Matrix<'a> -> Backend.Matrix<'b> -> Backend.Matrix<'c>)
+    (addFun: MailboxProcessor<_> -> Backend.Matrix<'a> -> Backend.Matrix<'b> -> Backend.Matrix<'c>)
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
+    q
     (case: OperationCase)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
-    let q = case.ClContext.CommandQueue
-    q.Error.Add(fun e -> failwithf "%A" e)
+    //let q = case.ClContext.QueueProvider.CreateQueue()
+    //q.Error.Add(fun e -> failwithf "%A" e)
 
     let mtx1 =
         createMatrixFromArray2D case.MatrixCase leftMatrix (isEqual zero)
@@ -83,12 +85,16 @@ let correctnessGenericTest
 
         checkResult isEqual op zero leftMatrix rightMatrix actual
 
+
 let testFixtures case =
     [ let config = defaultConfig
-      let wgSize = 128
+      let wgSize = 256
       //Test name on multiple devices can be duplicated due to the ClContext.toString
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A, %A" datatype case (System.Random().Next())
+
+      let q = case.ClContext.QueueProvider.CreateQueue()
+      q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
           Matrix.eWiseAdd case.ClContext boolSum wgSize
@@ -96,7 +102,7 @@ let testFixtures case =
       let boolToCOO = Matrix.toCOO case.ClContext wgSize
 
       case
-      |> correctnessGenericTest false (||) boolAdd boolToCOO (=)
+      |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
@@ -105,7 +111,7 @@ let testFixtures case =
       let intToCOO = Matrix.toCOO case.ClContext wgSize
 
       case
-      |> correctnessGenericTest 0 (+) intAdd intToCOO (=)
+      |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
@@ -114,7 +120,7 @@ let testFixtures case =
       let floatToCOO = Matrix.toCOO case.ClContext wgSize
 
       case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
@@ -123,7 +129,7 @@ let testFixtures case =
       let byteToCOO = Matrix.toCOO case.ClContext wgSize
 
       case
-      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=)
+      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
@@ -131,13 +137,14 @@ let tests =
     |> List.filter
         (fun case ->
             let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.Device
+            let device = case.ClContext.ClDevice.Device
 
             let deviceType =
                 Cl
                     .GetDeviceInfo(device, DeviceInfo.Type, &e)
                     .CastTo<DeviceType>()
 
-            deviceType = DeviceType.Default)
+            deviceType = DeviceType.Gpu
+            )
     |> List.collect testFixtures
     |> testList "Backend.Matrix.eWiseAdd tests"

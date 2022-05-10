@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
 
 module ClArray =
 
@@ -15,7 +16,7 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let kernel = clContext.CreateClProgram(copy)
+        let kernel = clContext.Compile(copy)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
             let ndRange =
@@ -44,7 +45,7 @@ module ClArray =
                 if i < outputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i % inputArrayLength] @>
 
-        let kernel = clContext.CreateClProgram(replicate)
+        let kernel = clContext.Compile(replicate)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
@@ -78,7 +79,7 @@ module ClArray =
                         resultBuffer.[i]
                         + verticesBuffer.[i / bunchLength] @>
 
-        let kernel = clContext.CreateClProgram(update)
+        let kernel = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
             let ndRange =
@@ -150,7 +151,7 @@ module ClArray =
                 if i < inputArrayLength then
                     resultBuffer.[i] <- resultLocalBuffer.[localID] @>
 
-        let kernel = clContext.CreateClProgram(scan)
+        let kernel = clContext.Compile(scan)
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClCell<int>) ->
             let ndRange =
@@ -258,7 +259,7 @@ module ClArray =
                 elif gid < inputArrayLength - 1 then
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
-        let kernel = clContext.CreateClProgram(kernel)
+        let kernel = clContext.Compile(kernel)
         let copy = copy clContext
 
         let prefixSumExcludeInplace =
@@ -306,7 +307,7 @@ module ClArray =
                     isUniqueBitmap.[i] <- 1 @>
 
         let kernel =
-            clContext.CreateClProgram(getUniqueBitmap)
+            clContext.Compile(getUniqueBitmap)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
@@ -342,7 +343,7 @@ module ClArray =
                 if i < inputLength then
                     outputArray.[positions.[i]] <- inputArray.[i] @>
 
-        let kernel = clContext.CreateClProgram(setPositions)
+        let kernel = clContext.Compile(setPositions)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArraySize: int) ->
 

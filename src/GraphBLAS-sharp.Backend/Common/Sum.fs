@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 
 module internal rec Sum =

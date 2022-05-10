@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 
 module COOMatrix =
@@ -24,9 +24,7 @@ module COOMatrix =
                     resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
 
         let kernel =
-            clContext
-                .CreateClProgram(setPositions)
-                .GetKernel()
+            clContext.Compile(setPositions)
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
@@ -74,6 +72,8 @@ module COOMatrix =
 
             let ndRange =
                 Range1D.CreateValid(positions.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -134,7 +134,7 @@ module COOMatrix =
                         | None -> rawPositionsBuffer.[i] <- 0 @>
 
         let kernel =
-            clContext.CreateClProgram(preparePositions)
+            clContext.Compile(preparePositions)
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
             let length = leftValues.Length
@@ -304,7 +304,7 @@ module COOMatrix =
                         leftMergedValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                         isLeftBitmap.[i] <- 1 @>
 
-        let kernel = clContext.CreateClProgram(merge)
+        let kernel = clContext.Compile(merge)
 
         fun (processor: MailboxProcessor<_>) (matrixLeftRows: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRows: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'b>) ->
 
@@ -490,13 +490,13 @@ module COOMatrix =
                     expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
 
         let kernelCalcHyperSparseRows =
-            clContext.CreateClProgram(calcHyperSparseRows)
+            clContext.Compile(calcHyperSparseRows)
 
         let kernelCalcNnzPerRowSparse =
-            clContext.CreateClProgram(calcNnzPerRowSparse)
+            clContext.Compile(calcNnzPerRowSparse)
 
         let kernelExpandNnzPerRow =
-            clContext.CreateClProgram(expandNnzPerRow)
+            clContext.Compile(expandNnzPerRow)
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 

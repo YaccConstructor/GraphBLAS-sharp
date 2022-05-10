@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 
 module internal rec BitonicSort =
     let sortKeyValuesInplace (keys: uint64 []) (values: 'a []) =
