@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 
 type IDeviceMemObject =
-    abstract Dispose : unit -> unit
+    abstract Dispose : MailboxProcessor<Msg> -> unit
 
 type MatrixFromat =
     | CSR
@@ -23,10 +23,10 @@ type Matrix<'a when 'a: struct> =
         | MatrixCSR matrix -> matrix.ColumnCount
         | MatrixCOO matrix -> matrix.ColumnCount
 
-    member this.Dispose() =
+    member this.Dispose q =
         match this with
-        | MatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose()
-        | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose()
+        | MatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose q
+        | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose q
 
 and CSRMatrix<'elem when 'elem: struct> =
     { Context: ClContext
@@ -37,8 +37,7 @@ and CSRMatrix<'elem when 'elem: struct> =
       Values: ClArray<'elem> }
 
     interface IDeviceMemObject with
-        member this.Dispose() =
-            let q = this.Context.QueueProvider.CreateQueue()
+        member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
             q.Post(Msg.CreateFreeMsg<_>(this.Columns))
             q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
@@ -53,8 +52,7 @@ and COOMatrix<'elem when 'elem: struct> =
       Values: ClArray<'elem> }
 
     interface IDeviceMemObject with
-        member this.Dispose() =
-            let q = this.Context.QueueProvider.CreateQueue()
+        member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
             q.Post(Msg.CreateFreeMsg<_>(this.Columns))
             q.Post(Msg.CreateFreeMsg<_>(this.Rows))
@@ -67,8 +65,7 @@ and TupleMatrix<'elem when 'elem: struct> =
       Values: ClArray<'elem> }
 
     interface IDeviceMemObject with
-        member this.Dispose() =
-            let q = this.Context.QueueProvider.CreateQueue()
+        member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))
             q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
             q.Post(Msg.CreateFreeMsg<_>(this.Values))

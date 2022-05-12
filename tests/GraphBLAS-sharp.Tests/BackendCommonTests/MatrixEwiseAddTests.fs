@@ -69,14 +69,14 @@ let correctnessGenericTest
 
         let res = addFun q m1 m2
 
-        m1.Dispose()
-        m2.Dispose()
+        m1.Dispose q
+        m2.Dispose q
 
         let cooRes = toCOOFun q res
         let actual = Matrix.FromBackend q cooRes
 
-        cooRes.Dispose()
-        res.Dispose()
+        cooRes.Dispose q
+        res.Dispose q
 
         logger.debug (
             eventX "Actual is {actual}"
