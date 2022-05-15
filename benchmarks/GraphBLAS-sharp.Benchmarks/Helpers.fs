@@ -3,7 +3,9 @@ namespace rec GraphBLAS.FSharp.Benchmarks
 open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
+open Brahma.FSharp.OpenCL.Shared
+open Brahma.FSharp.OpenCL.Translator
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
@@ -37,11 +39,11 @@ type CommonConfig() =
         |> ignore
 
 type ClContext =
-    | ClContext of Brahma.FSharp.OpenCL.ClContext
+    | ClContext of Brahma.FSharp.ClContext
     override this.ToString() =
         let mutable e = ErrorCode.Unknown
         let (ClContext context) = this
-        let device = context.Device
+        let device = context.ClDevice.Device
 
         let deviceName =
             Cl
@@ -142,6 +144,10 @@ type TEPSColumn() =
         member this.UnitType: UnitType = UnitType.Dimensionless
 
 module Utils =
+    type BenchmarkContext =
+        { ClContext: Brahma.FSharp.ClContext
+          Queue: MailboxProcessor<Msg> }
+
     let getMatricesFilenames configFilename =
         let getFullPathToConfig filename =
             Path.Combine [| __SOURCE_DIRECTORY__
@@ -218,7 +224,7 @@ module Utils =
                         Cl
                             .GetPlatformInfo(platform, PlatformInfo.Name, &e)
                             .ToString()
-                        |> ClPlatform.Custom
+                        |> Platform.Custom
 
                     let deviceType =
                         Cl
@@ -227,12 +233,19 @@ module Utils =
 
                     let clDeviceType =
                         match deviceType with
-                        | DeviceType.Cpu -> ClDeviceType.CPU
-                        | DeviceType.Gpu -> ClDeviceType.GPU
+                        | DeviceType.Cpu -> ClDeviceType.Cpu
+                        | DeviceType.Gpu -> ClDeviceType.Gpu
                         | DeviceType.Default -> ClDeviceType.Default
                         | _ -> failwith "Unsupported"
 
-                    Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+                    let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
+                    let translator = FSQuotationToOpenCLTranslator device
+
+                    let context = Brahma.FSharp.ClContext(device, translator)
+                    let queue = context.QueueProvider.CreateQueue()
+
+                    { ClContext = context
+                      Queue = queue })
 
         seq {
             for wgSize in workGroupSizes do

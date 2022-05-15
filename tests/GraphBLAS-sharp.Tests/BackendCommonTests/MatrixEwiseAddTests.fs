@@ -54,8 +54,6 @@ let correctnessGenericTest
     (case: OperationCase)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
-    //let q = case.ClContext.QueueProvider.CreateQueue()
-    //q.Error.Add(fun e -> failwithf "%A" e)
 
     let mtx1 =
         createMatrixFromArray2D case.MatrixCase leftMatrix (isEqual zero)
@@ -64,8 +62,8 @@ let correctnessGenericTest
         createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
-        let m1 = mtx1.ToBackend case.ClContext
-        let m2 = mtx2.ToBackend case.ClContext
+        let m1 = mtx1.ToBackend case.ClContext.ClContext
+        let m2 = mtx2.ToBackend case.ClContext.ClContext
 
         let res = addFun q m1 m2
 
@@ -89,44 +87,45 @@ let correctnessGenericTest
 let testFixtures case =
     [ let config = defaultConfig
       let wgSize = 256
-      //Test name on multiple devices can be duplicated due to the ClContext.toString
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A, %A" datatype case (System.Random().Next())
 
-      let q = case.ClContext.QueueProvider.CreateQueue()
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
+
+      let context = case.ClContext.ClContext
+      let q = case.ClContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.eWiseAdd case.ClContext boolSum wgSize
+          Matrix.eWiseAdd context boolSum wgSize
 
-      let boolToCOO = Matrix.toCOO case.ClContext wgSize
+      let boolToCOO = Matrix.toCOO context wgSize
 
       case
       |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.eWiseAdd case.ClContext intSum wgSize
+          Matrix.eWiseAdd context intSum wgSize
 
-      let intToCOO = Matrix.toCOO case.ClContext wgSize
+      let intToCOO = Matrix.toCOO context wgSize
 
       case
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.eWiseAdd case.ClContext floatSum wgSize
+          Matrix.eWiseAdd context floatSum wgSize
 
-      let floatToCOO = Matrix.toCOO case.ClContext wgSize
+      let floatToCOO = Matrix.toCOO context wgSize
 
       case
       |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.eWiseAdd case.ClContext byteSum wgSize
+          Matrix.eWiseAdd context byteSum wgSize
 
-      let byteToCOO = Matrix.toCOO case.ClContext wgSize
+      let byteToCOO = Matrix.toCOO context wgSize
 
       case
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
@@ -137,7 +136,7 @@ let tests =
     |> List.filter
         (fun case ->
             let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClDevice.Device
+            let device = case.ClContext.ClContext.ClDevice.Device
 
             let deviceType =
                 Cl

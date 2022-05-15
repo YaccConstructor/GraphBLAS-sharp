@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open OpenCL.Net
 
 type Config() =
@@ -58,16 +58,16 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObjec
     member val ResultMatrix = Unchecked.defaultof<'matrixT> with get,set
 
     [<ParamsSource("AvaliableContexts")>]
-    member val OclContextInfo = Unchecked.defaultof<_> with get, set
+    member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader*MtxReader> with get, set
 
-    member this.OclContext:ClContext = fst this.OclContextInfo
+    member this.OclContext:ClContext = (fst this.OclContextInfo).ClContext
     member this.WorkGroupSize = snd this.OclContextInfo
 
     member this.Processor =
-        let p = this.OclContext.CommandQueue
+        let p = (fst this.OclContextInfo).Queue
         p.Error.Add(fun e -> failwithf "%A" e)
         p
 
@@ -107,11 +107,11 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObjec
         this.ResultMatrix <- this.FunToBenchmark this.Processor firstMatrix secondMatrix
 
     member this.ClearInputMatrices() =
-        (firstMatrix :> Backend.IDeviceMemObject).Dispose()
-        (secondMatrix :> Backend.IDeviceMemObject).Dispose()
+        (firstMatrix :> Backend.IDeviceMemObject).Dispose this.Processor
+        (secondMatrix :> Backend.IDeviceMemObject).Dispose this.Processor
 
     member this.ClearResult() =
-        (this.ResultMatrix :> Backend.IDeviceMemObject).Dispose()
+        (this.ResultMatrix :> Backend.IDeviceMemObject).Dispose this.Processor
 
     member this.ReadMatrices() =
         let leftMatrixReader = fst this.InputMatrixReader

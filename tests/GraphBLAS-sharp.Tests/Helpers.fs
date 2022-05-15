@@ -341,6 +341,10 @@ module Generators =
 //         |> Arb.fromGen
 
 module Utils =
+    type TestContext =
+        { ClContext: ClContext
+          Queue: MailboxProcessor<Msg> }
+
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
               maxTest = 10
@@ -430,10 +434,14 @@ module Utils =
                 let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
                 let translator = FSQuotationToOpenCLTranslator device
 
-                ClContext(device, translator))
+                let context = ClContext(device, translator)
+                let queue = context.QueueProvider.CreateQueue()
+
+                { ClContext = context
+                  Queue = queue })
 
     type OperationCase =
-        { ClContext: ClContext
+        { ClContext: TestContext
           MatrixCase: MatrixFromat }
 
     let testCases =
