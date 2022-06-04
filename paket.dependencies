@@ -16,7 +16,7 @@ nuget System.CodeDom >= 5.0
 nuget FSharp.Quotations.Evaluator 2.1.0
 nuget FSharpx.Collections 2.1.3
 nuget FSharpx.Text.StructuredFormat ~> 3.0.0
-nuget Brahma.FSharp >= 2.0.0-alpha9.5
+nuget Brahma.FSharp >= 2.0.0-alpha9.6
 nuget BenchmarkDotNet
 nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64 2.5.0
