@@ -67,9 +67,9 @@ module Matrix =
             | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"
 
-    let eWiseAdd2 (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let COOeWiseAdd =
-            COOMatrix.eWiseAdd2 clContext opAdd workGroupSize
+            COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
 
         let CSReWiseAdd =
             CSRMatrix.eWiseAdd2 clContext opAdd workGroupSize

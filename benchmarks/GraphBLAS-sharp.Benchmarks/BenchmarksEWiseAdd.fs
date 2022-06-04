@@ -364,7 +364,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
-        (fun context wgSize -> Backend.COOMatrix.eWiseAdd2 context Backend.Common.StandardOperations.float32Sum2 wgSize),
+        (fun context wgSize -> Backend.COOMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         M.buildCooMatrix
@@ -376,7 +376,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
-        (fun context wgSize -> Backend.CSRMatrix.eWiseAdd2 context Backend.Common.StandardOperations.float32Sum2 wgSize),
+        (fun context wgSize -> Backend.CSRMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         M.buildCsrMatrix

@@ -662,7 +662,7 @@ module COOMatrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
-    let private preparePositions2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
@@ -747,7 +747,7 @@ module COOMatrix =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let eWiseAdd2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let eWiseAddAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
@@ -756,7 +756,7 @@ module COOMatrix =
         let merge = merge clContext workGroupSize
 
         let preparePositions =
-            preparePositions2 clContext opAdd workGroupSize
+            preparePositionsAtLeastOne clContext opAdd workGroupSize
 
         let setPositions = setPositions<'c> clContext workGroupSize
 

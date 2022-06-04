@@ -59,10 +59,10 @@ module StandardOperations =
 
             if res = 0f then None else (Some res) @>
 
-    let boolSum2 =
+    let boolSumAtLeastOne =
         <@ fun (_: AtLeastOne<bool, bool>) -> Some true @>
 
-    let intSum2 =
+    let intSumAtLeastOne =
         <@ fun (values: AtLeastOne<int, int>) ->
             let mutable res = 0
 
@@ -73,7 +73,7 @@ module StandardOperations =
 
             if res = 0 then None else (Some res) @>
 
-    let byteSum2 =
+    let byteSumAtLeastOne =
         <@ fun (values: AtLeastOne<byte, byte>) ->
             let mutable res = 0uy
 
@@ -84,7 +84,7 @@ module StandardOperations =
 
             if res = 0uy then None else (Some res) @>
 
-    let floatSum2 =
+    let floatSumAtLeastOne =
         <@ fun (values: AtLeastOne<float, float>) ->
             let mutable res = 0.0
 
@@ -95,7 +95,7 @@ module StandardOperations =
 
             if res = 0.0 then None else (Some res) @>
 
-    let float32Sum2 =
+    let float32SumAtLeastOne =
         <@ fun (values: AtLeastOne<float32, float32>) ->
             let mutable res = 0f
 
@@ -105,3 +105,23 @@ module StandardOperations =
             | Right s -> res <- s
 
             if res = 0f then None else (Some res) @>
+
+    let float32Mul =
+        <@ fun (values: AtLeastOne<float32, float32>) ->
+            let mutable res = 0f
+
+            match values with
+            | Both (f, s) -> res <- f * s
+            | _ -> res <- 0f
+
+            if res = 0f then None else (Some res) @>
+
+    let boolMul =
+        <@ fun (values: AtLeastOne<bool, bool>) ->
+            let mutable res = false
+
+            match values with
+            | Both _ -> res <- true
+            | _ -> res <- false
+
+            if res then None else (Some true) @>

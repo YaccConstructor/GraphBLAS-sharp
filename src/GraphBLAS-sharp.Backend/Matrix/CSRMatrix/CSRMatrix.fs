@@ -119,13 +119,13 @@ module CSRMatrix =
 
             m3
 
-    let eWiseAdd2 (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
         let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
         let toCOOInplaceRight = toCOOInplace clContext workGroupSize
 
         let eWiseCOO =
-            COOMatrix.eWiseAdd2 clContext opAdd workGroupSize
+            COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
