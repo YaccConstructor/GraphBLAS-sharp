@@ -1,6 +1,8 @@
 namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module COOMatrix =
@@ -659,3 +661,135 @@ module COOMatrix =
               RowPointers = compressedRows
               Columns = matrix.Columns
               Values = matrix.Values }
+
+    let private preparePositions2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
+
+        let preparePositions =
+            <@ fun (ndRange: Range1D) length (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (leftValuesBuffer: ClArray<'a>) (rightValuesBuffer: ClArray<'b>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if (i < length - 1
+                    && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
+                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
+                    rawPositionsBuffer.[i] <- 0
+
+                    match (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i])) with
+                    | Some v ->
+                        allValuesBuffer.[i + 1] <- v
+                        rawPositionsBuffer.[i + 1] <- 1
+                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                else if (i > 0
+                         && i < length
+                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                        || i = 0 then
+                    if isLeftBitmap.[i] = 1 then
+                        match (%opAdd) (Left leftValuesBuffer.[i]) with
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0
+                    else
+                        match (%opAdd) (Right rightValuesBuffer.[i]) with
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0 @>
+
+        let kernel =
+            clContext.Compile(preparePositions)
+
+        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
+            let length = leftValues.Length
+
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            let rawPositionsGpu =
+                clContext.CreateClArray<int>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let allValues =
+                clContext.CreateClArray<'c>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            length
+                            allRows
+                            allColumns
+                            leftValues
+                            rightValues
+                            allValues
+                            rawPositionsGpu
+                            isLeft)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            rawPositionsGpu, allValues
+
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let eWiseAdd2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
+
+        let merge = merge clContext workGroupSize
+
+        let preparePositions =
+            preparePositions2 clContext opAdd workGroupSize
+
+        let setPositions = setPositions<'c> clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'b>) ->
+
+            let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
+                merge
+                    queue
+                    matrixLeft.Rows
+                    matrixLeft.Columns
+                    matrixLeft.Values
+                    matrixRight.Rows
+                    matrixRight.Columns
+                    matrixRight.Values
+
+            let rawPositions, allValues =
+                preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft
+
+            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
+            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+
+            let resultRows, resultColumns, resultValues, resultLength =
+                setPositions queue allRows allColumns allValues rawPositions
+
+            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
+            queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
+            queue.Post(Msg.CreateFreeMsg<_>(allRows))
+            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
+            queue.Post(Msg.CreateFreeMsg<_>(allValues))
+
+            { Context = clContext
+              RowCount = matrixLeft.RowCount
+              ColumnCount = matrixLeft.ColumnCount
+              Rows = resultRows
+              Columns = resultColumns
+              Values = resultValues }

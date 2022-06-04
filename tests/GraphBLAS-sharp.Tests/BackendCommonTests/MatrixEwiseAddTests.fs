@@ -147,3 +147,67 @@ let tests =
             )
     |> List.collect testFixtures
     |> testList "Backend.Matrix.eWiseAdd tests"
+
+let testFixtures2 case =
+    [ let config = defaultConfig
+      let wgSize = 256
+
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
+
+      let context = case.ClContext.ClContext
+      let q = case.ClContext.Queue
+      q.Error.Add(fun e -> failwithf "%A" e)
+
+      let boolAdd =
+          Matrix.eWiseAdd2 context boolSum2 wgSize
+
+      let boolToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+
+      let intAdd =
+          Matrix.eWiseAdd2 context intSum2 wgSize
+
+      let intToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+
+      let floatAdd =
+          Matrix.eWiseAdd2 context floatSum2 wgSize
+
+      let floatToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let byteAdd =
+          Matrix.eWiseAdd2 context byteSum2 wgSize
+
+      let byteToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
+
+let tests2 =
+    testCases
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu
+            )
+    |> List.collect testFixtures2
+    |> testList "Backend.Matrix.eWiseAdd2 tests"

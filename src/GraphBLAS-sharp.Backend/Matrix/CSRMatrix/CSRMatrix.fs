@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
@@ -99,6 +100,32 @@ module CSRMatrix =
 
         let eWiseCOO =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
+
+        let toCSRInplace =
+            COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'b>) ->
+
+            let m1COO = toCOOInplaceLeft processor m1
+            let m2COO = toCOOInplaceRight processor m2
+
+            let m3COO = eWiseCOO processor m1COO m2COO
+
+            processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
+            processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
+
+            let m3 = toCSRInplace processor m3COO
+            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
+
+            m3
+
+    let eWiseAdd2 (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+
+        let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
+        let toCOOInplaceRight = toCOOInplace clContext workGroupSize
+
+        let eWiseCOO =
+            COOMatrix.eWiseAdd2 clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
