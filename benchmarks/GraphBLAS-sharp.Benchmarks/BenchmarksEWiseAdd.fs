@@ -334,3 +334,53 @@ type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
     static member InputMatricesProvider =
         EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+
+// With AtLeastOne
+
+type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd2 context Backend.Common.StandardOperations.boolSum2 wgSize),
+        (fun _ -> true),
+        (fun _ -> true),
+        M.buildCooMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+
+type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+        (fun context wgSize -> Backend.CSRMatrix.eWiseAdd2 context Backend.Common.StandardOperations.boolSum2 wgSize),
+        (fun _ -> true),
+        (fun _ -> true),
+        M.buildCsrMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+
+type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.COOMatrix.eWiseAdd2 context Backend.Common.StandardOperations.float32Sum2 wgSize),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCooMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+
+type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
+
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+        (fun context wgSize -> Backend.CSRMatrix.eWiseAdd2 context Backend.Common.StandardOperations.float32Sum2 wgSize),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        M.buildCsrMatrix
+        )
+
+    static member InputMatricesProvider =
+        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
