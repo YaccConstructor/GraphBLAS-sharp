@@ -25,8 +25,7 @@ module COOMatrix =
                     resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
                     resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
 
-        let kernel =
-            clContext.Compile(setPositions)
+        let kernel = clContext.Compile(setPositions)
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
@@ -135,8 +134,7 @@ module COOMatrix =
                             rawPositionsBuffer.[i] <- 1
                         | None -> rawPositionsBuffer.[i] <- 0 @>
 
-        let kernel =
-            clContext.Compile(preparePositions)
+        let kernel = clContext.Compile(preparePositions)
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
             let length = leftValues.Length
@@ -491,14 +489,11 @@ module COOMatrix =
                 if i < totalSum then
                     expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
 
-        let kernelCalcHyperSparseRows =
-            clContext.Compile(calcHyperSparseRows)
+        let kernelCalcHyperSparseRows = clContext.Compile(calcHyperSparseRows)
 
-        let kernelCalcNnzPerRowSparse =
-            clContext.Compile(calcNnzPerRowSparse)
+        let kernelCalcNnzPerRowSparse = clContext.Compile(calcNnzPerRowSparse)
 
-        let kernelExpandNnzPerRow =
-            clContext.Compile(expandNnzPerRow)
+        let kernelExpandNnzPerRow = clContext.Compile(expandNnzPerRow)
 
         let getUniqueBitmap = ClArray.getUniqueBitmap clContext
 
@@ -701,8 +696,7 @@ module COOMatrix =
                             rawPositionsBuffer.[i] <- 1
                         | None -> rawPositionsBuffer.[i] <- 0 @>
 
-        let kernel =
-            clContext.Compile(preparePositions)
+        let kernel = clContext.Compile(preparePositions)
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
             let length = leftValues.Length

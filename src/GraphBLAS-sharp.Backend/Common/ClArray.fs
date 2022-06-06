@@ -306,8 +306,7 @@ module ClArray =
                 else
                     isUniqueBitmap.[i] <- 1 @>
 
-        let kernel =
-            clContext.Compile(getUniqueBitmap)
+        let kernel = clContext.Compile(getUniqueBitmap)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
@@ -336,7 +335,7 @@ module ClArray =
     let setPositions (clContext: ClContext) =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) (inputArray: ClArray<int>) inputLength (positions: ClArray<int>) (outputArray: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 

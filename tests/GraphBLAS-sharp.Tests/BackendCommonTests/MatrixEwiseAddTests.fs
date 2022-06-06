@@ -95,8 +95,7 @@ let testFixtures case =
       let q = case.ClContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd =
-          Matrix.eWiseAdd context boolSum wgSize
+      let boolAdd = Matrix.eWiseAdd context boolSum wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -104,8 +103,7 @@ let testFixtures case =
       |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intAdd =
-          Matrix.eWiseAdd context intSum wgSize
+      let intAdd = Matrix.eWiseAdd context intSum wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -113,8 +111,7 @@ let testFixtures case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd =
-          Matrix.eWiseAdd context floatSum wgSize
+      let floatAdd = Matrix.eWiseAdd context floatSum wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -122,8 +119,7 @@ let testFixtures case =
       |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd =
-          Matrix.eWiseAdd context byteSum wgSize
+      let byteAdd = Matrix.eWiseAdd context byteSum wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -143,12 +139,11 @@ let tests =
                     .GetDeviceInfo(device, DeviceInfo.Type, &e)
                     .CastTo<DeviceType>()
 
-            deviceType = DeviceType.Gpu
-            )
+            deviceType = DeviceType.Gpu)
     |> List.collect testFixtures
     |> testList "Backend.Matrix.eWiseAdd tests"
 
-let testFixtures2 case =
+let testFixturesAtLeastOne case =
     [ let config = defaultConfig
       let wgSize = 256
 
@@ -160,7 +155,7 @@ let testFixtures2 case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.eWiseAdd2 context boolSum2 wgSize
+          Matrix.eWiseAddAtLeastOne context boolSumAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -169,7 +164,7 @@ let testFixtures2 case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.eWiseAdd2 context intSum2 wgSize
+          Matrix.eWiseAddAtLeastOne context intSumAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -178,7 +173,7 @@ let testFixtures2 case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.eWiseAdd2 context floatSum2 wgSize
+          Matrix.eWiseAddAtLeastOne context floatSumAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -187,7 +182,7 @@ let testFixtures2 case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.eWiseAdd2 context byteSum2 wgSize
+          Matrix.eWiseAddAtLeastOne context byteSumAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -207,7 +202,6 @@ let tests2 =
                     .GetDeviceInfo(device, DeviceInfo.Type, &e)
                     .CastTo<DeviceType>()
 
-            deviceType = DeviceType.Gpu
-            )
-    |> List.collect testFixtures2
-    |> testList "Backend.Matrix.eWiseAdd2 tests"
+            deviceType = DeviceType.Gpu)
+    |> List.collect testFixturesAtLeastOne
+    |> testList "Backend.Matrix.eWiseAddAtLeastOne tests"

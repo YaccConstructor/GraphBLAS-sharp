@@ -38,42 +38,6 @@ type CommonConfig() =
         )
         |> ignore
 
-type ClContext =
-    | ClContext of Brahma.FSharp.ClContext
-    override this.ToString() =
-        let mutable e = ErrorCode.Unknown
-        let (ClContext context) = this
-        let device = context.ClDevice.Device
-
-        let deviceName =
-            Cl
-                .GetDeviceInfo(device, DeviceInfo.Name, &e)
-                .ToString()
-
-        if deviceName.Length < 20 then
-            sprintf "%s" deviceName
-        else
-            let platform =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                    .CastTo<Platform>()
-
-            let platformName =
-                Cl
-                    .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                    .ToString()
-
-            let deviceType =
-                match Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>() with
-                | DeviceType.Cpu -> "CPU"
-                | DeviceType.Gpu -> "GPU"
-                | DeviceType.Accelerator -> "Accelerator"
-                | _ -> "another"
-
-            sprintf "%s, %s" platformName deviceType
-
 type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
@@ -238,14 +202,17 @@ module Utils =
                         | DeviceType.Default -> ClDeviceType.Default
                         | _ -> failwith "Unsupported"
 
-                    let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
+                    let device =
+                        ClDevice.GetFirstAppropriateDevice(clPlatform)
+
                     let translator = FSQuotationToOpenCLTranslator device
 
-                    let context = Brahma.FSharp.ClContext(device, translator)
+                    let context =
+                        Brahma.FSharp.ClContext(device, translator)
+
                     let queue = context.QueueProvider.CreateQueue()
 
-                    { ClContext = context
-                      Queue = queue })
+                    { ClContext = context; Queue = queue })
 
         seq {
             for wgSize in workGroupSizes do
