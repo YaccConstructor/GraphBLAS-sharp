@@ -431,14 +431,25 @@ module Utils =
                     | DeviceType.Default -> ClDeviceType.Default
                     | _ -> failwith "Unsupported"
 
-                let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
+                let device =
+                    ClDevice.GetFirstAppropriateDevice(clPlatform)
+
                 let translator = FSQuotationToOpenCLTranslator device
 
                 let context = ClContext(device, translator)
                 let queue = context.QueueProvider.CreateQueue()
 
-                { ClContext = context
-                  Queue = queue })
+                { ClContext = context; Queue = queue })
+
+    let defaultContext =
+        let device = ClDevice.GetFirstAppropriateDevice()
+
+        let context =
+            ClContext(device, FSQuotationToOpenCLTranslator device)
+
+        let queue = context.QueueProvider.CreateQueue()
+
+        { ClContext = context; Queue = queue }
 
     type OperationCase =
         { ClContext: TestContext

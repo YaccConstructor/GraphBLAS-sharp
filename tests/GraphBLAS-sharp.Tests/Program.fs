@@ -13,9 +13,9 @@ let allTests =
         "All tests"
         [ //Backend.PrefixSum.tests
           //Backend.BitonicSort.tests
-//          Backend.RemoveDuplicates.tests
-//          Backend.Copy.tests
-//          Backend.Replicate.tests
+          Backend.RemoveDuplicates.tests
+          Backend.Copy.tests
+          Backend.Replicate.tests
           Backend.EwiseAdd.tests
           //Matrix.EWiseAdd.tests
           //Matrix.GetTuples.tests
