@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
@@ -29,15 +29,16 @@ module internal Compression =
 
                 let scannedValues = scanByHeadFlagsInclude processor heads matrix.Values zero
 
-                let resultLengthGpu = clContext.CreateClCell()
+                let resultLengthGpu = clContext.CreateClArray(1)
                 scanIncludeInPlace processor heads resultLengthGpu
                 |> ignore
                 let positions = decrement processor heads
                 processor.Post(Msg.CreateFreeMsg<_>(heads))
 
-                let resultLength =
-                    ClCell.toHost resultLengthGpu
-                    |> ClTask.runSync clContext
+                // let resultLength =
+                //     ClCell.toHost resultLengthGpu
+                //     |> ClTask.runSync clContext
+                let resultLength = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(resultLengthGpu, [|0|], ch)).[0]
                 processor.Post(Msg.CreateFreeMsg<_>(resultLengthGpu))
 
                 let resultColumns =

@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
-open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
@@ -23,7 +22,7 @@ module internal Converter =
                     let i = ndRange.GlobalID0 + 1
                     if i < rowPointersLength - 1 then atomic (+) rows.[rowPointers.[i]] 1 |> ignore
             @>
-        let program = clContext.CreateClProgram(prepareRows)
+        let program = clContext.Compile(prepareRows)
 
         fun (processor: MailboxProcessor<_>)
             (matrix: CSRMatrix<'a>) ->
@@ -61,7 +60,7 @@ module internal Converter =
         fun (processor: MailboxProcessor<_>)
             (matrix: CSRMatrix<'a>) ->
 
-            let nnz = clContext.CreateClCell()
+            let nnz = clContext.CreateClArray(1)
 
             let rowIndices = prepareRows processor matrix
             scanIncludeInPlace processor rowIndices nnz

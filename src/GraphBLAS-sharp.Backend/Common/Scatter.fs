@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 
 module internal Scatter =
@@ -29,7 +29,7 @@ module internal Scatter =
                             else
                                 result.[index] <- (%getter) values i
             @>
-        let program = clContext.CreateClProgram(run)
+        let program = clContext.Compile(run)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)

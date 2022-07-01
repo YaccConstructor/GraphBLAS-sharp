@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
@@ -44,7 +44,7 @@ module internal Expansion =
 
             scatterInit processor positionsForResCols positions
 
-            let total = clContext.CreateClCell()
+            let total = clContext.CreateClArray(1)
             scanIncludeInPlace processor positions total 0
             |> ignore
             processor.Post(Msg.CreateFreeMsg(total))
@@ -69,7 +69,7 @@ module internal Expansion =
                         let idx = firstColumns.[i - 1]
                         positionsForResCols.[i] <- secondRowPointers.[idx + 1] - secondRowPointers.[idx]
             @>
-        let program = clContext.CreateClProgram(init)
+        let program = clContext.Compile(init)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -136,7 +136,7 @@ module internal Expansion =
                     if i < size then
                         rowPtrsForCols.[i] <- secondRowPointers.[firstColumns.[i]] - secondRowPointers.[firstColumns.[i - 1]]
             @>
-        let program = clContext.CreateClProgram(init)
+        let program = clContext.Compile(init)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -187,7 +187,7 @@ module internal Expansion =
                         if index <> firstRowPointers.[i + 1] then
                             rowPtrsForCols.[index] <- secondRowPointers.[firstColumns.[index]]
             @>
-        let program = clContext.CreateClProgram(update)
+        let program = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)

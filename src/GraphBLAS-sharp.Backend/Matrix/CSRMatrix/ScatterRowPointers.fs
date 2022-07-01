@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 
 module internal ScatterRowPointers =
     /// <summary>
@@ -38,7 +38,7 @@ module internal ScatterRowPointers =
                         else
                             rowPointers.[i] <- positions.[buff]
             @>
-        let program = clContext.CreateClProgram(setPositions)
+        let program = clContext.Compile(setPositions)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)

@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
@@ -27,7 +27,7 @@ module internal Setup =
                         else
                             resultRowLengths.[i] <- 0
             @>
-        let program = clContext.CreateClProgram(get)
+        let program = clContext.Compile(get)
 
         fun (processor: MailboxProcessor<_>)
             (rowLengths: ClArray<int>)
@@ -76,7 +76,7 @@ module internal Setup =
                         let column = firstColumns.[i]
                         lenghts.[i] <- secondRowPointers.[column + 1] - secondRowPointers.[column]
             @>
-        let program = clContext.CreateClProgram(init)
+        let program = clContext.Compile(init)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -134,13 +134,14 @@ module internal Setup =
             let resultRowPointers = getRowLengths processor rowLengths' matrixLeft
             processor.Post(Msg.CreateFreeMsg<_>(rowLengths'))
 
-            let resultNNZGpu = clContext.CreateClCell()
+            let resultNNZGpu = clContext.CreateClArray(1)
             scanExcludeInPlace processor resultRowPointers resultNNZGpu
             |> ignore
 
-            let resultNNZ =
-                ClCell.toHost resultNNZGpu
-                |> ClTask.runSync clContext
+            // let resultNNZ =
+            //     ClCell.toHost resultNNZGpu
+            //     |> ClTask.runSync clContext
+            let resultNNZ = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(resultNNZGpu, [|0|], ch)).[0]
             processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
 
             let resultColumns =

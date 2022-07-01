@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
-open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
 module internal PrefixSum2 =
@@ -28,7 +27,7 @@ module internal PrefixSum2 =
                         resultBuffer0.[i] <- x
                         resultBuffer1.[i] <- y
             @>
-        let program = clContext.CreateClProgram(update)
+        let program = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray0: ClArray<'a>)
@@ -143,7 +142,7 @@ module internal PrefixSum2 =
 
                 (%writeData) resultBuffer0 resultBuffer1 resultLocalBuffer0 resultLocalBuffer1 inputArrayLength workGroupSize i localID
             @>
-        let program = clContext.CreateClProgram(scan)
+        let program = clContext.Compile(scan)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray0: ClArray<'a>)

@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Predefined
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
@@ -13,7 +13,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClCell<int>) ->
+            (totalSum: ClArray<int>) ->
 
             scan
                 processor
@@ -29,7 +29,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClCell<int>) ->
+            (totalSum: ClArray<int>) ->
 
             scan
                 processor
@@ -45,7 +45,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClCell<int>) ->
+            (totalSum: ClArray<int>) ->
 
             scan
                 processor
@@ -61,7 +61,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClCell<int>) ->
+            (totalSum: ClArray<int>) ->
 
             scan
                 processor

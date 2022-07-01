@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp
 
-open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
+open Brahma.FSharp
 
 type MatrixFormat =
     | CSR
@@ -26,7 +26,7 @@ type Matrix<'a when 'a: struct> =
         | MatrixCOO m -> m.Values.Length
         | MatrixCSR m -> m.Values.Length
 
-    member this.ToBackend(context: ClContext) =
+    member this.ToBackend(context: ClContext) : GraphBLAS.FSharp.Backend.Matrix<'a> =
         match this with
         | MatrixCOO m ->
             let rows = context.CreateClArray m.Rows
@@ -34,7 +34,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.COOMatrix.Context = context
+                { Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
@@ -48,7 +48,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.CSRMatrix.Context = context
+                { Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   RowPointers = rows

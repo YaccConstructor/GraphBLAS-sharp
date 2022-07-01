@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
-open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
@@ -21,7 +20,7 @@ module ClArray =
                     if i < length then
                         outputBuffer.[i] <- (%initializer) i
             @>
-        let program = clContext.CreateClProgram(init)
+        let program = clContext.Compile(init)
 
         fun (processor: MailboxProcessor<_>)
             (length: int) ->
@@ -78,7 +77,7 @@ module ClArray =
                         let b = secondBuffer.[i]
                         outputBuffer.[i] <- (%f) a b
             @>
-        let program = clContext.CreateClProgram(zipWith)
+        let program = clContext.Compile(zipWith)
 
         fun (processor: MailboxProcessor<_>)
             (firstArray: ClArray<'a>)
@@ -120,7 +119,7 @@ module ClArray =
                         firstBuffer.[i] <- b
                         secondBuffer.[i] <- c
             @>
-        let program = clContext.CreateClProgram(unzipWith)
+        let program = clContext.Compile(unzipWith)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>) ->
@@ -175,7 +174,7 @@ module ClArray =
                         let a = inputBuffer.[i]
                         outputBuffer.[i] <- (%f) a
             @>
-        let program = clContext.CreateClProgram(map)
+        let program = clContext.Compile(map)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>) ->
@@ -215,7 +214,7 @@ module ClArray =
                         let value = inputArray.[i]
                         if i = 0 || inputArray.[i - 1] <> value then heads.[i] <- 1
             @>
-        let program = clContext.CreateClProgram(init)
+        let program = clContext.Compile(init)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
@@ -247,7 +246,7 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let program = clContext.CreateClProgram(copy)
+        let program = clContext.Compile(copy)
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let ndRange =
@@ -276,7 +275,7 @@ module ClArray =
                 if i < outputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i % inputArrayLength] @>
 
-        let program = clContext.CreateClProgram(replicate)
+        let program = clContext.Compile(replicate)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
@@ -310,7 +309,7 @@ module ClArray =
                         resultBuffer.[i]
                         + verticesBuffer.[i / bunchLength] @>
 
-        let program = clContext.CreateClProgram(update)
+        let program = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
             let ndRange =
@@ -382,7 +381,7 @@ module ClArray =
                 if i < inputArrayLength then
                     resultBuffer.[i] <- resultLocalBuffer.[localID] @>
 
-        let program = clContext.CreateClProgram(scan)
+        let program = clContext.Compile(scan)
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
             let ndRange =
@@ -489,7 +488,7 @@ module ClArray =
                 elif gid < inputArrayLength - 1 then
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
-        let program = clContext.CreateClProgram(kernel)
+        let program = clContext.Compile(kernel)
         let copy = copy clContext workGroupSize
 
         let prefixSumExcludeInplace =
@@ -536,7 +535,7 @@ module ClArray =
                 else
                     isUniqueBitmap.[i] <- 1 @>
 
-        let getUniqueBitmap = clContext.CreateClProgram(getUniqueBitmap)
+        let getUniqueBitmap = clContext.Compile(getUniqueBitmap)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
@@ -574,7 +573,7 @@ module ClArray =
                 if i < inputLength then
                     outputArray.[positions.[i]] <- inputArray.[i] @>
 
-        let program = clContext.CreateClProgram(setPositions)
+        let program = clContext.Compile(setPositions)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArraySize: int) ->
 

@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
-open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Quotations
 
 module internal PrefixSum =
@@ -23,7 +22,7 @@ module internal PrefixSum =
                     if i < inputArrayLength then
                         resultBuffer.[i] <- (%opAdd) verticesBuffer.[i / bunchLength] resultBuffer.[i]
             @>
-        let program = clContext.CreateClProgram(update)
+        let program = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
@@ -54,7 +53,7 @@ module internal PrefixSum =
                 verticesLength
                 (resultBuffer: ClArray<'a>)
                 (verticesBuffer: ClArray<'a>)
-                (totalSumBuffer: ClCell<'a>)
+                (totalSumBuffer: ClArray<'a>)
                 (zero: ClCell<'a>) ->
 
                 let resultLocalBuffer = localArray<'a> workGroupSize
@@ -85,7 +84,8 @@ module internal PrefixSum =
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
+                        // totalSumBuffer.Value <- resultLocalBuffer.[localID]
+                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength i
@@ -111,14 +111,14 @@ module internal PrefixSum =
 
                 (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize i localID
             @>
-        let program = clContext.CreateClProgram(scan)
+        let program = clContext.Compile(scan)
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
             (inputArrayLength: int)
             (vertices: ClArray<'a>)
             (verticesLength: int)
-            (totalSum: ClCell<'a>)
+            (totalSum: ClArray<'a>)
             (zero: 'a) ->
 
             // TODO: передавать zero как константу
@@ -199,7 +199,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClCell<'a>)
+            (totalSum: ClArray<'a>)
             (zero: 'a) ->
 
             let firstVertices =
@@ -308,7 +308,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClCell<'a>)
+            (totalSum: ClArray<'a>)
             (zero: 'a) ->
 
             let outputArray = copy processor inputArray
@@ -329,7 +329,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClCell<'a>)
+            (totalSum: ClArray<'a>)
             (zero: 'a) ->
 
             let outputArray = copy processor inputArray

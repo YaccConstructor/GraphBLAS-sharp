@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
@@ -28,7 +28,7 @@ module CSRMatrix =
                     rowIndices.[rowStart + i] <- groupId
                     i <- i + workGroupSize @>
 
-        let program = clContext.CreateClProgram(expandRows)
+        let program = clContext.Compile(expandRows)
 
         fun (processor: MailboxProcessor<_>) workGroupSize rowPointers rowCount (nnz: int) ->
             let ndRange =

@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
@@ -26,7 +26,7 @@ module internal PrepareMatrix =
                         else
                             positions.[i] <- 1
             @>
-        let program = clContext.CreateClProgram(preparePositions)
+        let program = clContext.Compile(preparePositions)
 
         fun (processor: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
@@ -74,13 +74,14 @@ module internal PrepareMatrix =
 
             let positions = preparePositions processor matrixLeft matrixRight
 
-            let resultNNZGpu = clContext.CreateClCell()
+            let resultNNZGpu = clContext.CreateClArray(1)
 
             scanExcludeInPlace processor positions resultNNZGpu
             |> ignore
-            let resultLength =
-                ClCell.toHost resultNNZGpu
-                |> ClTask.runSync clContext
+            // let resultLength =
+            //     ClCell.toHost resultNNZGpu
+            //     |> ClTask.runSync clContext
+            let resultLength = processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(resultNNZGpu, [|0|], ch)).[0]
             processor.Post(Msg.CreateFreeMsg<_>(resultNNZGpu))
 
             let resultColumns =

@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 
 module internal Gather =
     /// <summary>
@@ -31,7 +31,7 @@ module internal Gather =
 
                     if i < size then outputArray.[i] <- inputArray.[positions.[i]]
             @>
-        let program = clContext.CreateClProgram(gather)
+        let program = clContext.Compile(gather)
 
         fun (processor: MailboxProcessor<_>)
             (positions: ClArray<int>)

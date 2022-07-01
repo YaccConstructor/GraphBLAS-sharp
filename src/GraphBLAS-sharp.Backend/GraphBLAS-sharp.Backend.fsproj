@@ -22,6 +22,7 @@
     <Compile Include="Matrices.fs" />
     <Compile Include="Converter.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
+    <Compile Include="Scalar/Scalar.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/ScatterRowPointers.fs" />
     <Compile Include="Matrix/CSRMatrix/Mxm/PrepareMatrix.fs" />
@@ -51,7 +52,7 @@
     <!--Compile Include="Backend/Mask/GetComplemented.fs" /-->
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Brahma.FSharp" Version="2.0.0-alpha9.3" />
+    <PackageReference Include="Brahma.FSharp" Version="2.0.0-alpha9.6" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
