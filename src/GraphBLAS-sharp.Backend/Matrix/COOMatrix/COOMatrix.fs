@@ -116,7 +116,7 @@ module COOMatrix =
                         allValuesBuffer.[i + 1] <- v
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
-                else if (i > 0
+                elif (i > 0
                          && i < length
                          && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
                              || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
@@ -678,7 +678,7 @@ module COOMatrix =
                         allValuesBuffer.[i + 1] <- v
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
-                else if (i > 0
+                elif (i > 0
                          && i < length
                          && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
                              || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
