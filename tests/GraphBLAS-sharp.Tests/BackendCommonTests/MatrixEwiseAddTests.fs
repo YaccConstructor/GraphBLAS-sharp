@@ -84,7 +84,7 @@ let correctnessGenericTest
         checkResult isEqual op zero leftMatrix rightMatrix actual
 
 
-let testFixtures case =
+let testFixturesEWiseAdd case =
     [ let config = defaultConfig
       let wgSize = 256
 
@@ -140,10 +140,10 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.collect testFixtures
+    |> List.collect testFixturesEWiseAdd
     |> testList "Backend.Matrix.eWiseAdd tests"
 
-let testFixturesAtLeastOne case =
+let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
       let wgSize = 256
 
@@ -203,5 +203,69 @@ let tests2 =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.collect testFixturesAtLeastOne
+    |> List.collect testFixturesEWiseAddAtLeastOne
     |> testList "Backend.Matrix.eWiseAddAtLeastOne tests"
+
+
+let testFixturesEWiseMulAtLeastOne case =
+    [ let config = defaultConfig
+      let wgSize = 256
+
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
+
+      let context = case.ClContext.ClContext
+      let q = case.ClContext.Queue
+      q.Error.Add(fun e -> failwithf "%A" e)
+
+      let boolMul =
+          Matrix.eWiseAddAtLeastOne context boolMulAtLeastOne wgSize
+
+      let boolToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest false (&&) boolMul boolToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+
+      let intAdd =
+          Matrix.eWiseAddAtLeastOne context intMulAtLeastOne wgSize
+
+      let intToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0 (*) intAdd intToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+
+      let floatAdd =
+          Matrix.eWiseAddAtLeastOne context floatMulAtLeastOne wgSize
+
+      let floatToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0.0 (*) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let byteAdd =
+          Matrix.eWiseAddAtLeastOne context byteMulAtLeastOne wgSize
+
+      let byteToCOO = Matrix.toCOO context wgSize
+
+      case
+      |> correctnessGenericTest 0uy (*) byteAdd byteToCOO (=) q
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
+
+let tests3 =
+    testCases
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
+    |> List.collect testFixturesEWiseMulAtLeastOne
+    |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"
