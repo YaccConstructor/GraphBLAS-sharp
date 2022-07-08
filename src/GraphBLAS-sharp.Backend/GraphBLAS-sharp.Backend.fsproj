@@ -12,6 +12,7 @@
     <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/BitonicSort.fs" />
+    <Compile Include="Common/StandardOperations.fs" />
     <Compile Include="Matrices.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />

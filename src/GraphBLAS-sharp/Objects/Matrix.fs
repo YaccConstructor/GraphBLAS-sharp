@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 
 type MatrixFromat =

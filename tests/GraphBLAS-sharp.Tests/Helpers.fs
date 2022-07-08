@@ -1,9 +1,12 @@
 namespace GraphBLAS.FSharp.Tests
 
+open Brahma.FSharp.OpenCL.Shared
+open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
+open Brahma.FSharp.ClContextExtensions
 open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message
@@ -338,6 +341,10 @@ module Generators =
 //         |> Arb.fromGen
 
 module Utils =
+    type TestContext =
+        { ClContext: ClContext
+          Queue: MailboxProcessor<Msg> }
+
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
               maxTest = 10
@@ -410,7 +417,7 @@ module Utils =
                     Cl
                         .GetPlatformInfo(platform, PlatformInfo.Name, &e)
                         .ToString()
-                    |> ClPlatform.Custom
+                    |> Platform.Custom
 
                 let deviceType =
                     Cl
@@ -419,15 +426,33 @@ module Utils =
 
                 let clDeviceType =
                     match deviceType with
-                    | DeviceType.Cpu -> ClDeviceType.CPU
-                    | DeviceType.Gpu -> ClDeviceType.GPU
+                    | DeviceType.Cpu -> ClDeviceType.Cpu
+                    | DeviceType.Gpu -> ClDeviceType.Gpu
                     | DeviceType.Default -> ClDeviceType.Default
                     | _ -> failwith "Unsupported"
 
-                Brahma.FSharp.OpenCL.ClContext(clPlatform, clDeviceType))
+                let device =
+                    ClDevice.GetFirstAppropriateDevice(clPlatform)
+
+                let translator = FSQuotationToOpenCLTranslator device
+
+                let context = ClContext(device, translator)
+                let queue = context.QueueProvider.CreateQueue()
+
+                { ClContext = context; Queue = queue })
+
+    let defaultContext =
+        let device = ClDevice.GetFirstAppropriateDevice()
+
+        let context =
+            ClContext(device, FSQuotationToOpenCLTranslator device)
+
+        let queue = context.QueueProvider.CreateQueue()
+
+        { ClContext = context; Queue = queue }
 
     type OperationCase =
-        { ClContext: ClContext
+        { ClContext: TestContext
           MatrixCase: MatrixFromat }
 
     let testCases =
