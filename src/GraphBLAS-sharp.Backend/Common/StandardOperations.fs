@@ -21,7 +21,7 @@ module StandardOperations =
             | None, Some s -> res <- s
             | None, None -> ()
 
-            if res = 0 then None else (Some res) @>
+            if res = 0 then None else Some res @>
 
     let byteSum =
         <@ fun (x: byte option) (y: byte option) ->
@@ -33,7 +33,7 @@ module StandardOperations =
             | None, Some s -> res <- s
             | None, None -> ()
 
-            if res = 0uy then None else (Some res) @>
+            if res = 0uy then None else Some res @>
 
     let floatSum =
         <@ fun (x: float option) (y: float option) ->
@@ -45,7 +45,7 @@ module StandardOperations =
             | None, Some s -> res <- s
             | None, None -> ()
 
-            if res = 0 then None else (Some res) @>
+            if res = 0 then None else Some res @>
 
     let float32Sum =
         <@ fun (x: float32 option) (y: float32 option) ->
@@ -57,7 +57,7 @@ module StandardOperations =
             | None, Some s -> res <- s
             | None, None -> ()
 
-            if res = 0f then None else (Some res) @>
+            if res = 0f then None else Some res @>
 
     let boolSumAtLeastOne =
         <@ fun (_: AtLeastOne<bool, bool>) -> Some true @>
@@ -71,7 +71,7 @@ module StandardOperations =
             | Left f -> res <- f
             | Right s -> res <- s
 
-            if res = 0 then None else (Some res) @>
+            if res = 0 then None else Some res @>
 
     let byteSumAtLeastOne =
         <@ fun (values: AtLeastOne<byte, byte>) ->
@@ -82,7 +82,7 @@ module StandardOperations =
             | Left f -> res <- f
             | Right s -> res <- s
 
-            if res = 0uy then None else (Some res) @>
+            if res = 0uy then None else Some res @>
 
     let floatSumAtLeastOne =
         <@ fun (values: AtLeastOne<float, float>) ->
@@ -93,7 +93,7 @@ module StandardOperations =
             | Left f -> res <- f
             | Right s -> res <- s
 
-            if res = 0.0 then None else (Some res) @>
+            if res = 0.0 then None else Some res @>
 
     let float32SumAtLeastOne =
         <@ fun (values: AtLeastOne<float32, float32>) ->
@@ -104,24 +104,104 @@ module StandardOperations =
             | Left f -> res <- f
             | Right s -> res <- s
 
-            if res = 0f then None else (Some res) @>
-
-    let float32Mul =
-        <@ fun (values: AtLeastOne<float32, float32>) ->
-            let mutable res = 0f
-
-            match values with
-            | Both (f, s) -> res <- f * s
-            | _ -> res <- 0f
-
-            if res = 0f then None else (Some res) @>
+            if res = 0f then None else Some res @>
 
     let boolMul =
+        <@ fun (x: bool option) (y: bool option) ->
+            let mutable res = false
+
+            match x, y with
+            | Some _, Some _ -> res <- true
+            | _ -> ()
+
+            if res then Some true else None @>
+
+    let intMul =
+        <@ fun (x: int option) (y: int option) ->
+            let mutable res = 0
+
+            match x, y with
+            | Some f, Some s -> res <- f * s
+            | _ -> ()
+
+            if res = 0 then None else Some res @>
+
+    let byteMul =
+        <@ fun (x: byte option) (y: byte option) ->
+            let mutable res = 0uy
+
+            match x, y with
+            | Some f, Some s -> res <- f * s
+            | _ -> ()
+
+            if res = 0uy then None else Some res @>
+
+    let floatMul =
+        <@ fun (x: float option) (y: float option) ->
+            let mutable res = 0.0
+
+            match x, y with
+            | Some f, Some s -> res <- f * s
+            | _ -> ()
+
+            if res = 0 then None else Some res @>
+
+    let float32Mul =
+        <@ fun (x: float32 option) (y: float32 option) ->
+            let mutable res = 0.0f
+
+            match x, y with
+            | Some f, Some s -> res <- f * s
+            | _ -> ()
+
+            if res = 0f then None else Some res @>
+
+    let boolMulAtLeastOne =
         <@ fun (values: AtLeastOne<bool, bool>) ->
             let mutable res = false
 
             match values with
             | Both _ -> res <- true
-            | _ -> res <- false
+            | _ -> ()
 
             if res then None else (Some true) @>
+
+    let intMulAtLeastOne =
+        <@ fun (values: AtLeastOne<int, int>) ->
+            let mutable res = 0
+
+            match values with
+            | Both (f, s) -> res <- f * s
+            | _ -> ()
+
+            if res = 0 then None else Some res @>
+
+    let byteMulAtLeastOne =
+        <@ fun (values: AtLeastOne<byte, byte>) ->
+            let mutable res = 0uy
+
+            match values with
+            | Both (f, s) -> res <- f * s
+            | _ -> ()
+
+            if res = 0uy then None else Some res @>
+
+    let floatMulAtLeastOne =
+        <@ fun (values: AtLeastOne<float, float>) ->
+            let mutable res = 0.0
+
+            match values with
+            | Both (f, s) -> res <- f * s
+            | _ -> ()
+
+            if res = 0.0 then None else Some res @>
+
+    let float32MulAtLeastOne =
+        <@ fun (values: AtLeastOne<float32, float32>) ->
+            let mutable res = 0f
+
+            match values with
+            | Both (f, s) -> res <- f * s
+            | _ -> ()
+
+            if res = 0f then None else Some res @>
