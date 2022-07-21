@@ -15,6 +15,7 @@
     <Compile Include="Common/StandardOperations.fs" />
     <Compile Include="Matrices.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
+    <Compile Include="Matrix/COOMatrix/EWise.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
