@@ -10,7 +10,7 @@ module EWise =
     let private copyWithOffset (clContext: ClContext) workGroupSize =
 
         let copyWithOffsetLeft =
-            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -18,10 +18,11 @@ module EWise =
                     then
                         destinationCols.[dstOffset + i] <- sourceCols.[srcOffset + i]
                         destinationValues.[dstOffset + i] <- sourceValues.[srcOffset + i]
-                        isLeftBitmap.[dstOffset + i] <- 1 @>
+                        isLeftBitmap.[dstOffset + i] <- 1
+                        isEndOfRowBitmap.[dstOffset + i] <- if i = rowSize - 1 then 1 else 0 @>
 
         let copyWithOffsetRight =
-            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -29,12 +30,13 @@ module EWise =
                     then
                         destinationCols.[dstOffset + i] <- sourceCols.[srcOffset + i]
                         destinationValues.[dstOffset + i] <- sourceValues.[srcOffset + i]
-                        isLeftBitmap.[dstOffset + i] <- 0 @>
+                        isLeftBitmap.[dstOffset + i] <- 0
+                        isEndOfRowBitmap.[dstOffset + i] <- if i = rowSize - 1 then 1 else 0 @>
 
         let kernelLeft = clContext.Compile(copyWithOffsetLeft)
         let kernelRight = clContext.Compile(copyWithOffsetRight)
 
-        fun (processor: MailboxProcessor<_>) rowSize srcOffset dstOffset isLeft (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) rowSize srcOffset dstOffset isLeft (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
             let ndRange = Range1D.CreateValid(rowSize, workGroupSize)
             let kernel = if isLeft then kernelLeft.GetKernel() else kernelRight.GetKernel()
@@ -51,15 +53,55 @@ module EWise =
                                     sourceValues
                                     destinationCols
                                     destinationValues
+                                    isEndOfRowBitmap
                                     isLeftBitmap)
                     )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    let private getUniqueBitmap (clContext: ClContext) workGroupSize =
+
+        let getUniqueBitmap =
+            <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isEndOfRowBitmap: ClArray<int>) (isUniqueBitmap: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i < inputLength - 1
+                   && inputArray.[i] = inputArray.[i + 1]
+                   && isEndOfRowBitmap.[i] = 0 then
+                    isUniqueBitmap.[i] <- 0
+                else
+                    isUniqueBitmap.[i] <- 1 @>
+
+        let kernel = clContext.Compile(getUniqueBitmap)
+
+        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (isEndOfRow: ClArray<int>) ->
+
+            let inputLength = inputArray.Length
+
+            let ndRange =
+                Range1D.CreateValid(inputLength, workGroupSize)
+
+            let bitmap =
+                clContext.CreateClArray(
+                    inputLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength isEndOfRow bitmap))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            bitmap
+
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
-            <@ fun (ndRange: Range1D) firstOffset secondOffset firstSide secondSide sumOfSides (firstRowPointers: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) firstOffset secondOffset firstSide secondSide sumOfSides (firstRowPointers: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -163,14 +205,16 @@ module EWise =
                         if isValidY then
                             sndIdx <- localIndices.[firstLocalLength + boundaryY]
 
+                        isEndOfRowBitmap.[firstOffset + secondOffset + i] <- if i = sumOfSides - 1 then 1 else 0
+
                         if not isValidX || isValidY && fstIdx < sndIdx then
                             allColumnsBuffer.[firstOffset + secondOffset + i] <- int sndIdx
                             rightMergedValuesBuffer.[firstOffset + secondOffset + i] <- secondValuesBuffer.[secondOffset + i - localID - beginIdx + boundaryY]
-                            isLeftBitmap.[i] <- 0
+                            isLeftBitmap.[firstOffset + secondOffset + i] <- 0
                         else
                             allColumnsBuffer.[firstOffset + secondOffset + i] <- int fstIdx
                             leftMergedValuesBuffer.[firstOffset + secondOffset + i] <- firstValuesBuffer.[firstOffset + beginIdx + boundaryX]
-                            isLeftBitmap.[i] <- 1 @>
+                            isLeftBitmap.[firstOffset + secondOffset + i] <- 1 @>
 
         let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
         let copyWithOffsetRight = copyWithOffset clContext workGroupSize
@@ -207,6 +251,14 @@ module EWise =
                     allocationMode = AllocationMode.Default
                 )
 
+            let isEndOfRow =
+                clContext.CreateClArray<int>(
+                    sumOfSides,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
             let isLeft =
                 clContext.CreateClArray<int>(
                     sumOfSides,
@@ -236,8 +288,8 @@ module EWise =
                 let resRowSize = leftRowSize + rightRowSize
 
                 if resRowSize > 0 then
-                    if leftRowSize = 0 then copyWithOffsetRight processor rightRowSize rightOffset resOffset false matrixRightColumns matrixRightValues allColumns rightMergedValues isLeft
-                    elif rightRowSize = 0 then copyWithOffsetLeft processor leftRowSize leftOffset resOffset true matrixLeftColumns matrixLeftValues allColumns leftMergedValues isLeft
+                    if leftRowSize = 0 then copyWithOffsetRight processor rightRowSize rightOffset resOffset false matrixRightColumns matrixRightValues allColumns rightMergedValues isEndOfRow isLeft
+                    elif rightRowSize = 0 then copyWithOffsetLeft processor leftRowSize leftOffset resOffset true matrixLeftColumns matrixLeftValues allColumns leftMergedValues isEndOfRow isLeft
                     else
                         let ndRange =
                             Range1D.CreateValid(resRowSize, workGroupSize)
@@ -263,6 +315,7 @@ module EWise =
                                         allColumns
                                         leftMergedValues
                                         rightMergedValues
+                                        isEndOfRow
                                         isLeft)
                         )
 
@@ -270,7 +323,10 @@ module EWise =
 
             processor.PostAndReply(Msg.MsgNotifyMe)
             let cols = Array.zeroCreate sumOfSides
+            let isEnd = Array.zeroCreate sumOfSides
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(allColumns, cols, ch))
+            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isEndOfRow, isEnd, ch))
             printfn "%A" cols
+            printfn "%A" isEnd
 
-            allColumns, leftMergedValues, rightMergedValues, isLeft
+            allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
