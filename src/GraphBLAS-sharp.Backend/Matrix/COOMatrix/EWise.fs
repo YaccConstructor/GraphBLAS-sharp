@@ -1,5 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Backend
 
+open System
 open System.Diagnostics.CodeAnalysis
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -179,6 +180,82 @@ module EWise =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             rawPositionsGpu, allValues
+
+    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+
+        let setPositions =
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i = prefixSumArrayLength - 1
+                   || i < prefixSumArrayLength
+                      && prefixSumArrayBuffer.[i]
+                         <> prefixSumArrayBuffer.[i + 1] then
+                    let index = prefixSumArrayBuffer.[i]
+
+                    resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
+                    resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
+
+        let kernel = clContext.Compile(setPositions)
+
+        let sum =
+            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate 1
+
+        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+            let prefixSumArrayLength = positions.Length
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r = sum processor positions resultLengthGpu
+
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+                processor.Post(Msg.CreateFreeMsg<_>(r))
+
+                res.[0]
+
+            let resultColumns =
+                clContext.CreateClArray<int>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let resultValues =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange =
+                Range1D.CreateValid(positions.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            prefixSumArrayLength
+                            allColumns
+                            allValues
+                            positions
+                            resultColumns
+                            resultValues)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultColumns, resultValues, resultLength
 
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
@@ -401,12 +478,58 @@ module EWise =
 
                         processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            processor.PostAndReply(Msg.MsgNotifyMe)
-            let cols = Array.zeroCreate sumOfSides
-            let isEnd = Array.zeroCreate sumOfSides
-            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(allColumns, cols, ch))
-            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isEndOfRow, isEnd, ch))
-            printfn "%A" cols
-            printfn "%A" isEnd
+//            processor.PostAndReply(Msg.MsgNotifyMe)
+//            let cols = Array.zeroCreate sumOfSides
+//            let isEnd = Array.zeroCreate sumOfSides
+//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(allColumns, cols, ch))
+//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isEndOfRow, isEnd, ch))
+//            printfn "%A" cols
+//            printfn "%A" isEnd
 
             allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
+
+    let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let merge = merge clContext workGroupSize
+
+        let preparePositions =
+            preparePositions clContext opAdd workGroupSize
+
+        let setPositions = setPositions<'c> clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
+
+            let allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
+                merge
+                    queue
+                    matrixLeft.RowPointers
+                    matrixLeft.Columns
+                    matrixLeft.Values
+                    matrixRight.RowPointers
+                    matrixRight.Columns
+                    matrixRight.Values
+
+            let rawPositions, allValues =
+                preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
+
+            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
+            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+
+            let resultColumns, resultValues, resultLength =
+                setPositions queue allColumns allValues rawPositions
+
+            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
+            queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
+            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
+            queue.Post(Msg.CreateFreeMsg<_>(allValues))
+
+            { Context = clContext
+              RowCount = matrixLeft.RowCount
+              ColumnCount = matrixLeft.ColumnCount
+              RowPointers = Array.zeroCreate matrixLeft.RowCount |> clContext.CreateClArray
+              Columns = resultColumns
+              Values = resultValues }
