@@ -7,6 +7,55 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module EWise =
+    let private copyWithOffset (clContext: ClContext) workGroupSize =
+
+        let copyWithOffsetLeft =
+            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < rowSize
+                    then
+                        destinationCols.[dstOffset + i] <- sourceCols.[srcOffset + i]
+                        destinationValues.[dstOffset + i] <- sourceValues.[srcOffset + i]
+                        isLeftBitmap.[dstOffset + i] <- 1 @>
+
+        let copyWithOffsetRight =
+            <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+
+                    let i = ndRange.GlobalID0
+
+                    if i < rowSize
+                    then
+                        destinationCols.[dstOffset + i] <- sourceCols.[srcOffset + i]
+                        destinationValues.[dstOffset + i] <- sourceValues.[srcOffset + i]
+                        isLeftBitmap.[dstOffset + i] <- 0 @>
+
+        let kernelLeft = clContext.Compile(copyWithOffsetLeft)
+        let kernelRight = clContext.Compile(copyWithOffsetRight)
+
+        fun (processor: MailboxProcessor<_>) rowSize srcOffset dstOffset isLeft (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isLeftBitmap: ClArray<int>) ->
+
+            let ndRange = Range1D.CreateValid(rowSize, workGroupSize)
+            let kernel = if isLeft then kernelLeft.GetKernel() else kernelRight.GetKernel()
+
+            processor.Post(
+                        Msg.MsgSetArguments
+                            (fun () ->
+                                kernel.KernelFunc
+                                    ndRange
+                                    rowSize
+                                    srcOffset
+                                    dstOffset
+                                    sourceCols
+                                    sourceValues
+                                    destinationCols
+                                    destinationValues
+                                    isLeftBitmap)
+                    )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
@@ -123,6 +172,9 @@ module EWise =
                             leftMergedValuesBuffer.[firstOffset + secondOffset + i] <- firstValuesBuffer.[firstOffset + beginIdx + boundaryX]
                             isLeftBitmap.[i] <- 1 @>
 
+        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
+        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
+
         let kernel = clContext.Compile(merge)
 
         fun (processor: MailboxProcessor<_>) (matrixLeftRowPointers: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRowPointers: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'b>) ->
@@ -163,54 +215,58 @@ module EWise =
                     allocationMode = AllocationMode.Default
                 )
 
+            //Transfering row pointers to CPU to calculate offsets
             let leftRowPointersCPU = Array.zeroCreate matrixLeftRowPointers.Length
             let rightRowPointersCPU = Array.zeroCreate matrixLeftRowPointers.Length
 
             processor.Post(Msg.CreateToHostMsg(matrixLeftRowPointers, leftRowPointersCPU))
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(matrixRightRowPointers, rightRowPointersCPU, ch))
 
+            //Merge on each row
             for row in 0 .. matrixLeftRowPointers.Length - 1 do
                 let leftOffset = leftRowPointersCPU.[row]
                 let rightOffset = rightRowPointersCPU.[row]
-                let leftRowSize =
-                    if row = matrixLeftRowPointers.Length - 1
-                    then matrixLeftValues.Length - leftRowPointersCPU.[row]
-                    else leftRowPointersCPU.[row + 1] - leftOffset
-                let rightRowSize =
-                    if row = matrixRightRowPointers.Length - 1
-                    then matrixRightValues.Length - rightRowPointersCPU.[row]
-                    else rightRowPointersCPU.[row + 1] - rightOffset
+                let resOffset = leftOffset + rightOffset
+                let leftBorder = if row = matrixLeftRowPointers.Length - 1 then matrixLeftValues.Length else leftRowPointersCPU.[row + 1]
+                let rightBorder = if row = matrixRightRowPointers.Length - 1 then matrixRightValues.Length else rightRowPointersCPU.[row + 1]
+
+                let leftRowSize = leftBorder - leftOffset
+                let rightRowSize = rightBorder - rightOffset
+
                 let resRowSize = leftRowSize + rightRowSize
 
                 if resRowSize > 0 then
-                    let ndRange =
-                        Range1D.CreateValid(resRowSize, workGroupSize)
+                    if leftRowSize = 0 then copyWithOffsetRight processor rightRowSize rightOffset resOffset false matrixRightColumns matrixRightValues allColumns rightMergedValues isLeft
+                    elif rightRowSize = 0 then copyWithOffsetLeft processor leftRowSize leftOffset resOffset true matrixLeftColumns matrixLeftValues allColumns leftMergedValues isLeft
+                    else
+                        let ndRange =
+                            Range1D.CreateValid(resRowSize, workGroupSize)
 
-                    let kernel = kernel.GetKernel()
+                        let kernel = kernel.GetKernel()
 
-                    processor.Post(
-                        Msg.MsgSetArguments
-                            (fun () ->
-                                kernel.KernelFunc
-                                    ndRange
-                                    leftOffset
-                                    rightOffset
-                                    leftRowSize
-                                    rightRowSize
-                                    resRowSize
-                                    matrixLeftRowPointers
-                                    matrixLeftColumns
-                                    matrixLeftValues
-                                    matrixRightRowPointers
-                                    matrixRightColumns
-                                    matrixRightValues
-                                    allColumns
-                                    leftMergedValues
-                                    rightMergedValues
-                                    isLeft)
-                    )
+                        processor.Post(
+                            Msg.MsgSetArguments
+                                (fun () ->
+                                    kernel.KernelFunc
+                                        ndRange
+                                        leftOffset
+                                        rightOffset
+                                        leftRowSize
+                                        rightRowSize
+                                        resRowSize
+                                        matrixLeftRowPointers
+                                        matrixLeftColumns
+                                        matrixLeftValues
+                                        matrixRightRowPointers
+                                        matrixRightColumns
+                                        matrixRightValues
+                                        allColumns
+                                        leftMergedValues
+                                        rightMergedValues
+                                        isLeft)
+                        )
 
-                    processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+                        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             processor.PostAndReply(Msg.MsgNotifyMe)
             let cols = Array.zeroCreate sumOfSides
