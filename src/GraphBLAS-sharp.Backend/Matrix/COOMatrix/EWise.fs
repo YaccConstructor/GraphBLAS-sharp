@@ -98,10 +98,92 @@ module EWise =
 
             bitmap
 
+    let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let preparePositions =
+            <@ fun (ndRange: Range1D) length (allColumnsBuffer: ClArray<int>) (leftValuesBuffer: ClArray<'a>) (rightValuesBuffer: ClArray<'b>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if (i < length - 1
+                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]
+                    && isEndOfRowBitmap.[i] = 0)
+                    then
+                    rawPositionsBuffer.[i] <- 0
+
+                    match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
+                    | Some v ->
+                        allValuesBuffer.[i + 1] <- v
+                        rawPositionsBuffer.[i + 1] <- 1
+                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                elif (i > 0
+                         && i < length
+                         && (allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1])
+                         || isEndOfRowBitmap.[i - 1] = 1)
+                        || i = 0 then
+                    if isLeftBitmap.[i] = 1 then
+                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0
+                    else
+                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
+                        | Some v ->
+                            allValuesBuffer.[i] <- v
+                            rawPositionsBuffer.[i] <- 1
+                        | None -> rawPositionsBuffer.[i] <- 0 @>
+
+        let kernel = clContext.Compile(preparePositions)
+
+        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isEndOfRow: ClArray<int>) (isLeft: ClArray<int>) ->
+            let length = leftValues.Length
+
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            let rawPositionsGpu =
+                clContext.CreateClArray<int>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let allValues =
+                clContext.CreateClArray<'c>(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            length
+                            allColumns
+                            leftValues
+                            rightValues
+                            allValues
+                            rawPositionsGpu
+                            isEndOfRow
+                            isLeft)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            rawPositionsGpu, allValues
+
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
-            <@ fun (ndRange: Range1D) firstOffset secondOffset firstSide secondSide sumOfSides (firstRowPointers: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) firstOffset secondOffset firstSide secondSide sumOfSides (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -306,10 +388,8 @@ module EWise =
                                         leftRowSize
                                         rightRowSize
                                         resRowSize
-                                        matrixLeftRowPointers
                                         matrixLeftColumns
                                         matrixLeftValues
-                                        matrixRightRowPointers
                                         matrixRightColumns
                                         matrixRightValues
                                         allColumns
