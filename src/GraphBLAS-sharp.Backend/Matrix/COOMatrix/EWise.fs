@@ -8,6 +8,47 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module EWise =
+    let private getResRowSizes (clContext: ClContext) workGroupSize =
+
+        let getResRowSizes =
+            <@ fun (ndRange: Range1D) (leftRowPointers: ClArray<int>) (rightRowPointers: ClArray<int>) (resRowSizes: ClArray<int>) rows leftNNZ rightNNZ ->
+
+                let row = ndRange.GlobalID0
+
+                if row < rows then
+
+                    let leftOffset = leftRowPointers.[row]
+                    let rightOffset = rightRowPointers.[row]
+                    let leftBorder = if row = rows - 1 then leftNNZ else leftRowPointers.[row + 1]
+                    let rightBorder = if row = rows - 1 then rightNNZ else rightRowPointers.[row + 1]
+
+                    let leftRowSize = leftBorder - leftOffset
+                    let rightRowSize = rightBorder - rightOffset
+
+                    resRowSizes.[row] <- leftRowSize + rightRowSize
+                 @>
+
+        let kernel = clContext.Compile(getResRowSizes)
+
+        fun (processor: MailboxProcessor<_>) (leftRowPointers: ClArray<int>) (rightRowPointers: ClArray<int>) rows leftNNZ rightNNZ ->
+
+            let ndRange =
+                Range1D.CreateValid(leftRowPointers.Length, workGroupSize)
+
+            let resRowSizes =
+                clContext.CreateClArray(
+                    leftRowPointers.Length
+                )
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange leftRowPointers rightRowPointers resRowSizes rows leftNNZ rightNNZ))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            resRowSizes
+
+
     let private copyWithOffset (clContext: ClContext) workGroupSize =
 
         let copyWithOffsetLeft =
@@ -76,7 +117,7 @@ module EWise =
 
         let kernel = clContext.Compile(getUniqueBitmap)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (isEndOfRow: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (isEndOfRow: ClArray<int>) ->
 
             let inputLength = inputArray.Length
 
@@ -260,9 +301,18 @@ module EWise =
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
-            <@ fun (ndRange: Range1D) firstOffset secondOffset firstSide secondSide sumOfSides (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) row rows firstNNZ secondNNZ (resRowSizesBuffer: ClArray<int>) (firstRowPointersBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowPointersBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
+
+                    let firstOffset = firstRowPointersBuffer.[row]
+                    let secondOffset = secondRowPointersBuffer.[row]
+                    let firstBorder = if row = rows - 1 then firstNNZ else firstRowPointersBuffer.[row + 1]
+                    let secondBorder = if row = rows - 1 then secondNNZ else secondRowPointersBuffer.[row + 1]
+
+                    let firstSide = firstBorder - firstOffset
+                    let secondSide = secondBorder - secondOffset
+                    let sumOfSides = resRowSizesBuffer.[row]
 
                     let mutable beginIdxLocal = local ()
                     let mutable endIdxLocal = local ()
@@ -375,8 +425,9 @@ module EWise =
                             leftMergedValuesBuffer.[firstOffset + secondOffset + i] <- firstValuesBuffer.[firstOffset + beginIdx + boundaryX]
                             isLeftBitmap.[firstOffset + secondOffset + i] <- 1 @>
 
-        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
-        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
+//        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
+//        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
+        let getResRowSizes = getResRowSizes clContext workGroupSize
 
         let kernel = clContext.Compile(merge)
 
@@ -426,57 +477,45 @@ module EWise =
                     allocationMode = AllocationMode.Default
                 )
 
-            //Transfering row pointers to CPU to calculate offsets
-            let leftRowPointersCPU = Array.zeroCreate matrixLeftRowPointers.Length
-            let rightRowPointersCPU = Array.zeroCreate matrixLeftRowPointers.Length
+            //Get resRowSizes and transfer them to CPU to calculate ndRange
+            let resRowSizes = getResRowSizes processor matrixLeftRowPointers matrixRightRowPointers matrixLeftRowPointers.Length matrixLeftValues.Length matrixRightValues.Length
+            let resRowSizesCPU = Array.zeroCreate resRowSizes.Length
 
-            processor.Post(Msg.CreateToHostMsg(matrixLeftRowPointers, leftRowPointersCPU))
-            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(matrixRightRowPointers, rightRowPointersCPU, ch))
+            processor.PostAndReply(Msg.MsgNotifyMe)
+            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(resRowSizes, resRowSizesCPU, ch))
 
             //Merge on each row
             for row in 0 .. matrixLeftRowPointers.Length - 1 do
-                let leftOffset = leftRowPointersCPU.[row]
-                let rightOffset = rightRowPointersCPU.[row]
-                let resOffset = leftOffset + rightOffset
-                let leftBorder = if row = matrixLeftRowPointers.Length - 1 then matrixLeftValues.Length else leftRowPointersCPU.[row + 1]
-                let rightBorder = if row = matrixRightRowPointers.Length - 1 then matrixRightValues.Length else rightRowPointersCPU.[row + 1]
+                if resRowSizesCPU.[row] > 0 then
+                    let ndRange =
+                        Range1D.CreateValid(resRowSizesCPU.[row], workGroupSize)
 
-                let leftRowSize = leftBorder - leftOffset
-                let rightRowSize = rightBorder - rightOffset
+                    let kernel = kernel.GetKernel()
 
-                let resRowSize = leftRowSize + rightRowSize
+                    processor.Post(
+                        Msg.MsgSetArguments
+                            (fun () ->
+                                kernel.KernelFunc
+                                    ndRange
+                                    row
+                                    matrixLeftRowPointers.Length
+                                    matrixLeftValues.Length
+                                    matrixRightValues.Length
+                                    resRowSizes
+                                    matrixLeftRowPointers
+                                    matrixLeftColumns
+                                    matrixLeftValues
+                                    matrixRightRowPointers
+                                    matrixRightColumns
+                                    matrixRightValues
+                                    allColumns
+                                    leftMergedValues
+                                    rightMergedValues
+                                    isEndOfRow
+                                    isLeft)
+                    )
 
-                if resRowSize > 0 then
-                    if leftRowSize = 0 then copyWithOffsetRight processor rightRowSize rightOffset resOffset false matrixRightColumns matrixRightValues allColumns rightMergedValues isEndOfRow isLeft
-                    elif rightRowSize = 0 then copyWithOffsetLeft processor leftRowSize leftOffset resOffset true matrixLeftColumns matrixLeftValues allColumns leftMergedValues isEndOfRow isLeft
-                    else
-                        let ndRange =
-                            Range1D.CreateValid(resRowSize, workGroupSize)
-
-                        let kernel = kernel.GetKernel()
-
-                        processor.Post(
-                            Msg.MsgSetArguments
-                                (fun () ->
-                                    kernel.KernelFunc
-                                        ndRange
-                                        leftOffset
-                                        rightOffset
-                                        leftRowSize
-                                        rightRowSize
-                                        resRowSize
-                                        matrixLeftColumns
-                                        matrixLeftValues
-                                        matrixRightColumns
-                                        matrixRightValues
-                                        allColumns
-                                        leftMergedValues
-                                        rightMergedValues
-                                        isEndOfRow
-                                        isLeft)
-                        )
-
-                        processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+                    processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 //            processor.PostAndReply(Msg.MsgNotifyMe)
 //            let cols = Array.zeroCreate sumOfSides
@@ -523,6 +562,7 @@ module EWise =
                 setPositions queue allColumns allValues rawPositions
 
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
+            queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
             queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -530,6 +570,7 @@ module EWise =
             { Context = clContext
               RowCount = matrixLeft.RowCount
               ColumnCount = matrixLeft.ColumnCount
-              RowPointers = Array.zeroCreate matrixLeft.RowCount |> clContext.CreateClArray
+              RowPointers = clContext.CreateClArray matrixLeft.RowCount
               Columns = resultColumns
-              Values = resultValues }
+              Values = resultValues //clContext.CreateClArray<'c> allColumns.Length
+              }
