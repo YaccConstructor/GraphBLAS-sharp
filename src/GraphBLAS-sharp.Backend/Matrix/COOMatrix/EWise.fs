@@ -13,7 +13,7 @@ module EWise =
         let getResRowSizes =
             <@ fun (ndRange: Range1D) (leftRowPointers: ClArray<int>) (rightRowPointers: ClArray<int>) (resRowSizes: ClArray<int>) rows leftNNZ rightNNZ ->
 
-                let row = ndRange.GlobalID0
+                let row = ndRange.globalID0
 
                 if row < rows then
 
@@ -54,7 +54,7 @@ module EWise =
         let copyWithOffsetLeft =
             <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0
+                    let i = ndRange.globalID0
 
                     if i < rowSize
                     then
@@ -66,7 +66,7 @@ module EWise =
         let copyWithOffsetRight =
             <@ fun (ndRange: Range1D) rowSize srcOffset dstOffset (sourceCols: ClArray<int>) (sourceValues: ClArray<'a>) (destinationCols: ClArray<int>) (destinationValues: ClArray<'a>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0
+                    let i = ndRange.globalID0
 
                     if i < rowSize
                     then
@@ -106,7 +106,7 @@ module EWise =
         let getUniqueBitmap =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isEndOfRowBitmap: ClArray<int>) (isUniqueBitmap: ClArray<int>) ->
 
-                let i = ndRange.GlobalID0
+                let i = ndRange.globalID0
 
                 if i < inputLength - 1
                    && inputArray.[i] = inputArray.[i + 1]
@@ -147,38 +147,38 @@ module EWise =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allColumnsBuffer: ClArray<int>) (leftValuesBuffer: ClArray<'a>) (rightValuesBuffer: ClArray<'b>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
-                let i = ndRange.GlobalID0
+                let i = ndRange.globalID0
 
                 if (i < length - 1
-                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]
+                    && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0)
                     then
-                    rawPositionsBuffer.[i] <- 0
+                    rawPositions.[i] <- 0
 
-                    match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
+                    match (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i]) with
                     | Some v ->
-                        allValuesBuffer.[i + 1] <- v
-                        rawPositionsBuffer.[i + 1] <- 1
-                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                        allValues.[i + 1] <- v
+                        rawPositions.[i + 1] <- 1
+                    | None -> rawPositions.[i + 1] <- 0
                 elif (i > 0
                          && i < length
-                         && (allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1])
+                         && (allColumns.[i] <> allColumns.[i - 1])
                          || isEndOfRowBitmap.[i - 1] = 1)
                         || i = 0 then
                     if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
+                        match (%opAdd) (Some leftValues.[i]) None with
                         | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
+                            allValues.[i] <- v
+                            rawPositions.[i] <- 1
+                        | None -> rawPositions.[i] <- 0
                     else
-                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
+                        match (%opAdd) None (Some rightValues.[i]) with
                         | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0 @>
+                            allValues.[i] <- v
+                            rawPositions.[i] <- 1
+                        | None -> rawPositions.[i] <- 0 @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -225,18 +225,18 @@ module EWise =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allColumns: ClArray<int>) (allValues: ClArray<'a>) (prefixSumArray: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'a>) ->
 
-                let i = ndRange.GlobalID0
+                let i = ndRange.globalID0
 
                 if i = prefixSumArrayLength - 1
                    || i < prefixSumArrayLength
-                      && prefixSumArrayBuffer.[i]
-                         <> prefixSumArrayBuffer.[i + 1] then
-                    let index = prefixSumArrayBuffer.[i]
+                      && prefixSumArray.[i]
+                         <> prefixSumArray.[i + 1] then
+                    let index = prefixSumArray.[i]
 
-                    resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
-                    resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
+                    resultColumns.[index] <- allColumns.[i]
+                    resultValues.[index] <- allValues.[i] @>
 
         let kernel = clContext.Compile(setPositions)
 
@@ -301,129 +301,166 @@ module EWise =
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
-            <@ fun (ndRange: Range1D) row rows firstNNZ secondNNZ (resRowSizesBuffer: ClArray<int>) (firstRowPointersBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowPointersBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allColumnsBuffer: ClArray<int>) (leftMergedValuesBuffer: ClArray<'a>) (rightMergedValuesBuffer: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun
+                (ndRange: Range1D)
+                rows
+                firstNNZ
+                secondNNZ
+                (resRowSizes: ClArray<int>)
+                (firstRowPointers: ClArray<int>)
+                (firstColumns: ClArray<int>)
+                (firstValues: ClArray<'a>)
+                (secondRowPointers: ClArray<int>)
+                (secondColumns: ClArray<int>)
+                (secondValues: ClArray<'b>)
+                (allColumns: ClArray<int>)
+                (leftMergedValues: ClArray<'a>)
+                (rightMergedValues: ClArray<'b>)
+                (isEndOfRowBitmap: ClArray<int>)
+                (isLeftBitmap: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0
+                    let globalID = ndRange.GlobalID0
 
-                    let firstOffset = firstRowPointersBuffer.[row]
-                    let secondOffset = secondRowPointersBuffer.[row]
-                    let firstBorder = if row = rows - 1 then firstNNZ else firstRowPointersBuffer.[row + 1]
-                    let secondBorder = if row = rows - 1 then secondNNZ else secondRowPointersBuffer.[row + 1]
+                    let row = globalID / workGroupSize
 
-                    let firstSide = firstBorder - firstOffset
-                    let secondSide = secondBorder - secondOffset
-                    let sumOfSides = resRowSizesBuffer.[row]
+                    let firstOffset = firstRowPointers.[row]
+                    let secondOffset = secondRowPointers.[row]
+                    let resOffset = firstOffset + secondOffset
 
-                    let mutable beginIdxLocal = local ()
-                    let mutable endIdxLocal = local ()
-                    let localID = ndRange.LocalID0
+                    let firstRowEnd = if row = rows - 1 then firstNNZ else firstRowPointers.[row + 1]
+                    let secondRowEnd = if row = rows - 1 then secondNNZ else secondRowPointers.[row + 1]
 
-                    if localID < 2 then
-                        let mutable x = localID * (workGroupSize - 1) + i - 1
+                    let firstRowLength = firstRowEnd - firstOffset
+                    let secondRowLength = secondRowEnd - secondOffset
+                    let resRowLength = firstRowLength + secondRowLength
 
-                        if x >= sumOfSides then
-                            x <- sumOfSides - 1
+                    let workGroupCount = (resRowLength + workGroupSize - 1) / workGroupSize
 
-                        let diagonalNumber = x
+                    let mutable beginFirst = 0
+                    let mutable beginSecond = 0
 
-                        let mutable leftEdge = diagonalNumber + 1 - secondSide
-                        if leftEdge < 0 then leftEdge <- 0
+                    let mutable maxFirstIndex = local ()
+                    let mutable maxSecondIndex = local ()
 
-                        let mutable rightEdge = firstSide - 1
+                    //Cycle on each work group for one row
+                    for group in 0 .. workGroupCount do
 
-                        if rightEdge > diagonalNumber then
-                            rightEdge <- diagonalNumber
+                        let mutable maxFirstIndexPerThread = local ()
+                        let mutable maxSecondIndexPerThread = local ()
 
-                        while leftEdge <= rightEdge do
-                            let middleIdx = (leftEdge + rightEdge) / 2
+                        let mutable beginIdxLocal = local ()
+                        let mutable endIdxLocal = local ()
+                        let localID = ndRange.LocalID0
 
-                            let firstIndex: uint64 = (uint64 firstColumnsBuffer.[firstOffset + middleIdx])
+                        //Binary search for indices of window's beginning and ending
+                        //localID = 0 searches for beginning
+                        if localID < 2 then
+                            let mutable x = localID * (workGroupSize - 1) + globalID - 1
 
-                            let secondIndex: uint64 = (uint64 secondColumnsBuffer.[secondOffset + diagonalNumber - middleIdx])
+                            if x >= resRowLength then
+                                x <- resRowLength - 1
 
-                            if firstIndex < secondIndex then
-                                leftEdge <- middleIdx + 1
+                            let diagonalNumber = x
+
+                            let mutable leftEdge = diagonalNumber + 1 - secondRowLength
+                            if leftEdge < 0 then leftEdge <- 0
+
+                            let mutable rightEdge = firstRowLength - 1
+
+                            if rightEdge > diagonalNumber then
+                                rightEdge <- diagonalNumber
+
+                            while leftEdge <= rightEdge do
+                                let middleIdx = (leftEdge + rightEdge) / 2
+
+                                let firstIndex: uint64 = (uint64 firstColumns.[firstOffset + middleIdx])
+
+                                let secondIndex: uint64 = (uint64 secondColumns.[secondOffset + diagonalNumber - middleIdx])
+
+                                if firstIndex < secondIndex then
+                                    leftEdge <- middleIdx + 1
+                                else
+                                    rightEdge <- middleIdx - 1
+
+                            // Here localID equals either 0 or 1
+                            if localID = 0 then
+                                beginIdxLocal <- leftEdge
                             else
-                                rightEdge <- middleIdx - 1
+                                endIdxLocal <- leftEdge
 
-                        // Here localID equals either 0 or 1
-                        if localID = 0 then
-                            beginIdxLocal <- leftEdge
-                        else
-                            endIdxLocal <- leftEdge
+                        barrierLocal ()
 
-                    barrierLocal ()
+                        let beginIdx = beginIdxLocal
+                        let endIdx = endIdxLocal
+                        let firstLocalLength = endIdx - beginIdx
+                        let mutable x = workGroupSize - firstLocalLength
 
-                    let beginIdx = beginIdxLocal
-                    let endIdx = endIdxLocal
-                    let firstLocalLength = endIdx - beginIdx
-                    let mutable x = workGroupSize - firstLocalLength
+                        if endIdx = firstRowLength then
+                            x <- secondRowLength - globalID + localID + beginIdx
 
-                    if endIdx = firstSide then
-                        x <- secondSide - i + localID + beginIdx
+                        let secondLocalLength = x
 
-                    let secondLocalLength = x
+                        //Loading column indices to local memory
+                        //First indices are from 0 to firstLocalLength - 1 inclusive
+                        //Second indices are from firstLocalLength to firstLocalLength + secondLocalLength - 1 inclusive
+                        let localIndices = localArray<uint64> workGroupSize
 
-                    //First indices are from 0 to firstLocalLength - 1 inclusive
-                    //Second indices are from firstLocalLength to firstLocalLength + secondLocalLength - 1 inclusive
-                    let localIndices = localArray<uint64> workGroupSize
+                        if localID < firstLocalLength then
+                            localIndices.[localID] <- (uint64 firstColumns.[firstOffset + beginIdx + localID])
 
-                    if localID < firstLocalLength then
-                        localIndices.[localID] <- (uint64 firstColumnsBuffer.[firstOffset + beginIdx + localID])
+                        if localID < secondLocalLength then
+                            localIndices.[firstLocalLength + localID] <- (uint64 secondColumns.[secondOffset + globalID - beginIdx])
 
-                    if localID < secondLocalLength then
-                        localIndices.[firstLocalLength + localID] <- (uint64 secondColumnsBuffer.[secondOffset + i - beginIdx])
+                        barrierLocal ()
 
-                    barrierLocal ()
+                        if globalID < resRowLength then
+                            let mutable leftEdge = localID + 1 - secondLocalLength
+                            if leftEdge < 0 then leftEdge <- 0
 
-                    if i < sumOfSides then
-                        let mutable leftEdge = localID + 1 - secondLocalLength
-                        if leftEdge < 0 then leftEdge <- 0
+                            let mutable rightEdge = firstLocalLength - 1
 
-                        let mutable rightEdge = firstLocalLength - 1
+                            if rightEdge > localID then
+                                rightEdge <- localID
 
-                        if rightEdge > localID then
-                            rightEdge <- localID
+                            while leftEdge <= rightEdge do
+                                let middleIdx = (leftEdge + rightEdge) / 2
+                                let firstIndex = localIndices.[middleIdx]
 
-                        while leftEdge <= rightEdge do
-                            let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex = localIndices.[middleIdx]
+                                let secondIndex =
+                                    localIndices.[firstLocalLength + localID - middleIdx]
 
-                            let secondIndex =
-                                localIndices.[firstLocalLength + localID - middleIdx]
+                                if firstIndex < secondIndex then
+                                    leftEdge <- middleIdx + 1
+                                else
+                                    rightEdge <- middleIdx - 1
 
-                            if firstIndex < secondIndex then
-                                leftEdge <- middleIdx + 1
+                            let boundaryX = rightEdge
+                            let boundaryY = localID - leftEdge
+
+                            // boundaryX and boundaryY can't be off the right edge of array (only off the left edge)
+                            let isValidX = boundaryX >= 0
+                            let isValidY = boundaryY >= 0
+
+                            let mutable fstIdx = 0UL
+
+                            if isValidX then
+                                fstIdx <- localIndices.[boundaryX]
+
+                            let mutable sndIdx = 0UL
+
+                            if isValidY then
+                                sndIdx <- localIndices.[firstLocalLength + boundaryY]
+
+                            isEndOfRowBitmap.[firstOffset + secondOffset + globalID] <- if globalID = resRowLength - 1 then 1 else 0
+
+                            if not isValidX || isValidY && fstIdx < sndIdx then
+                                allColumns.[firstOffset + secondOffset + globalID] <- int sndIdx
+                                rightMergedValues.[firstOffset + secondOffset + globalID] <- secondValues.[secondOffset + globalID - localID - beginIdx + boundaryY]
+                                isLeftBitmap.[firstOffset + secondOffset + globalID] <- 0
                             else
-                                rightEdge <- middleIdx - 1
-
-                        let boundaryX = rightEdge
-                        let boundaryY = localID - leftEdge
-
-                        // boundaryX and boundaryY can't be off the right edge of array (only off the left edge)
-                        let isValidX = boundaryX >= 0
-                        let isValidY = boundaryY >= 0
-
-                        let mutable fstIdx = 0UL
-
-                        if isValidX then
-                            fstIdx <- localIndices.[boundaryX]
-
-                        let mutable sndIdx = 0UL
-
-                        if isValidY then
-                            sndIdx <- localIndices.[firstLocalLength + boundaryY]
-
-                        isEndOfRowBitmap.[firstOffset + secondOffset + i] <- if i = sumOfSides - 1 then 1 else 0
-
-                        if not isValidX || isValidY && fstIdx < sndIdx then
-                            allColumnsBuffer.[firstOffset + secondOffset + i] <- int sndIdx
-                            rightMergedValuesBuffer.[firstOffset + secondOffset + i] <- secondValuesBuffer.[secondOffset + i - localID - beginIdx + boundaryY]
-                            isLeftBitmap.[firstOffset + secondOffset + i] <- 0
-                        else
-                            allColumnsBuffer.[firstOffset + secondOffset + i] <- int fstIdx
-                            leftMergedValuesBuffer.[firstOffset + secondOffset + i] <- firstValuesBuffer.[firstOffset + beginIdx + boundaryX]
-                            isLeftBitmap.[firstOffset + secondOffset + i] <- 1 @>
+                                allColumns.[firstOffset + secondOffset + globalID] <- int fstIdx
+                                leftMergedValues.[firstOffset + secondOffset + globalID] <- firstValues.[firstOffset + beginIdx + boundaryX]
+                                isLeftBitmap.[firstOffset + secondOffset + globalID] <- 1 @>
 
 //        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
 //        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
@@ -433,13 +470,13 @@ module EWise =
 
         fun (processor: MailboxProcessor<_>) (matrixLeftRowPointers: ClArray<int>) (matrixLeftColumns: ClArray<int>) (matrixLeftValues: ClArray<'a>) (matrixRightRowPointers: ClArray<int>) (matrixRightColumns: ClArray<int>) (matrixRightValues: ClArray<'b>) ->
 
-            let firstSide = matrixLeftValues.Length
-            let secondSide = matrixRightValues.Length
-            let sumOfSides = firstSide + secondSide
+            let firstLength = matrixLeftValues.Length
+            let secondLength = matrixRightValues.Length
+            let resLength = firstLength + secondLength
 
             let allColumns =
                 clContext.CreateClArray<int>(
-                    sumOfSides,
+                    resLength,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
@@ -447,7 +484,7 @@ module EWise =
 
             let leftMergedValues =
                 clContext.CreateClArray<'a>(
-                    sumOfSides,
+                    resLength,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
@@ -455,7 +492,7 @@ module EWise =
 
             let rightMergedValues =
                 clContext.CreateClArray<'b>(
-                    sumOfSides,
+                    resLength,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
@@ -463,7 +500,7 @@ module EWise =
 
             let isEndOfRow =
                 clContext.CreateClArray<int>(
-                    sumOfSides,
+                    resLength,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
@@ -471,59 +508,51 @@ module EWise =
 
             let isLeft =
                 clContext.CreateClArray<int>(
-                    sumOfSides,
+                    resLength,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
 
-            //Get resRowSizes and transfer them to CPU to calculate ndRange
-            let resRowSizes = getResRowSizes processor matrixLeftRowPointers matrixRightRowPointers matrixLeftRowPointers.Length matrixLeftValues.Length matrixRightValues.Length
-            let resRowSizesCPU = Array.zeroCreate resRowSizes.Length
+            // Merge
+            let ndRange =
+                Range1D.CreateValid(matrixLeftRowPointers.Length * workGroupSize, workGroupSize)
 
-            processor.PostAndReply(Msg.MsgNotifyMe)
-            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(resRowSizes, resRowSizesCPU, ch))
+            let kernel = kernel.GetKernel()
 
-            //Merge on each row
-            for row in 0 .. matrixLeftRowPointers.Length - 1 do
-                if resRowSizesCPU.[row] > 0 then
-                    let ndRange =
-                        Range1D.CreateValid(resRowSizesCPU.[row], workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            matrixLeftRowPointers.Length
+                            matrixLeftValues.Length
+                            matrixRightValues.Length
+                            resRowSizes
+                            matrixLeftRowPointers
+                            matrixLeftColumns
+                            matrixLeftValues
+                            matrixRightRowPointers
+                            matrixRightColumns
+                            matrixRightValues
+                            allColumns
+                            leftMergedValues
+                            rightMergedValues
+                            isEndOfRow
+                            isLeft)
+            )
 
-                    let kernel = kernel.GetKernel()
-
-                    processor.Post(
-                        Msg.MsgSetArguments
-                            (fun () ->
-                                kernel.KernelFunc
-                                    ndRange
-                                    row
-                                    matrixLeftRowPointers.Length
-                                    matrixLeftValues.Length
-                                    matrixRightValues.Length
-                                    resRowSizes
-                                    matrixLeftRowPointers
-                                    matrixLeftColumns
-                                    matrixLeftValues
-                                    matrixRightRowPointers
-                                    matrixRightColumns
-                                    matrixRightValues
-                                    allColumns
-                                    leftMergedValues
-                                    rightMergedValues
-                                    isEndOfRow
-                                    isLeft)
-                    )
-
-                    processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
 //            processor.PostAndReply(Msg.MsgNotifyMe)
-//            let cols = Array.zeroCreate sumOfSides
-//            let isEnd = Array.zeroCreate sumOfSides
+//            let cols = Array.zeroCreate resRowLength
+//            let isEnd = Array.zeroCreate resRowLength
 //            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(allColumns, cols, ch))
 //            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isEndOfRow, isEnd, ch))
 //            printfn "%A" cols
 //            printfn "%A" isEnd
+
+            processor.Post(Msg.CreateFreeMsg<_>(resRowSizes))
 
             allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
 
@@ -572,5 +601,5 @@ module EWise =
               ColumnCount = matrixLeft.ColumnCount
               RowPointers = clContext.CreateClArray matrixLeft.RowCount
               Columns = resultColumns
-              Values = resultValues //clContext.CreateClArray<'c> allColumns.Length
+              Values = resultValues
               }
