@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend
 
 open System
 open System.Diagnostics.CodeAnalysis
@@ -188,7 +188,7 @@ module EWise =
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
 
-            let rawPositionsGpu =
+            let rawPositions =
                 clContext.CreateClArray<int>(
                     length,
                     hostAccessMode = HostAccessMode.NotAccessible,
@@ -214,13 +214,13 @@ module EWise =
                             leftValues
                             rightValues
                             allValues
-                            rawPositionsGpu
+                            rawPositions
                             isEndOfRow
                             isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            rawPositionsGpu, allValues
+            rawPositions, allValues
 
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
@@ -238,19 +238,41 @@ module EWise =
                     resultColumns.[index] <- allColumns.[i]
                     resultValues.[index] <- allValues.[i] @>
 
-        let kernel = clContext.Compile(setPositions)
+        let setRowPointers =
+            <@ fun (ndRange: Range1D) numberOfRows nnz prefixSumArrayLength (positions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (rowPointers: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i > 0
+                    && i < prefixSumArrayLength - 1
+                    && isEndOfRowBitmap.[i]
+                        <> isEndOfRowBitmap.[i - 1] then
+                    let index = isEndOfRowBitmap.[i]
+
+                    rowPointers.[index] <- positions.[i]
+                elif i = 0 then rowPointers.[0] <- 0
+
+                barrierFull ()
+
+                if i = prefixSumArrayLength - 1 && numberOfRows > 1 then
+                    rowPointers.[i] <- nnz - rowPointers.[i - 1] @>
+
+        let kernelSetPositions = clContext.Compile(setPositions)
+        let kernelSetRowPointers = clContext.Compile(setRowPointers)
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
-        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) (isRowEnd: ClArray<int>) (numberOfRows: int) ->
             let prefixSumArrayLength = positions.Length
 
             let resultLengthGpu = clContext.CreateClCell 0
+            let rowEndSum = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
+            sum processor isRowEnd rowEndSum |> ignore
 
             let resultLength =
                 let res =
@@ -259,6 +281,14 @@ module EWise =
                 processor.Post(Msg.CreateFreeMsg<_>(r))
 
                 res.[0]
+
+            let rowPointers =
+                clContext.CreateClArray<int>(
+                    numberOfRows,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
 
             let resultColumns =
                 clContext.CreateClArray<int>(
@@ -279,12 +309,13 @@ module EWise =
             let ndRange =
                 Range1D.CreateValid(positions.Length, workGroupSize)
 
-            let kernel = kernel.GetKernel()
+            let kernelSetPositions = kernelSetPositions.GetKernel()
+            let kernelSetRowPointers = kernelSetRowPointers.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.KernelFunc
+                        kernelSetPositions.KernelFunc
                             ndRange
                             prefixSumArrayLength
                             allColumns
@@ -294,12 +325,27 @@ module EWise =
                             resultValues)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            processor.PostAndReply(fun _ -> Msg.CreateRunMsg<_, _>(kernelSetPositions))
 
-            resultColumns, resultValues, resultLength
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernelSetRowPointers.KernelFunc
+                            ndRange
+                            numberOfRows
+                            resultLength
+                            prefixSumArrayLength
+                            positions
+                            isRowEnd
+                            rowPointers)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernelSetRowPointers))
+
+            rowPointers, resultColumns, resultValues, resultLength
 
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
-
+        let size = workGroupSize + 2
         let merge =
             <@ fun
                 (ndRange: Range1D)
@@ -347,8 +393,8 @@ module EWise =
                     let mutable dir = true
 
                     //Local arrays for column indices
-                    let firstRowLocal = localArray<int> 34
-                    let secondRowLocal = localArray<int> 34
+                    let firstRowLocal = localArray<int> size
+                    let secondRowLocal = localArray<int> size
                     //let resRowLocal = localArray<int> (workGroupSize + 1)
                     //if localID = 0 then resRowLocal.[workGroupSize] <- 0
 
@@ -591,8 +637,8 @@ module EWise =
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
-            let resultColumns, resultValues, resultLength =
-                setPositions queue allColumns allValues rawPositions
+            let rowPointers, resultColumns, resultValues, resultLength =
+                setPositions queue allColumns allValues rawPositions isRowEnd matrixLeft.RowCount
 
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
@@ -603,7 +649,7 @@ module EWise =
             { Context = clContext
               RowCount = matrixLeft.RowCount
               ColumnCount = matrixLeft.ColumnCount
-              RowPointers = clContext.CreateClArray matrixLeft.RowCount
+              RowPointers = rowPointers
               Columns = resultColumns
               Values = resultValues
               }
