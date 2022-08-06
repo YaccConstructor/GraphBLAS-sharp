@@ -459,44 +459,45 @@ module EWise =
                             if resY = 1 || resX = 0 then
                                 if resY = 1 then
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[resOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
-                                    isLeftBitmap.[resOffset + i] <- 1
+                                    leftMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
                                 else
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[resOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
-                                    isLeftBitmap.[resOffset + i] <- 0
+                                    rightMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                             else
                                 if secondRowLocal[resY - 1] > firstRowLocal[resX] then
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[resOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
-                                    isLeftBitmap.[resOffset + i] <- 0
+                                    rightMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                                 else
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[resOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
-                                    isLeftBitmap.[resOffset + i] <- 1
+                                    leftMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
 
-                            allColumns.[resOffset + i] <- res
+                            allColumns.[resOffset + firstLocalOffset + secondLocalOffset + i] <- res
 
                         //Moving the window of search
-                        atomic (max) maxFirstIndex maxFirstIndexPerThread |> ignore
-                        //atomic (max) maxSecondIndex maxSecondIndexPerThread |> ignore
+                        if block < workBlockCount - 1 then
+                            atomic (max) maxFirstIndex maxFirstIndexPerThread |> ignore
+                            atomic (max) maxSecondIndex maxSecondIndexPerThread |> ignore
 
-                        barrierFull ()
+                            barrierFull ()
 
-                        dir <- not dir
+                            dir <- not dir
 
-                        firstLocalOffset <- firstLocalOffset + maxFirstIndex
-                        secondLocalOffset <- secondLocalOffset + maxSecondIndex
+                            firstLocalOffset <- firstLocalOffset + maxFirstIndex
+                            secondLocalOffset <- secondLocalOffset + maxSecondIndex
 
-                        barrierLocal () @>
+                            barrierLocal () @>
 
 //        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
 //        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
-        let getResRowSizes = getResRowSizes clContext workGroupSize
+//        let getResRowSizes = getResRowSizes clContext workGroupSize
 
         let kernel = clContext.Compile(merge)
 
