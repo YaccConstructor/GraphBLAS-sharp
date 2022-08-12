@@ -362,9 +362,7 @@ module EWise =
                 (leftMergedValues: ClArray<'a>)
                 (rightMergedValues: ClArray<'b>)
                 (isEndOfRowBitmap: ClArray<int>)
-                (isLeftBitmap: ClArray<int>)
-                (leftLocal: ClArray<int>)
-                (rightLocal: ClArray<int>) ->
+                (isLeftBitmap: ClArray<int>) ->
 
                     let globalID = ndRange.GlobalID0
                     let localID = ndRange.LocalID0
@@ -395,8 +393,6 @@ module EWise =
                     //Local arrays for column indices
                     let firstRowLocal = localArray<int> size
                     let secondRowLocal = localArray<int> size
-                    //let resRowLocal = localArray<int> (workGroupSize + 1)
-                    //if localID = 0 then resRowLocal.[workGroupSize] <- 0
 
                     //Cycle on each work block for one row
                     for block in 0 .. workBlockCount - 1 do
@@ -415,16 +411,12 @@ module EWise =
                         for j in localID .. workGroupSize .. workGroupSize + 1 do
                             if j > 0 && j - 1 < firstBufferSize then
                                 firstRowLocal.[j] <- firstColumns.[firstOffset + j - 1 + firstLocalOffset]
-                                leftLocal.[j] <- firstColumns.[firstOffset + j - 1 + firstLocalOffset] ////
                             else
                                 firstRowLocal.[j] <- MaxVal
-                                leftLocal.[j] <- MaxVal ////
                             if j > 0 && j - 1 < secondBufferSize then
                                 secondRowLocal.[j] <- secondColumns.[secondOffset + j - 1 + secondLocalOffset]
-                                rightLocal.[j] <- secondColumns.[secondOffset + j - 1 + secondLocalOffset] ////
                             else
                                 secondRowLocal.[j] <- MaxVal
-                                rightLocal.[j] <- MaxVal ////
 
                         barrierFull ()
 
@@ -456,30 +448,33 @@ module EWise =
                             let resX = x + l
                             let resY = y - l
 
+                            let outputIndex = resOffset + firstLocalOffset + secondLocalOffset + i
+
                             if resY = 1 || resX = 0 then
                                 if resY = 1 then
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
-                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1
+                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    isLeftBitmap.[outputIndex] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
                                 else
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
-                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 0
+                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                             else
                                 if secondRowLocal[resY - 1] > firstRowLocal[resX] then
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
-                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 0
+                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                                 else
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[resOffset + firstLocalOffset + secondLocalOffset + i] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
-                                    isLeftBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1
+                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    isLeftBitmap.[outputIndex] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
 
-                            allColumns.[resOffset + firstLocalOffset + secondLocalOffset + i] <- res
+                            allColumns.[outputIndex] <- res
+                            isEndOfRowBitmap.[outputIndex] <- 0
 
                         //Moving the window of search
                         if block < workBlockCount - 1 then
@@ -493,11 +488,8 @@ module EWise =
                             firstLocalOffset <- firstLocalOffset + maxFirstIndex
                             secondLocalOffset <- secondLocalOffset + maxSecondIndex
 
-                            barrierLocal () @>
-
-//        let copyWithOffsetLeft = copyWithOffset clContext workGroupSize
-//        let copyWithOffsetRight = copyWithOffset clContext workGroupSize
-//        let getResRowSizes = getResRowSizes clContext workGroupSize
+                            barrierLocal ()
+                        else if i = workSize - 1 then isEndOfRowBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1 @>
 
         let kernel = clContext.Compile(merge)
 
@@ -547,22 +539,6 @@ module EWise =
                     allocationMode = AllocationMode.Default
                 )
 
-            let leftLocal =
-                clContext.CreateClArray<int>(
-                    workGroupSize + 2,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let rightLocal =
-                clContext.CreateClArray<int>(
-                    workGroupSize + 2,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
             // Merge
             let ndRange =
                 Range1D.CreateValid(matrixLeftRowPointers.Length * workGroupSize, workGroupSize)
@@ -587,9 +563,7 @@ module EWise =
                             leftMergedValues
                             rightMergedValues
                             isEndOfRow
-                            isLeft
-                            leftLocal
-                            rightLocal)
+                            isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
