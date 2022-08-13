@@ -3,10 +3,87 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
+open Microsoft.FSharp.Quotations
 
 module ClArray =
+    let init
+        (initializer: Expr<int -> 'a>)
+        (clContext: ClContext)
+        workGroupSize =
 
-    let copy (clContext: ClContext) =
+        let init =
+            <@
+                fun (range: Range1D)
+                    (outputBuffer: ClArray<'a>)
+                    (length: int) ->
+
+                    let i = range.GlobalID0
+                    if i < length then
+                        outputBuffer.[i] <- (%initializer) i
+            @>
+        let program = clContext.Compile(init)
+
+        fun (processor: MailboxProcessor<_>)
+            (length: int) ->
+            // TODO: Выставить нужные флаги
+            let outputArray = clContext.CreateClArray(length)
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            outputArray
+
+    let create
+        (clContext: ClContext)
+        workGroupSize =
+
+        let create =
+            <@
+                fun (range: Range1D)
+                    (outputBuffer: ClArray<'a>)
+                    (length: int)
+                    (value: ClCell<'a>) ->
+
+                    let i = range.GlobalID0
+                    if i < length then
+                        outputBuffer.[i] <- value.Value
+            @>
+        let program = clContext.Compile(create)
+
+        fun (processor: MailboxProcessor<_>)
+            (length: int)
+            (value: 'a) ->
+            let value = clContext.CreateClCell(value)
+
+            let outputArray = clContext.CreateClArray(length)
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length value)
+            )
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            processor.Post(Msg.CreateFreeMsg(value))
+
+            outputArray
+
+    let zeroCreate
+        (clContext: ClContext)
+        workGroupSize =
+
+        let create = create clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>)
+            (length: int) ->
+            create processor length Unchecked.defaultof<'a>
+
+    let copy (clContext: ClContext) workGroupSize =
         let copy =
 
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
@@ -16,16 +93,16 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let kernel = clContext.Compile(copy)
+        let program = clContext.Compile(copy)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
                 clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
 
-            let kernel = kernel.GetKernel()
+            let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray outputArray inputArray.Length)
@@ -234,13 +311,13 @@ module ClArray =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let prefixSumExclude (clContext: ClContext) workGroupSize =
 
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         let prefixSumExcludeInplace =
             prefixSumExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
-            let copiedArray = copy processor workGroupSize inputArray
+            let copiedArray = copy processor inputArray
 
             let totalSum = clContext.CreateClCell 0
             prefixSumExcludeInplace processor copiedArray totalSum
@@ -260,13 +337,13 @@ module ClArray =
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
         let kernel = clContext.Compile(kernel)
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         let prefixSumExcludeInplace =
             prefixSumExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
-            let copiedArray = copy processor workGroupSize inputArray
+            let copiedArray = copy processor inputArray
             let inputArrayLength = inputArray.Length
             let totalSum = clContext.CreateClCell 0
 

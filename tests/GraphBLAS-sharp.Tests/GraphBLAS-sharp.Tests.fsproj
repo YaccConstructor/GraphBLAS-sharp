@@ -11,12 +11,14 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
-    <!--Compile Include="BackendCommonTests/PrefixSumTests.fs" />
-    <Compile Include="BackendCommonTests/BitonicSortTests.fs" /-->
+    <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
     <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
     <Compile Include="BackendCommonTests/CopyTests.fs" />
     <Compile Include="BackendCommonTests/ReplicateTests.fs" />
+    <Compile Include="BackendCommonTests/PrefixSumTests.fs" />
     <Compile Include="BackendCommonTests/MatrixEwiseAddTests.fs" />
+    <Compile Include="BackendCommonTests\ConvertTests.fs" />
+    <Compile Include="BackendCommonTests/TransposeTests.fs" />
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->

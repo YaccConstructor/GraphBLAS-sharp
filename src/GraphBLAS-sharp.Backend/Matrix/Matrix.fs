@@ -6,23 +6,23 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
 module Matrix =
-    let copy (clContext: ClContext) =
+    let copy (clContext: ClContext) workGroupSize =
         let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
         let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
             | MatrixCOO m ->
                 let res =
                     { Context = clContext
                       RowCount = m.RowCount
                       ColumnCount = m.ColumnCount
-                      Rows = copy processor workGroupSize m.Rows
-                      Columns = copy processor workGroupSize m.Columns
-                      Values = copyData processor workGroupSize m.Values }
+                      Rows = copy processor m.Rows
+                      Columns = copy processor m.Columns
+                      Values = copyData processor m.Values }
 
                 MatrixCOO res
             | MatrixCSR m ->
@@ -30,28 +30,28 @@ module Matrix =
                     { Context = clContext
                       RowCount = m.RowCount
                       ColumnCount = m.ColumnCount
-                      RowPointers = copy processor workGroupSize m.RowPointers
-                      Columns = copy processor workGroupSize m.Columns
-                      Values = copyData processor workGroupSize m.Values }
+                      RowPointers = copy processor m.RowPointers
+                      Columns = copy processor m.Columns
+                      Values = copyData processor m.Values }
 
                 MatrixCSR res
 
     let toCSR (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
             | MatrixCOO m -> toCSR processor m |> MatrixCSR
-            | MatrixCSR _ -> copy processor workGroupSize matrix
+            | MatrixCSR _ -> copy processor matrix
 
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
-        let copy = copy clContext
+        let copy = copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
-            | MatrixCOO _ -> copy processor workGroupSize matrix
+            | MatrixCOO _ -> copy processor matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
@@ -79,3 +79,23 @@ module Matrix =
             | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
             | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"
+
+
+    let transposeInplace (clContext: ClContext) workGroupSize =
+        let COOtransposeInplace = COOMatrix.transposeInplace clContext workGroupSize
+        let CSRtransposeInplace = CSRMatrix.transposeInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) matrix ->
+            match matrix with
+            | MatrixCOO m -> COOtransposeInplace processor m |> MatrixCOO
+            | MatrixCSR m -> CSRtransposeInplace processor m |> MatrixCSR
+
+
+    let transpose (clContext: ClContext) workGroupSize =
+        let COOtranspose = COOMatrix.transpose clContext workGroupSize
+        let CSRtranspose = CSRMatrix.transpose clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) matrix ->
+            match matrix with
+            | MatrixCOO m -> COOtranspose processor m |> MatrixCOO
+            | MatrixCSR m -> CSRtranspose processor m |> MatrixCSR

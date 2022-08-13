@@ -1,46 +1,84 @@
 module Backend.BitonicSort
 
 open Expecto
-open FsCheck
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Predefined
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL
-open OpenCL.Net
 open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
+open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "BitonicSort.Tests"
 
-let testCases =
-    [ let config = Utils.defaultConfig
+let context = Utils.defaultContext.ClContext
 
-      ptestPropertyWithConfig config "Simple correctness test on uint64 * int"
-      <| fun (array: (uint64 * int) []) ->
-          let expected = Array.sortBy (fun (key, _) -> key) array
+let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
+    if array.Length > 0 then
+        let projection (row: 'n) (col: 'n) (v: 'a) = row, col
 
-          let actual =
-              opencl {
-                  let (keys, values) = Array.unzip array
-                  do! BitonicSort.sortKeyValuesInplace keys values
+        let rows, cols, vals =
+            array
+            |> Array.distinctBy ((<|||) projection)
+            |> Array.filter (fun (_, _, v) -> filter v)
+            |> Array.unzip3
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost keys
-                      //let! _ = ToHost values
-                      ()
+        use clRows = context.CreateClArray rows
+        use clCols = context.CreateClArray cols
+        use clVals = context.CreateClArray vals
 
-                  return keys, values
-              }
+        let actualRows, actualCols, actualVals =
+            sort q clRows clCols clVals
 
-              failwith "fix me"
-          //|> OpenCLEvaluationContext().RunSync
-          //||> Array.zip
+            let rows = Array.zeroCreate<'n> clRows.Length
+            let cols = Array.zeroCreate<'n> clCols.Length
+            let vals = Array.zeroCreate<'a> clVals.Length
 
-          "Actual array should be equal to sorted"
-          |> Expect.sequenceEqual actual expected ]
+            q.Post(Msg.CreateToHostMsg(clRows, rows))
+            q.Post(Msg.CreateToHostMsg(clCols, cols))
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clVals, vals, ch))
+            |> ignore
+
+            rows, cols, vals
+
+        logger.debug (
+            eventX "Actual are {actualRows}, {actualCols}, {actualVals}"
+            >> setField "actualRows" (sprintf "%A" actualRows)
+            >> setField "actualCols" (sprintf "%A" actualCols)
+            >> setField "actualVals" (sprintf "%A" actualVals)
+        )
+
+        let expectedRows, expectedCols, expectedVals =
+            (rows, cols, vals)
+            |||> Array.zip3
+            |> Array.sortBy ((<|||) projection)
+            |> Array.unzip3
+
+        "Row arrays should be equal"
+        |> Expect.sequenceEqual actualRows expectedRows
+
+        "Column arrays should be equal"
+        |> Expect.sequenceEqual actualCols expectedCols
+
+        "Value arrays should be equal"
+        |> Expect.sequenceEqual actualVals expectedVals
+
+let testFixtures<'a when 'a: equality> config wgSize q filter =
+    let sort: MailboxProcessor<_> -> ClArray<int> -> ClArray<int> -> ClArray<'a> -> unit =
+        BitonicSort.sortKeyValuesInplace context wgSize
+
+    makeTest q sort filter
+    |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =
-    testCases |> ptestList "BitonicSort tests"
+    let config = defaultConfig
+
+    let wgSize = 128
+    let q = defaultContext.Queue
+    q.Error.Add(fun e -> failwithf "%A" e)
+
+    [ testFixtures<int> config wgSize q (fun _ -> true)
+      testFixtures<float> config wgSize q (System.Double.IsNaN >> not)
+      testFixtures<byte> config wgSize q (fun _ -> true)
+      testFixtures<bool> config wgSize q (fun _ -> true) ]
+    |> testList "Backend.Common.BitonicSort tests"
