@@ -16,11 +16,13 @@ module internal PrefixSum =
                     (bunchLength: int)
                     (resultBuffer: ClArray<'a>)
                     (verticesBuffer: ClArray<'a>)
-                    (mirror: int) ->
+                    (mirror: ClCell<bool>) ->
+
+                    let mirror = mirror.Value
 
                     let mutable i = ndRange.GlobalID0 + bunchLength
                     let gid = i
-                    if mirror = 1 then
+                    if mirror then
                         i <- inputArrayLength - 1 - i
 
                     if gid < inputArrayLength then
@@ -38,6 +40,7 @@ module internal PrefixSum =
             let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
+            let mirror = clContext.CreateClCell mirror
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
@@ -47,9 +50,11 @@ module internal PrefixSum =
                             bunchLength
                             inputArray
                             vertices
-                            (if mirror then 1 else 0))
+                            mirror)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            processor.Post(Msg.CreateFreeMsg(mirror))
+
 
     let private scanGeneral
         beforeLocalSumClear
@@ -168,8 +173,7 @@ module internal PrefixSum =
                     (d: int)
                     (e: int) ->
 
-                    let mutable x = 1
-                    x <- 1
+                    ()
             @>
             <@
                 fun (resultBuffer: ClArray<'a>)

@@ -37,5 +37,8 @@
     <Compile Include="Backend/COOVector/AssignSubVector.fs" /-->
     <!--Compile Include="Backend/Mask/GetComplemented.fs" /-->
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Brahma.FSharp" Version="2.0.1" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

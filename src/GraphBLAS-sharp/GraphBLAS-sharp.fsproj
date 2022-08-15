@@ -36,5 +36,8 @@
       <Name>GraphBLAS-sharp.fsproj</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Brahma.FSharp" Version="2.0.1" />
+  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

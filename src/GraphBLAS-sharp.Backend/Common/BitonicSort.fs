@@ -160,15 +160,16 @@ module internal BitonicSort =
                     (values: ClArray<'a>)
                     (length: int)
                     (segmentLength: int)
-                    (mirror: int) ->
-                    // (mirror: bool) ->
+                    (mirror: ClCell<bool>) ->
+
+                    let mirror = mirror.Value
 
                     let gid = range.GlobalID0
 
                     let localLineId = gid % (segmentLength >>> 1)
                     let mutable localTwinId = 0
 
-                    if mirror = 1 then
+                    if mirror then
                         localTwinId <- segmentLength - localLineId - 1
                     else
                         localTwinId <- localLineId + (segmentLength >>> 1)
@@ -203,10 +204,10 @@ module internal BitonicSort =
             (cols: ClArray<'n>)
             (values: ClArray<'a>)
             (segmentLength: int)
-            (mirror: int) ->
-            // (mirror: bool) ->
+            (mirror: bool) ->
 
             let ndRange = Range1D.CreateValid(Utils.floorToPower2 values.Length, workGroupSize)
+            let mirror = clContext.CreateClCell mirror
 
             let kernel = program.GetKernel()
 
@@ -223,6 +224,7 @@ module internal BitonicSort =
                             mirror)
             )
             queue.Post(Msg.CreateRunMsg<_, _>(kernel))
+            queue.Post(Msg.CreateFreeMsg(mirror))
 
 
     let private localEnd
@@ -355,13 +357,13 @@ module internal BitonicSort =
             let lengthCeiled = Utils.ceilToPower2 values.Length
 
             let rec loopNested i =
-                if i <= workGroupSize * 2 then () else
-                    globalStep queue rows cols values i 0//false
+                if i > workGroupSize * 2 then
+                    globalStep queue rows cols values i false
                     loopNested (i >>> 1)
 
             let rec mainLoop segmentLength =
-                if segmentLength > lengthCeiled then () else
-                    globalStep queue rows cols values segmentLength 1//true
+                if segmentLength <= lengthCeiled then
+                    globalStep queue rows cols values segmentLength true
                     loopNested (segmentLength >>> 1)
                     localEnd queue rows cols values
                     mainLoop (segmentLength <<< 1)
