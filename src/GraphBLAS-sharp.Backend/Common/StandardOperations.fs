@@ -88,7 +88,7 @@ module StandardOperations =
             | Both _ -> res <- true
             | _ -> ()
 
-            if res then None else (Some true) @>
+            if res then Some true else None @>
 
     let intMulAtLeastOne = mkNumericMulAtLeastOne 0
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
