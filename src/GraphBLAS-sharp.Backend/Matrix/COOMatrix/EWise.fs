@@ -32,7 +32,7 @@ module EWise =
                     clContext.CreateClArray<int>(
                         numberOfRows,
                         hostAccessMode = HostAccessMode.NotAccessible,
-                        deviceAccessMode = DeviceAccessMode.WriteOnly,
+                        deviceAccessMode = DeviceAccessMode.ReadWrite,
                         allocationMode = AllocationMode.Default
                     )
 
@@ -83,11 +83,10 @@ module EWise =
             <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
-
                 if (i < length - 1
-                    && allColumns.[i] = allColumns.[i + 1]
+                   && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0)
-                    then
+                then
                     rawPositions.[i] <- 0
 
                     match (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i]) with
@@ -95,11 +94,11 @@ module EWise =
                         allValues.[i + 1] <- v
                         rawPositions.[i + 1] <- 1
                     | None -> rawPositions.[i + 1] <- 0
-                elif (i > 0
-                         && i < length
-                         && (allColumns.[i] <> allColumns.[i - 1])
-                         || isEndOfRowBitmap.[i - 1] = 1)
-                        || i = 0 then
+                elif i = 0
+                     || (i < length
+                     && allColumns.[i] <> allColumns.[i - 1]
+                     || isEndOfRowBitmap.[i - 1] = 1)
+                then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValues.[i]) None with
                         | Some v ->
@@ -124,6 +123,7 @@ module EWise =
             let rawPositions =
                 clContext.CreateClArray<int>(
                     length,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -131,6 +131,7 @@ module EWise =
             let allValues =
                 clContext.CreateClArray<'c>(
                     length,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -187,7 +188,7 @@ module EWise =
 
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
             let resultLength = resultLength.[0]
-            processor.Post(Msg.CreateFreeMsg<_>(r))
+            //processor.Post(Msg.CreateFreeMsg<_>(r))
 
             let resultColumns =
                 clContext.CreateClArray<int>(
@@ -273,7 +274,7 @@ module EWise =
 
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rowEndSum, nonZeroRows, ch))
             let nonZeroRows = nonZeroRows.[0]
-            processor.Post(Msg.CreateFreeMsg<_>(rowEndSum))
+            //processor.Post(Msg.CreateFreeMsg<_>(rowEndSum))
 
 //            processor.PostAndReply(Msg.MsgNotifyMe)
 //            let rowEnd = Array.zeroCreate isRowEnd.Length
@@ -287,7 +288,7 @@ module EWise =
                 clContext.CreateClArray<int>(
                     nonZeroRows,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -295,7 +296,7 @@ module EWise =
                 clContext.CreateClArray<int>(
                     nonZeroRows,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -440,7 +441,7 @@ module EWise =
                                     isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                             else
-                                if secondRowLocal[resY - 1] > firstRowLocal[resX] then
+                                if secondRowLocal.[resY - 1] > firstRowLocal.[resX] then
                                     res <- secondRowLocal.[resY - 1]
                                     rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
                                     isLeftBitmap.[outputIndex] <- 0
@@ -481,7 +482,7 @@ module EWise =
             let allRows =
                 clContext.CreateClArray<int>(
                     resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -497,7 +498,7 @@ module EWise =
             let leftMergedValues =
                 clContext.CreateClArray<'a>(
                     resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -505,7 +506,7 @@ module EWise =
             let rightMergedValues =
                 clContext.CreateClArray<'b>(
                     resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -513,7 +514,7 @@ module EWise =
             let isEndOfRow =
                 clContext.CreateClArray<int>(
                     resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -521,7 +522,7 @@ module EWise =
             let isLeft =
                 clContext.CreateClArray<int>(
                     resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
@@ -576,14 +577,17 @@ module EWise =
 
         let merge = merge clContext workGroupSize
 
+        //Until automatic workGroupSize selection for merge is implemented
+        let secondWorkGroupSize = 256
+
         let preparePositions =
-            preparePositions clContext opAdd workGroupSize
+            preparePositions clContext opAdd secondWorkGroupSize
 
-        let setPositions = setPositions<'c> clContext workGroupSize
+        let setPositions = setPositions<'c> clContext secondWorkGroupSize
 
-        let getCompressedRowPointers = getCompressedRowPointers clContext workGroupSize
+        let getCompressedRowPointers = getCompressedRowPointers clContext secondWorkGroupSize
 
-        let expandCompressedRowPointers = expandCompressedRowPointers clContext workGroupSize
+        let expandCompressedRowPointers = expandCompressedRowPointers clContext secondWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -625,13 +629,15 @@ module EWise =
 //            printfn "all vals %A" allVals
 //            printfn "raw pos %A" rawPos
 
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
             let resultColumns, resultValues, positions, positionsSum =
                 setPositions queue allColumns allValues positions
 
-            let compressedRowPointers, compressedRows, nonZeroRows =
+            let compressedRowPointers, compressedRows, nonZeroRowsSum =
                 getCompressedRowPointers queue allRows positions isRowEnd
 
             let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
