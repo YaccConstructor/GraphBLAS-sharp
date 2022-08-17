@@ -72,12 +72,14 @@ module internal PrefixSum =
                 (verticesBuffer: ClArray<'a>)
                 (totalSumBuffer: ClArray<'a>)
                 (zero: ClCell<'a>)
-                (mirror: int) ->
+                (mirror: ClCell<bool>) ->
+
+                let mirror = mirror.Value
 
                 let resultLocalBuffer = localArray<'a> workGroupSize
                 let mutable i = ndRange.GlobalID0
                 let gid = i
-                if mirror = 1 then
+                if mirror then
                     i <- inputArrayLength - 1 - i
                 let localID = ndRange.LocalID0
 
@@ -149,6 +151,7 @@ module internal PrefixSum =
             let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
+            let mirror = clContext.CreateClCell mirror
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () -> kernel.KernelFunc
@@ -159,10 +162,11 @@ module internal PrefixSum =
                                 vertices
                                 totalSum
                                 zero
-                                (if mirror then 1 else 0))
+                                mirror)
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
             processor.Post(Msg.CreateFreeMsg(zero))
+            processor.Post(Msg.CreateFreeMsg(mirror))
 
     let private scanExclusive<'a when 'a: struct> =
         scanGeneral
