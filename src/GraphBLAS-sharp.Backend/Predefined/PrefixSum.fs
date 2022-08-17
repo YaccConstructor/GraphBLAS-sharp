@@ -12,7 +12,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClArray<int>) ->
+            (totalSum: ClCell<int>) ->
 
             scan
                 processor
@@ -28,7 +28,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClArray<int>) ->
+            (totalSum: ClCell<int>) ->
 
             scan
                 processor
@@ -44,7 +44,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClArray<int>) ->
+            (totalSum: ClCell<int>) ->
 
             scan
                 processor
@@ -60,7 +60,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<int>)
-            (totalSum: ClArray<int>) ->
+            (totalSum: ClCell<int>) ->
 
             scan
                 processor

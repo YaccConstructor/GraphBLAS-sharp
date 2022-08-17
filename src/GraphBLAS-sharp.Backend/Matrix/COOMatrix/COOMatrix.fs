@@ -499,7 +499,7 @@ module COOMatrix =
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let total = clContext.CreateClArray(1)
+            let total = clContext.CreateClCell()
             let _ = scan processor rowPointers total nnz
             processor.Post(Msg.CreateFreeMsg(total))
 

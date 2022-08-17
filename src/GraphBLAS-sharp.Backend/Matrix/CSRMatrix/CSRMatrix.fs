@@ -49,7 +49,7 @@ module CSRMatrix =
             )
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let total = clContext.CreateClArray(1)
+            let total = clContext.CreateClCell()
             let _ = scan processor rows total 0
             processor.Post(Msg.CreateFreeMsg(total))
 

@@ -70,7 +70,7 @@ module internal PrefixSum =
                 verticesLength
                 (resultBuffer: ClArray<'a>)
                 (verticesBuffer: ClArray<'a>)
-                (totalSumBuffer: ClArray<'a>)
+                (totalSumBuffer: ClCell<'a>)
                 (zero: ClCell<'a>)
                 (mirror: ClCell<bool>) ->
 
@@ -107,8 +107,7 @@ module internal PrefixSum =
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = gid then
-                        // totalSumBuffer.Value <- resultLocalBuffer.[localID]
-                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[gid / workGroupSize] <- resultLocalBuffer.[localID]
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength gid i
@@ -141,7 +140,7 @@ module internal PrefixSum =
             (inputArrayLength: int)
             (vertices: ClArray<'a>)
             (verticesLength: int)
-            (totalSum: ClArray<'a>)
+            (totalSum: ClCell<'a>)
             (zero: 'a)
             (mirror: bool) ->
 
@@ -230,7 +229,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClArray<'a>)
+            (totalSum: ClCell<'a>)
             (zero: 'a) ->
 
             let firstVertices =
@@ -340,7 +339,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClArray<'a>)
+            (totalSum: ClCell<'a>)
             (zero: 'a) ->
 
             let outputArray = copy processor inputArray
@@ -361,7 +360,7 @@ module internal PrefixSum =
 
         fun (processor: MailboxProcessor<_>)
             (inputArray: ClArray<'a>)
-            (totalSum: ClArray<'a>)
+            (totalSum: ClCell<'a>)
             (zero: 'a) ->
 
             let outputArray = copy processor inputArray
