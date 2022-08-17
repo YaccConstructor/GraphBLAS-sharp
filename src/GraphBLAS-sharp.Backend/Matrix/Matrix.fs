@@ -45,6 +45,14 @@ module Matrix =
             | MatrixCOO m -> toCSR processor m |> MatrixCSR
             | MatrixCSR _ -> copy processor matrix
 
+    let toCSRInplace (clContext: ClContext) workGroupSize =
+        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+            match matrix with
+            | MatrixCOO m -> toCSRInplace processor m |> MatrixCSR
+            | MatrixCSR _ -> matrix
+
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext workGroupSize
@@ -53,6 +61,14 @@ module Matrix =
             match matrix with
             | MatrixCOO _ -> copy processor matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
+
+    let toCOOInplace (clContext: ClContext) workGroupSize =
+        let toCOOInplace = CSRMatrix.toCOOInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+            match matrix with
+            | MatrixCOO _ -> matrix
+            | MatrixCSR m -> toCOOInplace processor m |> MatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOeWiseAdd =
