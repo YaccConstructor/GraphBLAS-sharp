@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 module internal Utils =
+    let defaultWorkGroupSize = 256
     let floorToPower2 =
         fun x -> x ||| (x >>> 1)
         >> fun x -> x ||| (x >>> 2)

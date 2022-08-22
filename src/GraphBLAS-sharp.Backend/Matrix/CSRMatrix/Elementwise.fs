@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
-module EWise =
+module Elementwise =
     let private expandCompressedRowPointers (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -18,7 +18,7 @@ module EWise =
                 //Init with zeroes
                 if i < numberOfRows then rowPointers.[i] <- 0
 
-                if i < nonZeroRows then //???
+                if i < nonZeroRows then
                     rowPointers.[compressedRows.[i]] <-
                         if i = nonZeroRows - 1 then nnz - compressedRowPointers.[i] else compressedRowPointers.[i + 1] - compressedRowPointers.[i] @>
 
@@ -55,17 +55,8 @@ module EWise =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            processor.PostAndReply(Msg.MsgNotifyMe)
 
-//            let cRows = Array.zeroCreate compressedRows.Length
-//            let cRowPointers = Array.zeroCreate compressedRowPointers.Length
-//            let RowPointers = Array.zeroCreate rowPointers.Length
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(compressedRows, cRows, ch))
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(compressedRowPointers, cRowPointers, ch))
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(rowPointers, RowPointers, ch))
-//            printfn "crp %A" cRowPointers
-//            printfn "rp %A" RowPointers
-//            printfn "rows %A" cRows
+            processor.PostAndReply(Msg.MsgNotifyMe)
 
             let sumCell = clContext.CreateClCell 0
             sum processor rowPointers sumCell |> ignore
@@ -186,6 +177,8 @@ module EWise =
 
             let _, r = sum processor positions resultLengthGpu
 
+            processor.PostAndReply(Msg.MsgNotifyMe)
+
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
             let resultLength = resultLength.[0]
             //processor.Post(Msg.CreateFreeMsg<_>(r))
@@ -224,21 +217,7 @@ module EWise =
                             resultValues)
             )
 
-//            processor.PostAndReply(Msg.MsgNotifyMe)
-//            printfn "Kernel run started"
-
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-//            processor.PostAndReply(Msg.MsgNotifyMe)
-//            printfn "Kernel run finished"
-//            let rowPos = Array.zeroCreate positions.Length
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(positions, rowPos, ch))
-//            printfn "row pos %A" rowPos
-
-//            processor.PostAndReply(Msg.MsgNotifyMe)
-//            let rowEnd = Array.zeroCreate isRowEnd.Length
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isRowEnd, rowEnd, ch))
-//            printfn "row end %A" rowEnd
 
             resultColumns, resultValues, positions, resultLength
 
@@ -275,14 +254,6 @@ module EWise =
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rowEndSum, nonZeroRows, ch))
             let nonZeroRows = nonZeroRows.[0]
             //processor.Post(Msg.CreateFreeMsg<_>(rowEndSum))
-
-//            processor.PostAndReply(Msg.MsgNotifyMe)
-//            let rowEnd = Array.zeroCreate isRowEnd.Length
-//            let allRowsCPU = Array.zeroCreate allRows.Length
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isRowEnd, rowEnd, ch))
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(allRows, allRowsCPU, ch))
-//            printfn "row end %A" rowEnd
-//            printfn "all rows %A" allRowsCPU
 
             let compressedRowPointers =
                 clContext.CreateClArray<int>(
@@ -556,17 +527,6 @@ module EWise =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-//            processor.PostAndReply(Msg.MsgNotifyMe)
-//            let resValsLeftCPU = Array.zeroCreate leftMergedValues.Length
-//            let resValsRightCPU = Array.zeroCreate rightMergedValues.Length
-//            let bitmap = Array.zeroCreate isLeft.Length
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(leftMergedValues, resValsLeftCPU, ch))
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(rightMergedValues, resValsRightCPU, ch))
-//            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(isLeft, bitmap, ch))
-//            printfn "%A" resValsLeftCPU
-//            printfn "%A" resValsRightCPU
-//            printfn "%A" bitmap
-
             allRows, allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
 
     let eWiseAdd<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -577,17 +537,14 @@ module EWise =
 
         let merge = merge clContext workGroupSize
 
-        //Until automatic workGroupSize selection for merge is implemented
-        let secondWorkGroupSize = 256
-
         let preparePositions =
-            preparePositions clContext opAdd secondWorkGroupSize
+            preparePositions clContext opAdd Utils.defaultWorkGroupSize
 
-        let setPositions = setPositions<'c> clContext secondWorkGroupSize
+        let setPositions = setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        let getCompressedRowPointers = getCompressedRowPointers clContext secondWorkGroupSize
+        let getCompressedRowPointers = getCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
-        let expandCompressedRowPointers = expandCompressedRowPointers clContext secondWorkGroupSize
+        let expandCompressedRowPointers = expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -601,33 +558,10 @@ module EWise =
                     matrixRight.Columns
                     matrixRight.Values
 
-//            queue.PostAndReply(Msg.MsgNotifyMe)
-//            let allCols = Array.zeroCreate allColumns.Length
-//            let leftVals = Array.zeroCreate leftMergedValues.Length
-//            let rightVals = Array.zeroCreate leftMergedValues.Length
-//            let rowEnd = Array.zeroCreate isRowEnd.Length
-//            let left = Array.zeroCreate isLeft.Length
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(allColumns, allCols, ch))
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(leftMergedValues, leftVals, ch))
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(rightMergedValues, rightVals, ch))
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(isRowEnd, rowEnd, ch))
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(isLeft, left, ch))
-//            printfn "all cols %A" allCols
-//            printfn "left vals %A" leftVals
-//            printfn "right vals %A" rightVals
-//            printfn "row end %A" rowEnd
-//            printfn "left %A" left
+            queue.PostAndReply(Msg.MsgNotifyMe)
 
             let positions, allValues =
                 preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
-
-//            queue.PostAndReply(Msg.MsgNotifyMe)
-//            let allVals = Array.zeroCreate allValues.Length
-//            let rawPos = Array.zeroCreate rawPositions.Length
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(allValues, allVals, ch))
-//            queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(rawPositions, rawPos, ch))
-//            printfn "all vals %A" allVals
-//            printfn "raw pos %A" rawPos
 
             queue.PostAndReply(Msg.MsgNotifyMe)
 
@@ -637,10 +571,16 @@ module EWise =
             let resultColumns, resultValues, positions, positionsSum =
                 setPositions queue allColumns allValues positions
 
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
             let compressedRowPointers, compressedRows, nonZeroRowsSum =
                 getCompressedRowPointers queue allRows positions isRowEnd
 
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
             let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
 
             queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
             queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
@@ -650,7 +590,6 @@ module EWise =
             queue.Post(Msg.CreateFreeMsg<_>(positions))
             queue.Post(Msg.CreateFreeMsg<_>(allColumns))
             queue.Post(Msg.CreateFreeMsg<_>(allValues))
-            //queue.Post(Msg.CreateFreeMsg<_>(rowPointers))
 
             { Context = clContext
               RowCount = matrixLeft.RowCount
