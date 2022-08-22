@@ -147,6 +147,89 @@ module Elementwise =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             rawPositions, allValues
 
+    let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
+
+        let preparePositions =
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+                if (i < length - 1
+                   && allColumns.[i] = allColumns.[i + 1]
+                    && isEndOfRowBitmap.[i] = 0)
+                then
+                    rawPositions.[i] <- 0
+
+                    match (%opAdd) (Both(leftValues.[i + 1], rightValues.[i])) with
+                    | Some v ->
+                        allValues.[i + 1] <- v
+                        rawPositions.[i + 1] <- 1
+                    | None -> rawPositions.[i + 1] <- 0
+                elif i = 0
+                     || (i < length
+                     && allColumns.[i] <> allColumns.[i - 1]
+                     || isEndOfRowBitmap.[i - 1] = 1)
+                then
+                    if isLeftBitmap.[i] = 1 then
+                        match (%opAdd) (Left leftValues.[i]) with
+                        | Some v ->
+                            allValues.[i] <- v
+                            rawPositions.[i] <- 1
+                        | None -> rawPositions.[i] <- 0
+                    else
+                        match (%opAdd) (Right rightValues.[i]) with
+                        | Some v ->
+                            allValues.[i] <- v
+                            rawPositions.[i] <- 1
+                        | None -> rawPositions.[i] <- 0 @>
+
+        let kernel = clContext.Compile(preparePositions)
+
+        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isEndOfRow: ClArray<int>) (isLeft: ClArray<int>) ->
+            let length = leftValues.Length
+
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            let rawPositions =
+                clContext.CreateClArray<int>(
+                    length,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let allValues =
+                clContext.CreateClArray<'c>(
+                    length,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            length
+                            allColumns
+                            leftValues
+                            rightValues
+                            allValues
+                            rawPositions
+                            isEndOfRow
+                            isLeft)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            rawPositions, allValues
+
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
@@ -539,6 +622,76 @@ module Elementwise =
 
         let preparePositions =
             preparePositions clContext opAdd Utils.defaultWorkGroupSize
+
+        let setPositions = setPositions<'c> clContext Utils.defaultWorkGroupSize
+
+        let getCompressedRowPointers = getCompressedRowPointers clContext Utils.defaultWorkGroupSize
+
+        let expandCompressedRowPointers = expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
+
+            let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
+                merge
+                    queue
+                    matrixLeft.RowPointers
+                    matrixLeft.Columns
+                    matrixLeft.Values
+                    matrixRight.RowPointers
+                    matrixRight.Columns
+                    matrixRight.Values
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
+            let positions, allValues =
+                preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
+            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
+            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+
+            let resultColumns, resultValues, positions, positionsSum =
+                setPositions queue allColumns allValues positions
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
+            let compressedRowPointers, compressedRows, nonZeroRowsSum =
+                getCompressedRowPointers queue allRows positions isRowEnd
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
+            let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
+
+            queue.PostAndReply(Msg.MsgNotifyMe)
+
+            queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
+            queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
+            queue.Post(Msg.CreateFreeMsg<_>(allRows))
+            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
+            queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
+            queue.Post(Msg.CreateFreeMsg<_>(positions))
+            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
+            queue.Post(Msg.CreateFreeMsg<_>(allValues))
+
+            { Context = clContext
+              RowCount = matrixLeft.RowCount
+              ColumnCount = matrixLeft.ColumnCount
+              RowPointers = rowPointers
+              Columns = resultColumns
+              Values = resultValues
+              }
+
+    let eWiseAddAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
+
+        let merge = merge clContext workGroupSize
+
+        let preparePositions =
+            preparePositionsAtLeastOne clContext opAdd Utils.defaultWorkGroupSize
 
         let setPositions = setPositions<'c> clContext Utils.defaultWorkGroupSize
 
