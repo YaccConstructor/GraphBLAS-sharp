@@ -376,8 +376,8 @@ module Elementwise =
 
             compressedRowPointers, compressedRows, nonZeroRows
 
-    let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
-        let size = workGroupSize + 2
+    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
+        let localArraySize = workGroupSize + 2
         let merge =
             <@ fun
                 (ndRange: Range1D)
@@ -416,7 +416,7 @@ module Elementwise =
 
                     let workBlockCount = (resRowLength + workGroupSize - 1) / workGroupSize
 
-                    //Offsets of a sliding window, computing with maxFirstIndex and maxSecondIndex on each iteration
+                    //Offsets of a sliding window, computed with maxFirstIndex and maxSecondIndex on each iteration
                     let mutable firstLocalOffset = 0
                     let mutable secondLocalOffset = 0
                     let mutable maxFirstIndex = local ()
@@ -424,8 +424,8 @@ module Elementwise =
                     let mutable dir = true
 
                     //Local arrays for column indices
-                    let firstRowLocal = localArray<int> size
-                    let secondRowLocal = localArray<int> size
+                    let firstRowLocal = localArray<int> localArraySize
+                    let secondRowLocal = localArray<int> localArraySize
 
                     //Cycle on each work block for one row
                     for block in 0 .. workBlockCount - 1 do
@@ -486,23 +486,23 @@ module Elementwise =
                             if resY = 1 || resX = 0 then
                                 if resY = 1 then
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1]
                                     isLeftBitmap.[outputIndex] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
                                 else
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
                                     isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                             else
                                 if secondRowLocal.[resY - 1] > firstRowLocal.[resX] then
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1] //???
+                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
                                     isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                                 else
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1] // +1???
+                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1]
                                     isLeftBitmap.[outputIndex] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
 
@@ -656,11 +656,13 @@ module Elementwise =
 
             queue.PostAndReply(Msg.MsgNotifyMe)
 
+            //Getting DCSR row pointers
             let compressedRowPointers, compressedRows, nonZeroRowsSum =
                 getCompressedRowPointers queue allRows positions isRowEnd
 
             queue.PostAndReply(Msg.MsgNotifyMe)
 
+            //Converting DCSR to CSR
             let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
 
             queue.PostAndReply(Msg.MsgNotifyMe)
