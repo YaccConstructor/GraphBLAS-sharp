@@ -54,28 +54,28 @@ module Matrix =
             | MatrixCOO _ -> copy processor workGroupSize matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
-        let COOeWiseAdd =
-            COOMatrix.eWiseAdd clContext opAdd workGroupSize
+    let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+        let COOElementwise =
+            COOMatrix.elementwise clContext opAdd workGroupSize
 
-        let CSReWiseAdd =
-            Elementwise.eWiseAdd clContext opAdd workGroupSize
+        let CSRElementwise =
+            Elementwise.elementwise clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
+            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"
 
-    let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
-        let COOeWiseAdd =
-            COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
+    let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+        let COOElementwise =
+            COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
 
-        let CSReWiseAdd =
-            Elementwise.eWiseAddAtLeastOne clContext opAdd workGroupSize
+        let CSRElementwise =
+            Elementwise.elementwiseAtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
+            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"

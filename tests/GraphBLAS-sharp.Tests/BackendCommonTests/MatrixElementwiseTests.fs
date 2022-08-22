@@ -1,19 +1,20 @@
-module Backend.EwiseAdd
+module Backend.Elementwise
 
 open System
 open Brahma.FSharp.OpenCL.Shared
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
+open Microsoft.FSharp.Collections
 open OpenCL.Net
 open Backend.Common.StandardOperations
 
-let logger = Log.create "EwiseAdd.Tests"
+let logger = Log.create "Elementwise.Tests"
 
 let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
     let rows = Array2D.length1 baseMtx1
@@ -95,7 +96,7 @@ let testFixturesEWiseAdd case =
       let q = case.ClContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd = Matrix.eWiseAdd context boolSum wgSize
+      let boolAdd = Matrix.elementwise context boolSum wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -103,7 +104,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intAdd = Matrix.eWiseAdd context intSum wgSize
+      let intAdd = Matrix.elementwise context intSum wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -111,7 +112,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd = Matrix.eWiseAdd context floatSum wgSize
+      let floatAdd = Matrix.elementwise context floatSum wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -119,7 +120,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd = Matrix.eWiseAdd context byteSum wgSize
+      let byteAdd = Matrix.elementwise context byteSum wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -141,7 +142,7 @@ let tests =
 
             deviceType = DeviceType.Gpu)
     |> List.collect testFixturesEWiseAdd
-    |> testList "Backend.Matrix.eWiseAdd tests"
+    |> testList "Backend.Matrix.EWiseAdd tests"
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -155,7 +156,7 @@ let testFixturesEWiseAddAtLeastOne case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.eWiseAddAtLeastOne context boolSumAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context boolSumAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -164,7 +165,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.eWiseAddAtLeastOne context intSumAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context intSumAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -173,7 +174,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.eWiseAddAtLeastOne context floatSumAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context floatSumAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -182,7 +183,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.eWiseAddAtLeastOne context byteSumAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context byteSumAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -204,7 +205,7 @@ let tests2 =
 
             deviceType = DeviceType.Gpu)
     |> List.collect testFixturesEWiseAddAtLeastOne
-    |> testList "Backend.Matrix.eWiseAddAtLeastOne tests"
+    |> testList "Backend.Matrix.EWiseAddAtLeastOne tests"
 
 
 let testFixturesEWiseMulAtLeastOne case =
@@ -219,7 +220,7 @@ let testFixturesEWiseMulAtLeastOne case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolMul =
-          Matrix.eWiseAddAtLeastOne context boolMulAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context boolMulAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -228,7 +229,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.eWiseAddAtLeastOne context intMulAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context intMulAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -237,7 +238,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.eWiseAddAtLeastOne context floatMulAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context floatMulAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -246,7 +247,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.eWiseAddAtLeastOne context byteMulAtLeastOne wgSize
+          Matrix.elementwiseAtLeastOne context byteMulAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
