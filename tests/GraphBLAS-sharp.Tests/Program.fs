@@ -12,7 +12,7 @@ let allTests =
     testList
         "All tests"
         [ Backend.PrefixSum.tests
-          Backend.BitonicSort.tests
+          //Backend.BitonicSort.tests
           Backend.Convert.tests
           Backend.RemoveDuplicates.tests
           Backend.Copy.tests
