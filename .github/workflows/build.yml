@@ -1,7 +1,7 @@
 name: FAKE Build
 
 on:
-  push:   
+  push:
   pull_request:
   workflow_dispatch:
 
@@ -14,15 +14,15 @@ jobs:
         shell: cmd
     steps:
       - name: System Info
-        run: systeminfo 
-        
+        run: systeminfo
+
       - uses: actions/checkout@v2
-      
+
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.401
-         
+
       - name: Install OpenCL
         run: |
           set NUGETDIR=C:\NUGET
@@ -31,7 +31,7 @@ jobs:
           set OCL_ROOT=%NUGETDIR%\opencl-nug.0.777.77\build\native
           # Install OpenCL Runtime
           choco install opencl-intel-cpu-runtime
-                          
+
       - name: Build
         run: ./build.cmd
         env:

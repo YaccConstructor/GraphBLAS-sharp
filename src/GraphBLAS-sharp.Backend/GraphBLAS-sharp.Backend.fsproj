@@ -1,4 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFrameworks>net5.0</TargetFrameworks>
   </PropertyGroup>
@@ -6,6 +8,7 @@
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Common/Utils.fs" />
@@ -36,9 +39,6 @@
     <Compile Include="Backend/COOVector/FillSubVector.fs" />
     <Compile Include="Backend/COOVector/AssignSubVector.fs" /-->
     <!--Compile Include="Backend/Mask/GetComplemented.fs" /-->
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Brahma.FSharp" Version="2.0.1" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -6,82 +6,65 @@ open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 
 module ClArray =
-    let init
-        (initializer: Expr<int -> 'a>)
-        (clContext: ClContext)
-        workGroupSize =
+    let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
 
         let init =
-            <@
-                fun (range: Range1D)
-                    (outputBuffer: ClArray<'a>)
-                    (length: int) ->
+            <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) ->
 
-                    let i = range.GlobalID0
-                    if i < length then
-                        outputBuffer.[i] <- (%initializer) i
-            @>
+                let i = range.GlobalID0
+
+                if i < length then
+                    outputBuffer.[i] <- (%initializer) i @>
+
         let program = clContext.Compile(init)
 
-        fun (processor: MailboxProcessor<_>)
-            (length: int) ->
+        fun (processor: MailboxProcessor<_>) (length: int) ->
             // TODO: Выставить нужные флаги
             let outputArray = clContext.CreateClArray(length)
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(length, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length)
-            )
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             outputArray
 
-    let create
-        (clContext: ClContext)
-        workGroupSize =
+    let create (clContext: ClContext) workGroupSize =
 
         let create =
-            <@
-                fun (range: Range1D)
-                    (outputBuffer: ClArray<'a>)
-                    (length: int)
-                    (value: ClCell<'a>) ->
+            <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) (value: ClCell<'a>) ->
 
-                    let i = range.GlobalID0
-                    if i < length then
-                        outputBuffer.[i] <- value.Value
-            @>
+                let i = range.GlobalID0
+
+                if i < length then
+                    outputBuffer.[i] <- value.Value @>
+
         let program = clContext.Compile(create)
 
-        fun (processor: MailboxProcessor<_>)
-            (length: int)
-            (value: 'a) ->
+        fun (processor: MailboxProcessor<_>) (length: int) (value: 'a) ->
             let value = clContext.CreateClCell(value)
 
             let outputArray = clContext.CreateClArray(length)
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(length, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length value)
-            )
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length value))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
             processor.Post(Msg.CreateFreeMsg(value))
 
             outputArray
 
-    let zeroCreate
-        (clContext: ClContext)
-        workGroupSize =
+    let zeroCreate (clContext: ClContext) workGroupSize =
 
         let create = create clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>)
-            (length: int) ->
-            create processor length Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) (length: int) -> create processor length Unchecked.defaultof<'a>
 
     let copy (clContext: ClContext) workGroupSize =
         let copy =

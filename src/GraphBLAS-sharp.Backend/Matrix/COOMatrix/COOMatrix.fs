@@ -117,10 +117,10 @@ module COOMatrix =
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
                 elif (i > 0
-                         && i < length
-                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                        || i = 0 then
+                      && i < length
+                      && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                          || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                     || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValuesBuffer.[i]) None with
                         | Some v ->
@@ -444,11 +444,9 @@ module COOMatrix =
 
             let resultRows = copy processor matrix.Rows
 
-            let resultColumns =
-                copy processor matrix.Columns
+            let resultColumns = copy processor matrix.Columns
 
-            let resultValues =
-                copyData processor matrix.Values
+            let resultValues = copyData processor matrix.Values
 
 
             { Context = clContext
@@ -456,31 +454,27 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    let private prepareRowPointers
-        (clContext: ClContext)
-        workGroupSize =
+    let private prepareRowPointers (clContext: ClContext) workGroupSize =
 
         let prepareRowPointers =
-            <@
-                fun (ndRange: Range1D)
-                    (rows: ClArray<int>)
-                    (nnz: int)
-                    (rowPointers: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
 
-                    let i = ndRange.GlobalID0
-                    if i < nnz then
-                        let row = rows.[i]
-                        if i = 0 || row <> rows.[i - 1] then
-                            rowPointers.[row] <- i
-            @>
+                let i = ndRange.GlobalID0
+
+                if i < nnz then
+                    let row = rows.[i]
+
+                    if i = 0 || row <> rows.[i - 1] then
+                        rowPointers.[row] <- i @>
+
         let program = clContext.Compile(prepareRowPointers)
 
         let create = ClArray.create clContext workGroupSize
-        let scan = PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>)
-            (rowIndices: ClArray<int>)
-            rowCount ->
+        let scan =
+            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
 
             let nnz = rowIndices.Length
             let rowPointers = create processor (rowCount + 1) nnz
@@ -488,15 +482,7 @@ module COOMatrix =
             let kernel = program.GetKernel()
 
             let ndRange = Range1D.CreateValid(nnz, workGroupSize)
-            processor.Post(
-                Msg.MsgSetArguments(
-                    fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            rowIndices
-                            nnz
-                            rowPointers)
-            )
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowIndices nnz rowPointers))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             let total = clContext.CreateClCell()
@@ -506,12 +492,16 @@ module COOMatrix =
             rowPointers
 
     let toCSR (clContext: ClContext) workGroupSize =
-        let prepare = prepareRowPointers clContext workGroupSize
+        let prepare =
+            prepareRowPointers clContext workGroupSize
+
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
-            let rowPointers = prepare processor matrix.Rows matrix.RowCount
+            let rowPointers =
+                prepare processor matrix.Rows matrix.RowCount
+
             let cols = copy processor matrix.Columns
             let vals = copyData processor matrix.Values
 
@@ -523,10 +513,13 @@ module COOMatrix =
               Values = vals }
 
     let toCSRInplace (clContext: ClContext) workGroupSize =
-        let prepare = prepareRowPointers clContext workGroupSize
+        let prepare =
+            prepareRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
-            let rowPointers = prepare processor matrix.Rows matrix.RowCount
+            let rowPointers =
+                prepare processor matrix.Rows matrix.RowCount
+
             processor.Post(Msg.CreateFreeMsg(matrix.Rows))
 
             { Context = clContext
@@ -558,10 +551,10 @@ module COOMatrix =
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
                 elif (i > 0
-                         && i < length
-                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                        || i = 0 then
+                      && i < length
+                      && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                          || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                     || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Left leftValuesBuffer.[i]) with
                         | Some v ->
@@ -667,11 +660,10 @@ module COOMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let transposeInplace
-        (clContext: ClContext)
-        workGroupSize =
+    let transposeInplace (clContext: ClContext) workGroupSize =
 
-        let sort = BitonicSort.sortKeyValuesInplace clContext workGroupSize
+        let sort =
+            BitonicSort.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values
@@ -683,9 +675,7 @@ module COOMatrix =
               Columns = matrix.Rows
               Values = matrix.Values }
 
-    let transpose
-        (clContext: ClContext)
-        workGroupSize =
+    let transpose (clContext: ClContext) workGroupSize =
 
         let transposeInplace = transposeInplace clContext workGroupSize
         let copy = ClArray.copy clContext workGroupSize
@@ -693,13 +683,11 @@ module COOMatrix =
 
         fun (queue: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
             let copiedMatrix =
-                {
-                    Context = clContext
-                    RowCount = matrix.RowCount
-                    ColumnCount = matrix.ColumnCount
-                    Rows = copy queue matrix.Rows
-                    Columns = copy queue matrix.Columns
-                    Values = copyData queue matrix.Values
-                }
+                { Context = clContext
+                  RowCount = matrix.RowCount
+                  ColumnCount = matrix.ColumnCount
+                  Rows = copy queue matrix.Rows
+                  Columns = copy queue matrix.Columns
+                  Values = copyData queue matrix.Values }
 
             transposeInplace queue copiedMatrix

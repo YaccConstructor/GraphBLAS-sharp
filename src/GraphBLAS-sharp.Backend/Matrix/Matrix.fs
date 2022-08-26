@@ -46,7 +46,8 @@ module Matrix =
             | MatrixCSR _ -> copy processor matrix
 
     let toCSRInplace (clContext: ClContext) workGroupSize =
-        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
+        let toCSRInplace =
+            COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -63,7 +64,8 @@ module Matrix =
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
-        let toCOOInplace = CSRMatrix.toCOOInplace clContext workGroupSize
+        let toCOOInplace =
+            CSRMatrix.toCOOInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -98,8 +100,11 @@ module Matrix =
 
 
     let transposeInplace (clContext: ClContext) workGroupSize =
-        let COOtransposeInplace = COOMatrix.transposeInplace clContext workGroupSize
-        let CSRtransposeInplace = CSRMatrix.transposeInplace clContext workGroupSize
+        let COOtransposeInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
+
+        let CSRtransposeInplace =
+            CSRMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
@@ -108,8 +113,11 @@ module Matrix =
 
 
     let transpose (clContext: ClContext) workGroupSize =
-        let COOtranspose = COOMatrix.transpose clContext workGroupSize
-        let CSRtranspose = CSRMatrix.transpose clContext workGroupSize
+        let COOtranspose =
+            COOMatrix.transpose clContext workGroupSize
+
+        let CSRtranspose =
+            CSRMatrix.transpose clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with

@@ -12,7 +12,7 @@ let logger = Log.create "PrefixSum.Tests"
 
 let context = Utils.defaultContext.ClContext
 
-let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a[] -> 'a[]) (array: 'a[]) =
+let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
     if array.Length > 0 then
         let array = filter array
 
@@ -24,8 +24,7 @@ let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a[] -> 'a
         let actual, actualSum =
             use clArray = context.CreateClArray array
             use total = context.CreateClCell()
-            scan q clArray total zero
-            |> ignore
+            scan q clArray total zero |> ignore
 
             let actual = Array.zeroCreate<'a> clArray.Length
             let actualSum = [| zero |]
@@ -39,10 +38,11 @@ let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a[] -> 'a
 
         let expected, expectedSum =
             array
-            |> Array.mapFold (
-                fun s t ->
+            |> Array.mapFold
+                (fun s t ->
                     let a = plus s t
-                    a, a) zero
+                    a, a)
+                zero
 
         logger.debug (
             eventX "Expected is {expected}\n"
@@ -61,7 +61,8 @@ let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a[] -> 'a
                 (sprintf "Arrays should be the same. Actual is \n%A, expected \n%A, input is \n%A" actual expected array)
 
 let testFixtures config wgSize q plus plusQ zero isEqual filter name =
-    let scan = PrefixSum.runIncludeInplace plusQ context wgSize
+    let scan =
+        PrefixSum.runIncludeInplace plusQ context wgSize
 
     makeTest q scan plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
@@ -73,7 +74,8 @@ let tests =
     let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats = Array.filter (System.Double.IsNaN >> not)
+    let filterFloats =
+        Array.filter (System.Double.IsNaN >> not)
 
     [ testFixtures config wgSize q (+) <@ (+) @> 0 (=) id "int add"
       testFixtures config wgSize q (+) <@ (+) @> 0uy (=) id "byte add"

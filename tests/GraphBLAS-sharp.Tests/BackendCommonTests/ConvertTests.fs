@@ -16,7 +16,7 @@ let context = defaultContext.ClContext
 let config = defaultConfig
 let wgSize = 128
 
-let makeTestCSR q toCOO isZero (array: 'a[,]) =
+let makeTestCSR q toCOO isZero (array: 'a [,]) =
     let mtx = createMatrixFromArray2D CSR array isZero
 
     if mtx.NNZCount > 0 then
@@ -38,7 +38,7 @@ let makeTestCSR q toCOO isZero (array: 'a[,]) =
         "Matrices should be equal"
         |> Expect.equal actual expected
 
-let makeTestCOO q toCSR isZero (array: 'a[,]) =
+let makeTestCOO q toCSR isZero (array: 'a [,]) =
     let mtx = createMatrixFromArray2D COO array isZero
 
     if mtx.NNZCount > 0 then
@@ -64,48 +64,54 @@ let testFixtures case =
     let getCorrectnessTestName datatype =
         sprintf "Correctness on %s, %A" datatype case.MatrixCase
 
-    let filterFloat x = System.Double.IsNaN x || abs x < Accuracy.medium.absolute
+    let filterFloat x =
+        System.Double.IsNaN x
+        || abs x < Accuracy.medium.absolute
 
     let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     match case.MatrixCase with
     | COO ->
-        [
-            let toCSR = Matrix.toCSR context wgSize
-            makeTestCOO q toCSR ((=) 0)
-            |> testPropertyWithConfig config (getCorrectnessTestName "int")
+        [ let toCSR = Matrix.toCSR context wgSize
 
-            let toCSR = Matrix.toCSR context wgSize
-            makeTestCOO q toCSR filterFloat
-            |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          makeTestCOO q toCSR ((=) 0)
+          |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-            let toCSR = Matrix.toCSR context wgSize
-            makeTestCOO q toCSR ((=) 0uy)
-            |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+          let toCSR = Matrix.toCSR context wgSize
 
-            let toCSR = Matrix.toCSR context wgSize
-            makeTestCOO q toCSR ((=) false)
-            |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-        ]
+          makeTestCOO q toCSR filterFloat
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+          let toCSR = Matrix.toCSR context wgSize
+
+          makeTestCOO q toCSR ((=) 0uy)
+          |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+
+          let toCSR = Matrix.toCSR context wgSize
+
+          makeTestCOO q toCSR ((=) false)
+          |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
     | CSR ->
-        [
-            let toCOO = Matrix.toCOO context wgSize
-            makeTestCSR q toCOO ((=) 0)
-            |> testPropertyWithConfig config (getCorrectnessTestName "int")
+        [ let toCOO = Matrix.toCOO context wgSize
 
-            let toCOO = Matrix.toCOO context wgSize
-            makeTestCSR q toCOO filterFloat
-            |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          makeTestCSR q toCOO ((=) 0)
+          |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-            let toCOO = Matrix.toCOO context wgSize
-            makeTestCSR q toCOO ((=) 0uy)
-            |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+          let toCOO = Matrix.toCOO context wgSize
 
-            let toCOO = Matrix.toCOO context wgSize
-            makeTestCSR q toCOO ((=) false)
-            |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-        ]
+          makeTestCSR q toCOO filterFloat
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+          let toCOO = Matrix.toCOO context wgSize
+
+          makeTestCSR q toCOO ((=) 0uy)
+          |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+
+          let toCOO = Matrix.toCOO context wgSize
+
+          makeTestCSR q toCOO ((=) false)
+          |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testCases
