@@ -16,7 +16,7 @@ let testContext =
     contexts.[0]
 
 let context = testContext.ClContext
-printfn "%A" context
+printfn "%A" testContext
 
 let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
