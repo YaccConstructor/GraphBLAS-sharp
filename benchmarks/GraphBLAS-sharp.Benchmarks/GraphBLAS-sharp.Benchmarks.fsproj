@@ -19,6 +19,7 @@
     <Compile Include="BenchmarksMxv.fs" />
     <Compile Include="BenchmarksEWiseAdd.fs" />
     <!--Compile Include="BenchmarksTranspose.fs" /-->
+    <Compile Include="BenchmarksMathNET.fs" />      
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

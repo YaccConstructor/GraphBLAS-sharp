@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
 
 module ClArray =
 
@@ -15,7 +16,7 @@ module ClArray =
                 if i < inputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i] @>
 
-        let kernel = clContext.CreateClKernel copy
+        let kernel = clContext.Compile(copy)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
             let ndRange =
@@ -24,8 +25,10 @@ module ClArray =
             let outputArray =
                 clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.SetArguments ndRange inputArray outputArray inputArray.Length)
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray outputArray inputArray.Length)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -42,7 +45,7 @@ module ClArray =
                 if i < outputArrayLength then
                     outputArrayBuffer.[i] <- inputArrayBuffer.[i % inputArrayLength] @>
 
-        let kernel = clContext.CreateClKernel replicate
+        let kernel = clContext.Compile(replicate)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
@@ -53,9 +56,11 @@ module ClArray =
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArray outputArray inputArray.Length outputArrayLength)
+                    (fun () -> kernel.KernelFunc ndRange inputArray outputArray inputArray.Length outputArrayLength)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -74,15 +79,17 @@ module ClArray =
                         resultBuffer.[i]
                         + verticesBuffer.[i / bunchLength] @>
 
-        let kernel = clContext.CreateClKernel update
+        let kernel = clContext.Compile(update)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
             let ndRange =
                 Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArrayLength bunchLength inputArray vertices)
+                    (fun () -> kernel.KernelFunc ndRange inputArrayLength bunchLength inputArray vertices)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -90,7 +97,7 @@ module ClArray =
     let private scan (clContext: ClContext) workGroupSize =
 
         let scan =
-            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClCell<int>) ->
 
                 let resultLocalBuffer = localArray<int> workGroupSize
                 let i = ndRange.GlobalID0
@@ -104,7 +111,7 @@ module ClArray =
                 let mutable step = 2
 
                 while step <= workGroupSize do
-                    barrier ()
+                    barrierLocal ()
 
                     if localID < workGroupSize / step then
                         let i = step * (localID + 1) - 1
@@ -115,11 +122,11 @@ module ClArray =
 
                     step <- step <<< 1
 
-                barrier ()
+                barrierLocal ()
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.[0] <- resultLocalBuffer.[localID]
+                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
 
                     verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
                     resultLocalBuffer.[localID] <- 0
@@ -127,7 +134,7 @@ module ClArray =
                 step <- workGroupSize
 
                 while step > 1 do
-                    barrier ()
+                    barrierLocal ()
 
                     if localID < workGroupSize / step then
                         let i = step * (localID + 1) - 1
@@ -139,20 +146,22 @@ module ClArray =
 
                     step <- step >>> 1
 
-                barrier ()
+                barrierLocal ()
 
                 if i < inputArrayLength then
                     resultBuffer.[i] <- resultLocalBuffer.[localID] @>
 
-        let kernel = clContext.CreateClKernel scan
+        let kernel = clContext.Compile(scan)
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClCell<int>) ->
             let ndRange =
                 Range1D.CreateValid(inputArrayLength, workGroupSize)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArrayLength verticesLength inputArray vertices totalSum)
+                    (fun () -> kernel.KernelFunc ndRange inputArrayLength verticesLength inputArray vertices totalSum)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -177,7 +186,7 @@ module ClArray =
         let scan = scan clContext workGroupSize
         let update = update clContext
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
             let firstVertices =
                 clContext.CreateClArray<int>(
                     (inputArray.Length - 1) / workGroupSize + 1,
@@ -233,7 +242,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let copiedArray = copy processor workGroupSize inputArray
 
-            let totalSum = clContext.CreateClArray [| 0 |]
+            let totalSum = clContext.CreateClCell 0
             prefixSumExcludeInplace processor copiedArray totalSum
 
     ///<param name="clContext">.</param>
@@ -241,16 +250,16 @@ module ClArray =
     let prefixSumInclude (clContext: ClContext) workGroupSize =
 
         let kernel =
-            <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClArray<int>) (outputArray: ClArray<int>) ->
+            <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClCell<int>) (outputArray: ClArray<int>) ->
 
                 let gid = range.GlobalID0
 
                 if gid = inputArrayLength - 1 then
-                    outputArray.[gid] <- totalSum.[0]
+                    outputArray.[gid] <- totalSum.Value
                 elif gid < inputArrayLength - 1 then
                     outputArray.[gid] <- inputArray.[gid + 1] @>
 
-        let kernel = clContext.CreateClKernel kernel
+        let kernel = clContext.Compile(kernel)
         let copy = copy clContext
 
         let prefixSumExcludeInplace =
@@ -259,7 +268,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
             let copiedArray = copy processor workGroupSize inputArray
             let inputArrayLength = inputArray.Length
-            let totalSum = clContext.CreateClArray [| 0 |]
+            let totalSum = clContext.CreateClCell 0
 
             let _, totalSum =
                 prefixSumExcludeInplace processor copiedArray totalSum
@@ -270,9 +279,11 @@ module ClArray =
             let ndRange =
                 Range1D.CreateValid(inputArrayLength, workGroupSize)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange copiedArray inputArrayLength totalSum outputArray)
+                    (fun () -> kernel.KernelFunc ndRange copiedArray inputArrayLength totalSum outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -295,7 +306,7 @@ module ClArray =
                 else
                     isUniqueBitmap.[i] <- 1 @>
 
-        let getUniqueBitmap = clContext.CreateClKernel getUniqueBitmap
+        let kernel = clContext.Compile(getUniqueBitmap)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
 
@@ -312,11 +323,11 @@ module ClArray =
                     allocationMode = AllocationMode.Default
                 )
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> getUniqueBitmap.SetArguments ndRange inputArray inputLength bitmap)
-            )
+            let kernel = kernel.GetKernel()
 
-            processor.Post(Msg.CreateRunMsg<_, _> getUniqueBitmap)
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             bitmap
 
@@ -324,14 +335,14 @@ module ClArray =
     let setPositions (clContext: ClContext) =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (positions: ClArray<int>) (outputArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) (inputArray: ClArray<int>) inputLength (positions: ClArray<int>) (outputArray: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
                 if i < inputLength then
                     outputArray.[positions.[i]] <- inputArray.[i] @>
 
-        let kernel = clContext.CreateClKernel setPositions
+        let kernel = clContext.Compile(setPositions)
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArraySize: int) ->
 
@@ -341,9 +352,11 @@ module ClArray =
             let outputArray =
                 clContext.CreateClArray(outputArraySize, allocationMode = AllocationMode.Default)
 
+            let kernel = kernel.GetKernel()
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.SetArguments ndRange inputArray inputArray.Length positions outputArray)
+                    (fun () -> kernel.KernelFunc ndRange inputArray inputArray.Length positions outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)

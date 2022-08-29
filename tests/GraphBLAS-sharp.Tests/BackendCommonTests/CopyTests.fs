@@ -3,18 +3,16 @@ module Backend.Copy
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 
 let logger = Log.create "Copy.Tests"
 
-let context =
-    let deviceType = ClDeviceType.Default
-    let platformName = ClPlatform.Any
-    ClContext(platformName, deviceType)
+let context = Utils.defaultContext.ClContext
 
 let testCases =
-    let q = context.Provider.CommandQueue
+    let q = Utils.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let getCopyFun copy =
