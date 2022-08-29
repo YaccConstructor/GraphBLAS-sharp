@@ -11,7 +11,11 @@ open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "BitonicSort.Tests"
 
-let context = Utils.defaultContext.ClContext
+let testContext =
+    let contexts = "" |> avaliableContexts |> Seq.toList
+    contexts.[0]
+
+let context = testContext.ClContext
 
 let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
@@ -74,7 +78,7 @@ let tests =
     let config = defaultConfig
 
     let wgSize = 128
-    let q = defaultContext.Queue
+    let q = testContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ testFixtures<int> config wgSize q (fun _ -> true)
