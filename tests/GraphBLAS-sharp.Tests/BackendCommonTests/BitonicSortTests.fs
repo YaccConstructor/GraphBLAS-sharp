@@ -16,6 +16,7 @@ let testContext =
     contexts.[0]
 
 let context = testContext.ClContext
+printfn "%A" context
 
 let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
@@ -58,13 +59,13 @@ let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n
             |> Array.sortBy ((<|||) projection)
             |> Array.unzip3
 
-        "Row arrays should be equal"
+        (sprintf "Row arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualRows expectedRows rows)
         |> Expect.sequenceEqual actualRows expectedRows
 
-        "Column arrays should be equal"
+        (sprintf "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualCols expectedCols cols)
         |> Expect.sequenceEqual actualCols expectedCols
 
-        "Value arrays should be equal"
+        (sprintf "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualVals expectedVals vals)
         |> Expect.sequenceEqual actualVals expectedVals
 
 let testFixtures<'a when 'a: equality> config wgSize q filter =
