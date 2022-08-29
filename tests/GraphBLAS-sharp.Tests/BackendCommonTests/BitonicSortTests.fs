@@ -41,6 +41,7 @@ let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n
 
             q.Post(Msg.CreateToHostMsg(clRows, rows))
             q.Post(Msg.CreateToHostMsg(clCols, cols))
+
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clVals, vals, ch))
             |> ignore
 
@@ -62,10 +63,18 @@ let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n
         (sprintf "Row arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualRows expectedRows rows)
         |> Expect.sequenceEqual actualRows expectedRows
 
-        (sprintf "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualCols expectedCols cols)
+        (sprintf
+            "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
+            actualCols
+            expectedCols
+            cols)
         |> Expect.sequenceEqual actualCols expectedCols
 
-        (sprintf "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualVals expectedVals vals)
+        (sprintf
+            "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
+            actualVals
+            expectedVals
+            vals)
         |> Expect.sequenceEqual actualVals expectedVals
 
 let testFixtures<'a when 'a: equality> config wgSize q filter =
