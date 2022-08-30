@@ -9,9 +9,9 @@ type MatrixFromat =
     | CSR
     | COO
 
-type Matrix<'a when 'a: struct> =
-    | MatrixCSR of CSRMatrix<'a>
-    | MatrixCOO of COOMatrix<'a>
+type BackendMatrix<'a when 'a: struct> =
+    | MatrixCSR of BackendCSRMatrix<'a>
+    | MatrixCOO of BackendCOOMatrix<'a>
 
     member this.RowCount =
         match this with
@@ -28,14 +28,15 @@ type Matrix<'a when 'a: struct> =
         | MatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose q
         | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose q
 
-and CSRMatrix<'elem when 'elem: struct> =
-    { Context: ClContext
-      RowCount: int
-      ColumnCount: int
-      RowPointers: ClArray<int>
-      Columns: ClArray<int>
-      Values: ClArray<'elem> }
-
+and BackendCSRMatrix<'elem when 'elem: struct> =
+    {
+        Context: ClContext
+        RowCount: int
+        ColumnCount: int
+        RowPointers: ClArray<int>
+        Columns: ClArray<int>
+        Values: ClArray<'elem>
+    }
     interface IDeviceMemObject with
         member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
@@ -43,14 +44,15 @@ and CSRMatrix<'elem when 'elem: struct> =
             q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
             q.PostAndReply(Msg.MsgNotifyMe)
 
-and COOMatrix<'elem when 'elem: struct> =
-    { Context: ClContext
-      RowCount: int
-      ColumnCount: int
-      Rows: ClArray<int>
-      Columns: ClArray<int>
-      Values: ClArray<'elem> }
-
+and BackendCOOMatrix<'elem when 'elem: struct> =
+    {
+        Context: ClContext
+        RowCount: int
+        ColumnCount: int
+        Rows: ClArray<int>
+        Columns: ClArray<int>
+        Values: ClArray<'elem>
+    }
     interface IDeviceMemObject with
         member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.Values))
@@ -59,11 +61,12 @@ and COOMatrix<'elem when 'elem: struct> =
             q.PostAndReply(Msg.MsgNotifyMe)
 
 and TupleMatrix<'elem when 'elem: struct> =
-    { Context: ClContext
-      RowIndices: ClArray<int>
-      ColumnIndices: ClArray<int>
-      Values: ClArray<'elem> }
-
+    {
+        Context: ClContext
+        RowIndices: ClArray<int>
+        ColumnIndices: ClArray<int>
+        Values: ClArray<'elem>
+    }
     interface IDeviceMemObject with
         member this.Dispose q =
             q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))

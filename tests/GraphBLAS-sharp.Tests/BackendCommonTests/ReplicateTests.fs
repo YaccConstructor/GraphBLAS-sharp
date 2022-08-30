@@ -1,4 +1,4 @@
-module Backend.Replicate
+module BackendTests.Replicate
 
 open Expecto
 open Expecto.Logging
@@ -13,7 +13,6 @@ let context = Utils.defaultContext.ClContext
 
 let testCases =
     let q = Utils.defaultContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
 
     let getReplicateFun replicate =
         fun (array: array<_>) ->
@@ -36,46 +35,33 @@ let testCases =
                 let actual = Array.zeroCreate clActual.Length
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 
-            logger.debug (
-                eventX "Actual is {actual}"
-                >> setField "actual" (sprintf "%A" actual)
-            )
+            logger.debug (eventX "Actual is {actual}" >> setField "actual" (sprintf "%A" actual))
 
-            let expected =
-                array
-                |> Array.replicate i
-                |> Array.concat
-                |> filterFun
+            let expected = array |> Array.replicate i |> Array.concat |> filterFun
 
             let actual = filterFun actual
 
             sprintf "Array should contains %i copies of the original one" i
             |> Expect.sequenceEqual actual expected
 
-    [ testProperty "Correctness test on random int arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-          fun (array: array<int>) -> makeTest getReplicateFun array id)
+    [
+        let replicateInt = getReplicateFun <| ClArray.replicate context
+        testProperty "Correctness test on random int arrays" <| fun (array: array<int>) ->
+            makeTest replicateInt array id
 
-      testProperty "Correctness test on random bool arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
+        let replicateBool = getReplicateFun <| ClArray.replicate context
+        testProperty "Correctness test on random bool arrays" <| fun (array: array<bool>) ->
+            makeTest replicateBool array id
 
-          fun (array: array<bool>) -> makeTest getReplicateFun array id)
+        let replicateFloat = getReplicateFun <| ClArray.replicate context
+        testProperty "Correctness test on random float arrays" <| fun (array: array<float>) ->
+            makeTest replicateFloat array (Array.filter (System.Double.IsNaN >> not))
 
-      testProperty "Correctness test on random float arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-
-          fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter (System.Double.IsNaN >> not)))
-
-      testProperty "Correctness test on random byte arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-
-          fun (array: array<byte>) -> makeTest getReplicateFun array id)
-
-      ]
+        let replicateByte = getReplicateFun <| ClArray.replicate context
+        testProperty "Correctness test on random byte arrays" <| fun (array: array<byte>) ->
+            makeTest replicateByte array id
+    ]
 
 let tests =
-    testCases |> testList "Array.replicate tests"
+    testCases
+    |> testList "Array.replicate tests"

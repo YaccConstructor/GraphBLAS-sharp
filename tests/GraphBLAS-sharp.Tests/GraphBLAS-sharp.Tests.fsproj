@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFramework>net5.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
@@ -16,7 +16,7 @@
     <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
     <Compile Include="BackendCommonTests/CopyTests.fs" />
     <Compile Include="BackendCommonTests/ReplicateTests.fs" />
-    <Compile Include="BackendCommonTests/MatrixEwiseAddTests.fs" />
+    <Compile Include="BackendMatrixOperationsTests/MatrixEwiseAddTests.fs" />
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->

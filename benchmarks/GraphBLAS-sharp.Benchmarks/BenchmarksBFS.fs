@@ -24,14 +24,14 @@ type BFSBenchmarks() =
 
     // qg
     let graph = AdjacencyGraph<int, Edge<int>>(false)
-    let mutable bfs = Unchecked.defaultof<Algorithms.Search.BreadthFirstSearchAlgorithm<int, Edge<int>>>
+    let mutable bfs =
+        Unchecked.defaultof<Algorithms.Search.BreadthFirstSearchAlgorithm<int, Edge<int>>>
 
     [<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
-    member this.Context =
-        failwith "fix me"
-        //let (ClContext context) = this.OclContext
-        //context
+    member this.Context = failwith "fix me"
+    //let (ClContext context) = this.OclContext
+    //context
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
@@ -59,8 +59,7 @@ type BFSBenchmarks() =
         bfs <- Algorithms.Search.BreadthFirstSearchAlgorithm(graph)
 
     [<IterationSetup>]
-    member this.SetSource() =
-        source <- random.Next <| Matrix.rowCount matrix
+    member this.SetSource() = source <- random.Next <| Matrix.rowCount matrix
 
     [<Benchmark>]
     member this.GraphblasLevelBFS() =
@@ -69,8 +68,7 @@ type BFSBenchmarks() =
         |> EvalGB.runSync
 
     [<Benchmark>]
-    member this.QuickGraphBFS() =
-        bfs.Compute(source)
+    member this.QuickGraphBFS() = bfs.Compute(source)
 
     //TODO fix me
     (*[<IterationCleanup>]
@@ -89,9 +87,8 @@ type BFSBenchmarks() =
     static member InputMatricesProvider =
         "Common.txt"
         |> Utils.getMatricesFilenames
-        |> Seq.map
-            (fun matrixFilename ->
-                match Path.GetExtension matrixFilename with
-                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
-                | _ -> failwith "Unsupported matrix format"
-            )
+        |> Seq.map (fun matrixFilename ->
+            match Path.GetExtension matrixFilename with
+            | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
+            | _ -> failwith "Unsupported matrix format"
+        )

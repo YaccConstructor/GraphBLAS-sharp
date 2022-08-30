@@ -15,6 +15,7 @@ module internal EWiseAdd =
         (mask: Mask1D option)
         (semiring: ISemiring<'a>)
         : ClTask<int [] * 'a []> =
+
         opencl {
             let! allIndices, allValues = merge leftIndices leftValues rightIndices rightValues mask
 
@@ -32,6 +33,7 @@ module internal EWiseAdd =
         (mask: Mask1D option)
         (semiring: ISemiring<'a>)
         : ClTask<int [] * 'a []> =
+
         if leftValues.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray rightIndices
@@ -39,7 +41,6 @@ module internal EWiseAdd =
 
                 return resultIndices, resultValues
             }
-
         elif rightIndices.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray leftIndices
@@ -47,6 +48,5 @@ module internal EWiseAdd =
 
                 return resultIndices, resultValues
             }
-
         else
             runNonEmpty leftIndices leftValues rightIndices rightValues mask semiring

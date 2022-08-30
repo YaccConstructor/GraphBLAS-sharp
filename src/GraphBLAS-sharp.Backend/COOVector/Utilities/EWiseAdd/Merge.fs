@@ -31,8 +31,7 @@ module internal Merge =
                     if localID < 2 then
                         let mutable x = localID * (workGroupSize - 1) + i - 1
 
-                        if x >= sumOfSides then
-                            x <- sumOfSides - 1
+                        if x >= sumOfSides then x <- sumOfSides - 1
 
                         let diagonalNumber = x
 
@@ -41,15 +40,13 @@ module internal Merge =
 
                         let mutable rightEdge = firstSide - 1
 
-                        if rightEdge > diagonalNumber then
-                            rightEdge <- diagonalNumber
+                        if rightEdge > diagonalNumber then rightEdge <- diagonalNumber
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = firstIndicesBuffer.[middleIdx]
 
-                            let secondIndex =
-                                secondIndicesBuffer.[diagonalNumber - middleIdx]
+                            let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
 
                             if firstIndex < secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -57,10 +54,7 @@ module internal Merge =
                                 rightEdge <- middleIdx - 1
 
                         // Here localID equals either 0 or 1
-                        if localID = 0 then
-                            beginIdxLocal <- leftEdge
-                        else
-                            endIdxLocal <- leftEdge
+                        if localID = 0 then beginIdxLocal <- leftEdge else endIdxLocal <- leftEdge
 
                     barrier ()
 
@@ -69,8 +63,7 @@ module internal Merge =
                     let firstLocalLength = endIdx - beginIdx
                     let mutable x = workGroupSize - firstLocalLength
 
-                    if endIdx = firstSide then
-                        x <- secondSide - i + localID + beginIdx
+                    if endIdx = firstSide then x <- secondSide - i + localID + beginIdx
 
                     let secondLocalLength = x
 
@@ -92,15 +85,13 @@ module internal Merge =
 
                         let mutable rightEdge = firstLocalLength - 1
 
-                        if rightEdge > localID then
-                            rightEdge <- localID
+                        if rightEdge > localID then rightEdge <- localID
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = localIndices.[middleIdx]
 
-                            let secondIndex =
-                                localIndices.[firstLocalLength + localID - middleIdx]
+                            let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
 
                             if firstIndex < secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -116,13 +107,11 @@ module internal Merge =
 
                         let mutable fstIdx = 0
 
-                        if isValidX then
-                            fstIdx <- localIndices.[boundaryX]
+                        if isValidX then fstIdx <- localIndices.[boundaryX]
 
                         let mutable sndIdx = 0
 
-                        if isValidY then
-                            sndIdx <- localIndices.[firstLocalLength + boundaryY]
+                        if isValidY then sndIdx <- localIndices.[firstLocalLength + boundaryY]
 
                         if not isValidX || isValidY && fstIdx < sndIdx then
                             allIndicesBuffer.[i] <- sndIdx
@@ -133,14 +122,12 @@ module internal Merge =
 
             let allIndices = Array.zeroCreate sumOfSides
 
-            let allValues =
-                Array.create sumOfSides Unchecked.defaultof<'a>
+            let allValues = Array.create sumOfSides Unchecked.defaultof<'a>
 
             do!
                 runCommand merge
                 <| fun kernelPrepare ->
-                    let ndRange =
-                        Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+                    let ndRange = Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
 
                     kernelPrepare ndRange leftIndices leftValues rightIndices rightValues allIndices allValues
 

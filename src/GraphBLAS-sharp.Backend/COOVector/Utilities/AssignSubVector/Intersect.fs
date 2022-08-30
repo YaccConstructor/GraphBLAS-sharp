@@ -41,8 +41,7 @@ module internal Intersect =
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = firstIndicesBuffer.[middleIdx]
 
-                            let secondIndex =
-                                secondIndicesBuffer.[diagonalNumber - middleIdx]
+                            let secondIndex = secondIndicesBuffer.[diagonalNumber - middleIdx]
 
                             if firstIndex < secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -92,8 +91,7 @@ module internal Intersect =
                             let middleIdx = (leftEdge + rightEdge) / 2
                             let firstIndex = localIndices.[middleIdx]
 
-                            let secondIndex =
-                                localIndices.[firstLocalLength + localID - middleIdx]
+                            let secondIndex = localIndices.[firstLocalLength + localID - middleIdx]
 
                             if firstIndex < secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -125,14 +123,11 @@ module internal Intersect =
 
             let bitmap = Array.zeroCreate secondSide
 
-            let resultValues =
-                Array.create secondSide Unchecked.defaultof<'a>
+            let resultValues = Array.create secondSide Unchecked.defaultof<'a>
 
             do!
-                runCommand merge
-                <| fun kernelPrepare ->
-                    let ndRange =
-                        Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
+                runCommand merge <| fun kernelPrepare ->
+                    let ndRange = Range1D(Utils.getDefaultGlobalSize sumOfSides, workGroupSize)
 
                     kernelPrepare ndRange leftIndices leftValues rightIndices bitmap resultValues
 

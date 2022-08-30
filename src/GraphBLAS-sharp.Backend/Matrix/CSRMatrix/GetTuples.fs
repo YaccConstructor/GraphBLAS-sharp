@@ -8,10 +8,7 @@ module internal GetTuples =
     let fromMatrix (matrix: CSRMatrix<'a>) =
         opencl {
             if matrix.Values.Length = 0 then
-                return
-                    { RowIndices = [||]
-                      ColumnIndices = [||]
-                      Values = [||] }
+                return { RowIndices = [||]; ColumnIndices = [||]; Values = [||] }
 
             else
                 let rowCount = matrix.RowCount
@@ -25,8 +22,7 @@ module internal GetTuples =
                             for idx = rowPointers.[gid] to rowPointers.[gid + 1] - 1 do
                                 outputRowIndices.[idx] <- gid @>
 
-                let rowIndices =
-                    Array.zeroCreate<int> matrix.Values.Length
+                let rowIndices = Array.zeroCreate<int> matrix.Values.Length
 
                 do!
                     runCommand expandCsrRows
@@ -39,8 +35,5 @@ module internal GetTuples =
                 let! colIndices = Copy.copyArray matrix.ColumnIndices
                 let! vals = Copy.copyArray matrix.Values
 
-                return
-                    { RowIndices = rowIndices
-                      ColumnIndices = colIndices
-                      Values = vals }
+                return { RowIndices = rowIndices; ColumnIndices = colIndices; Values = vals }
         }

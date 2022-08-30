@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
@@ -15,6 +15,8 @@
     <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Scalar.fs" />
     <Compile Include="Objects/Masks.fs" />
+    <Compile Include="Operations/Matrix.fs" />
+    <Compile Include="Operations/Vector.fs" />
     <Compile Include="Operations/Scalar.fs" />
     <Compile Include="IO/MtxReader.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
@@ -23,10 +25,10 @@
     <Compile Include="Predefined/Semirings/AnyAll.fs" />
     <Compile Include="Predefined/Semirings/AddMult.fs" />
     <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <!--Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/ShortestPath.fs" />
     <Compile Include="Algorithms/TriangleCounting.fs" />
-    <Compile Include="Algorithms/BetweennessCentrality.fs" /-->
+    <Compile Include="Algorithms/BetweennessCentrality.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GraphBLAS-sharp.Backend\GraphBLAS-sharp.Backend.fsproj">

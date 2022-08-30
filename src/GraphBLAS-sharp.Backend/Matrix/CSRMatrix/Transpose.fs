@@ -9,11 +9,13 @@ module internal rec Transpose =
         opencl {
             if matrix.Values.Length = 0 then
                 return
-                    { RowCount = matrix.ColumnCount
-                      ColumnCount = matrix.RowCount
-                      RowPointers = [| 0; 0 |]
-                      ColumnIndices = [||]
-                      Values = [||] }
+                    {
+                        RowCount = matrix.ColumnCount
+                        ColumnCount = matrix.RowCount
+                        RowPointers = [| 0; 0 |]
+                        ColumnIndices = [||]
+                        Values = [||]
+                    }
             else
                 let! coo = csr2coo matrix
                 let! packedIndices = pack coo.Columns coo.Rows
@@ -24,11 +26,13 @@ module internal rec Transpose =
                 let! compressedRows = compressRows matrix.ColumnCount rows
 
                 return
-                    { RowCount = matrix.ColumnCount
-                      ColumnCount = matrix.RowCount
-                      RowPointers = compressedRows
-                      ColumnIndices = cols
-                      Values = coo.Values }
+                    {
+                        RowCount = matrix.ColumnCount
+                        ColumnCount = matrix.RowCount
+                        RowPointers = compressedRows
+                        ColumnIndices = cols
+                        Values = coo.Values
+                    }
         }
 
     let private csr2coo (matrix: CSRMatrix<'a>) =
@@ -51,8 +55,7 @@ module internal rec Transpose =
                         rowIndices.[rowStart + i] <- groupId
                         i <- i + wgSize @>
 
-            let rowIndices =
-                Array.zeroCreate<int> matrix.Values.Length
+            let rowIndices = Array.zeroCreate<int> matrix.Values.Length
 
             do!
                 runCommand expandRows
@@ -66,11 +69,13 @@ module internal rec Transpose =
             let! values = Copy.copyArray matrix.Values
 
             return
-                { RowCount = matrix.RowCount
-                  ColumnCount = matrix.ColumnCount
-                  Rows = rowIndices
-                  Columns = colIndices
-                  Values = values }
+                {
+                    RowCount = matrix.RowCount
+                    ColumnCount = matrix.ColumnCount
+                    Rows = rowIndices
+                    Columns = colIndices
+                    Values = values
+                }
         }
 
     let private pack (firstArray: int []) (secondArray: int []) =
@@ -83,9 +88,7 @@ module internal rec Transpose =
                     let gid = range.GlobalID0
 
                     if gid < length then
-                        packed.[gid] <-
-                            (uint64 firstArray.[gid] <<< 32)
-                            ||| (uint64 secondArray.[gid]) @>
+                        packed.[gid] <- (uint64 firstArray.[gid] <<< 32) ||| (uint64 secondArray.[gid]) @>
 
             let packedArray = Array.zeroCreate<uint64> length
 
@@ -187,9 +190,7 @@ module internal rec Transpose =
                     if gid = 0 then
                         nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid]
                     elif gid < totalSum then
-                        nnzPerRowSparse.[gid] <-
-                            nonZeroRowsPointers.[gid]
-                            - nonZeroRowsPointers.[gid - 1] @>
+                        nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid] - nonZeroRowsPointers.[gid - 1] @>
 
             let nnzPerRowSparse = Array.zeroCreate totalSum
 

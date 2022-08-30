@@ -12,6 +12,7 @@ module internal FillSubVector =
         (rightIndices: int [])
         (scalar: 'a [])
         : ClTask<int [] * 'a []> =
+
         opencl {
             let! allIndices, allValues = merge leftIndices leftValues rightIndices scalar
 
@@ -28,9 +29,7 @@ module internal FillSubVector =
 
                 return resultIndices, resultValues
             }
-
         elif rightIndices.Length = 0 then
             opencl { return leftIndices, leftValues }
-
         else
             runNotEmpty leftIndices leftValues rightIndices scalar

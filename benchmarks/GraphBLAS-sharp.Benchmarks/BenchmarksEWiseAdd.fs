@@ -15,24 +15,22 @@ type Config() =
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun (matrix,_) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun (matrix,_) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn("RowCount", (fun (matrix, _) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn("ColumnCount", (fun (matrix, _) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
             MatrixShapeColumn(
                 "NNZ",
-                fun (matrix,_) ->
+                fun (matrix, _) ->
                     match matrix.Format with
                     | Coordinate -> matrix.ReadMatrixShape().Nnz
                     | Array -> 0
-            )
-            :> IColumn,
+            ) :> IColumn,
             MatrixShapeColumn(
                 "SqrNNZ",
-                fun (_,matrix) ->
+                fun (_, matrix) ->
                     match matrix.Format with
                     | Coordinate -> matrix.ReadMatrixShape().Nnz
                     | Array -> 0
-            )
-            :> IColumn,
+            ) :> IColumn,
             TEPSColumn() :> IColumn,
             StatisticColumn.Min,
             StatisticColumn.Max
@@ -43,11 +41,13 @@ type Config() =
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
-type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>(
+type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObject and 'elem : struct>
+    (
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
-        buildMatrix) =
+        buildMatrix
+    ) =
 
     let mutable funToBenchmark = None
     let mutable firstMatrix = Unchecked.defaultof<'matrixT>
@@ -66,10 +66,7 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObjec
     member this.OclContext:ClContext = (fst this.OclContextInfo).ClContext
     member this.WorkGroupSize = snd this.OclContextInfo
 
-    member this.Processor =
-        let p = (fst this.OclContextInfo).Queue
-        p.Error.Add(fun e -> failwithf "%A" e)
-        p
+    member this.Processor = (fst this.OclContextInfo).Queue
 
     static member AvaliableContexts = Utils.avaliableContexts
 
@@ -207,12 +204,12 @@ module M =
             let vals =
                 context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
 
-            { Backend.COOMatrix.Context = context
-              Backend.COOMatrix.RowCount = m.RowCount
-              Backend.COOMatrix.ColumnCount = m.ColumnCount
-              Backend.COOMatrix.Rows = rows
-              Backend.COOMatrix.Columns = cols
-              Backend.COOMatrix.Values = vals }
+            { Backend.BackendCOOMatrix.Context = context
+              Backend.BackendCOOMatrix.RowCount = m.RowCount
+              Backend.BackendCOOMatrix.ColumnCount = m.ColumnCount
+              Backend.BackendCOOMatrix.Rows = rows
+              Backend.BackendCOOMatrix.Columns = cols
+              Backend.BackendCOOMatrix.Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 
@@ -240,16 +237,16 @@ module M =
                     ,deviceAccessMode = DeviceAccessMode.ReadOnly
                     ,allocationMode = AllocationMode.CopyHostPtr)
 
-            { Backend.CSRMatrix.Context = context
-              Backend.CSRMatrix.RowCount = m.RowCount
-              Backend.CSRMatrix.ColumnCount = m.ColumnCount
-              Backend.CSRMatrix.RowPointers = rowPointers
-              Backend.CSRMatrix.Columns = cols
-              Backend.CSRMatrix.Values = vals }
+            { Backend.BackendCSRMatrix.Context = context
+              Backend.BackendCSRMatrix.RowCount = m.RowCount
+              Backend.BackendCSRMatrix.ColumnCount = m.ColumnCount
+              Backend.BackendCSRMatrix.RowPointers = rowPointers
+              Backend.BackendCSRMatrix.Columns = cols
+              Backend.BackendCSRMatrix.Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 
-    let resultToHostCOO (resultMatrix:Backend.COOMatrix<'a>) (procesor:MailboxProcessor<_>) =
+    let resultToHostCOO (resultMatrix:Backend.BackendCOOMatrix<'a>) (procesor:MailboxProcessor<_>) =
         let cols =
             let a = Array.zeroCreate resultMatrix.ColumnCount
             procesor.Post(Msg.CreateToHostMsg<_>(resultMatrix.Columns,a))
@@ -273,7 +270,7 @@ module M =
 
 type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -285,7 +282,7 @@ type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithDataTransfer<Backend.BackendCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -299,7 +296,7 @@ type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
 type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCOOMatrix<bool>,bool>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -312,7 +309,7 @@ type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCSRMatrix<float32>,float32>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -325,7 +322,7 @@ type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCSRMatrix<bool>,bool>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -339,7 +336,7 @@ type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCOOMatrix<bool>,bool>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -351,7 +348,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCSRMatrix<bool>,bool>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -363,7 +360,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -375,7 +372,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.BackendCSRMatrix<float32>,float32>(
         (fun context wgSize -> Backend.CSRMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),

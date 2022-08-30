@@ -7,12 +7,8 @@ open GraphBLAS.FSharp.Backend.Common
 module internal rec SpMSpV =
     let unmasked (matrix: CSRMatrix<'a>) (vector: COOVector<'a>) (semiring: ISemiring<'a>) =
         opencl {
-            if matrix.Values.Length = 0
-               || vector.Values.Length = 0 then
-                return
-                    { Size = matrix.RowCount
-                      Indices = [||]
-                      Values = [||] }
+            if matrix.Values.Length = 0 || vector.Values.Length = 0 then
+                return { Size = matrix.RowCount; Indices = [||]; Values = [||] }
 
             else
                 let rowCount = matrix.RowCount
@@ -103,8 +99,7 @@ module internal rec SpMSpV =
 
                         let gid = range.GlobalID0
 
-                        if gid < rowCount && count.[gid] = 0 then
-                            bitmap.[gid] <- 0 @>
+                        if gid < rowCount && count.[gid] = 0 then bitmap.[gid] <- 0 @>
 
                 let bitmap = Array.create<int> rowCount 1
 
@@ -122,10 +117,7 @@ module internal rec SpMSpV =
                 let resultLength = totalSum.[0]
 
                 if resultLength = 0 then
-                    return
-                        { Size = matrix.RowCount
-                          Indices = [||]
-                          Values = [||] }
+                    return { Size = matrix.RowCount; Indices = [||]; Values = [||] }
 
                 else
                     let getOutputVector =
@@ -151,28 +143,17 @@ module internal rec SpMSpV =
                             <| outputValues
                             <| outputIndices
 
-                    return
-                        { Size = rowCount
-                          Indices = outputIndices
-                          Values = outputValues }
+                    return { Size = rowCount; Indices = outputIndices; Values = outputValues }
         }
 
     let masked (matrix: CSRMatrix<'a>) (vector: COOVector<'a>) (semiring: ISemiring<'a>) (mask: Mask1D) =
         opencl {
-            if matrix.Values.Length = 0
-               || vector.Values.Length = 0 then
-                return
-                    { Size = matrix.RowCount
-                      Indices = [||]
-                      Values = [||] }
+            if matrix.Values.Length = 0 || vector.Values.Length = 0 then
+                return { Size = matrix.RowCount; Indices = [||]; Values = [||] }
 
             elif mask.Indices.Length = 0 && not mask.IsComplemented
-                 || mask.Indices.Length = mask.Size
-                    && mask.IsComplemented then
-                return
-                    { Size = matrix.RowCount
-                      Indices = [||]
-                      Values = [||] }
+                 || mask.Indices.Length = mask.Size && mask.IsComplemented then
+                return { Size = matrix.RowCount; Indices = [||]; Values = [||] }
 
             else
                 let rowCount = matrix.RowCount
@@ -266,8 +247,7 @@ module internal rec SpMSpV =
 
                         let gid = range.GlobalID0
 
-                        if gid < rowCount && count.[gid] = 0 then
-                            bitmap.[gid] <- 0 @>
+                        if gid < rowCount && count.[gid] = 0 then bitmap.[gid] <- 0 @>
 
                 let bitmap = Array.create<int> rowCount 1
 
@@ -285,10 +265,7 @@ module internal rec SpMSpV =
                 let resultLength = totalSum.[0]
 
                 if resultLength = 0 then
-                    return
-                        { Size = matrix.RowCount
-                          Indices = [||]
-                          Values = [||] }
+                    return { Size = matrix.RowCount; Indices = [||]; Values = [||] }
 
                 else
                     let getOutputVector =
@@ -314,8 +291,5 @@ module internal rec SpMSpV =
                             <| outputValues
                             <| outputIndices
 
-                    return
-                        { Size = rowCount
-                          Indices = outputIndices
-                          Values = outputValues }
+                    return { Size = rowCount; Indices = outputIndices; Values = outputValues }
         }

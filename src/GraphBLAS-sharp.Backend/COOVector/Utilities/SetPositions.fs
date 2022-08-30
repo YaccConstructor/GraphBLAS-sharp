@@ -16,8 +16,7 @@ module internal SetPositions =
 
                     if i = prefixSumArrayLength - 1
                        || i < prefixSumArrayLength
-                          && prefixSumArrayBuffer.[i]
-                             <> prefixSumArrayBuffer.[i + 1] then
+                          && prefixSumArrayBuffer.[i] <> prefixSumArrayBuffer.[i + 1] then
                         let index = prefixSumArrayBuffer.[i]
 
                         resultIndicesBuffer.[index] <- allIndicesBuffer.[i]
@@ -33,14 +32,12 @@ module internal SetPositions =
 
             let resultIndices = Array.zeroCreate resultLength
 
-            let resultValues =
-                Array.create resultLength Unchecked.defaultof<'a>
+            let resultValues = Array.create resultLength Unchecked.defaultof<'a>
 
             do!
                 runCommand setPositions
                 <| fun kernelPrepare ->
-                    let ndRange =
-                        Range1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
+                    let ndRange = Range1D(Utils.getDefaultGlobalSize positions.Length, Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange allIndices allValues positions resultIndices resultValues
 

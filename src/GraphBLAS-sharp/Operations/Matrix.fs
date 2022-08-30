@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp
 
-open Brahma.FSharp.OpenCL
-open GraphBLAS.FSharp.Backend
+open Brahma.FSharp
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Matrix =
@@ -55,55 +54,58 @@ module Matrix =
     let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
 
     let tuples (matrix: Matrix<'a>) : GraphblasEvaluation<MatrixTuples<'a>> =
-        match matrix with
-        | MatrixCOO matrix -> COOMatrix.GetTuples.fromMatrix matrix
-        | MatrixCSR matrix -> CSRMatrix.GetTuples.fromMatrix matrix
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix with
+//        | MatrixCOO matrix -> COOMatrix.GetTuples.fromMatrix matrix
+//        | MatrixCSR matrix -> CSRMatrix.GetTuples.fromMatrix matrix
+//        |> EvalGB.fromCl
 
     let mask (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Matrix<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
 
     let switch (matrixFormat: MatrixFromat) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
-        match matrix, matrixFormat with
-        | MatrixCOO matrix, CSR ->
-            opencl {
-                let! result = CSRMatrix.Convert.fromCoo matrix
-                return MatrixCSR result
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix, matrixFormat with
+//        | MatrixCOO matrix, CSR ->
+//            opencl {
+//                let! result = CSRMatrix.Convert.fromCoo matrix
+//                return MatrixCSR result
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     let synchronize (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     let synchronizeAndReturn (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
-        match matrix with
-        | MatrixCSR matrix ->
-            opencl {
-                let! _ =
-                    if matrix.RowPointers.Length = 0 then
-                        opencl { return [||] }
-                    else
-                        failwith "FIX ME! And rewrite."
-                //ToHost matrix.RowPointers
-
-                let! _ =
-                    if matrix.ColumnIndices.Length = 0 then
-                        opencl { return [||] }
-                    else
-                        failwith "FIX ME! And rewrite."
-                //ToHost matrix.ColumnIndices
-
-                let! _ =
-                    if matrix.Values.Length = 0 then
-                        opencl { return [||] }
-                    else
-                        failwith "FIX ME! And rewrite."
-                //ToHost matrix.Values
-
-                return MatrixCSR matrix
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix with
+//        | MatrixCSR matrix ->
+//            opencl {
+//                let! _ =
+//                    if matrix.RowPointers.Length = 0 then
+//                        opencl { return [||] }
+//                    else
+//                        failwith "FIX ME! And rewrite."
+//                //ToHost matrix.RowPointers
+//
+//                let! _ =
+//                    if matrix.ColumnIndices.Length = 0 then
+//                        opencl { return [||] }
+//                    else
+//                        failwith "FIX ME! And rewrite."
+//                //ToHost matrix.ColumnIndices
+//
+//                let! _ =
+//                    if matrix.Values.Length = 0 then
+//                        opencl { return [||] }
+//                    else
+//                        failwith "FIX ME! And rewrite."
+//                //ToHost matrix.Values
+//
+//                return MatrixCSR matrix
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     (*
         assignment, extraction and filling
@@ -200,14 +202,15 @@ module Matrix =
         failwith "Not Implemented"
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
-        match matrix, vector with
-        | MatrixCSR matrix, VectorCOO vector ->
-            opencl {
-                let! result = CSRMatrix.SpMSpV.unmasked matrix vector semiring
-                return VectorCOO result
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix, vector with
+//        | MatrixCSR matrix, VectorCOO vector ->
+//            opencl {
+//                let! result = CSRMatrix.SpMSpV.unmasked matrix vector semiring
+//                return VectorCOO result
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented"
@@ -217,14 +220,15 @@ module Matrix =
         (leftMatrix: Matrix<'a>)
         (rightMatrix: Matrix<'a>)
         : GraphblasEvaluation<Matrix<'a>> =
-        match leftMatrix, rightMatrix with
-        | MatrixCOO left, MatrixCOO right -> failwith "FIX ME! And rewrite."
-        //opencl {
-        //    let! result = COOMatrix.EWiseAdd.run left right None monoid
-        //    return MatrixCOO result
-        //}
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match leftMatrix, rightMatrix with
+//        | MatrixCOO left, MatrixCOO right ->
+//            opencl {
+//                let! result = COOMatrix.EWiseAdd.run left right None monoid
+//                return MatrixCOO result
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     let eWiseMult
         (semiring: ISemiring<'a>)
@@ -249,15 +253,16 @@ module Matrix =
         failwith "Not Implemented yet"
 
     let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
-        match matrix with
-        | MatrixCSR matrix ->
-            // map
-            opencl {
-                let! transposed = CSRMatrix.Transpose.transposeMatrix matrix
-                return MatrixCSR transposed
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix with
+//        | MatrixCSR matrix ->
+//            // map
+//            opencl {
+//                let! transposed = CSRMatrix.Transpose.transposeMatrix matrix
+//                return MatrixCSR transposed
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     let kronecker
         (semiring: ISemiring<'a>)
@@ -284,14 +289,15 @@ module Matrix =
         (matrix: Matrix<'a>)
         (vector: Vector<'a>)
         : GraphblasEvaluation<Vector<'a>> =
-        match matrix, vector, mask with
-        | MatrixCSR matrix, VectorCOO vector, mask when not mask.IsComplemented ->
-            opencl {
-                let! result = CSRMatrix.SpMSpV.masked matrix vector semiring mask
-                return VectorCOO result
-            }
-        | _ -> failwith "Not Implemented"
-        |> EvalGB.fromCl
+        failwith "Not Implemented yet"
+//        match matrix, vector, mask with
+//        | MatrixCSR matrix, VectorCOO vector, mask when not mask.IsComplemented ->
+//            opencl {
+//                let! result = CSRMatrix.SpMSpV.masked matrix vector semiring mask
+//                return VectorCOO result
+//            }
+//        | _ -> failwith "Not Implemented"
+//        |> EvalGB.fromCl
 
     let vxmWithMask
         (semiring: ISemiring<'a>)

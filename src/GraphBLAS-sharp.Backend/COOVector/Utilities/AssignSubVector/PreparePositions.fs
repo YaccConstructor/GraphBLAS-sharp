@@ -14,15 +14,13 @@ module internal PreparePositions =
 
                     let i = ndRange.GlobalID0
 
-                    if i < length - 1
-                       && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
+                    if i < length - 1 && allIndicesBuffer.[i] = allIndicesBuffer.[i + 1] then
                         rawPositionsBuffer.[i] <- 0 @>
 
             do!
                 runCommand preparePositions
                 <| fun kernelPrepare ->
-                    let ndRange =
-                        Range1D(Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
+                    let ndRange = Range1D(Utils.getDefaultGlobalSize (length - 1), Utils.defaultWorkGroupSize)
 
                     kernelPrepare ndRange allIndices rawPositions
 

@@ -27,13 +27,9 @@ module internal rec Sum =
         opencl {
             let workGroupSize = 256
 
-            let firstVertices =
-                Array.zeroCreate
-                <| (inputArray.Length - 1) / workGroupSize + 1
+            let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
 
-            let secondVertices =
-                Array.zeroCreate
-                <| (firstVertices.Length - 1) / workGroupSize + 1
+            let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
 
             let mutable verticesArrays = firstVertices, secondVertices
             let swap (a, b) = (b, a)
@@ -100,8 +96,7 @@ module internal rec Sum =
             do!
                 runCommand scan
                 <| fun kernelPrepare ->
-                    let ndRange =
-                        Range1D.CreateValid(inputArrayLength, workGroupSize)
+                    let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
 
                     kernelPrepare ndRange inputArray vertices
         }

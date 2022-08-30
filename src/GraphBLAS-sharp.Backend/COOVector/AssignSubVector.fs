@@ -13,6 +13,7 @@ module internal AssignSubVector =
         (rightValues: 'a [])
         (maskIndices: int [])
         : ClTask<int [] * 'a []> =
+
         opencl {
             let! bitmap, maskValues = intersect rightIndices rightValues maskIndices
 
@@ -30,6 +31,7 @@ module internal AssignSubVector =
         (rightValues: 'a [])
         (maskIndices: int [])
         : ClTask<int [] * 'a []> =
+
         if leftValues.Length = 0 then
             opencl {
                 let! resultIndices = Copy.copyArray rightIndices

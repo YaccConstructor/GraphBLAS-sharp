@@ -36,5 +36,4 @@ module internal AssemblyVersionInformation =
     let AssemblyMetadata_ReleaseChannel = "release"
 
     [<Literal>]
-    let AssemblyMetadata_GitHash =
-        "bb8964b54bee133e9af64d316dc2cfee16df7f72"
+    let AssemblyMetadata_GitHash = "bb8964b54bee133e9af64d316dc2cfee16df7f72"

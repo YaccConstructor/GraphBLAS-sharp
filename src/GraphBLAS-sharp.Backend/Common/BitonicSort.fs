@@ -55,8 +55,7 @@ module internal rec BitonicSort =
                     else
                         localKeys.[lid] <- positiveInf
 
-                    if readIdx < length then
-                        localValues.[lid] <- values.[readIdx]
+                    if readIdx < length then localValues.[lid] <- values.[readIdx]
 
                     readIdx <- readIdx + wgSize
 
@@ -65,8 +64,7 @@ module internal rec BitonicSort =
                     else
                         localKeys.[lid + wgSize] <- positiveInf
 
-                    if readIdx < length then
-                        localValues.[lid + wgSize] <- values.[readIdx]
+                    if readIdx < length then localValues.[lid + wgSize] <- values.[readIdx]
 
                     barrierLocal ()
 
@@ -78,11 +76,9 @@ module internal rec BitonicSort =
                         let localTwinId = segmentLength - localLineId - 1
                         let groupLineId = lid / (segmentLength / 2)
 
-                        let lineId =
-                            segmentLength * groupLineId + localLineId
+                        let lineId = segmentLength * groupLineId + localLineId
 
-                        let twinId =
-                            segmentLength * groupLineId + localTwinId
+                        let twinId = segmentLength * groupLineId + localTwinId
 
                         if localKeys.[lineId] > localKeys.[twinId] then
                             let tmpKey = localKeys.[lineId]
@@ -158,11 +154,9 @@ module internal rec BitonicSort =
 
                     let groupLineId = gid / (segmentLength / 2)
 
-                    let lineId =
-                        segmentLength * groupLineId + localLineId
+                    let lineId = segmentLength * groupLineId + localLineId
 
-                    let twinId =
-                        segmentLength * groupLineId + localTwinId
+                    let twinId = segmentLength * groupLineId + localTwinId
 
                     if twinId < length && keys.[lineId] > keys.[twinId] then
                         let tmp = keys.[lineId]
@@ -208,8 +202,7 @@ module internal rec BitonicSort =
                     else
                         localKeys.[lid] <- positiveInf
 
-                    if readIdx < length then
-                        localValues.[lid] <- values.[readIdx]
+                    if readIdx < length then localValues.[lid] <- values.[readIdx]
 
                     readIdx <- readIdx + wgSize
 
@@ -218,8 +211,7 @@ module internal rec BitonicSort =
                     else
                         localKeys.[lid + wgSize] <- positiveInf
 
-                    if readIdx < length then
-                        localValues.[lid + wgSize] <- values.[readIdx]
+                    if readIdx < length then localValues.[lid + wgSize] <- values.[readIdx]
 
                     barrierLocal ()
 

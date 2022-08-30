@@ -25,14 +25,18 @@ type ISemiring<'a> =
     abstract Times : ClosedBinaryOp<'a>
 
 type Semigroup<'a> =
-    { AssociativeOp: ClosedBinaryOp<'a> }
+    {
+        AssociativeOp: ClosedBinaryOp<'a>
+    }
 
     interface ISemigroup<'a> with
         member this.Op = this.AssociativeOp
 
 type Monoid<'a> =
-    { AssociativeOp: ClosedBinaryOp<'a>
-      Identity: 'a }
+    {
+        AssociativeOp: ClosedBinaryOp<'a>
+        Identity: 'a
+    }
 
     interface ISemigroup<'a> with
         member this.Op = this.AssociativeOp
@@ -42,8 +46,10 @@ type Monoid<'a> =
         member this.Zero = this.Identity
 
 type Semiring<'a> =
-    { PlusMonoid: Monoid<'a>
-      TimesSemigroup: Semigroup<'a> }
+    {
+        PlusMonoid: Monoid<'a>
+        TimesSemigroup: Semigroup<'a>
+    }
 
     interface IMonoid<'a> with
         member this.Zero = this.PlusMonoid.Identity

@@ -9,60 +9,54 @@ open GraphBLAS.FSharp.Backend.Common
 let logger = Log.create "PrefixSum.Tests"
 
 let testCases =
-    [ testCase "Simple correctness test"
-      <| fun () ->
-          let array = [| 1; 2; 3 |]
+    [
+        testCase "Simple correctness test" <| fun () ->
+            let array = [| 1; 2; 3 |]
 
-          let actual =
-              opencl {
-                  let! (result, _) = PrefixSum.runInclude array
+            let actual =
+                opencl {
+                    let! (result, _) = PrefixSum.runInclude array
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost result
-                      ()
+                    if array.Length <> 0 then
+                        failwith "fix me"
+                        //let! _ = ToHost result
+                        ()
 
-                  return result
-              }
-              //|> OpenCLEvaluationContext().RunSync
-              failwith "fix me"
+                    return result
+                }
+                //|> OpenCLEvaluationContext().RunSync
+                failwith "fix me"
 
-          logger.debug (
-              eventX "Actual is {actual}"
-              >> setField "actual" (sprintf "%A" actual)
-          )
+            logger.debug (eventX "Actual is {actual}" >> setField "actual" (sprintf "%A" actual))
 
-          let expected = [| 1; 3; 6 |]
+            let expected = [| 1; 3; 6 |]
 
-          "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected
+            "Array should be without duplicates" |> Expect.sequenceEqual actual expected
 
-      testCase "Test on empty array"
-      <| fun () ->
-          let array = Array.zeroCreate<int> 0
+        testCase "Test on empty array" <| fun () ->
+            let array = Array.zeroCreate<int> 0
 
-          let actual =
-              opencl {
-                  let! (result, _) = PrefixSum.runInclude array
+            let actual =
+                opencl {
+                    let! (result, _) = PrefixSum.runInclude array
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost result
-                      ()
+                    if array.Length <> 0 then
+                        failwith "fix me"
+                        //let! _ = ToHost result
+                        ()
 
-                  return result
-              }
-              //|> OpenCLEvaluationContext().RunSync
-              failwith "fix me"
+                    return result
+                }
+                //|> OpenCLEvaluationContext().RunSync
+                failwith "fix me"
 
-          logger.debug (
-              eventX "Actual is {actual}"
-              >> setField "actual" (sprintf "%A" actual)
-          )
+            logger.debug (eventX "Actual is {actual}" >> setField "actual" (sprintf "%A" actual))
 
-          let expected = array
+            let expected = array
 
-          "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected ]
+            "Array should be without duplicates" |> Expect.sequenceEqual actual expected
+    ]
 
-let tests = testCases |> ptestList "PrefixSum tests"
+let tests =
+    testCases
+    |> ptestList "PrefixSum tests"

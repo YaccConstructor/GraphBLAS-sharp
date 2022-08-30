@@ -49,16 +49,14 @@ module StandardOperations =
 
             if res = zero then None else Some res @>
 
-    let boolSum =
-        <@ fun (_: bool option) (_: bool option) -> Some true @>
+    let boolSum = <@ fun (_: bool option) (_: bool option) -> Some true @>
 
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
     let floatSum = mkNumericSum 0.0
     let float32Sum = mkNumericSum 0f
 
-    let boolSumAtLeastOne =
-        <@ fun (_: AtLeastOne<bool, bool>) -> Some true @>
+    let boolSumAtLeastOne = <@ fun (_: AtLeastOne<bool, bool>) -> Some true @>
 
     let intSumAtLeastOne = mkNumericSumAtLeastOne 0
     let byteSumAtLeastOne = mkNumericSumAtLeastOne 0uy

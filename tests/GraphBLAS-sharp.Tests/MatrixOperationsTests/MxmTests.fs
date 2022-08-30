@@ -14,26 +14,30 @@ open OpenCL.Net
 let logger = Log.create "Matrix.Mxm.Tests"
 
 type OperationCase =
-    { ClContext: ClContext
-      LeftMatrixCase: MatrixFromat
-      RightMatrixCase: MatrixFromat
-      MaskCase: MaskType }
+    {
+        ClContext: ClContext
+        LeftMatrixCase: MatrixFromat
+        RightMatrixCase: MatrixFromat
+        MaskCase: MaskType
+    }
 
 let testCases =
-    [ Utils.avaliableContexts "" |> Seq.map box
-      Utils.listOfUnionCases<MatrixFromat>
-      |> Seq.map box
-      Utils.listOfUnionCases<MatrixFromat>
-      |> Seq.map box
-      Utils.listOfUnionCases<MaskType> |> Seq.map box ]
+    [
+        Utils.avaliableContexts "" |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
+        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
+        Utils.listOfUnionCases<MaskType> |> Seq.map box
+    ]
     |> List.map List.ofSeq
     |> Utils.cartesian
-    |> List.map
-        (fun list ->
-            { ClContext = unbox list.[0]
-              LeftMatrixCase = unbox list.[1]
-              RightMatrixCase = unbox list.[2]
-              MaskCase = unbox list.[3] })
+    |> List.map (fun list ->
+        {
+            ClContext = unbox list.[0]
+            LeftMatrixCase = unbox list.[1]
+            RightMatrixCase = unbox list.[2]
+            MaskCase = unbox list.[3]
+        }
+    )
 
 let correctnessGenericTest<'a when 'a: struct>
     (semiring: ISemiring<'a>)
@@ -48,8 +52,7 @@ let correctnessGenericTest<'a when 'a: struct>
         let resultRowCount = Array2D.length1 leftMatrix
         let resultColCount = Array2D.length2 rightMatrix
 
-        let resultMatrix =
-            Array2D.zeroCreate<'a> resultRowCount resultColCount
+        let resultMatrix = Array2D.zeroCreate<'a> resultRowCount resultColCount
 
         let plus = semiring.Plus.Invoke
         let times = semiring.Times.Invoke
@@ -67,37 +70,26 @@ let correctnessGenericTest<'a when 'a: struct>
 
         resultMatrix
         |> Seq.cast<'a>
-        |> Seq.mapi
-            (fun idx v ->
-                let i = idx / Array2D.length2 leftMatrix
-                let j = idx % Array2D.length2 leftMatrix
+        |> Seq.mapi (fun idx v ->
+            let i = idx / Array2D.length2 leftMatrix
+            let j = idx % Array2D.length2 leftMatrix
 
-                (i, j, v))
+            (i, j, v)
+        )
         |> Seq.filter (fun (_, _, v) -> (not << isZero) v)
         |> Array.ofSeq
         |> Array.unzip3
-        |> fun (rows, cols, vals) ->
-            { RowIndices = rows
-              ColumnIndices = cols
-              Values = vals }
+        |> fun (rows, cols, vals) -> { RowIndices = rows; ColumnIndices = cols; Values = vals }
 
     let actual =
         try
-            let left =
-                Utils.createMatrixFromArray2D case.LeftMatrixCase leftMatrix isZero
+            let left = Utils.createMatrixFromArray2D case.LeftMatrixCase leftMatrix isZero
 
-            let right =
-                Utils.createMatrixFromArray2D case.RightMatrixCase rightMatrix isZero
+            let right = Utils.createMatrixFromArray2D case.RightMatrixCase rightMatrix isZero
 
-            logger.debug (
-                eventX "Left matrix is \n{matrix}"
-                >> setField "matrix" left
-            )
+            logger.debug (eventX "Left matrix is \n{matrix}" >> setField "matrix" left)
 
-            logger.debug (
-                eventX "Right matrix is \n{matrix}"
-                >> setField "matrix" right
-            )
+            logger.debug (eventX "Right matrix is \n{matrix}" >> setField "matrix" right)
 
             graphblas {
                 let! result = Matrix.mxm semiring left right
@@ -123,18 +115,14 @@ let correctnessGenericTest<'a when 'a: struct>
         >> setField "actual" (sprintf "%A" actual.Values)
     )
 
-    let actualIndices =
-        Seq.zip actual.RowIndices actual.ColumnIndices
+    let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
 
-    let expectedIndices =
-        Seq.zip expected.RowIndices expected.ColumnIndices
+    let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
 
     "Indices of expected and result matrix must be the same"
     |> Expect.sequenceEqual actualIndices expectedIndices
 
-    let equality =
-        (expected.Values, actual.Values)
-        ||> Seq.map2 isEqual
+    let equality = (expected.Values, actual.Values) ||> Seq.map2 isEqual
 
     "Length of expected and result values should be equal"
     |> Expect.hasLength actual.Values (Seq.length expected.Values)
@@ -143,46 +131,44 @@ let correctnessGenericTest<'a when 'a: struct>
     |> Expect.allEqual equality true
 
 let testFixtures case =
-    [ let config = Utils.defaultConfig
+    [
+        let config = Utils.defaultConfig
 
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case
+        let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
 
-      case
-      |> correctnessGenericTest<int> AddMult.int (=)
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+        case
+        |> correctnessGenericTest<int> AddMult.int (=)
+        |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      case
-      |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+        case
+        |> correctnessGenericTest<float> AddMult.float (fun x y -> abs (x - y) < Accuracy.medium.absolute)
+        |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      case
-      |> correctnessGenericTest<int16> AddMult.int16 (=)
-      |> testPropertyWithConfig config (getCorrectnessTestName "int16")
+        case
+        |> correctnessGenericTest<int16> AddMult.int16 (=)
+        |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
-      case
-      |> correctnessGenericTest<uint16> AddMult.uint16 (=)
-      |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
+        case
+        |> correctnessGenericTest<uint16> AddMult.uint16 (=)
+        |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
 
-      case
-      |> correctnessGenericTest<bool> AnyAll.bool (=)
-      |> ptestPropertyWithConfig config (getCorrectnessTestName "bool") ]
+        case
+        |> correctnessGenericTest<bool> AnyAll.bool (=)
+        |> ptestPropertyWithConfig config (getCorrectnessTestName "bool")
+    ]
 
 let tests =
     testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.Device
+    |> List.filter (fun case ->
+        let mutable e = ErrorCode.Unknown
+        let device = case.ClContext.Device
 
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
+        let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-            deviceType = DeviceType.Cpu
-            && case.LeftMatrixCase = CSR
-            && case.RightMatrixCase = CSR
-            && case.MaskCase = NoMask)
+        deviceType = DeviceType.Cpu
+        && case.LeftMatrixCase = CSR
+        && case.RightMatrixCase = CSR
+        && case.MaskCase = NoMask
+    )
     |> List.collect testFixtures
     |> testList "Matrix.mxm tests"

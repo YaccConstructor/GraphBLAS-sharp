@@ -28,8 +28,7 @@ module internal GetComplemented =
                             bitmap.[maskIdx] <- 0 @>
 
                 do!
-                    runCommand getComplementedBitmap
-                    <| fun kernelPrepare ->
+                    runCommand getComplementedBitmap <| fun kernelPrepare ->
                         kernelPrepare
                         <| Range1D(Utils.getDefaultGlobalSize nnz, Utils.defaultWorkGroupSize)
                         <| mask.Indices

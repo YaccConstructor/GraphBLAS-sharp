@@ -45,17 +45,14 @@ type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> 
         member this.ColumnName: string = columnName
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
-            let inputMatrix =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
+            let inputMatrix = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
 
             sprintf "%i" <| getShape inputMatrix
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle) : string =
             (this :> IColumn).GetValue(summary, benchmarkCase)
 
-        member this.Id: string =
-            sprintf "%s.%s" "MatrixShapeColumn" columnName
-
+        member this.Id: string = sprintf "%s.%s" "MatrixShapeColumn" columnName
         member this.IsAvailable(summary: Summary) : bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase) : bool = false
         member this.IsNumeric: bool = true
@@ -70,29 +67,21 @@ type TEPSColumn() =
         member this.ColumnName: string = "TEPS"
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
-            let inputMatrixReader =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
-                |> fst
+            let inputMatrixReader = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader |> fst
 
             let matrixShape = inputMatrixReader.ReadMatrixShape()
 
-            let (nrows, ncols) =
-                matrixShape.RowCount, matrixShape.ColumnCount
+            let (nrows, ncols) = matrixShape.RowCount, matrixShape.ColumnCount
 
             let (vertices, edges) =
                 match inputMatrixReader.Format with
-                | Coordinate ->
-                    if nrows = ncols then
-                        (nrows, matrixShape.Nnz)
-                    else
-                        (ncols, nrows)
+                | Coordinate -> if nrows = ncols then (nrows, matrixShape.Nnz) else (ncols, nrows)
                 | _ -> failwith "Unsupported"
 
             if isNull summary.[benchmarkCase].ResultStatistics then
                 "NA"
             else
-                let meanTime =
-                    summary.[benchmarkCase].ResultStatistics.Mean
+                let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
 
                 sprintf "%f" <| float edges / (meanTime * 1e-6)
 
@@ -108,15 +97,15 @@ type TEPSColumn() =
         member this.UnitType: UnitType = UnitType.Dimensionless
 
 module Utils =
-    type BenchmarkContext =
-        { ClContext: Brahma.FSharp.ClContext
-          Queue: MailboxProcessor<Msg> }
+    type BenchmarkContext = { ClContext: Brahma.FSharp.ClContext; Queue: MailboxProcessor<Msg> }
 
     let getMatricesFilenames configFilename =
         let getFullPathToConfig filename =
-            Path.Combine [| __SOURCE_DIRECTORY__
-                            "Configs"
-                            filename |]
+            Path.Combine [|
+                __SOURCE_DIRECTORY__
+                "Configs"
+                filename
+            |]
             |> Path.GetFullPath
 
 
@@ -126,16 +115,20 @@ module Utils =
         |> Seq.filter (fun line -> not <| line.StartsWith "!")
 
     let getFullPathToMatrix datasetsFolder matrixFilename =
-        Path.Combine [| __SOURCE_DIRECTORY__
-                        "Datasets"
-                        datasetsFolder
-                        matrixFilename |]
+        Path.Combine [|
+            __SOURCE_DIRECTORY__
+            "Datasets"
+            datasetsFolder
+            matrixFilename
+        |]
 
     let avaliableContexts =
         let pathToConfig =
-            Path.Combine [| __SOURCE_DIRECTORY__
-                            "Configs"
-                            "Context.txt" |]
+            Path.Combine [|
+                __SOURCE_DIRECTORY__
+                "Configs"
+                "Context.txt"
+            |]
             |> Path.GetFullPath
 
         use reader = new StreamReader(pathToConfig)
@@ -159,60 +152,40 @@ module Utils =
             Cl.GetPlatformIDs &e
             |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, deviceType, &e))
             |> Seq.ofArray
-            |> Seq.distinctBy
-                (fun device ->
-                    Cl
-                        .GetDeviceInfo(device, DeviceInfo.Name, &e)
-                        .ToString())
-            |> Seq.filter
-                (fun device ->
-                    let platform =
-                        Cl
-                            .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                            .CastTo<Platform>()
+            |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
+            |> Seq.filter (fun device ->
+                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
 
-                    let platformName =
-                        Cl
-                            .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                            .ToString()
+                let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
 
-                    platformRegex.IsMatch platformName)
-            |> Seq.map
-                (fun device ->
-                    let platform =
-                        Cl
-                            .GetDeviceInfo(device, DeviceInfo.Platform, &e)
-                            .CastTo<Platform>()
+                platformRegex.IsMatch platformName
+            )
+            |> Seq.map (fun device ->
+                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
 
-                    let clPlatform =
-                        Cl
-                            .GetPlatformInfo(platform, PlatformInfo.Name, &e)
-                            .ToString()
-                        |> Platform.Custom
+                let clPlatform =
+                    Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
+                    |> Platform.Custom
 
-                    let deviceType =
-                        Cl
-                            .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                            .CastTo<DeviceType>()
+                let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-                    let clDeviceType =
-                        match deviceType with
-                        | DeviceType.Cpu -> ClDeviceType.Cpu
-                        | DeviceType.Gpu -> ClDeviceType.Gpu
-                        | DeviceType.Default -> ClDeviceType.Default
-                        | _ -> failwith "Unsupported"
+                let clDeviceType =
+                    match deviceType with
+                    | DeviceType.Cpu -> ClDeviceType.Cpu
+                    | DeviceType.Gpu -> ClDeviceType.Gpu
+                    | DeviceType.Default -> ClDeviceType.Default
+                    | _ -> failwith "Unsupported"
 
-                    let device =
-                        ClDevice.GetFirstAppropriateDevice(clPlatform)
+                let device = ClDevice.GetFirstAppropriateDevice(clPlatform)
 
-                    let translator = FSQuotationToOpenCLTranslator device
+                let translator = FSQuotationToOpenCLTranslator device
 
-                    let context =
-                        Brahma.FSharp.ClContext(device, translator)
+                let context = Brahma.FSharp.ClContext(device, translator)
 
-                    let queue = context.QueueProvider.CreateQueue()
+                let queue = context.QueueProvider.CreateQueue()
 
-                    { ClContext = context; Queue = queue })
+                { ClContext = context; Queue = queue }
+            )
 
         seq {
             for wgSize in workGroupSizes do
@@ -226,14 +199,13 @@ module Utils =
         System.BitConverter.ToSingle(buffer, 0)
 
     let rowPointers2rowIndices (rowPointers: int []) =
-        let rowIndices =
-            Array.zeroCreate rowPointers.[rowPointers.Length - 1]
+        let rowIndices = Array.zeroCreate rowPointers.[rowPointers.Length - 1]
 
         [| 0 .. rowPointers.Length - 2 |]
-        |> Array.Parallel.iter
-            (fun i ->
-                [| rowPointers.[i] .. rowPointers.[i + 1] - 1 |]
-                |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i))
+        |> Array.Parallel.iter (fun i ->
+            [| rowPointers.[i] .. rowPointers.[i + 1] - 1 |]
+            |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i)
+        )
 
         rowIndices
 

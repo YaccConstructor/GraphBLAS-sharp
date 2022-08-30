@@ -10,21 +10,23 @@ type Vector<'a when 'a: struct> =
         | VectorCOO vector -> vector.Size
 
 and COOVector<'a> =
-    { mutable Size: int
-      mutable Indices: int []
-      mutable Values: 'a [] }
+    {
+        mutable Size: int
+        mutable Indices: int []
+        mutable Values: 'a []
+    }
 
     override this.ToString() =
-        [ sprintf "Sparse Vector\n"
-          sprintf "Size:    %i \n" this.Size
-          sprintf "Indices: %A \n" this.Indices
-          sprintf "Values:  %A \n" this.Values ]
+        [
+            sprintf "Sparse Vector\n"
+            sprintf "Size:    %i \n" this.Size
+            sprintf "Indices: %A \n" this.Indices
+            sprintf "Values:  %A \n" this.Values
+        ]
         |> String.concat ""
 
     static member FromTuples(size: int, indices: int [], values: 'a []) =
-        { Size = size
-          Indices = indices
-          Values = values }
+        { Size = size; Indices = indices; Values = values }
 
     static member FromArray(array: 'a [], isZero: 'a -> bool) =
         let (indices, vals) =

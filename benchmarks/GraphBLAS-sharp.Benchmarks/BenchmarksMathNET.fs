@@ -17,11 +17,20 @@ open OpenCL.Net
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
-type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'elem> and 'elem :> System.IFormattable and 'elem :> System.ValueType and 'elem: (new :
-    unit -> 'elem)>(converter: string -> 'elem, converterBool) =
+type MathNETBenchmark<'elem
+    when 'elem: struct
+    and 'elem :> System.IEquatable<'elem>
+    and 'elem :> System.IFormattable
+    and 'elem :> System.ValueType
+    and 'elem: (new : unit -> 'elem)>
+    (
+        converter: string -> 'elem,
+        converterBool
+    ) =
+
     do Control.UseNativeMKL()
 
-    static member COOMatrixToMathNETSparse matrix =
+    static member COOMatrixToMathNETSparse(matrix) =
         match matrix with
         | MatrixCOO matrix ->
             Matrix.Build.SparseFromCoordinateFormat(
@@ -49,8 +58,17 @@ type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'e
 
     abstract member Benchmark : unit -> unit
 
-type BinOpMathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'elem> and 'elem :> System.IFormattable and 'elem :> System.ValueType and 'elem: (new :
-    unit -> 'elem)>(funToBenchmark, converter: string -> 'elem, converterBool) =
+type BinOpMathNETBenchmark<'elem
+    when 'elem: struct
+    and 'elem :> System.IEquatable<'elem>
+    and 'elem :> System.IFormattable
+    and 'elem :> System.ValueType
+    and 'elem: (new : unit -> 'elem)>
+    (
+        funToBenchmark,
+        converter: string -> 'elem,
+        converterBool
+    ) =
     inherit MathNETBenchmark<'elem>(converter, converterBool)
 
     let mutable firstMatrix = Unchecked.defaultof<Matrix<'elem>>
@@ -61,20 +79,20 @@ type BinOpMathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatab
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader * MtxReader> with get, set
 
-    static member InputMatricesProviderBuilder pathToConfig =
+    static member InputMatricesProviderBuilder(pathToConfig) =
         let datasetFolder = "MathNET"
 
         pathToConfig
         |> Utils.getMatricesFilenames
-        |> Seq.map
-            (fun matrixFilename ->
-                printfn "%A" matrixFilename
+        |> Seq.map (fun matrixFilename ->
+            printfn "%A" matrixFilename
 
-                match Path.GetExtension matrixFilename with
-                | ".mtx" ->
-                    MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename),
-                    MtxReader(Utils.getFullPathToMatrix datasetFolder ("squared_" + matrixFilename))
-                | _ -> failwith "Unsupported matrix format")
+            match Path.GetExtension matrixFilename with
+            | ".mtx" ->
+                MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename),
+                MtxReader(Utils.getFullPathToMatrix datasetFolder ("squared_" + matrixFilename))
+            | _ -> failwith "Unsupported matrix format"
+        )
 
     member this.ReadMatrices() =
         let leftMatrixReader = fst this.InputMatrixReader
@@ -86,15 +104,12 @@ type BinOpMathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatab
     override this.GlobalSetup() = this.ReadMatrices()
 
     [<IterationCleanup>]
-    override this.IterationCleanup() =
-        this.ResultMatrix <- Unchecked.defaultof<Matrix<'elem>>
+    override this.IterationCleanup() = this.ResultMatrix <- Unchecked.defaultof<Matrix<'elem>>
 
     [<Benchmark>]
-    override this.Benchmark() =
-        this.ResultMatrix <- funToBenchmark firstMatrix secondMatrix
+    override this.Benchmark() = this.ResultMatrix <- funToBenchmark firstMatrix secondMatrix
 
 type EWiseAddMathNETBenchmarkFloat32() =
-
     inherit BinOpMathNETBenchmark<float32>((+), float32, (fun _ -> Utils.nextSingle (System.Random())))
 
     static member InputMatricesProvider =
