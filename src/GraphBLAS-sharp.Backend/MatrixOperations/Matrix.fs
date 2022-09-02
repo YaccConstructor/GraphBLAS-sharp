@@ -10,9 +10,9 @@ module Matrix =
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: BackendMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO m ->
+            | ClMatrixCOO m ->
                 let res =
                     {
                         Context = clContext
@@ -23,9 +23,9 @@ module Matrix =
                         Values = copyData processor workGroupSize m.Values
                     }
 
-                MatrixCOO res
+                ClMatrixCOO res
 
-            | MatrixCSR m ->
+            | ClMatrixCSR m ->
                 let res =
                     {
                         Context = clContext
@@ -36,25 +36,25 @@ module Matrix =
                         Values = copyData processor workGroupSize m.Values
                     }
 
-                MatrixCSR res
+                ClMatrixCSR res
 
     let toCSR (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
         let copy = copy clContext
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO m -> toCSR processor m |> MatrixCSR
-            | MatrixCSR _ -> copy processor workGroupSize matrix
+            | ClMatrixCOO m -> toCSR processor m |> ClMatrixCSR
+            | ClMatrixCSR _ -> copy processor workGroupSize matrix
 
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO _ -> copy processor workGroupSize matrix
-            | MatrixCSR m -> toCOO processor m |> MatrixCOO
+            | ClMatrixCOO _ -> copy processor workGroupSize matrix
+            | ClMatrixCSR m -> toCOO processor m |> ClMatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOeWiseAdd = COOMatrix.eWiseAdd clContext opAdd workGroupSize
@@ -62,8 +62,8 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> ClMatrixCSR
             | _ -> failwith "Matrix formats are not matching"
 
     let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
@@ -72,6 +72,6 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOeWiseAdd processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> ClMatrixCSR
             | _ -> failwith "Matrix formats are not matching"

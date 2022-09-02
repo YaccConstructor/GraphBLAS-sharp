@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.IO
 type MxvBenchmarks() =
     let rand = System.Random()
 
-    let mutable matrix = Unchecked.defaultof<Matrix<float>>
+    let mutable matrix = Unchecked.defaultof<Mat<float>>
     let mutable vector = Unchecked.defaultof<Vector<float>>
     let semiring = Predefined.AddMult.float
 

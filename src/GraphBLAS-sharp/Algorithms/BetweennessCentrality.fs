@@ -5,7 +5,7 @@ open GraphBLAS.FSharp
 
 module BetweennessCentrality =
     // NOTE matrix of bool?
-    let metric (matrix: Matrix<int>) (source: int) = graphblas {
+    let metric (matrix: Mat<int>) (source: int) = graphblas {
         let n = Matrix.rowCount matrix
         let! delta = Vector.zeroCreate<float32> n
         let! sigma = Matrix.zeroCreate<int> n n
@@ -57,7 +57,7 @@ module BetweennessCentrality =
             // t2 <- t1 / t2
             let! qMask = Vector.mask q
             do! Vector.apply (UnaryOp <@ (/) 1.f @>) t2
-            >>= fun x -> Vector.eWiseMultWithMask AddMult.float32 qMask t1 x
+            >>= Vector.eWiseMultWithMask AddMult.float32 qMask t1
             >>= Vector.assignVector t2
 
             do! Matrix.apply (UnaryOp <@ float32 @>) matrix

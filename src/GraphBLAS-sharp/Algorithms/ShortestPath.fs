@@ -2,11 +2,10 @@ namespace GraphBLAS.FSharp.Algorithms
 
 open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
-open Brahma.FSharp.OpenCL
 
 module ShortestPath =
-    // FIXME Unsupported call: min
-    let singleSource (matrix: Matrix<float>) (source: int) = graphblas {
+    // TODO Unsupported call: min
+    let singleSource (matrix: Mat<float>) (source: int) = graphblas {
         let vertexCount = Matrix.rowCount matrix
         let! distance = Vector.ofList vertexCount [source, 0.]
 

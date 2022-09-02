@@ -14,11 +14,11 @@
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/StandardOperations.fs" />
     <Compile Include="Matrices.fs" />
-    <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
-    <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
-    <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
-    <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
-    <Compile Include="Matrix/Matrix.fs" />
+    <Compile Include="MatrixOperations\COOMatrix\COOMatrix.fs" />
+    <Compile Include="MatrixOperations\CSRMatrix\CSRMatrix.fs" />
+    <Compile Include="MatrixOperations\CSRMatrix\SpGEMM.fs" />
+    <Compile Include="MatrixOperations\CSRMatrix\SpMV.fs" />
+    <Compile Include="MatrixOperations\Matrix.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

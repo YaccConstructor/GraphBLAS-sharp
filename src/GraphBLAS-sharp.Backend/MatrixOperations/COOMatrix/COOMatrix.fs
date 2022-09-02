@@ -410,7 +410,7 @@ module COOMatrix =
         let preparePositions = preparePositions clContext opAdd workGroupSize
         let setPositions = setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: BackendCOOMatrix<'a>) (matrixRight: BackendCOOMatrix<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCooMatrix<'a>) (matrixRight: ClCooMatrix<'b>) ->
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
                     queue
@@ -449,7 +449,7 @@ module COOMatrix =
         let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
         let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: BackendCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: ClCooMatrix<'a>) ->
             let resultRows = copy processor workGroupSize matrix.Rows
             let resultColumns = copy processor workGroupSize matrix.Columns
             let resultValues = copyData processor workGroupSize matrix.Values
@@ -627,7 +627,7 @@ module COOMatrix =
         let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
         let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
             let compressedRows = compressRows processor matrix.Rows matrix.RowCount
             let cols = copy processor workGroupSize matrix.Columns
             let vals = copyData processor workGroupSize matrix.Values
@@ -646,7 +646,7 @@ module COOMatrix =
     let toCSRInplace (clContext: ClContext) workGroupSize =
         let compressRows = compressRows clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
             let compressedRows = compressRows processor matrix.Rows matrix.RowCount
 
             {
@@ -763,7 +763,7 @@ module COOMatrix =
         let preparePositions = preparePositionsAtLeastOne clContext opAdd workGroupSize
         let setPositions = setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: BackendCOOMatrix<'a>) (matrixRight: BackendCOOMatrix<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCooMatrix<'a>) (matrixRight: ClCooMatrix<'b>) ->
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
                     queue

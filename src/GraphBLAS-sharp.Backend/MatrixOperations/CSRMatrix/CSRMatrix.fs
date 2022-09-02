@@ -65,7 +65,7 @@ module CSRMatrix =
         let copy = ClArray.copy clContext
         let copyData = ClArray.copy clContext
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendCSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
             let rowIndices = expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
             let colIndices = copy processor workGroupSize matrix.Columns
             let values = copyData processor workGroupSize matrix.Values
@@ -82,7 +82,7 @@ module CSRMatrix =
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let expandRows = expandRows clContext
 
-        fun (processor: MailboxProcessor<_>) (matrix: BackendCSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
             let rowIndices = expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
 
             {
@@ -101,7 +101,7 @@ module CSRMatrix =
         let eWiseCOO = COOMatrix.eWiseAdd clContext opAdd workGroupSize
         let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (m1: BackendCSRMatrix<'a>) (m2: BackendCSRMatrix<'b>) ->
+        fun (processor: MailboxProcessor<_>) (m1: ClCsrMatrix<'a>) (m2: ClCsrMatrix<'b>) ->
             let m1COO = toCOOInplaceLeft processor m1
             let m2COO = toCOOInplaceRight processor m2
 
@@ -122,7 +122,7 @@ module CSRMatrix =
         let eWiseCOO = COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
         let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (m1: BackendCSRMatrix<'a>) (m2: BackendCSRMatrix<'b>) ->
+        fun (processor: MailboxProcessor<_>) (m1: ClCsrMatrix<'a>) (m2: ClCsrMatrix<'b>) ->
             let m1COO = toCOOInplaceLeft processor m1
             let m2COO = toCOOInplaceRight processor m2
 

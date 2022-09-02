@@ -2,7 +2,7 @@ namespace GraphBLAS.FSharp.IO
 
 open System.IO
 open GraphBLAS.FSharp
-open System
+open GraphBLAS.FSharp.Backend
 
 type MtxReader(pathToFile: string) =
     let mutable object = MtxMatrix

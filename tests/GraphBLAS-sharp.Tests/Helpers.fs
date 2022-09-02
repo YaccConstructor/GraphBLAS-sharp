@@ -4,6 +4,7 @@ open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
 open Brahma.FSharp.ClContextExtensions
@@ -36,7 +37,6 @@ module CustomDatatypes =
     let addMultSemiringOnWrappedInt: Semiring<WrappedInt> =
         {
             PlusMonoid = { AssociativeOp = ClosedBinaryOp <@ (+) @>; Identity = { InnerValue = 0 } }
-
             TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (*) @> }
         }
 

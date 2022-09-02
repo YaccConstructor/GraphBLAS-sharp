@@ -4,7 +4,7 @@ open GraphBLAS.FSharp.Predefined
 open GraphBLAS.FSharp
 
 module BFS =
-    let levelSingleSource (matrix: Matrix<int>) (source: int) = graphblas {
+    let levelSingleSource (matrix: Mat<int>) (source: int) = graphblas {
         let vertexCount = Matrix.rowCount matrix
         let! levels = Vector.zeroCreate vertexCount // v
         let! frontier = Vector.ofList vertexCount [source, 1] // q[s] = true

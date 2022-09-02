@@ -14,7 +14,7 @@ open GraphBLAS.FSharp.Backend.Common.StandardOperations
 
 let logger = Log.create "EwiseAdd.Tests"
 
-let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: GraphBLAS.FSharp.Matrix<'a>) =
+let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
     let rows = Array2D.length1 baseMtx1
     let columns = Array2D.length2 baseMtx1
     Expect.equal columns actual.ColumnCount "The number of columns should be the same."
@@ -29,7 +29,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: G
     let actual2D = Array2D.create rows columns zero
 
     match actual with
-    | GraphBLAS.FSharp.MatrixCOO actual ->
+    | MatrixCOO actual ->
         for i in 0 .. actual.Rows.Length - 1 do
             if isEqual zero actual.Values.[i] then
                 failwith "Resulting zeroes should be filtered."
@@ -46,8 +46,8 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: G
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> BackendMatrix<'a> -> BackendMatrix<'b> -> BackendMatrix<'c>)
-    toCOOFun
+    (addFun: MailboxProcessor<_> -> ClMatrix<'a> -> ClMatrix<'a> -> ClMatrix<'a>)
+    (toCOOFun: MailboxProcessor<Msg> -> ClMatrix<_> -> ClMatrix<_>)
     (isEqual: 'a -> 'a -> bool)
     q
     (case: OperationCase)
@@ -58,8 +58,8 @@ let correctnessGenericTest
     let mtx2 = createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
-        let m1 = mtx1.ToBackend case.ClContext.ClContext
-        let m2 = mtx2.ToBackend case.ClContext.ClContext
+        let m1 = mtx1.ToDevice case.ClContext.ClContext
+        let m2 = mtx2.ToDevice case.ClContext.ClContext
 
         let res = addFun q m1 m2
 
@@ -67,7 +67,7 @@ let correctnessGenericTest
         m2.Dispose q
 
         let cooRes = toCOOFun q res
-        let actual = GraphBLAS.FSharp.Matrix<_>.FromBackend q cooRes
+        let actual = cooRes.ToHost q
 
         cooRes.Dispose q
         res.Dispose q

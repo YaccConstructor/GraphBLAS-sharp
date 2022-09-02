@@ -1,28 +1,27 @@
 ﻿namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
-open System.Text.RegularExpressions
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics
-open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Core
-open OpenCL.Net
+
+// Suppress indentation warnings
+#nowarn "58"
 
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Config>)>]
 type MathNETBenchmark<'elem
-    when 'elem: struct
+    when 'elem : struct
     and 'elem :> System.IEquatable<'elem>
     and 'elem :> System.IFormattable
     and 'elem :> System.ValueType
-    and 'elem: (new : unit -> 'elem)>
+    and 'elem : (new : unit -> 'elem)>
     (
         converter: string -> 'elem,
         converterBool
