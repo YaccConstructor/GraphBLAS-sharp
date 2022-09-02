@@ -11,17 +11,18 @@ open GraphBLAS.FSharp.IO
 let allTests =
     testList
         "All tests"
-        [ Backend.BitonicSort.tests //Backend.PrefixSum.tests
-        //   Backend.Convert.tests
-        //   Backend.RemoveDuplicates.tests
-        //   Backend.Copy.tests
-        //   Backend.Replicate.tests
-        //Backend.EwiseAdd.tests
-        //   Backend.Transpose.tests
-        //Matrix.GetTuples.tests
-        //Matrix.Mxv.tests
-        //Algo.Bfs.tests
-         ]
+        [ Backend.BitonicSort.tests
+          Backend.PrefixSum.tests
+          Backend.Convert.tests
+          Backend.RemoveDuplicates.tests
+          Backend.Copy.tests
+          Backend.Replicate.tests
+          Backend.EwiseAdd.tests
+          Backend.Transpose.tests
+          //Matrix.GetTuples.tests
+          //Matrix.Mxv.tests
+          //Algo.Bfs.tests
+          ]
     |> testSequenced
 
 [<EntryPoint>]

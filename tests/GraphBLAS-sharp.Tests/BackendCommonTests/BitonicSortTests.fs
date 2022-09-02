@@ -1,24 +1,32 @@
 module Backend.BitonicSort
 
 open Expecto
-open GraphBLAS.FSharp.Tests
-open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open OpenCL.Net
 
 let logger = Log.create "BitonicSort.Tests"
 
 let testContext =
-    let contexts = "" |> avaliableContexts |> Seq.toList
-    contexts.[0]
+    ""
+    |> avaliableContexts
+    |> Seq.filter
+        (fun context ->
+            let mutable e = ErrorCode.Unknown
+            let device = context.ClContext.ClDevice.Device
 
-let context = testContext.ClContext
-printfn "%A" testContext
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
 
-let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
+            deviceType = DeviceType.Gpu)
+    |> Seq.tryHead
+
+let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
         let projection (row: 'n) (col: 'n) (v: 'a) = row, col
 
@@ -77,22 +85,26 @@ let makeTest (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n
             vals)
         |> Expect.sequenceEqual actualVals expectedVals
 
-let testFixtures<'a when 'a: equality> config wgSize q filter =
+let testFixtures<'a when 'a: equality> config wgSize context q filter =
     let sort: MailboxProcessor<_> -> ClArray<int> -> ClArray<int> -> ClArray<'a> -> unit =
         BitonicSort.sortKeyValuesInplace context wgSize
 
-    makeTest q sort filter
+    makeTest context q sort filter
     |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =
-    let config = defaultConfig
+    match testContext with
+    | Some c ->
+        let context = c.ClContext
+        let config = defaultConfig
 
-    let wgSize = 128
-    let q = testContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
+        let wgSize = 128
+        let q = c.Queue
+        q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ testFixtures<int> config wgSize q (fun _ -> true)
-      testFixtures<float> config wgSize q (System.Double.IsNaN >> not)
-      testFixtures<byte> config wgSize q (fun _ -> true)
-      testFixtures<bool> config wgSize q (fun _ -> true) ]
+        [ testFixtures<int> config wgSize context q (fun _ -> true)
+          testFixtures<float> config wgSize context q (System.Double.IsNaN >> not)
+          testFixtures<byte> config wgSize context q (fun _ -> true)
+          testFixtures<bool> config wgSize context q (fun _ -> true) ]
+    | _ -> []
     |> testList "Backend.Common.BitonicSort tests"
