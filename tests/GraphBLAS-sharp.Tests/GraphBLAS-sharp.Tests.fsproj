@@ -1,24 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
+    <TargetFrameworks>net5.0</TargetFrameworks>
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
+    <ProjectReference Include="../../src/GraphBLAS-sharp.Backend/GraphBLAS-sharp.Backend.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
-    <Compile Include="BackendCommonTests/PrefixSumTests.fs" />
-    <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
+    <!--Compile Include="BackendCommonTests/PrefixSumTests.fs" />
+    <Compile Include="BackendCommonTests/BitonicSortTests.fs" /-->
     <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
-    <Compile Include="MatrixOperationsTests/GetTuplesTests.fs" />
-    <Compile Include="MatrixOperationsTests/MxmTests.fs" />
-    <Compile Include="MatrixOperationsTests/MxvTests.fs" />
-    <Compile Include="MatrixOperationsTests/VxmTests.fs" />
-    <Compile Include="MatrixOperationsTests/EWiseAddTests.fs" />
-    <Compile Include="MatrixOperationsTests/TransposeTests.fs" />
-    <Compile Include="AlgorithmsTests/BfsTests.fs" />
+    <Compile Include="BackendCommonTests/CopyTests.fs" />
+    <Compile Include="BackendCommonTests/ReplicateTests.fs" />
+    <Compile Include="BackendCommonTests/MatrixEwiseAddTests.fs" />
+    <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
+    <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
+    <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
+    <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
+    <!--Compile Include="MatrixOperationsTests/EWiseAddTests.fs" /-->
+    <!--Compile Include="MatrixOperationsTests/TransposeTests.fs" /-->
+    <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

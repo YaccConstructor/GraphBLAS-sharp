@@ -1,2 +1,3 @@
-Intel*
-Cpu
+NVIDIA*
+Gpu
+128 64 256

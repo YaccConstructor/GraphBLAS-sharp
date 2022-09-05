@@ -1,6 +1,6 @@
 namespace GraphBLAS.FSharp
 
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
+open Brahma.FSharp.OpenCL
 open GraphBLAS.FSharp.Backend
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -10,7 +10,13 @@ module Matrix =
         constructors
     *)
 
-    let build (rowCount: int) (columnCount: int) (rows: int[]) (columns: int[]) (values: 'a[]) : GraphblasEvaluation<Matrix<'a>> =
+    let build
+        (rowCount: int)
+        (columnCount: int)
+        (rows: int [])
+        (columns: int [])
+        (values: 'a [])
+        : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
     let ofTuples (rowCount: int) (columnCount: int) (tuples: MatrixTuples<'a>) : GraphblasEvaluation<Matrix<'a>> =
@@ -30,7 +36,7 @@ module Matrix =
     let create (rowCount: int) (columnCount: int) (value: 'a) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
-    let zeroCreate<'a when 'a : struct> (rowCount: int) (columnCount: int) : GraphblasEvaluation<Matrix<'a>> =
+    let zeroCreate<'a when 'a: struct> (rowCount: int) (columnCount: int) : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented yet"
 
     (*
@@ -41,7 +47,9 @@ module Matrix =
     let columnCount (matrix: Matrix<'a>) : int = matrix.ColumnCount
 
     let copy (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+
+    let resize (rowCount: int) (columnCount: int) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
 
     // NOTE int cant be sync
     let nnz (matrix: Matrix<'a>) : GraphblasEvaluation<int> = failwith "Not Implemented yet"
@@ -71,9 +79,26 @@ module Matrix =
         match matrix with
         | MatrixCSR matrix ->
             opencl {
-                let! _ = if matrix.RowPointers.Length = 0 then opencl { return [||] } else ToHost matrix.RowPointers
-                let! _ = if matrix.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrix.ColumnIndices
-                let! _ = if matrix.Values.Length = 0 then opencl { return [||] } else ToHost matrix.Values
+                let! _ =
+                    if matrix.RowPointers.Length = 0 then
+                        opencl { return [||] }
+                    else
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.RowPointers
+
+                let! _ =
+                    if matrix.ColumnIndices.Length = 0 then
+                        opencl { return [||] }
+                    else
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.ColumnIndices
+
+                let! _ =
+                    if matrix.Values.Length = 0 then
+                        opencl { return [||] }
+                    else
+                        failwith "FIX ME! And rewrite."
+                //ToHost matrix.Values
 
                 return MatrixCSR matrix
             }
@@ -89,16 +114,14 @@ module Matrix =
         failwith "Not Implemented yet"
 
     /// mat.[rowIdx. *]
-    let extractRow (matrix: Matrix<'a>) (rowIdx: int) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented yet"
+    let extractRow (matrix: Matrix<'a>) (rowIdx: int) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
 
     /// mat.[rowIdx, mask]
     let extractSubRow (matrix: Matrix<'a>) (rowIdx: int) (mask: Mask2D) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented yet"
 
     /// mat.[*, colIdx]
-    let extractCol (matrix: Matrix<'a>) (colIdx: int) : GraphblasEvaluation<Vector<'a>> =
-        failwith "Not Implemented yet"
+    let extractCol (matrix: Matrix<'a>) (colIdx: int) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
 
     /// mat.[mask. colIdx]
     let extractSubCol (matrix: Matrix<'a>) (mask: Mask2D) (colIdx: int) : GraphblasEvaluation<Vector<'a>> =
@@ -121,7 +144,12 @@ module Matrix =
         failwith "Not Implemented yet"
 
     /// t.[rowIdx, mask] <- s
-    let assignSubRow (target: Matrix<'a>) (rowIdx: int) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
+    let assignSubRow
+        (target: Matrix<'a>)
+        (rowIdx: int)
+        (mask: Mask1D)
+        (source: Vector<'a>)
+        : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// t.[*, colIdx] <- s
@@ -129,12 +157,16 @@ module Matrix =
         failwith "Not Implemented yet"
 
     /// t.[mask, colIdx] <- s
-    let assignSubCol (target: Matrix<'a>) (colIdx: int) (mask: Mask1D) (source: Vector<'a>) : GraphblasEvaluation<unit> =
+    let assignSubCol
+        (target: Matrix<'a>)
+        (colIdx: int)
+        (mask: Mask1D)
+        (source: Vector<'a>)
+        : GraphblasEvaluation<unit> =
         failwith "Not Implemented yet"
 
     /// mat.[*, *] <- value
-    let fillMatrix (value: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> =
-        failwith "Not Implemented yet"
+    let fillMatrix (value: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> = failwith "Not Implemented yet"
 
     /// mat.[mask] <- value
     let fillSubMatrix (mask: Mask2D) (value: Scalar<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<unit> =
@@ -160,7 +192,11 @@ module Matrix =
         closed unmasked operations
     *)
 
-    let mxm (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let mxm
+        (semiring: ISemiring<'a>)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
         failwith "Not Implemented"
 
     let mxv (semiring: ISemiring<'a>) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
@@ -176,22 +212,41 @@ module Matrix =
     let vxm (semiring: ISemiring<'a>) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
         failwith "Not Implemented"
 
-    let eWiseAdd (monoid: IMonoid<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+    let eWiseAdd
+        (monoid: IMonoid<'a>)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
         match leftMatrix, rightMatrix with
-        | MatrixCOO left, MatrixCOO right ->
-            opencl {
-                let! result = COOMatrix.EWiseAdd.run left right None monoid
-                return MatrixCOO result
-            }
+        | MatrixCOO left, MatrixCOO right -> failwith "FIX ME! And rewrite."
+        //opencl {
+        //    let! result = COOMatrix.EWiseAdd.run left right None monoid
+        //    return MatrixCOO result
+        //}
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
-    let eWiseMult (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let apply (mapper: UnaryOp<'a, 'b>) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
-    let select (predicate: UnaryOp<int * int * 'a, bool>) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let reduceRows (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let reduceCols (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let reduce (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> = failwith "Not Implemented yet"
+    let eWiseMult
+        (semiring: ISemiring<'a>)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let apply (mapper: UnaryOp<'a, 'b>) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> =
+        failwith "Not Implemented yet"
+
+    let select (predicate: UnaryOp<int * int * 'a, bool>) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let reduceRows (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
+
+    let reduceCols (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
+
+    let reduce (monoid: IMonoid<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Scalar<'a>> =
+        failwith "Not Implemented yet"
 
     let transpose (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> =
         match matrix with
@@ -204,15 +259,31 @@ module Matrix =
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
-    let kronecker (semiring: ISemiring<'a>) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let kronecker
+        (semiring: ISemiring<'a>)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
 
     (*
         closed masked operations
     *)
 
-    let mxmWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let mxmWithMask
+        (semiring: ISemiring<'a>)
+        (mask: Mask2D)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
 
-    let mxvWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (matrix: Matrix<'a>) (vector: Vector<'a>) : GraphblasEvaluation<Vector<'a>> =
+    let mxvWithMask
+        (semiring: ISemiring<'a>)
+        (mask: Mask1D)
+        (matrix: Matrix<'a>)
+        (vector: Vector<'a>)
+        : GraphblasEvaluation<Vector<'a>> =
         match matrix, vector, mask with
         | MatrixCSR matrix, VectorCOO vector, mask when not mask.IsComplemented ->
             opencl {
@@ -222,22 +293,78 @@ module Matrix =
         | _ -> failwith "Not Implemented"
         |> EvalGB.fromCl
 
-    let vxmWithMask (semiring: ISemiring<'a>) (mask: Mask1D) (vector: Vector<'a>) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let eWiseAddWithMask (monoid: IMonoid<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let eWiseMultWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> = failwith "Not Implemented yet"
-    let selectWithMask (predicate: UnaryOp<int * int * 'a, bool>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
-    let reduceRowsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let reduceColsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> = failwith "Not Implemented yet"
-    let kroneckerWithMask (semiring: ISemiring<'a>) (mask: Mask2D) (leftMatrix: Matrix<'a>) (rightMatrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'a>> = failwith "Not Implemented yet"
+    let vxmWithMask
+        (semiring: ISemiring<'a>)
+        (mask: Mask1D)
+        (vector: Vector<'a>)
+        (matrix: Matrix<'a>)
+        : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
+
+    let eWiseAddWithMask
+        (monoid: IMonoid<'a>)
+        (mask: Mask2D)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let eWiseMultWithMask
+        (semiring: ISemiring<'a>)
+        (mask: Mask2D)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let applyWithMask (mapper: UnaryOp<'a, 'b>) (mask: Mask2D) (matrix: Matrix<'a>) : GraphblasEvaluation<Matrix<'b>> =
+        failwith "Not Implemented yet"
+
+    let selectWithMask
+        (predicate: UnaryOp<int * int * 'a, bool>)
+        (mask: Mask2D)
+        (matrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
+
+    let reduceRowsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
+
+    let reduceColsWithMask (monoid: IMonoid<'a>) (mask: Mask1D) (matrix: Matrix<'a>) : GraphblasEvaluation<Vector<'a>> =
+        failwith "Not Implemented yet"
+
+    let kroneckerWithMask
+        (semiring: ISemiring<'a>)
+        (mask: Mask2D)
+        (leftMatrix: Matrix<'a>)
+        (rightMatrix: Matrix<'a>)
+        : GraphblasEvaluation<Matrix<'a>> =
+        failwith "Not Implemented yet"
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module MatrixTuples =
     let synchronize (matrixTuples: MatrixTuples<'a>) =
         opencl {
-            let! _ = if matrixTuples.RowIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.RowIndices
-            let! _ = if matrixTuples.ColumnIndices.Length = 0 then opencl { return [||] } else ToHost matrixTuples.ColumnIndices
-            let! _ = if matrixTuples.Values.Length = 0 then opencl { return [||] } else ToHost matrixTuples.Values
+            let! _ =
+                if matrixTuples.RowIndices.Length = 0 then
+                    opencl { return [||] }
+                else
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.RowIndices
+
+            let! _ =
+                if matrixTuples.ColumnIndices.Length = 0 then
+                    opencl { return [||] }
+                else
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.ColumnIndices
+
+            let! _ =
+                if matrixTuples.Values.Length = 0 then
+                    opencl { return [||] }
+                else
+                    failwith "FIX ME!"
+            //ToHost matrixTuples.Values
 
             return ()
         }

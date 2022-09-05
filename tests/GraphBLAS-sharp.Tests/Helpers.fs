@@ -1,9 +1,12 @@
 namespace GraphBLAS.FSharp.Tests
 
+open Brahma.FSharp.OpenCL.Shared
+open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp
+open Brahma.FSharp.ClContextExtensions
 open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message
@@ -22,64 +25,64 @@ module Extensions =
 module CustomDatatypes =
     // мб заменить рекорд на структуру (не помогает)
     [<Struct>]
-    type WrappedInt = { InnerValue: int }
-    with
-        static member (+) (x: WrappedInt, y: WrappedInt) = { InnerValue = x.InnerValue + y.InnerValue }
-        static member (*) (x: WrappedInt, y: WrappedInt) = { InnerValue = x.InnerValue * y.InnerValue }
+    type WrappedInt =
+        { InnerValue: int }
+        static member (+)(x: WrappedInt, y: WrappedInt) =
+            { InnerValue = x.InnerValue + y.InnerValue }
+
+        static member (*)(x: WrappedInt, y: WrappedInt) =
+            { InnerValue = x.InnerValue * y.InnerValue }
 
     let addMultSemiringOnWrappedInt: Semiring<WrappedInt> =
-        {
-            PlusMonoid = {
-                AssociativeOp = ClosedBinaryOp <@ (+) @>
-                Identity = { InnerValue = 0 }
-            }
+        { PlusMonoid =
+              { AssociativeOp = ClosedBinaryOp <@ (+) @>
+                Identity = { InnerValue = 0 } }
 
-            TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (*) @> }
-        }
+          TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (*) @> } }
 
 module Generators =
     let logger = Log.create "Generators"
 
     // TODO уточнить, что пустые матрицы тоже генерятся
     let dimension2DGenerator =
-        Gen.sized <| fun size ->
-            Gen.choose (1, size)
-            |> Gen.two
+        Gen.sized
+        <| fun size -> Gen.choose (1, size) |> Gen.two
 
     let dimension3DGenerator =
-        Gen.sized <| fun size ->
-            Gen.choose (1, size)
-            |> Gen.three
+        Gen.sized
+        <| fun size -> Gen.choose (1, size) |> Gen.three
 
     let genericSparseGenerator zero valuesGen handler =
         let maxSparsity = 100
         let sparsityGen = Gen.choose (0, maxSparsity)
-        let genWithSparsity sparseValuesGenProvider = gen {
-            let! sparsity = sparsityGen
 
-            logger.debug (
-                eventX "Sparcity is {sp} of {ms}"
-                >> setField "sp" sparsity
-                >> setField "ms" maxSparsity
-            )
+        let genWithSparsity sparseValuesGenProvider =
+            gen {
+                let! sparsity = sparsityGen
 
-            return! sparseValuesGenProvider sparsity
-        }
+                logger.debug (
+                    eventX "Sparcity is {sp} of {ms}"
+                    >> setField "sp" sparsity
+                    >> setField "ms" maxSparsity
+                )
 
-        genWithSparsity <| fun sparsity ->
-            [
-                (maxSparsity - sparsity, valuesGen)
-                (sparsity, Gen.constant zero)
-            ]
+                return! sparseValuesGenProvider sparsity
+            }
+
+        genWithSparsity
+        <| fun sparsity ->
+            [ (maxSparsity - sparsity, valuesGen)
+              (sparsity, Gen.constant zero) ]
             |> Gen.frequency
             |> handler
 
     type SingleMatrix() =
-        static let matrixGenerator (valuesGenerator: Gen<'a>) = gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            return matrix
-        }
+        static let matrixGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, ncols) = dimension2DGenerator
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                return matrix
+            }
 
         static member IntType() =
             matrixGenerator
@@ -88,7 +91,11 @@ module Generators =
 
         static member FloatType() =
             matrixGenerator
-            |> genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -117,12 +124,13 @@ module Generators =
             |> Arb.fromGen
 
     type PairOfSparseMatricesOfEqualSize() =
-        static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) = gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            return (matrixA, matrixB)
-        }
+        static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, ncols) = dimension2DGenerator
+                let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                return (matrixA, matrixB)
+            }
 
         static member IntType() =
             pairOfMatricesOfEqualSizeGenerator
@@ -131,7 +139,11 @@ module Generators =
 
         static member FloatType() =
             pairOfMatricesOfEqualSizeGenerator
-            |> genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -160,13 +172,14 @@ module Generators =
             |> Arb.fromGen
 
     type PairOfSparseMatrixOAndVectorfCompatibleSize() =
-        static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) = gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! vector = valuesGenerator |> Gen.arrayOfLength ncols
-            let! mask = Arb.generate<bool> |> Gen.arrayOfLength nrows
-            return (matrix, vector, mask)
-        }
+        static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, ncols) = dimension2DGenerator
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                let! vector = valuesGenerator |> Gen.arrayOfLength ncols
+                let! mask = Arb.generate<bool> |> Gen.arrayOfLength nrows
+                return (matrix, vector, mask)
+            }
 
         static member IntType() =
             pairOfMatrixAndVectorOfCompatibleSizeGenerator
@@ -175,7 +188,11 @@ module Generators =
 
         static member FloatType() =
             pairOfMatrixAndVectorOfCompatibleSizeGenerator
-            |> genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -211,13 +228,14 @@ module Generators =
             |> Arb.fromGen
 
     type PairOfSparseVectorAndMatrixOfCompatibleSize() =
-        static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) = gen {
-            let! (nrows, ncols) = dimension2DGenerator
-            let! vector = valuesGenerator |> Gen.arrayOfLength nrows
-            let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! mask = Arb.generate<bool> |> Gen.arrayOfLength ncols
-            return (vector, matrix, mask)
-        }
+        static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, ncols) = dimension2DGenerator
+                let! vector = valuesGenerator |> Gen.arrayOfLength nrows
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                let! mask = Arb.generate<bool> |> Gen.arrayOfLength ncols
+                return (vector, matrix, mask)
+            }
 
         static member IntType() =
             pairOfVectorAndMatrixOfCompatibleSizeGenerator
@@ -226,7 +244,11 @@ module Generators =
 
         static member FloatType() =
             pairOfVectorAndMatrixOfCompatibleSizeGenerator
-            |> genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -255,12 +277,20 @@ module Generators =
             |> Arb.fromGen
 
     type PairOfMatricesOfCompatibleSize() =
-        static let pairOfMatricesOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) = gen {
-            let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrowsA, ncolsA)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (ncolsA, ncolsB)
-            return (matrixA, matrixB)
-        }
+        static let pairOfMatricesOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nrowsA, ncolsA)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (ncolsA, ncolsB)
+
+                return (matrixA, matrixB)
+            }
 
         static member IntType() =
             pairOfMatricesOfCompatibleSizeGenerator
@@ -269,7 +299,11 @@ module Generators =
 
         static member FloatType() =
             pairOfMatricesOfCompatibleSizeGenerator
-            |> genericSparseGenerator 0. (Arb.Default.NormalFloat() |> Arb.toGen |> Gen.map float)
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -297,38 +331,44 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-    // type ArrayOfDistinctKeys() =
-    //     // Stack overflow.
-    //     static member ArrayOfDistinctKeysArb() =
-    //         gen {
-    //             let! array = Arb.generate<(uint64 * int)[]>
-    //             return Array.distinctBy (fun (key, _) -> key) array
-    //         }
-    //         |> Arb.fromGen
+// type ArrayOfDistinctKeys() =
+//     // Stack overflow.
+//     static member ArrayOfDistinctKeysArb() =
+//         gen {
+//             let! array = Arb.generate<(uint64 * int)[]>
+//             return Array.distinctBy (fun (key, _) -> key) array
+//         }
+//         |> Arb.fromGen
 
 module Utils =
+    type TestContext =
+        { ClContext: ClContext
+          Queue: MailboxProcessor<Msg> }
+
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 10
-            startSize = 1
-            endSize = 1000
-            arbitrary = [
-                typeof<Generators.SingleMatrix>
-                typeof<Generators.PairOfSparseMatricesOfEqualSize>
-                typeof<Generators.PairOfMatricesOfCompatibleSize>
-                typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
-                typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                // typeof<Generators.ArrayOfDistinctKeys>
-            ]
-        }
+              maxTest = 10
+              startSize = 1
+              endSize = 1000
+              arbitrary =
+                  [ typeof<Generators.SingleMatrix>
+                    typeof<Generators.PairOfSparseMatricesOfEqualSize>
+                    typeof<Generators.PairOfMatricesOfCompatibleSize>
+                    typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
+                    typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
+                    // typeof<Generators.ArrayOfDistinctKeys>
+                    ] }
 
     let rec cartesian listOfLists =
         match listOfLists with
-        | [x] -> List.fold (fun acc elem -> [elem] :: acc) [] x
+        | [ x ] -> List.fold (fun acc elem -> [ elem ] :: acc) [] x
         | h :: t ->
-            List.fold (fun cacc celem ->
-                (List.fold (fun acc elem -> (elem :: celem) :: acc) [] h) @ cacc
-            ) [] (cartesian t)
+            List.fold
+                (fun cacc celem ->
+                    (List.fold (fun acc elem -> (elem :: celem) :: acc) [] h)
+                    @ cacc)
+                []
+                (cartesian t)
         | _ -> []
 
     let listOfUnionCases<'a> =
@@ -338,25 +378,92 @@ module Utils =
 
     let avaliableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
+
         Cl.GetPlatformIDs &e
         |> Array.collect (fun platform -> Cl.GetDeviceIDs(platform, DeviceType.All, &e))
         |> Seq.ofArray
-        |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
+        |> Seq.distinctBy
+            (fun device ->
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Name, &e)
+                    .ToString())
         |> Seq.filter
             (fun device ->
-                let isAvaliable = Cl.GetDeviceInfo(device, DeviceInfo.Available, &e).CastTo<bool>()
-                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-                let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-                (Regex platformRegex).IsMatch platformName &&
-                isAvaliable
-            )
+                let isAvaliable =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Available, &e)
+                        .CastTo<bool>()
+
+                let platform =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
+                        .CastTo<Platform>()
+
+                let platformName =
+                    Cl
+                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
+                        .ToString()
+
+                (Regex platformRegex).IsMatch platformName
+                && isAvaliable)
         |> Seq.map
             (fun device ->
-                let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-                let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
-                let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
-                OpenCLEvaluationContext(platformName, deviceType)
-            )
+                let platform =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Platform, &e)
+                        .CastTo<Platform>()
+
+                let clPlatform =
+                    Cl
+                        .GetPlatformInfo(platform, PlatformInfo.Name, &e)
+                        .ToString()
+                    |> Platform.Custom
+
+                let deviceType =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                        .CastTo<DeviceType>()
+
+                let clDeviceType =
+                    match deviceType with
+                    | DeviceType.Cpu -> ClDeviceType.Cpu
+                    | DeviceType.Gpu -> ClDeviceType.Gpu
+                    | DeviceType.Default -> ClDeviceType.Default
+                    | _ -> failwith "Unsupported"
+
+                let device =
+                    ClDevice.GetFirstAppropriateDevice(clPlatform)
+
+                let translator = FSQuotationToOpenCLTranslator device
+
+                let context = ClContext(device, translator)
+                let queue = context.QueueProvider.CreateQueue()
+
+                { ClContext = context; Queue = queue })
+
+    let defaultContext =
+        let device = ClDevice.GetFirstAppropriateDevice()
+
+        let context =
+            ClContext(device, FSQuotationToOpenCLTranslator device)
+
+        let queue = context.QueueProvider.CreateQueue()
+
+        { ClContext = context; Queue = queue }
+
+    type OperationCase =
+        { ClContext: TestContext
+          MatrixCase: MatrixFromat }
+
+    let testCases =
+        [ avaliableContexts "" |> Seq.map box
+          listOfUnionCases<MatrixFromat> |> Seq.map box ]
+        |> List.map List.ofSeq
+        |> cartesian
+        |> List.map
+            (fun list ->
+                { ClContext = unbox list.[0]
+                  MatrixCase = unbox list.[1] })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with

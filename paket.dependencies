@@ -1,24 +1,22 @@
 source https://www.nuget.org/api/v2
 source https://api.nuget.org/v3/index.json
 storage: none
-clitool dotnet-mono 0.5.2
-nuget FSharp.Core 4.3.4
-nuget Microsoft.SourceLink.GitHub prerelease copy_local: true
-nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
-nuget Expecto 8.13.1
-nuget Expecto.FsCheck 8.13.1
-nuget YoloDev.Expecto.TestSdk 0.8.0
-nuget Microsoft.NET.Test.Sdk 15.7.2
-nuget altcover ~> 6
+nuget FSharp.Core ~> 5.0
+nuget Microsoft.SourceLink.GitHub 1.0.0 copy_local: true
+nuget Expecto 9.0.2
+nuget Expecto.FsCheck 9.0.2
+nuget YoloDev.Expecto.TestSdk 0.11.1
+nuget Microsoft.NET.Test.Sdk 16.8.0
+nuget altcover ~> 7
 
 nuget System.Collections.Immutable 5.0
 nuget ExtraConstraints.Fody 1.14.0
-nuget Microsoft.Build.Framework 16.6.0
-nuget System.CodeDom 4.7.0
+nuget Microsoft.Build.Framework ~> 16.10
+nuget System.CodeDom >= 5.0
 nuget FSharp.Quotations.Evaluator 2.1.0
 nuget FSharpx.Collections 2.1.3
-nuget FSharpx.Text.StructuredFormat 2.3.0
-nuget Brahma.FSharp.OpenCL.WorkflowBuilder 2.0.0-alpha7
+nuget FSharpx.Text.StructuredFormat ~> 3.0.0
+nuget Brahma.FSharp >= 2.0.0-alpha9.6
 nuget BenchmarkDotNet
 nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64 2.5.0
@@ -27,40 +25,38 @@ nuget YC.QuickGraph 3.7.4
 
 // [ FAKE GROUP ]
 group Build
-  storage: none
-  source https://www.nuget.org/api/v2
-  source https://api.nuget.org/v3/index.json
-  nuget Fake.IO.FileSystem 5.20.0
-  nuget Fake.Core.Target 5.20.0
-  nuget Fake.Core.ReleaseNotes 5.20.0
-  nuget FAKE.Core.Environment 5.20.0
-  nuget Fake.DotNet.Cli 5.20.0
-  nuget FAKE.Core.Process 5.20.0
-  nuget Fake.DotNet.AssemblyInfoFile 5.20.0
-  nuget Fake.Tools.Git 5.20.0
-  nuget Fake.DotNet.Paket 5.20.0
-  nuget Fake.Api.GitHub 5.20.0
-  nuget Fake.BuildServer.AppVeyor 5.20.0
-  nuget Fake.BuildServer.Travis 5.20.0
-  nuget Fantomas
-  nuget Argu
+    storage: none
+    source https://www.nuget.org/api/v2
+    source https://api.nuget.org/v3/index.json
+    nuget Fake.IO.FileSystem 5.20.4
+    nuget Fake.Core.Target 5.20.4
+    nuget Fake.Core.ReleaseNotes 5.20.4
+    nuget FAKE.Core.Environment 5.20.4
+    nuget Fake.DotNet.Cli 5.20.4
+    nuget FAKE.Core.Process 5.20.4
+    nuget Fake.DotNet.AssemblyInfoFile 5.20.4
+    nuget Fake.Tools.Git 5.20.4
+    nuget Fake.DotNet.Paket 5.20.4
+    nuget Fake.Api.GitHub 5.20.4
+    nuget Fake.BuildServer.GitHubActions 5.20.4
+    nuget Argu
+    nuget Octokit 0.48
 
 group Docs
-  storage: none
-  source https://www.nuget.org/api/v2
-  source https://api.nuget.org/v3/index.json
-  nuget Argu
-  nuget FSharp.Core
-  nuget Fake.IO.FileSystem
-  nuget FAKE.Core.Environment
-  nuget Fake.DotNet.Cli
-  nuget FSharp.Formatting 4.0.0-rc1
-  nuget FSharp.Literate 4.0.0-rc1
-  nuget Fable.React
-  nuget Dotnet.ProjInfo.Workspace.FCS
-  nuget FSharp.Compiler.Service 34.1.1
+    storage: none
+    source https://www.nuget.org/api/v2
+    source https://api.nuget.org/v3/index.json
+    nuget Argu
+    nuget FSharp.Compiler.Service 34.1.0
+    nuget FSharp.Core ~> 4.6
+    nuget Fake.IO.FileSystem 5.20.4
+    nuget FAKE.Core.Environment 5.20.4
+    nuget Fake.DotNet.Cli 5.20.4
+    nuget FSharp.Formatting 4.0.0-rc1
+    nuget FSharp.Literate 4.0.0-rc1
+    nuget Fable.React
 
 group Analyzers
   source https://www.nuget.org/api/v2
   source https://api.nuget.org/v3/index.json
-  nuget BinaryDefense.FSharp.Analyzers.Hashing 0.1.0
+  nuget BinaryDefense.FSharp.Analyzers.Hashing 0.2.2
