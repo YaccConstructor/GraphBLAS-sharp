@@ -1,0 +1,143 @@
+name: FAKE Build on Push
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  win-build:
+    name: Windows Build (No Tests)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - name: System Info
+        run: systeminfo
+
+      - uses: actions/checkout@v2
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: ./build.cmd DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  win-test:
+    name: Windows Build And Test
+    if: github.repository_owner != 'YaccConstructor'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - name: System Info
+        run: systeminfo
+
+      - uses: actions/checkout@v2
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Install OpenCL
+        run: |
+          set NUGETDIR=C:\NUGET
+          nuget install opencl-nug -Version 0.777.77 -OutputDirectory %NUGETDIR%
+          dir %NUGETDIR%\opencl-nug.0.777.77\build\native\
+          set OCL_ROOT=%NUGETDIR%\opencl-nug.0.777.77\build\native
+          # Install OpenCL Runtime
+          choco install opencl-intel-cpu-runtime
+      #      - name: Download "clinfo.exe"
+      #        uses: carlosperate/download-file-action@v1.0.3
+      #        with:
+      #          file-url: https://ci.appveyor.com/api/projects/oblomov/clinfo/artifacts/clinfo.exe?job=platform:+x64
+      #          file-name: clinfo.exe
+      #
+      #      - name: OpenCL Info
+      #        run: clinfo.exe
+
+      - name: Build And Test
+        run: ./build.cmd
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  linux-build:
+    name: Linux Build (No Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: |
+          chmod +x ./build.sh
+          ./build.sh DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  linux-test:
+    name: Linux Build And Test
+    if: github.repository_owner != 'YaccConstructor'
+    runs-on: ubuntu-latest
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Install OpenCL
+        run: |
+          chmod +x ./.github/workflows/install-ubuntu-dependencies.sh
+          sudo ./.github/workflows/install-ubuntu-dependencies.sh
+      - name: Download "clinfo.exe"
+        run: sudo apt install clinfo
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build And Test
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  linux-test-self-hosted:
+    name: Linux Self-Hosted Test
+    if: github.repository_owner == 'YaccConstructor'
+    runs-on: self-hosted
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build And Test
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
