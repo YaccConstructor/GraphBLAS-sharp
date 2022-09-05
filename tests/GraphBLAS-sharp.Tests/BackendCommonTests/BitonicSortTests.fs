@@ -27,14 +27,26 @@ let testContext =
     |> Seq.tryHead
 
 let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (filter: 'a -> bool) (array: ('n * 'n * 'a) []) =
-    if array.Length > 0 then
-        let projection (row: 'n) (col: 'n) (v: 'a) = row, col
+    let projection (row: 'n) (col: 'n) (v: 'a) = row, col
 
-        let rows, cols, vals =
-            array
-            |> Array.distinctBy ((<|||) projection)
-            |> Array.filter (fun (_, _, v) -> filter v)
-            |> Array.unzip3
+    let rows, cols, vals =
+        array
+        |> Array.distinctBy ((<|||) projection)
+        |> Array.filter (fun (_, _, v) -> filter v)
+        |> Array.unzip3
+
+    if rows.Length > 0 then
+        logger.debug (
+            eventX "Initial size is {size}"
+            >> setField "size" (sprintf "%A" rows.Length)
+        )
+
+        // logger.debug (
+        //     eventX "Initial are {rows}, {cols}, {vals}"
+        //     >> setField "rows" (sprintf "%A" rows)
+        //     >> setField "cols" (sprintf "%A" cols)
+        //     >> setField "vals" (sprintf "%A" vals)
+        // )
 
         use clRows = context.CreateClArray rows
         use clCols = context.CreateClArray cols
@@ -55,12 +67,12 @@ let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (filter: 'a -> b
 
             rows, cols, vals
 
-        logger.debug (
-            eventX "Actual are {actualRows}, {actualCols}, {actualVals}"
-            >> setField "actualRows" (sprintf "%A" actualRows)
-            >> setField "actualCols" (sprintf "%A" actualCols)
-            >> setField "actualVals" (sprintf "%A" actualVals)
-        )
+        // logger.debug (
+        //     eventX "Actual are {actualRows}, {actualCols}, {actualVals}"
+        //     >> setField "actualRows" (sprintf "%A" actualRows)
+        //     >> setField "actualCols" (sprintf "%A" actualCols)
+        //     >> setField "actualVals" (sprintf "%A" actualVals)
+        // )
 
         let expectedRows, expectedCols, expectedVals =
             (rows, cols, vals)

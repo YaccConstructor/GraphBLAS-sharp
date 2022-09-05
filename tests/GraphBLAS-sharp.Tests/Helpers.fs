@@ -331,14 +331,84 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-// type ArrayOfDistinctKeys() =
-//     // Stack overflow.
-//     static member ArrayOfDistinctKeysArb() =
-//         gen {
-//             let! array = Arb.generate<(uint64 * int)[]>
-//             return Array.distinctBy (fun (key, _) -> key) array
-//         }
-//         |> Arb.fromGen
+    type ArrayOfDistinctKeys() =
+        static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
+            let tuplesGenerator =
+                Gen.map3
+                <| fun a b c -> a, b, c
+                <| keysGenerator
+                <| keysGenerator
+                <| valuesGenerator
+
+            gen {
+                let! length =
+                    Gen.sized
+                    <| fun size -> Gen.choose (1, size)
+
+                let! array =
+                    Gen.arrayOfLength
+                    <| length
+                    <| tuplesGenerator
+
+                return Array.distinctBy (fun (r, c, _) -> r, c) array
+            }
+
+        static member IntType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<bool>
+            |> Arb.fromGen
+
 
 module Utils =
     type TestContext =
@@ -356,7 +426,7 @@ module Utils =
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                    // typeof<Generators.ArrayOfDistinctKeys>
+                    typeof<Generators.ArrayOfDistinctKeys>
                     ] }
 
     let rec cartesian listOfLists =
