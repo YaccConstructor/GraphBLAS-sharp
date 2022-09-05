@@ -3,66 +3,92 @@ module Backend.PrefixSum
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "PrefixSum.Tests"
 
-let testCases =
-    [ testCase "Simple correctness test"
-      <| fun () ->
-          let array = [| 1; 2; 3 |]
+let testContext =
+    let contexts = "" |> avaliableContexts |> Seq.toList
+    contexts.[0]
 
-          let actual =
-              opencl {
-                  let! (result, _) = PrefixSum.runInclude array
+let context = testContext.ClContext
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost result
-                      ()
+let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
+    if array.Length > 0 then
+        let array = filter array
 
-                  return result
-              }
-              //|> OpenCLEvaluationContext().RunSync
-              failwith "fix me"
+        logger.debug (
+            eventX "Filtered array is {array}\n"
+            >> setField "array" (sprintf "%A" array)
+        )
 
-          logger.debug (
-              eventX "Actual is {actual}"
-              >> setField "actual" (sprintf "%A" actual)
-          )
+        let actual, actualSum =
+            use clArray = context.CreateClArray array
+            use total = context.CreateClCell()
+            scan q clArray total zero |> ignore
 
-          let expected = [| 1; 3; 6 |]
+            let actual = Array.zeroCreate<'a> clArray.Length
+            let actualSum = [| zero |]
+            q.Post(Msg.CreateToHostMsg(total, actualSum))
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum.[0]
 
-          "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected
+        logger.debug (
+            eventX "Actual is {actual}\n"
+            >> setField "actual" (sprintf "%A" actual)
+        )
 
-      testCase "Test on empty array"
-      <| fun () ->
-          let array = Array.zeroCreate<int> 0
+        let expected, expectedSum =
+            array
+            |> Array.mapFold
+                (fun s t ->
+                    let a = plus s t
+                    a, a)
+                zero
 
-          let actual =
-              opencl {
-                  let! (result, _) = PrefixSum.runInclude array
+        logger.debug (
+            eventX "Expected is {expected}\n"
+            >> setField "expected" (sprintf "%A" expected)
+        )
 
-                  if array.Length <> 0 then
-                      failwith "fix me"
-                      //let! _ = ToHost result
-                      ()
+        "Lengths of arrays should be equal"
+        |> Expect.equal actual.Length expected.Length
 
-                  return result
-              }
-              //|> OpenCLEvaluationContext().RunSync
-              failwith "fix me"
+        "Total sums should be equal"
+        |> Expect.equal actualSum expectedSum
 
-          logger.debug (
-              eventX "Actual is {actual}"
-              >> setField "actual" (sprintf "%A" actual)
-          )
+        for i in 0 .. actual.Length - 1 do
+            Expect.isTrue
+                (isEqual actual.[i] expected.[i])
+                (sprintf "Arrays should be the same. Actual is \n%A, expected \n%A, input is \n%A" actual expected array)
 
-          let expected = array
+let testFixtures config wgSize q plus plusQ zero isEqual filter name =
+    let scan =
+        PrefixSum.runIncludeInplace plusQ context wgSize
 
-          "Array should be without duplicates"
-          |> Expect.sequenceEqual actual expected ]
+    makeTest q scan plus zero isEqual filter
+    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
-let tests = testCases |> ptestList "PrefixSum tests"
+let tests =
+    let config = defaultConfig
+
+    let wgSize = 128
+    let q = testContext.Queue
+    q.Error.Add(fun e -> failwithf "%A" e)
+
+    let filterFloats =
+        Array.filter (System.Double.IsNaN >> not)
+
+    [ testFixtures config wgSize q (+) <@ (+) @> 0 (=) id "int add"
+      testFixtures config wgSize q (+) <@ (+) @> 0uy (=) id "byte add"
+      testFixtures config wgSize q max <@ max @> 0 (=) id "int max"
+      testFixtures config wgSize q max <@ max @> 0.0 (=) filterFloats "float max"
+      testFixtures config wgSize q max <@ max @> 0uy (=) id "byte max"
+      testFixtures config wgSize q min <@ min @> System.Int32.MaxValue (=) id "int min"
+      testFixtures config wgSize q min <@ min @> System.Double.MaxValue (=) filterFloats "float min"
+      testFixtures config wgSize q min <@ min @> System.Byte.MaxValue (=) id "byte min"
+      testFixtures config wgSize q (||) <@ (||) @> false (=) id "bool logic-or"
+      testFixtures config wgSize q (&&) <@ (&&) @> true (=) id "bool logic-and" ]
+    |> testList "Backend.Common.PrefixSum tests"
