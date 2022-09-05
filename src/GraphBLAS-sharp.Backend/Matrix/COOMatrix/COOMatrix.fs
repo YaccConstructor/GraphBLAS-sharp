@@ -117,10 +117,10 @@ module COOMatrix =
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
                 elif (i > 0
-                         && i < length
-                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                        || i = 0 then
+                      && i < length
+                      && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                          || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                     || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValuesBuffer.[i]) None with
                         | Some v ->
@@ -432,23 +432,21 @@ module COOMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let getTuples (clContext: ClContext) =
+    let getTuples (clContext: ClContext) workGroupSize =
 
         let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
         let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: COOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
 
-            let resultRows = copy processor workGroupSize matrix.Rows
+            let resultRows = copy processor matrix.Rows
 
-            let resultColumns =
-                copy processor workGroupSize matrix.Columns
+            let resultColumns = copy processor matrix.Columns
 
-            let resultValues =
-                copyData processor workGroupSize matrix.Values
+            let resultValues = copyData processor matrix.Values
 
 
             { Context = clContext
@@ -456,204 +454,78 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let private compressRows (clContext: ClContext) workGroupSize =
+    let private prepareRowPointers (clContext: ClContext) workGroupSize =
 
-        let calcHyperSparseRows =
-            <@ fun (ndRange: Range1D) (rowsIndices: ClArray<int>) (bitmap: ClArray<int>) (positions: ClArray<int>) (nonZeroRowsIndices: ClArray<int>) (nonZeroRowsPointers: ClArray<int>) nnz ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < nnz && bitmap.[gid] = 1 then
-                    nonZeroRowsIndices.[positions.[gid]] <- rowsIndices.[gid]
-                    nonZeroRowsPointers.[positions.[gid]] <- gid + 1 @>
-
-        let calcNnzPerRowSparse =
-            <@ fun (ndRange: Range1D) (nonZeroRowsPointers: ClArray<int>) (nnzPerRowSparse: ClArray<int>) totalSum ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid = 0 then
-                    nnzPerRowSparse.[gid] <- nonZeroRowsPointers.[gid]
-                elif gid < totalSum then
-                    nnzPerRowSparse.[gid] <-
-                        nonZeroRowsPointers.[gid]
-                        - nonZeroRowsPointers.[gid - 1] @>
-
-        let expandNnzPerRow =
-            <@ fun (ndRange: Range1D) totalSum (nnzPerRowSparse: ClArray<'a>) (nonZeroRowsIndices: ClArray<int>) (expandedNnzPerRow: ClArray<'a>) ->
+        let prepareRowPointers =
+            <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
-                if i < totalSum then
-                    expandedNnzPerRow.[nonZeroRowsIndices.[i] + 1] <- nnzPerRowSparse.[i] @>
+                if i < nnz then
+                    let row = rows.[i]
 
-        let kernelCalcHyperSparseRows = clContext.Compile(calcHyperSparseRows)
+                    if i = 0 || row <> rows.[i - 1] then
+                        rowPointers.[row] <- i @>
 
-        let kernelCalcNnzPerRowSparse = clContext.Compile(calcNnzPerRowSparse)
+        let program = clContext.Compile(prepareRowPointers)
 
-        let kernelExpandNnzPerRow = clContext.Compile(expandNnzPerRow)
+        let create = ClArray.create clContext workGroupSize
 
-        let getUniqueBitmap = ClArray.getUniqueBitmap clContext
-
-        let posAndTotalSum =
-            ClArray.prefixSumExclude clContext workGroupSize
-
-        let getRowPointers =
-            ClArray.prefixSumInclude clContext workGroupSize
+        let scan =
+            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
-            let bitmap =
-                getUniqueBitmap processor workGroupSize rowIndices
-
-            let positions, totalSum = posAndTotalSum processor bitmap
-
-            let hostTotalSum = [| 0 |]
-
-            let _ =
-                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(totalSum, hostTotalSum, ch))
-
-            let totalSum = hostTotalSum.[0]
-
-            let nonZeroRowsIndices =
-                clContext.CreateClArray(
-                    totalSum,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let nonZeroRowsPointers =
-                clContext.CreateClArray(
-                    totalSum,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
 
             let nnz = rowIndices.Length
-            let ndRangeCHSR = Range1D.CreateValid(nnz, workGroupSize)
+            let rowPointers = create processor (rowCount + 1) nnz
 
-            let kernelCalcHyperSparseRows = kernelCalcHyperSparseRows.GetKernel()
+            let kernel = program.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernelCalcHyperSparseRows.KernelFunc
-                            ndRangeCHSR
-                            rowIndices
-                            bitmap
-                            positions
-                            nonZeroRowsIndices
-                            nonZeroRowsPointers
-                            nnz)
-            )
+            let ndRange = Range1D.CreateValid(nnz, workGroupSize)
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowIndices nnz rowPointers))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            processor.Post(Msg.CreateRunMsg<_, _> kernelCalcHyperSparseRows)
-            processor.Post(Msg.CreateFreeMsg(bitmap))
-            processor.Post(Msg.CreateFreeMsg(positions))
-
-            let nnzPerRowSparse =
-                clContext.CreateClArray(
-                    totalSum,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let ndRangeCNPRSandENPR =
-                Range1D.CreateValid(totalSum, workGroupSize)
-
-            let kernelCalcNnzPerRowSparse = kernelCalcNnzPerRowSparse.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernelCalcNnzPerRowSparse.KernelFunc
-                            ndRangeCNPRSandENPR
-                            nonZeroRowsPointers
-                            nnzPerRowSparse
-                            totalSum)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernelCalcNnzPerRowSparse)
-
-            let expandedNnzPerRow =
-                clContext.CreateClArray(
-                    Array.zeroCreate rowCount,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
-                )
-
-            let kernelExpandNnzPerRow = kernelExpandNnzPerRow.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernelExpandNnzPerRow.KernelFunc
-                            ndRangeCNPRSandENPR
-                            totalSum
-                            nnzPerRowSparse
-                            nonZeroRowsIndices
-                            expandedNnzPerRow)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernelExpandNnzPerRow)
-
-            let rowPointers, _ =
-                getRowPointers processor expandedNnzPerRow
-
-            processor.Post(Msg.CreateFreeMsg(expandedNnzPerRow))
-            processor.Post(Msg.CreateFreeMsg(nnzPerRowSparse))
-            processor.Post(Msg.CreateFreeMsg(nonZeroRowsIndices))
-            processor.Post(Msg.CreateFreeMsg(nonZeroRowsPointers))
+            let total = clContext.CreateClCell()
+            let _ = scan processor rowPointers total nnz
+            processor.Post(Msg.CreateFreeMsg(total))
 
             rowPointers
 
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
+        let prepare =
+            prepareRowPointers clContext workGroupSize
 
-        let compressRows = compressRows clContext workGroupSize
-
-        let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
-
-        let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
-            let compressedRows =
-                compressRows processor matrix.Rows matrix.RowCount
+            let rowPointers =
+                prepare processor matrix.Rows matrix.RowCount
 
-            let cols =
-                copy processor workGroupSize matrix.Columns
-
-            let vals =
-                copyData processor workGroupSize matrix.Values
+            let cols = copy processor matrix.Columns
+            let vals = copyData processor matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
-              RowPointers = compressedRows
+              RowPointers = rowPointers
               Columns = cols
               Values = vals }
 
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSRInplace (clContext: ClContext) workGroupSize =
-
-        let compressRows = compressRows clContext workGroupSize
+        let prepare =
+            prepareRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
-            let compressedRows =
-                compressRows processor matrix.Rows matrix.RowCount
+            let rowPointers =
+                prepare processor matrix.Rows matrix.RowCount
+
+            processor.Post(Msg.CreateFreeMsg(matrix.Rows))
 
             { Context = clContext
               RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
-              RowPointers = compressedRows
+              RowPointers = rowPointers
               Columns = matrix.Columns
               Values = matrix.Values }
 
@@ -679,10 +551,10 @@ module COOMatrix =
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
                 elif (i > 0
-                         && i < length
-                         && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                             || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                        || i = 0 then
+                      && i < length
+                      && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
+                          || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
+                     || i = 0 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Left leftValuesBuffer.[i]) with
                         | Some v ->
@@ -787,3 +659,35 @@ module COOMatrix =
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
+
+    let transposeInplace (clContext: ClContext) workGroupSize =
+
+        let sort =
+            BitonicSort.sortKeyValuesInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
+            sort queue matrix.Columns matrix.Rows matrix.Values
+
+            { Context = clContext
+              RowCount = matrix.ColumnCount
+              ColumnCount = matrix.RowCount
+              Rows = matrix.Columns
+              Columns = matrix.Rows
+              Values = matrix.Values }
+
+    let transpose (clContext: ClContext) workGroupSize =
+
+        let transposeInplace = transposeInplace clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
+            let copiedMatrix =
+                { Context = clContext
+                  RowCount = matrix.RowCount
+                  ColumnCount = matrix.ColumnCount
+                  Rows = copy queue matrix.Rows
+                  Columns = copy queue matrix.Columns
+                  Values = copyData queue matrix.Values }
+
+            transposeInplace queue copiedMatrix
