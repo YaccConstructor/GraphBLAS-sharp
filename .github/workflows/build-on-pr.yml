@@ -1,0 +1,70 @@
+name: FAKE Build on PR
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  win-build:
+    name: Windows Build (No Tests)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - name: System Info
+        run: systeminfo
+
+      - uses: actions/checkout@v2
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: ./build.cmd DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  linux-build:
+    name: Linux Build (No Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: |
+          chmod +x ./build.sh
+          ./build.sh DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+
+  linux-test-self-hosted:
+    name: Linux Self-Hosted Test
+    runs-on: self-hosted
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build And Test
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
