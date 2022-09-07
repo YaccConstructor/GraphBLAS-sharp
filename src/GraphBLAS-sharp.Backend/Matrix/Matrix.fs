@@ -36,6 +36,11 @@ module Matrix =
 
                 MatrixCSR res
 
+    /// <summary>
+    /// Creates a new matrix, represented in CSR format, that is equal to the given one.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
         let copy = copy clContext workGroupSize
@@ -45,6 +50,12 @@ module Matrix =
             | MatrixCOO m -> toCSR processor m |> MatrixCSR
             | MatrixCSR _ -> copy processor matrix
 
+    /// <summary>
+    /// Returns the matrix, represented in CSR format, that is equal to the given one.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSRInplace (clContext: ClContext) workGroupSize =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
@@ -54,6 +65,11 @@ module Matrix =
             | MatrixCOO m -> toCSRInplace processor m |> MatrixCSR
             | MatrixCSR _ -> matrix
 
+    /// <summary>
+    /// Creates a new matrix, represented in COO format, that is equal to the given one.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext workGroupSize
@@ -63,6 +79,12 @@ module Matrix =
             | MatrixCOO _ -> copy processor matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
 
+    /// <summary>
+    /// Returns the matrix, represented in COO format, that is equal to the given one.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let toCOOInplace =
             CSRMatrix.toCOOInplace clContext workGroupSize
@@ -98,7 +120,12 @@ module Matrix =
             | MatrixCSR m1, MatrixCSR m2 -> CSReWiseAdd processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"
 
-
+    /// <summary>
+    /// Transposes the given matrix and returns result. The storage format is preserved.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transposeInplace (clContext: ClContext) workGroupSize =
         let COOtransposeInplace =
             COOMatrix.transposeInplace clContext workGroupSize
@@ -111,7 +138,11 @@ module Matrix =
             | MatrixCOO m -> COOtransposeInplace processor m |> MatrixCOO
             | MatrixCSR m -> CSRtransposeInplace processor m |> MatrixCSR
 
-
+    /// <summary>
+    /// Transposes the given matrix and returns result as a new matrix. The storage format is preserved.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
         let COOtranspose =
             COOMatrix.transpose clContext workGroupSize
