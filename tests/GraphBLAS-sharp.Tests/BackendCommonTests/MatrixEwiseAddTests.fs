@@ -86,7 +86,7 @@ let correctnessGenericTest
 
 let testFixturesEWiseAdd case =
     [ let config = defaultConfig
-      let wgSize = 256
+      let wgSize = 32
 
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
@@ -140,12 +140,13 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixturesEWiseAdd
     |> testList "Backend.Matrix.eWiseAdd tests"
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
-      let wgSize = 256
+      let wgSize = 32
 
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
@@ -203,13 +204,14 @@ let tests2 =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixturesEWiseAddAtLeastOne
     |> testList "Backend.Matrix.eWiseAddAtLeastOne tests"
 
 
 let testFixturesEWiseMulAtLeastOne case =
     [ let config = defaultConfig
-      let wgSize = 256
+      let wgSize = 32
 
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
@@ -267,5 +269,6 @@ let tests3 =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixturesEWiseMulAtLeastOne
     |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"

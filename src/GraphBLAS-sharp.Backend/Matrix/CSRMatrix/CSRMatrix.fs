@@ -81,8 +81,7 @@ module CSRMatrix =
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
-        let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
-        let toCOOInplaceRight = toCOOInplace clContext workGroupSize
+        let prepareRows = prepareRows clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
@@ -91,24 +90,32 @@ module CSRMatrix =
             COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'b>) ->
+            let m1COO =
+                { Context = clContext
+                  RowCount = m1.RowCount
+                  ColumnCount = m1.ColumnCount
+                  Rows = prepareRows processor m1.RowPointers m1.Values.Length m1.RowCount
+                  Columns = m1.Columns
+                  Values = m1.Values }
 
-            let m1COO = toCOOInplaceLeft processor m1
-            let m2COO = toCOOInplaceRight processor m2
+            let m2COO =
+                { Context = clContext
+                  RowCount = m2.RowCount
+                  ColumnCount = m2.ColumnCount
+                  Rows = prepareRows processor m2.RowPointers m2.Values.Length m2.RowCount
+                  Columns = m2.Columns
+                  Values = m2.Values }
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
 
-            let m3 = toCSRInplace processor m3COO
-            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
-
-            m3
+            toCSRInplace processor m3COO
 
     let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
-        let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
-        let toCOOInplaceRight = toCOOInplace clContext workGroupSize
+        let prepareRows = prepareRows clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
@@ -117,19 +124,28 @@ module CSRMatrix =
             COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (m1: CSRMatrix<'a>) (m2: CSRMatrix<'b>) ->
+            let m1COO =
+                { Context = clContext
+                  RowCount = m1.RowCount
+                  ColumnCount = m1.ColumnCount
+                  Rows = prepareRows processor m1.RowPointers m1.Values.Length m1.RowCount
+                  Columns = m1.Columns
+                  Values = m1.Values }
 
-            let m1COO = toCOOInplaceLeft processor m1
-            let m2COO = toCOOInplaceRight processor m2
+            let m2COO =
+                { Context = clContext
+                  RowCount = m2.RowCount
+                  ColumnCount = m2.ColumnCount
+                  Rows = prepareRows processor m2.RowPointers m2.Values.Length m2.RowCount
+                  Columns = m2.Columns
+                  Values = m2.Values }
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
 
-            let m3 = toCSRInplace processor m3COO
-            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
-
-            m3
+            toCSRInplace processor m3COO
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
