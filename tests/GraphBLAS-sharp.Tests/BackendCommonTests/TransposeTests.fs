@@ -10,50 +10,49 @@ open OpenCL.Net
 
 let logger = Log.create "Transpose.Tests"
 
-let context = defaultContext.ClContext
 let config = defaultConfig
-let wgSize = 128
+let wgSize = 32
 
 let checkResult areEqual zero actual (expected2D: 'a [,]) =
-    let actual2D =
-        match actual with
-        | MatrixCOO actual ->
-            let actual2D =
-                Array2D.create actual.RowCount actual.ColumnCount zero
+    match actual with
+    | MatrixCOO actual ->
+        let (MatrixCOO expected) =
+            createMatrixFromArray2D COO expected2D (areEqual zero)
 
-            for i in 0 .. actual.Values.Length - 1 do
-                "Resulting zeroes should be filtered."
-                |> Expect.isFalse (areEqual zero actual.Values.[i])
+        "The number of rows should be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
 
-                actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
+        "The number of columns should be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
 
-            actual2D
-        | MatrixCSR actual ->
-            let actual2D =
-                Array2D.create actual.RowCount actual.ColumnCount zero
+        "Row arrays should be equal"
+        |> compareArrays (=) actual.Rows expected.Rows
 
-            for i in 0 .. actual.RowCount - 1 do
-                for j in actual.RowPointers.[i] .. actual.RowPointers.[i + 1] - 1 do
-                    "Resulting zeroes should be filtered."
-                    |> Expect.isFalse (areEqual zero actual.Values.[j])
+        "Column arrays should be equal"
+        |> compareArrays (=) actual.Columns expected.Columns
 
-                    actual2D.[i, actual.ColumnIndices.[j]] <- actual.Values.[j]
+        "Value arrays should be equal"
+        |> compareArrays areEqual actual.Values expected.Values
+    | MatrixCSR actual ->
+        let (MatrixCSR expected) =
+            createMatrixFromArray2D CSR expected2D (areEqual zero)
 
-            actual2D
+        "The number of rows should be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
 
-    "The number of rows should be the same"
-    |> Expect.equal (Array2D.length1 actual2D) (Array2D.length1 expected2D)
+        "The number of columns should be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
 
-    "The number of columns should be the same"
-    |> Expect.equal (Array2D.length2 actual2D) (Array2D.length2 expected2D)
+        "Row pointer arrays should be equal"
+        |> compareArrays (=) actual.RowPointers expected.RowPointers
 
+        "Column arrays should be equal"
+        |> compareArrays (=) actual.ColumnIndices expected.ColumnIndices
 
-    for i in 0 .. Array2D.length1 actual2D - 1 do
-        for j in 0 .. Array2D.length2 actual2D - 1 do
-            "Matrices should be equal"
-            |> Expect.isTrue (areEqual actual2D.[i, j] expected2D.[i, j])
+        "Value arrays should be equal"
+        |> compareArrays areEqual actual.Values expected.Values
 
-let makeTestRegular q transposeFun areEqual zero case (array: 'a [,]) =
+let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D case.MatrixCase array (areEqual zero)
 
@@ -80,7 +79,7 @@ let makeTestRegular q transposeFun areEqual zero case (array: 'a [,]) =
 
         checkResult areEqual zero actual expected2D
 
-let makeTestTwiceTranspose q transposeFun areEqual zero case (array: 'a [,]) =
+let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D case.MatrixCase array (areEqual zero)
 
@@ -110,48 +109,49 @@ let testFixtures case =
         System.Double.IsNaN x && System.Double.IsNaN y
         || x = y
 
-    let q = defaultContext.Queue
+    let context = case.ClContext.ClContext
+    let q = case.ClContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let transposeFun = Matrix.transpose context wgSize
 
       case
-      |> makeTestRegular q transposeFun (=) 0
+      |> makeTestRegular context q transposeFun (=) 0
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       case
-      |> makeTestTwiceTranspose q transposeFun (=) 0
+      |> makeTestTwiceTranspose context q transposeFun (=) 0
       |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
 
 
       let transposeFun = Matrix.transpose context wgSize
 
       case
-      |> makeTestRegular q transposeFun areEqualFloat 0.0
+      |> makeTestRegular context q transposeFun areEqualFloat 0.0
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       case
-      |> makeTestTwiceTranspose q transposeFun areEqualFloat 0.0
+      |> makeTestTwiceTranspose context q transposeFun areEqualFloat 0.0
       |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
 
       let transposeFun = Matrix.transpose context wgSize
 
       case
-      |> makeTestRegular q transposeFun (=) 0uy
+      |> makeTestRegular context q transposeFun (=) 0uy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       case
-      |> makeTestTwiceTranspose q transposeFun (=) 0uy
+      |> makeTestTwiceTranspose context q transposeFun (=) 0uy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
 
       let transposeFun = Matrix.transpose context wgSize
 
       case
-      |> makeTestRegular q transposeFun (=) false
+      |> makeTestRegular context q transposeFun (=) false
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       case
-      |> makeTestTwiceTranspose q transposeFun (=) false
+      |> makeTestTwiceTranspose context q transposeFun (=) false
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
 let tests =
@@ -167,6 +167,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixtures
     |> testList "Transpose tests"

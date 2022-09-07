@@ -341,14 +341,9 @@ module Generators =
                 <| valuesGenerator
 
             gen {
-                let! length =
-                    Gen.sized
-                    <| fun size -> Gen.choose (1, size)
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
 
-                let! array =
-                    Gen.arrayOfLength
-                    <| length
-                    <| tuplesGenerator
+                let! array = Gen.arrayOfLength <| length <| tuplesGenerator
 
                 return Array.distinctBy (fun (r, c, _) -> r, c) array
             }
@@ -363,8 +358,8 @@ module Generators =
             arrayOfDistinctKeysGenerator
             <| Arb.generate<int>
             <| (Arb.Default.NormalFloat()
-                 |> Arb.toGen
-                 |> Gen.map float)
+                |> Arb.toGen
+                |> Gen.map float)
             |> Arb.fromGen
 
         static member SByteType() =
@@ -426,8 +421,7 @@ module Utils =
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                    typeof<Generators.ArrayOfDistinctKeys>
-                    ] }
+                    typeof<Generators.ArrayOfDistinctKeys> ] }
 
     let rec cartesian listOfLists =
         match listOfLists with
@@ -523,11 +517,11 @@ module Utils =
 
     type OperationCase =
         { ClContext: TestContext
-          MatrixCase: MatrixFromat }
+          MatrixCase: MatrixFormat }
 
     let testCases =
         [ avaliableContexts "" |> Seq.map box
-          listOfUnionCases<MatrixFromat> |> Seq.map box ]
+          listOfUnionCases<MatrixFormat> |> Seq.map box ]
         |> List.map List.ofSeq
         |> cartesian
         |> List.map
@@ -543,3 +537,17 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
+
+    let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
+        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. actual.Length - 1 do
+            if not (areEqual actual.[i] expected.[i]) then
+                sprintf "%s. Arrays differ at position %A of %A. Actual value is %A, expected %A"
+                <| message
+                <| i
+                <| (actual.Length - 1)
+                <| actual.[i]
+                <| expected.[i]
+                |> failtestf "%s"

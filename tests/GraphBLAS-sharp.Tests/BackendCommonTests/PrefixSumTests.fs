@@ -10,11 +10,7 @@ open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "PrefixSum.Tests"
 
-let testContext =
-    let contexts = "" |> avaliableContexts |> Seq.toList
-    contexts.[0]
-
-let context = testContext.ClContext
+let context = defaultContext.ClContext
 
 let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
     if array.Length > 0 then
@@ -75,7 +71,7 @@ let tests =
     let config = defaultConfig
 
     let wgSize = 128
-    let q = testContext.Queue
+    let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let filterFloats =

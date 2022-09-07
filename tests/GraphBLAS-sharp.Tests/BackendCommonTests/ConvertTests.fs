@@ -12,11 +12,10 @@ open OpenCL.Net
 
 let logger = Log.create "Convert.Tests"
 
-let context = defaultContext.ClContext
 let config = defaultConfig
-let wgSize = 128
+let wgSize = 32
 
-let makeTestCSR q toCOO isZero (array: 'a [,]) =
+let makeTestCSR context q toCOO isZero (array: 'a [,]) =
     let mtx = createMatrixFromArray2D CSR array isZero
 
     if mtx.NNZCount > 0 then
@@ -38,7 +37,7 @@ let makeTestCSR q toCOO isZero (array: 'a [,]) =
         "Matrices should be equal"
         |> Expect.equal actual expected
 
-let makeTestCOO q toCSR isZero (array: 'a [,]) =
+let makeTestCOO context q toCSR isZero (array: 'a [,]) =
     let mtx = createMatrixFromArray2D COO array isZero
 
     if mtx.NNZCount > 0 then
@@ -68,49 +67,50 @@ let testFixtures case =
         System.Double.IsNaN x
         || abs x < Accuracy.medium.absolute
 
-    let q = defaultContext.Queue
+    let context = case.ClContext.ClContext
+    let q = case.ClContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     match case.MatrixCase with
     | COO ->
         [ let toCSR = Matrix.toCSR context wgSize
 
-          makeTestCOO q toCSR ((=) 0)
+          makeTestCOO context q toCSR ((=) 0)
           |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
           let toCSR = Matrix.toCSR context wgSize
 
-          makeTestCOO q toCSR filterFloat
+          makeTestCOO context q toCSR filterFloat
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
           let toCSR = Matrix.toCSR context wgSize
 
-          makeTestCOO q toCSR ((=) 0uy)
+          makeTestCOO context q toCSR ((=) 0uy)
           |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
           let toCSR = Matrix.toCSR context wgSize
 
-          makeTestCOO q toCSR ((=) false)
+          makeTestCOO context q toCSR ((=) false)
           |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
     | CSR ->
         [ let toCOO = Matrix.toCOO context wgSize
 
-          makeTestCSR q toCOO ((=) 0)
+          makeTestCSR context q toCOO ((=) 0)
           |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
           let toCOO = Matrix.toCOO context wgSize
 
-          makeTestCSR q toCOO filterFloat
+          makeTestCSR context q toCOO filterFloat
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
           let toCOO = Matrix.toCOO context wgSize
 
-          makeTestCSR q toCOO ((=) 0uy)
+          makeTestCSR context q toCOO ((=) 0uy)
           |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
           let toCOO = Matrix.toCOO context wgSize
 
-          makeTestCSR q toCOO ((=) false)
+          makeTestCSR context q toCOO ((=) false)
           |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
@@ -126,6 +126,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixtures
     |> testList "Convert tests"

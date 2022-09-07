@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 
-type MatrixFromat =
+type MatrixFormat =
     | CSR
     | COO
 
