@@ -87,8 +87,9 @@ module Elementwise =
                     | None -> rawPositions.[i + 1] <- 0
                 elif i = 0
                      || (i < length
-                     && allColumns.[i] <> allColumns.[i - 1]
-                     || isEndOfRowBitmap.[i - 1] = 1)
+                     && (allColumns.[i] <> allColumns.[i - 1]
+                        || isEndOfRowBitmap.[i - 1] = 1)
+                     )
                 then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValues.[i]) None with
