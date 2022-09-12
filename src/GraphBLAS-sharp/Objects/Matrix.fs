@@ -6,25 +6,30 @@ open GraphBLAS.FSharp.Backend
 type MatrixFormat =
     | CSR
     | COO
+    | CSC
 
 type Matrix<'a when 'a: struct> =
     | MatrixCSR of CSRMatrix<'a>
     | MatrixCOO of COOMatrix<'a>
+    | MatrixCSC of CSCMatrix<'a>
 
     member this.RowCount =
         match this with
         | MatrixCSR matrix -> matrix.RowCount
         | MatrixCOO matrix -> matrix.RowCount
+        | MatrixCSC matrix -> matrix.RowCount
 
     member this.ColumnCount =
         match this with
         | MatrixCSR matrix -> matrix.ColumnCount
         | MatrixCOO matrix -> matrix.ColumnCount
+        | MatrixCSC matrix -> matrix.ColumnCount
 
     member this.NNZCount =
         match this with
         | MatrixCOO m -> m.Values.Length
         | MatrixCSR m -> m.Values.Length
+        | MatrixCSC m -> m.Values.Length
 
     member this.ToBackend(context: ClContext) =
         match this with
@@ -56,6 +61,20 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             Backend.MatrixCSR result
+        | MatrixCSC m ->
+            let rows = context.CreateClArray m.RowIndices
+            let columnPtrs = context.CreateClArray m.ColumnPointers
+            let values = context.CreateClArray m.Values
+
+            let result =
+                { Backend.CSCMatrix.Context = context
+                  RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  Rows = rows
+                  ColumnPointers = columnPtrs
+                  Values = values }
+
+            Backend.MatrixCSC result
 
     static member FromBackend (q: MailboxProcessor<_>) matrix =
         match matrix with
@@ -103,6 +122,28 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             MatrixCSR result
+        | Backend.MatrixCSC m ->
+            let rows = Array.zeroCreate m.Rows.Length
+            let columns = Array.zeroCreate m.ColumnPointers.Length
+            let values = Array.zeroCreate m.Values.Length
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.Rows, rows))
+
+            let _ =
+                q.Post(Msg.CreateToHostMsg(m.ColumnPointers, columns))
+
+            let _ =
+                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
+
+            let result =
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  RowIndices = rows
+                  ColumnPointers = columns
+                  Values = values }
+
+            MatrixCSC result
 
 and CSRMatrix<'a> =
     { RowCount: int
@@ -198,6 +239,40 @@ and COOMatrix<'a> =
             |> Array.unzip3
 
         COOMatrix.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
+
+and CSCMatrix<'a> =
+    { RowCount: int
+      ColumnCount: int
+      RowIndices: int []
+      ColumnPointers: int []
+      Values: 'a [] }
+
+    static member FromArray2D(array: 'a [,], isZero: 'a -> bool) =
+        let rowsCount = array |> Array2D.length1
+        let columnsCount = array |> Array2D.length2
+
+        let convertedMatrix =
+            [ for i in 0 .. columnsCount - 1 -> array.[*, i] |> List.ofArray ]
+            |> List.map
+                (fun col ->
+                    col
+                    |> List.mapi (fun i x -> (x, i))
+                    |> List.filter (fun pair -> not <| isZero (fst pair)))
+            |> List.fold
+                (fun (colPtrs, valueInx) col -> ((colPtrs.Head + col.Length) :: colPtrs), valueInx @ col)
+                ([ 0 ], [])
+
+        { Values =
+              convertedMatrix
+              |> (snd >> List.unzip >> fst)
+              |> List.toArray
+          RowIndices =
+              convertedMatrix
+              |> (snd >> List.unzip >> snd)
+              |> List.toArray
+          ColumnPointers = convertedMatrix |> fst |> List.rev |> List.toArray
+          RowCount = rowsCount
+          ColumnCount = columnsCount }
 
 type MatrixTuples<'a> =
     { RowIndices: int []
