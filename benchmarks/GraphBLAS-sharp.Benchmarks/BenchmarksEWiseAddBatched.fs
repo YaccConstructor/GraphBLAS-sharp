@@ -6,12 +6,6 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
-module Utils =
-    let createMatrixFromArray2D matrixCase array isZero =
-        match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-
 // TODO ?? CSR ??
 [<AbstractClass>]
 type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, zero, op) =

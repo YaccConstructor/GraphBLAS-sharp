@@ -1,4 +1,4 @@
-module Backend.Convert
+module BackendTests.Convert
 
 open Expecto
 open Expecto.Logging
@@ -15,14 +15,14 @@ let logger = Log.create "Convert.Tests"
 let config = defaultConfig
 let wgSize = 32
 
-let makeTestCSR context q toCOO isZero (array: 'a [,]) =
+let makeTestCSR context q (toCOO: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMatrix<'a>) isZero (array: 'a[,]) =
     let mtx = createMatrixFromArray2D CSR array isZero
 
     if mtx.NNZCount > 0 then
         let actual =
-            let mCSR = mtx.ToBackend context
+            let mCSR = mtx.ToDevice context
             let mCOO = toCOO q mCSR
-            let res = Matrix.FromBackend q mCOO
+            let res = mCOO.ToHost q
             mCOO.Dispose q
             mCSR.Dispose q
             res
@@ -32,19 +32,19 @@ let makeTestCSR context q toCOO isZero (array: 'a [,]) =
             >> setField "actual" (sprintf "%A" actual)
         )
 
-        let expected = createMatrixFromArray2D COO array isZero
+        let expected = createMatrixFromArray2D MatrixFormat.COO array isZero
 
         "Matrices should be equal"
         |> Expect.equal actual expected
 
-let makeTestCOO context q toCSR isZero (array: 'a [,]) =
-    let mtx = createMatrixFromArray2D COO array isZero
+let makeTestCOO context q (toCSR: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMatrix<'a>) isZero (array: 'a[,]) =
+    let mtx = createMatrixFromArray2D MatrixFormat.COO array isZero
 
     if mtx.NNZCount > 0 then
         let actual =
-            let mCOO = mtx.ToBackend context
-            let mCSR: Backend.Matrix<'a> = toCSR q mCOO
-            let res = Matrix.FromBackend q mCSR
+            let mCOO = mtx.ToDevice context
+            let mCSR = toCSR q mCOO
+            let res = mCSR.ToHost q
             mCOO.Dispose q
             mCSR.Dispose q
             res
@@ -61,7 +61,7 @@ let makeTestCOO context q toCSR isZero (array: 'a [,]) =
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.MatrixCase
+        $"Correctness on %s{datatype}, %A{case.MatrixCase}"
 
     let filterFloat x =
         System.Double.IsNaN x
@@ -69,10 +69,9 @@ let testFixtures case =
 
     let context = case.ClContext.ClContext
     let q = case.ClContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
 
     match case.MatrixCase with
-    | COO ->
+    | MatrixFormat.COO ->
         [ let toCSR = Matrix.toCSR context wgSize
 
           makeTestCOO context q toCSR ((=) 0)
@@ -92,7 +91,8 @@ let testFixtures case =
 
           makeTestCOO context q toCSR ((=) false)
           |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
-    | CSR ->
+
+    | MatrixFormat.CSR ->
         [ let toCOO = Matrix.toCOO context wgSize
 
           makeTestCSR context q toCOO ((=) 0)
@@ -115,17 +115,14 @@ let testFixtures case =
 
 let tests =
     testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
+    |> List.filter (fun case ->
+        let mutable e = ErrorCode.Unknown
+        let device = case.ClContext.ClContext.ClDevice.Device
 
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
+        let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-            deviceType = DeviceType.Gpu)
+        deviceType = DeviceType.Gpu
+    )
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixtures
     |> testList "Convert tests"

@@ -4,9 +4,9 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open OpenCL.Net
+open Brahma.FSharp
 
 let logger = Log.create "Transpose.Tests"
 
@@ -17,7 +17,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
     | MatrixCOO actual ->
         let (MatrixCOO expected) =
-            createMatrixFromArray2D COO expected2D (areEqual zero)
+            createMatrixFromArray2D MatrixFormat.COO expected2D (areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -35,7 +35,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         |> compareArrays areEqual actual.Values expected.Values
     | MatrixCSR actual ->
         let (MatrixCSR expected) =
-            createMatrixFromArray2D CSR expected2D (areEqual zero)
+            createMatrixFromArray2D MatrixFormat.CSR expected2D (areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -52,15 +52,14 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
 
-let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
-    let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+let makeTestRegular context q (transposeFun: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMatrix<'a>) areEqual zero case (array: 'a[,]) =
+    let mtx = createMatrixFromArray2D case.MatrixCase array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
+            let m = mtx.ToDevice context
             let mT = transposeFun q m
-            let res = Matrix.FromBackend q mT
+            let res = mT.ToHost q
             m.Dispose q
             mT.Dispose q
             res
@@ -79,16 +78,15 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
         checkResult areEqual zero actual expected2D
 
-let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a [,]) =
-    let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+let makeTestTwiceTranspose context q (transposeFun: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMatrix<'a>) areEqual zero case (array: 'a[,]) =
+    let mtx = createMatrixFromArray2D case.MatrixCase array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
+            let m = mtx.ToDevice context
             let mT = transposeFun q m
             let mTT = transposeFun q mT
-            let res = Matrix.FromBackend q mTT
+            let res = mTT.ToHost q
             m.Dispose q
             mT.Dispose q
             mTT.Dispose q
@@ -103,7 +101,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.MatrixCase
+        $"Correctness on %s{datatype}, %A{case.MatrixCase}"
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -111,7 +109,6 @@ let testFixtures case =
 
     let context = case.ClContext.ClContext
     let q = case.ClContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let transposeFun = Matrix.transpose context wgSize
 
@@ -122,7 +119,6 @@ let testFixtures case =
       case
       |> makeTestTwiceTranspose context q transposeFun (=) 0
       |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
-
 
       let transposeFun = Matrix.transpose context wgSize
 
@@ -156,17 +152,14 @@ let testFixtures case =
 
 let tests =
     testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
+    |> List.filter (fun case ->
+        let mutable e = ErrorCode.Unknown
+        let device = case.ClContext.ClContext.ClDevice.Device
 
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
+        let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<OpenCL.Net.DeviceType>()
 
-            deviceType = DeviceType.Gpu)
+        deviceType = DeviceType.Gpu
+    )
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
     |> List.collect testFixtures
     |> testList "Transpose tests"

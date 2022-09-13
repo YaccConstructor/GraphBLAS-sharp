@@ -62,13 +62,13 @@ module CSRMatrix =
 
     let toCOO (clContext: ClContext) workGroupSize =
         let expandRows = expandRows clContext
-        let copy = ClArray.copy clContext
-        let copyData = ClArray.copy clContext
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
             let rowIndices = expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
-            let colIndices = copy processor workGroupSize matrix.Columns
-            let values = copyData processor workGroupSize matrix.Values
+            let colIndices = copy processor matrix.Columns
+            let values = copyData processor matrix.Values
 
             {
                 Context = clContext
@@ -135,3 +135,23 @@ module CSRMatrix =
             processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
 
             m3
+
+    let transposeInplace (clContext: ClContext) workGroupSize =
+        let toCOOInplace = toCOOInplace clContext workGroupSize
+        let transposeInplace = COOMatrix.transposeInplace clContext workGroupSize
+        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
+            let coo = toCOOInplace queue matrix
+            let transposedCoo = transposeInplace queue coo
+            toCSRInplace queue transposedCoo
+
+    let transpose (clContext: ClContext) workGroupSize =
+        let toCOO = toCOO clContext workGroupSize
+        let transposeInplace = COOMatrix.transposeInplace clContext workGroupSize
+        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
+            let coo = toCOO queue matrix
+            let transposedCoo = transposeInplace queue coo
+            toCSRInplace queue transposedCoo

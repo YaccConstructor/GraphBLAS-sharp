@@ -10,10 +10,10 @@ let allTests =
         BackendTests.RemoveDuplicates.tests
         BackendTests.Copy.tests
         BackendTests.Replicate.tests
-        Backend.Convert.tests
+        BackendTests.Convert.tests
         BackendTests.EwiseAdd.tests
-        Backend.EwiseAdd.tests2
-        BackendTests.EwiseAddBatched.tests
+        BackendTests.EwiseAdd.tests2
+//        BackendTests.EwiseAddBatched.tests
 //        Matrix.EWiseAdd.tests
 //        Matrix.GetTuples.tests
 //        Matrix.Mxv.tests

@@ -13,6 +13,7 @@ open System.Text.RegularExpressions
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Jobs
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
 
 type CommonConfig() =
     inherit ManualConfig()
@@ -107,7 +108,6 @@ module Utils =
                 filename
             |]
             |> Path.GetFullPath
-
 
         configFilename
         |> getFullPathToConfig
@@ -219,3 +219,8 @@ module Utils =
             rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
 
         rowPointers
+
+    let createMatrixFromArray2D matrixCase array isZero =
+        match matrixCase with
+        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)

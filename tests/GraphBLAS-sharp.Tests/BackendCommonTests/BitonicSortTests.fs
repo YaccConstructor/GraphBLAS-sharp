@@ -1,4 +1,4 @@
-module Backend.BitonicSort
+module BackendTests.BitonicSort
 
 open Expecto
 open Expecto.Logging

@@ -10,13 +10,16 @@ module internal rec Sum =
                 let result = [| zero |]
 
                 let bruh =
-                    <@ fun (range: Range1D) (array: 'a []) ->
-                        let mutable a = 0
-                        a <- 0 @>
+                    <@
+                        fun (range: Range1D) (array: 'a []) ->
+                            let mutable a = 0
+                            a <- 0
+                    @>
 
-                do!
-                    runCommand bruh
-                    <| fun kernelPrepare -> kernelPrepare <| Range1D(64, 64) <| result
+                do! runCommand bruh <| fun kernelPrepare ->
+                    kernelPrepare
+                    <| Range1D(64, 64)
+                    <| result
 
                 return result
             }
@@ -28,7 +31,6 @@ module internal rec Sum =
             let workGroupSize = 256
 
             let firstVertices = Array.zeroCreate <| (inputArray.Length - 1) / workGroupSize + 1
-
             let secondVertices = Array.zeroCreate <| (firstVertices.Length - 1) / workGroupSize + 1
 
             let mutable verticesArrays = firstVertices, secondVertices
@@ -65,38 +67,37 @@ module internal rec Sum =
             let workGroupSize = 256
 
             let scan =
-                <@ fun (ndRange: Range1D) (resultBuffer: 'a []) (verticesBuffer: 'a []) ->
+                <@
+                    fun (ndRange: Range1D) (resultBuffer: 'a []) (verticesBuffer: 'a []) ->
 
-                    let i = ndRange.GlobalID0
-                    let localID = ndRange.LocalID0
+                        let i = ndRange.GlobalID0
+                        let localID = ndRange.LocalID0
 
-                    let resultLocalBuffer = localArray<'a> workGroupSize
+                        let resultLocalBuffer = localArray<'a> workGroupSize
 
-                    if i < inputArrayLength then
-                        resultLocalBuffer.[localID] <- resultBuffer.[i]
-                    else
-                        resultLocalBuffer.[localID] <- zero
+                        if i < inputArrayLength then
+                            resultLocalBuffer.[localID] <- resultBuffer.[i]
+                        else
+                            resultLocalBuffer.[localID] <- zero
 
-                    let mutable step = 2
+                        let mutable step = 2
 
-                    while step <= workGroupSize do
+                        while step <= workGroupSize do
+                            barrierLocal ()
+
+                            if localID < workGroupSize / step then
+                                let i = step * (localID + 1) - 1
+                                resultLocalBuffer.[i] <- (%plus) resultLocalBuffer.[i] resultLocalBuffer.[i - (step >>> 1)]
+
+                            step <- step <<< 1
+
                         barrierLocal ()
 
-                        if localID < workGroupSize / step then
-                            let i = step * (localID + 1) - 1
-                            resultLocalBuffer.[i] <- (%plus) resultLocalBuffer.[i] resultLocalBuffer.[i - (step >>> 1)]
+                        if localID = workGroupSize - 1 then
+                            verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
+                @>
 
-                        step <- step <<< 1
-
-                    barrierLocal ()
-
-                    if localID = workGroupSize - 1 then
-                        verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID] @>
-
-            do!
-                runCommand scan
-                <| fun kernelPrepare ->
-                    let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
-
-                    kernelPrepare ndRange inputArray vertices
+            do! runCommand scan <| fun kernelPrepare ->
+                let ndRange = Range1D.CreateValid(inputArrayLength, workGroupSize)
+                kernelPrepare ndRange inputArray vertices
         }

@@ -435,9 +435,7 @@ module Utils =
         |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
         |> Seq.filter (fun device ->
             let isAvaliable = Cl.GetDeviceInfo(device, DeviceInfo.Available, &e).CastTo<bool>()
-
             let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-
             let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
 
             (Regex platformRegex).IsMatch platformName && isAvaliable
@@ -481,7 +479,7 @@ module Utils =
 
     let testCases =
         [
-            avaliableContexts "" |> Seq.map box
+            avaliableContexts "NVIDIA*" |> Seq.map box
             listOfUnionCases<MatrixFormat> |> Seq.map box
         ]
         |> List.map List.ofSeq
@@ -498,7 +496,7 @@ module Utils =
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
-        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
         |> Expect.equal actual.Length expected.Length
 
         for i in 0 .. actual.Length - 1 do

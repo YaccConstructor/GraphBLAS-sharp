@@ -455,14 +455,14 @@ module COOMatrix =
                 Values = resultValues
             }
 
-    let getTuples (clContext: ClContext) =
-        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
-        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+    let getTuples (clContext: ClContext) workGroupSize =
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (matrix: ClCooMatrix<'a>) ->
-            let resultRows = copy processor workGroupSize matrix.Rows
-            let resultColumns = copy processor workGroupSize matrix.Columns
-            let resultValues = copyData processor workGroupSize matrix.Values
+        fun (processor: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
+            let resultRows = copy processor matrix.Rows
+            let resultColumns = copy processor matrix.Columns
+            let resultValues = copyData processor matrix.Values
 
             {
                 Context = clContext
@@ -634,13 +634,13 @@ module COOMatrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
         let compressRows = compressRows clContext workGroupSize
-        let copy = GraphBLAS.FSharp.Backend.ClArray.copy clContext
-        let copyData = GraphBLAS.FSharp.Backend.ClArray.copy clContext
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
             let compressedRows = compressRows processor matrix.Rows matrix.RowCount
-            let cols = copy processor workGroupSize matrix.Columns
-            let vals = copyData processor workGroupSize matrix.Values
+            let cols = copy processor matrix.Columns
+            let vals = copyData processor matrix.Values
 
             {
                 Context = clContext
@@ -807,3 +807,32 @@ module COOMatrix =
                 Columns = resultColumns
                 Values = resultValues
             }
+
+    let transposeInplace (clContext: ClContext) workGroupSize =
+        let sort = BitonicSort.sortKeyValuesInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
+            sort queue matrix.Columns matrix.Rows matrix.Values
+
+            { Context = clContext
+              RowCount = matrix.ColumnCount
+              ColumnCount = matrix.RowCount
+              Rows = matrix.Columns
+              Columns = matrix.Rows
+              Values = matrix.Values }
+
+    let transpose (clContext: ClContext) workGroupSize =
+        let transposeInplace = transposeInplace clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClCooMatrix<'a>) ->
+            let copiedMatrix =
+                { Context = clContext
+                  RowCount = matrix.RowCount
+                  ColumnCount = matrix.ColumnCount
+                  Rows = copy queue matrix.Rows
+                  Columns = copy queue matrix.Columns
+                  Values = copyData queue matrix.Values }
+
+            transposeInplace queue copiedMatrix

@@ -326,7 +326,7 @@ module EWiseAddBatched =
 
         let program = clContext.Compile(command)
 
-        let copy = ClArray.copy clContext
+        let copy = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>)
             (isUniqueBitmap: ClArray<int>)
@@ -334,7 +334,7 @@ module EWiseAddBatched =
 
             let length = isUniqueBitmap.Length
             let newValues = clContext.CreateClArray<'a>(length)
-            let newBitmap = copy processor workGroupSize isUniqueBitmap
+            let newBitmap = copy processor isUniqueBitmap
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
             let kernel = program.GetKernel()

@@ -7,14 +7,17 @@ open Microsoft.FSharp.Quotations
 
 module ClArray =
     let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
-
         let init =
-            <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) ->
+            <@
+                fun (range: Range1D)
+                    (outputBuffer: ClArray<'a>)
+                    (length: int) ->
 
-                let i = range.GlobalID0
+                    let i = range.GlobalID0
 
-                if i < length then
-                    outputBuffer.[i] <- (%initializer) i @>
+                    if i < length then
+                        outputBuffer.[i] <- (%initializer) i
+            @>
 
         let program = clContext.Compile(init)
 
@@ -23,9 +26,7 @@ module ClArray =
             let outputArray = clContext.CreateClArray(length)
 
             let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(length, workGroupSize)
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
 
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -33,26 +34,27 @@ module ClArray =
             outputArray
 
     let create (clContext: ClContext) workGroupSize =
-
         let create =
-            <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) (value: ClCell<'a>) ->
+            <@
+                fun (range: Range1D)
+                    (outputBuffer: ClArray<'a>)
+                    (length: int)
+                    (value: ClCell<'a>) ->
 
-                let i = range.GlobalID0
+                    let i = range.GlobalID0
 
-                if i < length then
-                    outputBuffer.[i] <- value.Value @>
+                    if i < length then
+                        outputBuffer.[i] <- value.Value
+            @>
 
         let program = clContext.Compile(create)
 
         fun (processor: MailboxProcessor<_>) (length: int) (value: 'a) ->
             let value = clContext.CreateClCell(value)
-
             let outputArray = clContext.CreateClArray(length)
 
             let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(length, workGroupSize)
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
 
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length value))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -61,10 +63,10 @@ module ClArray =
             outputArray
 
     let zeroCreate (clContext: ClContext) workGroupSize =
-
         let create = create clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (length: int) -> create processor length Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) (length: int) ->
+            create processor length Unchecked.defaultof<'a>
 
     let copy (clContext: ClContext) workGroupSize =
         let copy =
@@ -83,10 +85,9 @@ module ClArray =
         let program = clContext.Compile(copy)
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
-            let ndRange = Range1D.CreateValid(inputArray.Length, workGroupSize)
-
             let outputArray = clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
 
+            let ndRange = Range1D.CreateValid(inputArray.Length, workGroupSize)
             let kernel = program.GetKernel()
 
             processor.Post(
@@ -116,11 +117,9 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
-
             let outputArray = clContext.CreateClArray(outputArrayLength, allocationMode = AllocationMode.Default)
 
             let ndRange = Range1D.CreateValid(outputArray.Length, workGroupSize)
-
             let kernel = kernel.GetKernel()
 
             processor.Post(
@@ -156,7 +155,8 @@ module ClArray =
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArrayLength bunchLength inputArray vertices
+                Msg.MsgSetArguments(fun () ->
+                    kernel.KernelFunc ndRange inputArrayLength bunchLength inputArray vertices
                 )
             )
 
@@ -337,7 +337,7 @@ module ClArray =
         let copy = copy clContext workGroupSize
         let prefixSumExcludeInplace = prefixSumExcludeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let copiedArray = copy processor inputArray
             let inputArrayLength = inputArray.Length
             let totalSum = clContext.CreateClCell 0
@@ -401,7 +401,6 @@ module ClArray =
 
             bitmap
 
-
     let setPositions (clContext: ClContext) =
         let setPositions =
             <@
@@ -419,7 +418,7 @@ module ClArray =
 
         let kernel = clContext.Compile(setPositions)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArraySize: int) ->
+        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (positions: ClArray<int>) (outputArraySize: int) ->
             let ndRange = Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray = clContext.CreateClArray(outputArraySize, allocationMode = AllocationMode.Default)
@@ -439,13 +438,13 @@ module ClArray =
     ///<description>Remove duplicates form the given array.</description>
     ///<param name="clContext">Computational context</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
         let prefixSumExclude = prefixSumExclude clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+        // inputArray Should be sorted
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let bitmap = getUniqueBitmap processor workGroupSize inputArray
             let (positions, sum) = prefixSumExclude processor bitmap
 

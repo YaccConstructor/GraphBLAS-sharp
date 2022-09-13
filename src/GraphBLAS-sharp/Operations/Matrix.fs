@@ -63,7 +63,7 @@ module Matrix =
     let mask (matrix: Mat<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
     let complemented (matrix: Mat<'a>) : GraphblasEvaluation<Mask2D> = failwith "Not Implemented yet"
 
-    let switch (matrixFormat: Backend.MatrixFromat) (matrix: Mat<'a>) : GraphblasEvaluation<Mat<'a>> =
+    let switch (matrixFormat: Backend.MatrixFormat) (matrix: Mat<'a>) : GraphblasEvaluation<Mat<'a>> =
         failwith "Not Implemented yet"
 //        match matrix, matrixFormat with
 //        | MatrixCOO matrix, CSR ->
