@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,13 +12,16 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Helpers.fs" />
-    <!--Compile Include="BackendCommonTests/PrefixSumTests.fs" />
-    <Compile Include="BackendCommonTests/BitonicSortTests.fs" /-->
+    <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
     <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
     <Compile Include="BackendCommonTests/CopyTests.fs" />
     <Compile Include="BackendCommonTests/ReplicateTests.fs" />
+    <Compile Include="BackendCommonTests/PrefixSumTests.fs" />
+    <Compile Include="BackendCommonTests/ConvertTests.fs" />
+    <Compile Include="BackendCommonTests/TransposeTests.fs" />
     <Compile Include="BackendMatrixOperationsTests/MatrixEwiseAddTests.fs" />
     <Compile Include="BackendMatrixOperationsTests\MatrixEWiseAddBatchedTests.fs" />
+
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
@@ -26,6 +30,6 @@
     <!--Compile Include="MatrixOperationsTests/TransposeTests.fs" /-->
     <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
     <Compile Include="Program.fs" />
-  </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

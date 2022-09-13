@@ -6,11 +6,13 @@ open Brahma.FSharp
 let allTests =
     testList "All tests" [
 //        BackendTests.PrefixSum.tests
-//        BackendTests.BitonicSort.tests
+        BackendTests.BitonicSort.tests
         BackendTests.RemoveDuplicates.tests
         BackendTests.Copy.tests
         BackendTests.Replicate.tests
+        Backend.Convert.tests
         BackendTests.EwiseAdd.tests
+        Backend.EwiseAdd.tests2
         BackendTests.EwiseAddBatched.tests
 //        Matrix.EWiseAdd.tests
 //        Matrix.GetTuples.tests

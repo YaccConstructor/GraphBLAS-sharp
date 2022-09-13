@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend
 type IDeviceMemObject =
     abstract Dispose : MailboxProcessor<Msg> -> unit
 
-type MatrixFromat =
+type MatrixFormat =
     | CSR
     | COO
 
