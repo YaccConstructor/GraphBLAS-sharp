@@ -51,7 +51,6 @@ jobs:
           set OCL_ROOT=%NUGETDIR%\opencl-nug.0.777.77\build\native
           # Install OpenCL Runtime
           choco install opencl-intel-cpu-runtime
-
       #      - name: Download "clinfo.exe"
       #        uses: carlosperate/download-file-action@v1.0.3
       #        with:
@@ -106,7 +105,6 @@ jobs:
         run: |
           chmod +x ./.github/workflows/install-ubuntu-dependencies.sh
           sudo ./.github/workflows/install-ubuntu-dependencies.sh
-
       - name: Download "clinfo.exe"
         run: sudo apt install clinfo
 
@@ -122,24 +120,24 @@ jobs:
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
 
-#  linux-test-self-hosted:
-#    name: Linux Self-Hosted Test
-#    if: github.repository_owner == 'YaccConstructor'
-#    runs-on: self-hosted
-#    steps:
-#      - name: System Info
-#        run: lscpu
-#
-#      - uses: actions/checkout@v1
-#
-#      - name: OpenCL Info
-#        run: clinfo
-#
-#      - name: Build And Test
-#        run: |
-#          chmod +x ./build.sh
-#          ./build.sh
-#        env:
-#          # Work around https://github.com/actions/setup-dotnet/issues/29
-#          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
-#          CI: true
+  linux-test-self-hosted:
+    name: Linux Self-Hosted Test
+    if: github.repository_owner == 'YaccConstructor'
+    runs-on: self-hosted
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build And Test
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true

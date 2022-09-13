@@ -48,23 +48,23 @@ jobs:
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
 
-#  linux-test-self-hosted:
-#    name: Linux Self-Hosted Test
-#    runs-on: self-hosted
-#    steps:
-#      - name: System Info
-#        run: lscpu
-#
-#      - uses: actions/checkout@v1
-#
-#      - name: OpenCL Info
-#        run: clinfo
-#
-#      - name: Build And Test
-#        run: |
-#          chmod +x ./build.sh
-#          ./build.sh
-#        env:
-#          # Work around https://github.com/actions/setup-dotnet/issues/29
-#          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
-#          CI: true
+  linux-test-self-hosted:
+    name: Linux Self-Hosted Test
+    runs-on: self-hosted
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build And Test
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
