@@ -177,3 +177,14 @@ module CSRMatrix =
             let coo = toCOO queue matrix
             let transposedCoo = transposeInplace queue coo
             toCSRInplace queue transposedCoo
+
+    let spgemm (clContext: ClContext) workGroupSize (opAdd: Expr<'c option -> 'c option -> 'c option>) (opMul: Expr<'a option -> 'b option -> 'c option>) =
+
+        let run = SpGEMM.run clContext workGroupSize opAdd opMul
+
+        fun (queue: MailboxProcessor<_>)
+            (matrixLeft: CSRMatrix<'a>)
+            (matrixRight: CSCMatrix<'b>)
+            (mask: Mask2D) ->
+
+            run queue matrixLeft matrixRight mask
