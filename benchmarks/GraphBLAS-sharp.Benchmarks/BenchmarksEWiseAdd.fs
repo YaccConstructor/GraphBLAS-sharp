@@ -81,8 +81,8 @@ type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> Backend.IDeviceMemObjec
 
                 match Path.GetExtension matrixFilename with
                 | ".mtx" ->
-                    MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename)
-                    , MtxReader(Utils.getFullPathToMatrix datasetFolder ("squared_" + matrixFilename))
+                    MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename),
+                    MtxReader(Utils.getFullPathToMatrix datasetFolder ("squared_" + matrixFilename))
                 | _ -> failwith "Unsupported matrix format")
 
     member this.FunToBenchmark =

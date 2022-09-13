@@ -159,6 +159,21 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
+    type BatchOfSparseMatricesOfEqualSize() =
+        static let batchOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! nrows, ncols = dimension2DGenerator
+                // TODO param?
+                let! count = Gen.elements [ 2 .. 20 ]
+                let! matrices = Gen.arrayOfLength count (valuesGenerator |> Gen.array2DOfDim (nrows, ncols))
+                return matrices
+            }
+
+        static member IntType() =
+            batchOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
     type PairOfSparseMatrixOAndVectorfCompatibleSize() =
         static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
@@ -323,10 +338,11 @@ module Utils =
                 [
                     typeof<Generators.SingleMatrix>
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>
+                    typeof<Generators.BatchOfSparseMatricesOfEqualSize>
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                // typeof<Generators.ArrayOfDistinctKeys>
+//                    typeof<Generators.ArrayOfDistinctKeys>
                 ]
         }
 

@@ -11,7 +11,15 @@ module COOMatrix =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
         let setPositions =
             <@
-                fun (ndRange: Range1D) prefixSumArrayLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+                fun (ndRange: Range1D)
+                    prefixSumArrayLength
+                    (allRowsBuffer: ClArray<int>)
+                    (allColumnsBuffer: ClArray<int>)
+                    (allValuesBuffer: ClArray<'a>)
+                    (prefixSumArrayBuffer: ClArray<int>)
+                    (resultRowsBuffer: ClArray<int>)
+                    (resultColumnsBuffer: ClArray<int>)
+                    (resultValuesBuffer: ClArray<'a>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -101,7 +109,8 @@ module COOMatrix =
         let preparePositions =
             <@
                 fun (ndRange: Range1D)
-                    length (allRowsBuffer: ClArray<int>)
+                    length
+                    (allRowsBuffer: ClArray<int>)
                     (allColumnsBuffer: ClArray<int>)
                     (leftValuesBuffer: ClArray<'a>)
                     (rightValuesBuffer: ClArray<'b>)
@@ -123,6 +132,7 @@ module COOMatrix =
                             allValuesBuffer.[i + 1] <- v
                             rawPositionsBuffer.[i + 1] <- 1
                         | None -> rawPositionsBuffer.[i + 1] <- 0
+
                     elif
                         i > 0 &&
                         i < length &&
