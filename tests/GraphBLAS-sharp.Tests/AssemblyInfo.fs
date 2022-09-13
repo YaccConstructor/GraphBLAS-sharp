@@ -14,27 +14,11 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    [<Literal>]
-    let AssemblyTitle = "GraphBLAS-sharp.Tests"
-
-    [<Literal>]
-    let AssemblyProduct = "GraphBLAS-sharp"
-
-    [<Literal>]
-    let AssemblyVersion = "0.1.0"
-
-    [<Literal>]
-    let AssemblyMetadata_ReleaseDate = "2017-03-17T00:00:00.0000000"
-
-    [<Literal>]
-    let AssemblyFileVersion = "0.1.0"
-
-    [<Literal>]
-    let AssemblyInformationalVersion = "0.1.0"
-
-    [<Literal>]
-    let AssemblyMetadata_ReleaseChannel = "release"
-
-    [<Literal>]
-    let AssemblyMetadata_GitHash =
-        "bb8964b54bee133e9af64d316dc2cfee16df7f72"
+    let [<Literal>] AssemblyTitle = "GraphBLAS-sharp.Tests"
+    let [<Literal>] AssemblyProduct = "GraphBLAS-sharp"
+    let [<Literal>] AssemblyVersion = "0.1.0"
+    let [<Literal>] AssemblyMetadata_ReleaseDate = "2017-03-17T00:00:00.0000000"
+    let [<Literal>] AssemblyFileVersion = "0.1.0"
+    let [<Literal>] AssemblyInformationalVersion = "0.1.0"
+    let [<Literal>] AssemblyMetadata_ReleaseChannel = "release"
+    let [<Literal>] AssemblyMetadata_GitHash = "bb8964b54bee133e9af64d316dc2cfee16df7f72"
