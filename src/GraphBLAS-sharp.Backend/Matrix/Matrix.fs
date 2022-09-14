@@ -366,3 +366,16 @@ module Matrix =
                   ColumnPointers = resT.RowPointers
                   Values = resT.Values }
                 |> MatrixCSC
+
+    let spgemm (clContext: ClContext) workGroupSize (opAdd: Expr<'c option -> 'c option -> 'c option>) (opMul: Expr<'a option -> 'b option -> 'c option>) =
+
+        let runCSRnCSC = CSRMatrix.spgemm clContext workGroupSize opAdd opMul
+
+        fun (queue: MailboxProcessor<_>)
+            (matrix1: Matrix<'a>)
+            (matrix2: Matrix<'b>)
+            (mask: Mask2D) ->
+
+            match matrix1, matrix2, mask.IsComplemented with
+            | MatrixCSR m1, MatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> MatrixCOO
+            | _ -> failwith "Matrix formats are not matching"

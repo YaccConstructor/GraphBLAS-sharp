@@ -7,16 +7,12 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 
 module internal SpGEMM =
-    let run
+    let private calculate
         (context: ClContext)
         workGroupSize
         (opAdd: Expr<'c option -> 'c option -> 'c option>)
         (opMul: Expr<'a option -> 'b option -> 'c option>)
         =
-
-        let scatter = Scatter.runInplace context workGroupSize
-        let scatterData = Scatter.runInplace context workGroupSize
-        let scanInplace = PrefixSum.standardExcludeInplace context workGroupSize
 
         let run =
             <@
@@ -83,22 +79,27 @@ module internal SpGEMM =
                             else
                                 // Found needed index
                                 let product = (%opMul) (Some leftValues.[rowBeginIdx + i]) (Some rightValues.[middle])
-                                products.[lid] <- (%opAdd) products.[lid] product
+                                let buff = (%opAdd) products.[lid] product
+                                products.[lid] <- buff
+
+                                // Break alternative
+                                leftEdge <- rightEdge
 
                         i <- i + workGroupSize
 
                     // Sum up all products
                     let mutable step = 2
                     while step <= workGroupSize do
-                        barrierLocal ()
+                        barrierLocal()
 
                         if lid < workGroupSize / step then
                             let i = step * (lid + 1) - 1
-                            products.[i] <- (%opAdd) products.[i - (step >>> 1)] products.[i]
+                            let buff = (%opAdd) products.[i - (step >>> 1)] products.[i]
+                            products.[i] <- buff
 
                         step <- step <<< 1
 
-                    barrierLocal ()
+                    barrierLocal()
 
                     if lid = workGroupSize - 1 then
                         match products.[lid] with
@@ -113,14 +114,13 @@ module internal SpGEMM =
         fun (queue: MailboxProcessor<_>)
             (matrixLeft: CSRMatrix<'a>)
             (matrixRight: CSCMatrix<'b>)
-            (mask: Mask2D) ->
-
-            let values = context.CreateClArray<'c> mask.Rows.Length
-            let bitmap = context.CreateClArray<int> mask.Rows.Length
+            (mask: Mask2D)
+            (values: ClArray<'c>)
+            (bitmap: ClArray<int>) ->
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D(workGroupSize * mask.Rows.Length)
+            let ndRange = Range1D.CreateValid(workGroupSize * mask.NNZ, workGroupSize)
             queue.Post(Msg.MsgSetArguments(fun () ->
                 kernel.KernelFunc
                     ndRange
@@ -136,12 +136,45 @@ module internal SpGEMM =
                     bitmap))
             queue.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            let total = context.CreateClCell()
+            values, bitmap
+
+    let run
+        (context: ClContext)
+        workGroupSize
+        (opAdd: Expr<'c option -> 'c option -> 'c option>)
+        (opMul: Expr<'a option -> 'b option -> 'c option>)
+        =
+
+        let calculate = calculate context workGroupSize opAdd opMul
+
+        let scatter = Scatter.runInplace context workGroupSize
+        let scatterData = Scatter.runInplace context workGroupSize
+        let scanInplace = PrefixSum.standardExcludeInplace context workGroupSize
+
+        fun (queue: MailboxProcessor<_>)
+            (matrixLeft: CSRMatrix<'a>)
+            (matrixRight: CSCMatrix<'b>)
+            (mask: Mask2D) ->
+
+            let values = context.CreateClArray<'c>(
+                    mask.NNZ,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+            let bitmap = context.CreateClArray<int>(
+                    mask.NNZ,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let values, bitmap = calculate queue matrixLeft matrixRight mask values bitmap
+
+            let total = context.CreateClCell 0
             let positions, total = scanInplace queue bitmap total
 
             let resultNNZ =
-                let res = [| 0 |]
-                let res = queue.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(total, res, ch))
+                let res =
+                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(total, Array.zeroCreate 1, ch))
                 queue.Post(Msg.CreateFreeMsg<_>(total))
                 res.[0]
 
