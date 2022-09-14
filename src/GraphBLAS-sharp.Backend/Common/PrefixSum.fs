@@ -192,7 +192,6 @@ module internal PrefixSum =
         let update = update opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
-
             let firstVertices =
                 clContext.CreateClArray<'a>(
                     (inputArray.Length - 1) / workGroupSize + 1,

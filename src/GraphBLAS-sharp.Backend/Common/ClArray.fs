@@ -443,7 +443,7 @@ module ClArray =
         let getUniqueBitmap = getUniqueBitmap clContext
         let prefixSumExclude = prefixSumExclude clContext workGroupSize
 
-        // inputArray Should be sorted
+        // inputArray should be sorted
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
             let bitmap = getUniqueBitmap processor workGroupSize inputArray
             let (positions, sum) = prefixSumExclude processor bitmap

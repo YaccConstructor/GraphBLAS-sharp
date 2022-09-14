@@ -32,6 +32,11 @@ module Matrix =
                     Values = copyData processor m.Values
                 }
 
+    /// <summary>
+    /// Creates a new matrix, represented in CSR format, that is equal to the given one.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
         let copy = copy clContext workGroupSize
@@ -41,6 +46,25 @@ module Matrix =
             | ClMatrixCOO m -> toCSR processor m |> ClMatrixCSR
             | ClMatrixCSR _ -> copy processor matrix
 
+    /// <summary>
+    /// Returns the matrix, represented in CSR format, that is equal to the given one.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let toCSRInplace (clContext: ClContext) workGroupSize =
+        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
+            match matrix with
+            | ClMatrixCOO m -> toCSRInplace processor m |> ClMatrixCSR
+            | ClMatrixCSR _ -> matrix
+
+    /// <summary>
+    /// Creates a new matrix, represented in COO format, that is equal to the given one.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext workGroupSize
@@ -49,6 +73,20 @@ module Matrix =
             match matrix with
             | ClMatrixCOO _ -> copy processor matrix
             | ClMatrixCSR m -> toCOO processor m |> ClMatrixCOO
+
+    /// <summary>
+    /// Returns the matrix, represented in COO format, that is equal to the given one.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let toCOOInplace (clContext: ClContext) workGroupSize =
+        let toCOOInplace = CSRMatrix.toCOOInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
+            match matrix with
+            | ClMatrixCOO _ -> matrix
+            | ClMatrixCSR m -> toCOOInplace processor m |> ClMatrixCOO
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOeWiseAdd = COOMatrix.eWiseAdd clContext opAdd workGroupSize

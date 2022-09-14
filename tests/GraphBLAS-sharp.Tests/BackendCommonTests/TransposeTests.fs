@@ -16,8 +16,7 @@ let wgSize = 32
 let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
     | MatrixCOO actual ->
-        let (MatrixCOO expected) =
-            createMatrixFromArray2D MatrixFormat.COO expected2D (areEqual zero)
+        let (MatrixCOO expected) = createMatrixFromArray2D MatrixFormat.COO expected2D (areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -34,8 +33,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
     | MatrixCSR actual ->
-        let (MatrixCSR expected) =
-            createMatrixFromArray2D MatrixFormat.CSR expected2D (areEqual zero)
+        let (MatrixCSR expected) = createMatrixFromArray2D MatrixFormat.CSR expected2D (areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount

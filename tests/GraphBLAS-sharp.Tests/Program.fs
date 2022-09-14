@@ -13,7 +13,7 @@ let allTests =
         BackendTests.Convert.tests
         BackendTests.EwiseAdd.tests
         BackendTests.EwiseAdd.tests2
-//        BackendTests.EwiseAddBatched.tests
+        BackendTests.EwiseAddBatched.tests
 //        Matrix.EWiseAdd.tests
 //        Matrix.GetTuples.tests
 //        Matrix.Mxv.tests

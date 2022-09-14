@@ -6,135 +6,130 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let private expandRows (clContext: ClContext) =
-        let expandRows =
+    let private prepareRows (clContext: ClContext) workGroupSize =
+        let prepareRows =
             <@
-                fun (range: Range1D)
-                    workGroupSize
-                    (rowPointers: ClArray<int>)
-                    (rowIndices: ClArray<int>)
-                    rowCount
-                    nnz ->
+                fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
+                    let i = ndRange.GlobalID0
 
-                    let lid = range.LocalID0
-                    let groupId = range.GlobalID0 / workGroupSize
+                    if i < rowCount then
+                        let rowPointer = rowPointers.[i]
 
-                    let rowStart = rowPointers.[groupId]
-
-                    let rowEnd =
-                        if groupId <> rowCount - 1 then
-                            rowPointers.[groupId + 1]
-                        else
-                            nnz
-
-                    let rowLength = rowEnd - rowStart
-
-                    let mutable i = lid
-
-                    while i < rowLength do
-                        rowIndices.[rowStart + i] <- groupId
-                        i <- i + workGroupSize
+                        if rowPointer <> rowPointers.[i + 1] then
+                            rows.[rowPointer] <- i
             @>
 
-        let kernel = clContext.Compile(expandRows)
+        let program = clContext.Compile(prepareRows)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize rowPointers rowCount (nnz: int) ->
-            let ndRange = Range1D.CreateValid(rowCount * workGroupSize, workGroupSize)
+        let create = ClArray.create clContext workGroupSize
+        let scan = PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
 
-            let rowIndices =
-                clContext.CreateClArray(
-                    nnz,
-                    hostAccessMode = HostAccessMode.ReadWrite,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite
-                )
+        fun (processor: MailboxProcessor<_>) (rowPointers: ClArray<int>) nnz rowCount ->
+            let rows = create processor nnz 0
 
-            let kernel = kernel.GetKernel()
+            let kernel = program.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () ->
-                    kernel.KernelFunc ndRange workGroupSize rowPointers rowIndices rowCount nnz
-                )
-            )
+            let ndRange = Range1D.CreateValid(rowCount, workGroupSize)
 
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowPointers rowCount rows))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            rowIndices
+            let total = clContext.CreateClCell()
+            let _ = scan processor rows total 0
+            processor.Post(Msg.CreateFreeMsg(total))
+
+            rows
 
     let toCOO (clContext: ClContext) workGroupSize =
-        let expandRows = expandRows clContext
+        let prepare = prepareRows clContext workGroupSize
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
-            let rowIndices = expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
-            let colIndices = copy processor matrix.Columns
-            let values = copyData processor matrix.Values
+            let rows = prepare processor matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
-            {
-                Context = clContext
-                RowCount = matrix.RowCount
-                ColumnCount = matrix.ColumnCount
-                Rows = rowIndices
-                Columns = colIndices
-                Values = values
-            }
+            let cols = copy processor matrix.Columns
+            let vals = copyData processor matrix.Values
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              Columns = cols
+              Values = vals }
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
-        let expandRows = expandRows clContext
+        let prepare = prepareRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClCsrMatrix<'a>) ->
-            let rowIndices = expandRows processor workGroupSize matrix.RowPointers matrix.RowCount matrix.Values.Length
+            let rows = prepare processor matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
-            {
-                Context = clContext
-                RowCount = matrix.RowCount
-                ColumnCount = matrix.ColumnCount
-                Rows = rowIndices
-                Columns = matrix.Columns
-                Values = matrix.Values
-            }
+            processor.Post(Msg.CreateFreeMsg(matrix.RowPointers))
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              Columns = matrix.Columns
+              Values = matrix.Values }
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
-        let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
-        let toCOOInplaceRight = toCOOInplace clContext workGroupSize
-
+        let prepareRows = prepareRows clContext workGroupSize
         let eWiseCOO = COOMatrix.eWiseAdd clContext opAdd workGroupSize
         let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (m1: ClCsrMatrix<'a>) (m2: ClCsrMatrix<'b>) ->
-            let m1COO = toCOOInplaceLeft processor m1
-            let m2COO = toCOOInplaceRight processor m2
+            let m1COO =
+                { Context = clContext
+                  RowCount = m1.RowCount
+                  ColumnCount = m1.ColumnCount
+                  Rows = prepareRows processor m1.RowPointers m1.Values.Length m1.RowCount
+                  Columns = m1.Columns
+                  Values = m1.Values }
+
+            let m2COO =
+                { Context = clContext
+                  RowCount = m2.RowCount
+                  ColumnCount = m2.ColumnCount
+                  Rows = prepareRows processor m2.RowPointers m2.Values.Length m2.RowCount
+                  Columns = m2.Columns
+                  Values = m2.Values }
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
 
-            let m3 = toCSRInplace processor m3COO
-            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
-
-            m3
+            toCSRInplace processor m3COO
 
     let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
-        let toCOOInplaceLeft = toCOOInplace clContext workGroupSize
-        let toCOOInplaceRight = toCOOInplace clContext workGroupSize
-
+        let prepareRows = prepareRows clContext workGroupSize
         let eWiseCOO = COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
         let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (m1: ClCsrMatrix<'a>) (m2: ClCsrMatrix<'b>) ->
-            let m1COO = toCOOInplaceLeft processor m1
-            let m2COO = toCOOInplaceRight processor m2
+            let m1COO =
+                { Context = clContext
+                  RowCount = m1.RowCount
+                  ColumnCount = m1.ColumnCount
+                  Rows = prepareRows processor m1.RowPointers m1.Values.Length m1.RowCount
+                  Columns = m1.Columns
+                  Values = m1.Values }
+
+            let m2COO =
+                { Context = clContext
+                  RowCount = m2.RowCount
+                  ColumnCount = m2.ColumnCount
+                  Rows = prepareRows processor m2.RowPointers m2.Values.Length m2.RowCount
+                  Columns = m2.Columns
+                  Values = m2.Values }
 
             let m3COO = eWiseCOO processor m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
 
-            let m3 = toCSRInplace processor m3COO
-            processor.Post(Msg.CreateFreeMsg(m3COO.Rows))
-
-            m3
+            toCSRInplace processor m3COO
 
     let transposeInplace (clContext: ClContext) workGroupSize =
         let toCOOInplace = toCOOInplace clContext workGroupSize
