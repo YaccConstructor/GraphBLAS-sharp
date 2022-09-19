@@ -22,24 +22,7 @@
     <Compile Include="MatrixOperations\COOMatrix\COOMatrix.fs" />
     <Compile Include="MatrixOperations\COOMatrix\EWiseAddBatched.fs" />
     <Compile Include="MatrixOperations\CSRMatrix\CSRMatrix.fs" />
-    <Compile Include="MatrixOperations\CSRMatrix\SpGEMM.fs" />
-    <Compile Include="MatrixOperations\CSRMatrix\SpMV.fs" />
     <Compile Include="MatrixOperations\Matrix.fs" />
-    <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
-    <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
-    <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->
-    <!--Compile Include="Backend/COOVector/Utilities/SetPositions.fs" />
-    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Intersect.fs" />
-    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/Filter.fs" />
-    <Compile Include="Backend/COOVector/Utilities/AssignSubVector/PreparePositions.fs" />
-    <Compile Include="Backend/COOVector/Utilities/EWiseAdd/Merge.fs" />
-    <Compile Include="Backend/COOVector/Utilities/EWiseAdd/PreparePositions.fs" />
-    <Compile Include="Backend/COOVector/Utilities/FillSubVector/Merge.fs" />
-    <Compile Include="Backend/COOVector/Utilities/FillSubVector/PreparePositions.fs" />
-    <Compile Include="Backend/COOVector/EWiseAdd.fs" />
-    <Compile Include="Backend/COOVector/FillSubVector.fs" />
-    <Compile Include="Backend/COOVector/AssignSubVector.fs" /-->
-    <!--Compile Include="Backend/Mask/GetComplemented.fs" /-->
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

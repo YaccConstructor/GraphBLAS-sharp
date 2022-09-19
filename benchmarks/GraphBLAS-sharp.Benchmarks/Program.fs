@@ -11,9 +11,6 @@ let main argv =
         typeof<EWiseAddBenchmarks4BoolCOOWithoutDataTransfer>
         typeof<EWiseAddBenchmarks4BoolCSRWithoutDataTransfer>
         typeof<Concrete.EWiseAddBatchedIntBenchmarks>
-        //typeof<BFSBenchmarks>
-        //typeof<MxvBenchmarks>
-        //typeof<TransposeBenchmarks>
     |]
 
     benchmarks.Run argv |> ignore

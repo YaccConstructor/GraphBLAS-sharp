@@ -5,8 +5,7 @@ open Brahma.FSharp
 [<Tests>]
 let allTests =
     testList "All tests" [
-//        BackendTests.PrefixSum.tests
-
+        BackendTests.PrefixSum.tests
         BackendTests.BitonicSort.tests
         BackendTests.RemoveDuplicates.tests
         BackendTests.Copy.tests
@@ -15,11 +14,6 @@ let allTests =
         BackendTests.EwiseAdd.tests
         BackendTests.EwiseAdd.tests2
         BackendTests.EwiseAddBatched.tests
-//        Matrix.EWiseAdd.tests
-//        Matrix.GetTuples.tests
-//        Matrix.Mxv.tests
-//        Matrix.Transpose.tests
-//        Algo.Bfs.tests
     ]
     |> testSequenced
 

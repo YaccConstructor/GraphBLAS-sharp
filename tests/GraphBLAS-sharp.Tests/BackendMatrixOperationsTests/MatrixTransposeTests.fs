@@ -1,4 +1,4 @@
-module Backend.Transpose
+module BackendTests.Transpose
 
 open Expecto
 open Expecto.Logging

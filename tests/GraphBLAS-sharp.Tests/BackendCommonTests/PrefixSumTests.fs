@@ -1,4 +1,4 @@
-module Backend.PrefixSum
+module BackendTests.PrefixSum
 
 open Expecto
 open Expecto.Logging
