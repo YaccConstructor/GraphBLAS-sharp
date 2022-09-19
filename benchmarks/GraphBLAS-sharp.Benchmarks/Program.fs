@@ -1,3 +1,4 @@
+open BenchmarkDotNet.Configs
 open GraphBLAS.FSharp.Benchmarks
 open BenchmarkDotNet.Running
 

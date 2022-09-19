@@ -1,39 +1,37 @@
-namespace GraphBLAS.FSharp.Backend.CSRMatrix
+namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
+open Brahma.FSharp
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
 module internal GetTuples =
-    let fromMatrix (matrix: CSRMatrix<'a>) =
-        opencl {
-            if matrix.Values.Length = 0 then
-                return { RowIndices = [||]; ColumnIndices = [||]; Values = [||] }
+    let ofMatrix (matrix: ClCsrMatrix<'a>) = opencl {
+        if matrix.Values.Length = 0 then
+            return { RowIndices = [||]; ColumnIndices = [||]; Values = [||] }
+        else
+            let rowCount = matrix.RowCount
 
-            else
-                let rowCount = matrix.RowCount
-
-                let expandCsrRows =
-                    <@ fun (ndRange: Range1D) (rowPointers: int []) (outputRowIndices: int []) ->
+            let expandCsrRows =
+                <@
+                    fun (ndRange: Range1D) (rowPointers: int clarray) (outputRowIndices: int clarray) ->
 
                         let gid = ndRange.GlobalID0
 
                         if gid < rowCount then
                             for idx = rowPointers.[gid] to rowPointers.[gid + 1] - 1 do
-                                outputRowIndices.[idx] <- gid @>
+                                outputRowIndices.[idx] <- gid
+                @>
 
-                let rowIndices = Array.zeroCreate<int> matrix.Values.Length
+            let! rowIndices = ClArray.alloc<int> matrix.Values.Length
 
-                do!
-                    runCommand expandCsrRows
-                    <| fun kernelPrepare ->
-                        kernelPrepare
-                        <| Range1D(rowCount |> Utils.getDefaultGlobalSize, Utils.defaultWorkGroupSize)
-                        <| matrix.RowPointers
-                        <| rowIndices
+            do! runCommand expandCsrRows <| fun kernelPrepare ->
+                kernelPrepare
+                <| Range1D(rowCount |> Utils.getDefaultGlobalSize, Utils.defaultWorkGroupSize)
+                <| matrix.RowPointers
+                <| rowIndices
 
-                let! colIndices = Copy.copyArray matrix.ColumnIndices
-                let! vals = Copy.copyArray matrix.Values
+            let! colIndices = Copy.copyArray matrix.ColumnIndices
+            let! vals = Copy.copyArray matrix.Values
 
-                return { RowIndices = rowIndices; ColumnIndices = colIndices; Values = vals }
-        }
+            return { RowIndices = rowIndices; ColumnIndices = colIndices; Values = vals }
+    }

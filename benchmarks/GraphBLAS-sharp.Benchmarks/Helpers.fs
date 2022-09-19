@@ -39,7 +39,7 @@ type CommonConfig() =
         )
         |> ignore
 
-type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> int) =
+type MatrixShapeColumn(columnName: string, getShape: MtxReader * MtxReader -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
@@ -219,8 +219,3 @@ module Utils =
             rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
 
         rowPointers
-
-    let createMatrixFromArray2D matrixCase array isZero =
-        match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)

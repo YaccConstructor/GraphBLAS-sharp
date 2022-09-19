@@ -8,12 +8,14 @@ open GraphBLAS.FSharp.Backend.Common
 
 // TODO ?? CSR ??
 [<AbstractClass>]
+[<WarmupCount(5)>]
+[<IterationCount(10)>]
 type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, zero, op) =
     member val EWiseAddBatched = Unchecked.defaultof<MailboxProcessor<Msg> -> ClCooMatrix<'a>[] -> ClCooMatrix<'a>> with get, set
 
     member val EWiseAdd = Unchecked.defaultof<MailboxProcessor<Msg> -> ClCooMatrix<'a> -> ClCooMatrix<'a> -> ClCooMatrix<'a>> with get, set
 
-    member val HostMatrices = Unchecked.defaultof<'a[,][]> with get, set
+    member val HostMatrices = Unchecked.defaultof<COOMatrix<'a>[]> with get, set
 
     member val DeviceMatrices = Unchecked.defaultof<ClCooMatrix<'a>[]> with get, set
 
@@ -25,7 +27,7 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
     member val MatricesCount = 0 with get, set
 
     [<ParamsSource("MatricesSizeProvider")>]
-    member val MatricesSize = 0 with get, set
+    member val MatricesSize = (0 , 0) with get, set
 
     [<ParamsSource("AvaliableContextsProvider")>]
     member val Context = Unchecked.defaultof<RuntimeContext> with get, set
@@ -38,16 +40,39 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
         this.EWiseAddBatched <- EWiseAddBatched.eWiseAddBatched this.Context.ClContext op this.WgSize
         this.EWiseAdd <- COOMatrix.eWiseAdd this.Context.ClContext op this.WgSize
 
+        let matrixGenerator = gen {
+            let! indices =
+                Gen.choose (0, fst >> (fun x -> float x ** 2.) >> (fun x -> int x - 1) <| this.MatricesSize)
+                |> Gen.arrayOfLength (snd this.MatricesSize)
+                |> Gen.map (fun indices -> indices |> Array.sort |> Array.distinct)
+
+            let rows, cols =
+                indices
+                |> Array.map (fun x -> x / fst this.MatricesSize, x % fst this.MatricesSize)
+                |> Array.unzip
+
+            let! values =
+                Arb.generate<'a>
+                |> Gen.filter (fun x -> not <| isEqual x zero)
+                |> Gen.arrayOfLength indices.Length
+
+            return {
+                RowCount = fst this.MatricesSize
+                ColumnCount = fst this.MatricesSize
+                Rows = rows
+                Columns = cols
+                Values = values
+            }
+        }
+
         this.HostMatrices <-
-            Gen.array2DOf Arb.generate<'a>
-            |> Gen.sample this.MatricesSize this.MatricesCount
+            matrixGenerator
+            |> Gen.sample 1000 this.MatricesCount
             |> Array.ofList
 
         this.DeviceMatrices <-
-            Array.init this.MatricesCount <| fun i ->
-                Utils.createMatrixFromArray2D COO this.HostMatrices.[i] (isEqual zero)
+            this.HostMatrices
             |> Array.map (fun m -> m.ToDevice this.Context.ClContext)
-            |> Array.map (fun (ClMatrixCOO m) -> m)
 
     [<IterationSetup>]
     member this.GetQueue() =
@@ -65,7 +90,7 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
             this.ResultMatrix <- this.EWiseAdd this.Queue this.ResultMatrix this.DeviceMatrices.[i]
         this.Queue.PostAndReply(Msg.MsgNotifyMe)
 
-    [<GlobalSetup>]
+    [<GlobalCleanup>]
     member this.Cleanup() =
         this.DeviceMatrices |> Array.iter (fun m -> m.Dispose this.Queue)
         this.ResultMatrix.Dispose this.Queue
@@ -73,13 +98,16 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
     static member MatricesCountProvider =
         seq {
             10
-            20
+//            20
+//            30
         }
 
+    // row (col) count, max nnz
     static member MatricesSizeProvider =
         seq {
-            50
-            100
+            1000, 10_000
+//            1_000_000, 10_000_000
+//            10_000, 1_000_000
         }
 
     static member AvaliableContextsProvider =
@@ -88,7 +116,9 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
 
     static member WgSizeProvider =
         seq {
+//            64
             256
+//            1024
         }
 
 module Concrete =
