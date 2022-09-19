@@ -25,9 +25,7 @@ module Vector =
             |> Array.unzip
 
         graphblas {
-            return
-                VectorCOO
-                <| COOVector.FromTuples(size, indices, values)
+            return VectorCOO <| COOVector.FromTuples(size, indices, values)
         }
 
     // можно оставить, но с условием, что будет создаваться full vector

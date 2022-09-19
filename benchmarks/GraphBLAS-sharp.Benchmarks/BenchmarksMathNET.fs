@@ -84,7 +84,7 @@ type BinOpMathNETBenchmark<'elem
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map (fun matrixFilename ->
-            printfn "%A" matrixFilename
+            printfn $"%A{matrixFilename}"
 
             match Path.GetExtension matrixFilename with
             | ".mtx" ->

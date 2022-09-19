@@ -117,10 +117,10 @@ type COOMatrix<'a when 'a : struct> =
 
     override this.ToString() =
         [
-            sprintf "COO Matrix     %ix%i \n" this.RowCount this.ColumnCount
-            sprintf "RowIndices:    %A \n" this.Rows
-            sprintf "ColumnIndices: %A \n" this.Columns
-            sprintf "Values:        %A \n" this.Values
+            $"COO Matrix     %i{this.RowCount}x%i{this.ColumnCount} \n"
+            $"RowIndices:    %A{this.Rows} \n"
+            $"ColumnIndices: %A{this.Columns} \n"
+            $"Values:        %A{this.Values} \n"
         ]
         |> String.concat ""
 

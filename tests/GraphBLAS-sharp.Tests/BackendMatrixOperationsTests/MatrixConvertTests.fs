@@ -29,7 +29,7 @@ let makeTestCSR context q (toCOO: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMat
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
 
         let expected = createMatrixFromArray2D MatrixFormat.COO array isZero
@@ -51,7 +51,7 @@ let makeTestCOO context q (toCSR: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMat
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
 
         let expected = createMatrixFromArray2D CSR array isZero
@@ -60,8 +60,7 @@ let makeTestCOO context q (toCSR: MailboxProcessor<Msg> -> ClMatrix<'a> -> ClMat
         |> Expect.equal actual expected
 
 let testFixtures case =
-    let getCorrectnessTestName datatype =
-        $"Correctness on %s{datatype}, %A{case.MatrixCase}"
+    let getCorrectnessTestName datatype = $"Correctness on %s{datatype}, %A{case.MatrixCase}"
 
     let filterFloat x =
         System.Double.IsNaN x
@@ -72,53 +71,48 @@ let testFixtures case =
 
     match case.MatrixCase with
     | MatrixFormat.COO ->
-        [ let toCSR = Matrix.toCSR context wgSize
+        [
+            let toCSR = Matrix.toCSR context wgSize
+            makeTestCOO context q toCSR ((=) 0)
+            |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-          makeTestCOO context q toCSR ((=) 0)
-          |> testPropertyWithConfig config (getCorrectnessTestName "int")
+            let toCSR = Matrix.toCSR context wgSize
+            makeTestCOO context q toCSR filterFloat
+            |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-          let toCSR = Matrix.toCSR context wgSize
+            let toCSR = Matrix.toCSR context wgSize
+            makeTestCOO context q toCSR ((=) 0uy)
+            |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-          makeTestCOO context q toCSR filterFloat
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-          let toCSR = Matrix.toCSR context wgSize
-
-          makeTestCOO context q toCSR ((=) 0uy)
-          |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-          let toCSR = Matrix.toCSR context wgSize
-
-          makeTestCOO context q toCSR ((=) false)
-          |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+            let toCSR = Matrix.toCSR context wgSize
+            makeTestCOO context q toCSR ((=) false)
+            |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+        ]
 
     | MatrixFormat.CSR ->
-        [ let toCOO = Matrix.toCOO context wgSize
+        [
+            let toCOO = Matrix.toCOO context wgSize
+            makeTestCSR context q toCOO ((=) 0)
+            |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-          makeTestCSR context q toCOO ((=) 0)
-          |> testPropertyWithConfig config (getCorrectnessTestName "int")
+            let toCOO = Matrix.toCOO context wgSize
+            makeTestCSR context q toCOO filterFloat
+            |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-          let toCOO = Matrix.toCOO context wgSize
+            let toCOO = Matrix.toCOO context wgSize
+            makeTestCSR context q toCOO ((=) 0uy)
+            |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-          makeTestCSR context q toCOO filterFloat
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-          let toCOO = Matrix.toCOO context wgSize
-
-          makeTestCSR context q toCOO ((=) 0uy)
-          |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-          let toCOO = Matrix.toCOO context wgSize
-
-          makeTestCSR context q toCOO ((=) false)
-          |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+            let toCOO = Matrix.toCOO context wgSize
+            makeTestCSR context q toCOO ((=) false)
+            |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+        ]
 
 let tests =
     testCases
     |> List.filter (fun case ->
         let mutable e = ErrorCode.Unknown
         let device = case.ClContext.ClContext.ClDevice.Device
-
         let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
         deviceType = DeviceType.Gpu

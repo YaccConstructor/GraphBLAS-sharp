@@ -212,7 +212,7 @@ and MtxObject =
         match str with
         | "matrix" -> MtxMatrix
         | "vector" -> MtxVector
-        | _ -> failwithf "Unsupported mtx object %s" str
+        | _ -> failwithf $"Unsupported mtx object %s{str}"
 
 and MtxFormat =
     | Coordinate
@@ -221,7 +221,7 @@ and MtxFormat =
         match str with
         | "coordinate" -> Coordinate
         | "array" -> Array
-        | _ -> failwithf "Unsupported mtx format %s" str
+        | _ -> failwithf $"Unsupported mtx format %s{str}"
 
 and MtxField =
     | Real
@@ -236,7 +236,7 @@ and MtxField =
         | "complex" -> Complex
         | "integer" -> Integer
         | "pattern" -> Pattern
-        | _ -> failwithf "Unsupported mtx field %s" str
+        | _ -> failwithf $"Unsupported mtx field %s{str}"
 
 and MtxSymmetry =
     | General
@@ -249,4 +249,4 @@ and MtxSymmetry =
         | "symmetric" -> Symmetric
         | "skew-symmetric" -> SkewSymmetric
         | "hermitian" -> Hermitian
-        | _ -> failwithf "Unsupported mtx symmetry %s" str
+        | _ -> failwithf $"Unsupported mtx symmetry %s{str}"

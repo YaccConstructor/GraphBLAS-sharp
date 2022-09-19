@@ -32,6 +32,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
+
     | MatrixCSR actual ->
         let (MatrixCSR expected) = createMatrixFromArray2D MatrixFormat.CSR expected2D (areEqual zero)
 
@@ -64,7 +65,7 @@ let makeTestRegular context q (transposeFun: MailboxProcessor<Msg> -> ClMatrix<'
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
 
         let expected2D =
@@ -92,14 +93,13 @@ let makeTestTwiceTranspose context q (transposeFun: MailboxProcessor<Msg> -> ClM
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
 
         checkResult areEqual zero actual array
 
 let testFixtures case =
-    let getCorrectnessTestName datatype =
-        $"Correctness on %s{datatype}, %A{case.MatrixCase}"
+    let getCorrectnessTestName datatype = $"Correctness on %s{datatype}, %A{case.MatrixCase}"
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -108,52 +108,53 @@ let testFixtures case =
     let context = case.ClContext.ClContext
     let q = case.ClContext.Queue
 
-    [ let transposeFun = Matrix.transpose context wgSize
+    [
+        let transposeFun = Matrix.transpose context wgSize
 
-      case
-      |> makeTestRegular context q transposeFun (=) 0
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+        case
+        |> makeTestRegular context q transposeFun (=) 0
+        |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) 0
-      |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
+        case
+        |> makeTestTwiceTranspose context q transposeFun (=) 0
+        |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
 
-      let transposeFun = Matrix.transpose context wgSize
+        let transposeFun = Matrix.transpose context wgSize
 
-      case
-      |> makeTestRegular context q transposeFun areEqualFloat 0.0
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+        case
+        |> makeTestRegular context q transposeFun areEqualFloat 0.0
+        |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      case
-      |> makeTestTwiceTranspose context q transposeFun areEqualFloat 0.0
-      |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
+        case
+        |> makeTestTwiceTranspose context q transposeFun areEqualFloat 0.0
+        |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
 
-      let transposeFun = Matrix.transpose context wgSize
+        let transposeFun = Matrix.transpose context wgSize
 
-      case
-      |> makeTestRegular context q transposeFun (=) 0uy
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+        case
+        |> makeTestRegular context q transposeFun (=) 0uy
+        |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) 0uy
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
+        case
+        |> makeTestTwiceTranspose context q transposeFun (=) 0uy
+        |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
 
-      let transposeFun = Matrix.transpose context wgSize
+        let transposeFun = Matrix.transpose context wgSize
 
-      case
-      |> makeTestRegular context q transposeFun (=) false
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+        case
+        |> makeTestRegular context q transposeFun (=) false
+        |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) false
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
+        case
+        |> makeTestTwiceTranspose context q transposeFun (=) false
+        |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)")
+    ]
 
 let tests =
     testCases
     |> List.filter (fun case ->
         let mutable e = ErrorCode.Unknown
         let device = case.ClContext.ClContext.ClDevice.Device
-
         let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<OpenCL.Net.DeviceType>()
 
         deviceType = DeviceType.Gpu

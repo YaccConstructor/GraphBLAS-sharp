@@ -47,7 +47,6 @@ type MatrixShapeColumn(columnName: string, getShape: MtxReader * MtxReader -> in
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrix = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
-
             sprintf "%i" <| getShape inputMatrix
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle) : string =
@@ -57,7 +56,7 @@ type MatrixShapeColumn(columnName: string, getShape: MtxReader * MtxReader -> in
         member this.IsAvailable(summary: Summary) : bool = true
         member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase) : bool = false
         member this.IsNumeric: bool = true
-        member this.Legend: string = sprintf "%s of input matrix" columnName
+        member this.Legend: string = $"%s{columnName} of input matrix"
         member this.PriorityInCategory: int = 1
         member this.UnitType: UnitType = UnitType.Size
 
@@ -69,11 +68,9 @@ type TEPSColumn() =
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrixReader = benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader |> fst
-
             let matrixShape = inputMatrixReader.ReadMatrixShape()
 
             let (nrows, ncols) = matrixShape.RowCount, matrixShape.ColumnCount
-
             let (vertices, edges) =
                 match inputMatrixReader.Format with
                 | Coordinate -> if nrows = ncols then (nrows, matrixShape.Nnz) else (ncols, nrows)
@@ -83,7 +80,6 @@ type TEPSColumn() =
                 "NA"
             else
                 let meanTime = summary.[benchmarkCase].ResultStatistics.Mean
-
                 sprintf "%f" <| float edges / (meanTime * 1e-6)
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle) : string =
@@ -155,7 +151,6 @@ module Utils =
             |> Seq.distinctBy (fun device -> Cl.GetDeviceInfo(device, DeviceInfo.Name, &e).ToString())
             |> Seq.filter (fun device ->
                 let platform = Cl.GetDeviceInfo(device, DeviceInfo.Platform, &e).CastTo<Platform>()
-
                 let platformName = Cl.GetPlatformInfo(platform, PlatformInfo.Name, &e).ToString()
 
                 platformRegex.IsMatch platformName
@@ -180,7 +175,7 @@ module Utils =
 
                 let translator = FSQuotationToOpenCLTranslator device
 
-                let context = Brahma.FSharp.ClContext(device, translator)
+                let context = ClContext(device, translator)
 
                 let queue = context.QueueProvider.CreateQueue()
 

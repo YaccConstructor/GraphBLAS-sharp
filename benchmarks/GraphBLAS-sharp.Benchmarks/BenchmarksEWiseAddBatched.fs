@@ -6,7 +6,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 
-// TODO ?? CSR ??
+// TODO Add CSR
 [<AbstractClass>]
 [<WarmupCount(5)>]
 [<IterationCount(10)>]
@@ -98,16 +98,15 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
     static member MatricesCountProvider =
         seq {
             10
-//            20
-//            30
+            20
+            30
         }
 
     // row (col) count, max nnz
     static member MatricesSizeProvider =
         seq {
             1000, 10_000
-//            1_000_000, 10_000_000
-//            10_000, 1_000_000
+            10_000, 1_000_000
         }
 
     static member AvaliableContextsProvider =
@@ -116,8 +115,8 @@ type EWiseAddBatchedBenchmarks<'a when 'a : struct and 'a : equality>(isEqual, z
 
     static member WgSizeProvider =
         seq {
-//            64
             256
+//            64
 //            1024
         }
 

@@ -35,13 +35,13 @@ let testCases =
                 let actual = Array.zeroCreate clActual.Length
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 
-            logger.debug (eventX "Actual is {actual}" >> setField "actual" (sprintf "%A" actual))
+            logger.debug (eventX "Actual is {actual}" >> setField "actual" $"%A{actual}")
 
             let expected = array |> Array.replicate i |> Array.concat |> filterFun
 
             let actual = filterFun actual
 
-            sprintf "Array should contains %i copies of the original one" i
+            $"Array should contains %i{i} copies of the original one"
             |> Expect.sequenceEqual actual expected
 
     [

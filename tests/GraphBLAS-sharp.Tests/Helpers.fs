@@ -396,7 +396,7 @@ module Utils =
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
-            maxTest = 10
+            maxTest = 20
             startSize = 1
             endSize = 1000
             arbitrary =
@@ -475,7 +475,10 @@ module Utils =
 
         { ClContext = context; Queue = queue }
 
-    type OperationCase = { ClContext: TestContext; MatrixCase: MatrixFormat }
+    type OperationCase =
+        { ClContext: TestContext; MatrixCase: MatrixFormat }
+        override this.ToString() =
+            $"ClContext = %O{this.ClContext.ClContext}, MatrixFormat = %A{this.MatrixCase}"
 
     let testCases =
         [

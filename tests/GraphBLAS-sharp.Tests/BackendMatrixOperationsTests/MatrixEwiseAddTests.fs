@@ -72,7 +72,7 @@ let correctnessGenericTest
         cooRes.Dispose q
         res.Dispose q
 
-        logger.debug (eventX "Actual is {actual}" >> setField "actual" (sprintf "%A" actual))
+        logger.debug (eventX "Actual is {actual}" >> setField "actual" $"%A{actual}")
 
         checkResult isEqual op zero leftMatrix rightMatrix actual
 
@@ -81,7 +81,7 @@ let testFixturesEWiseAdd case =
         let config = defaultConfig
         let wgSize = 256
 
-        let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
+        let getCorrectnessTestName datatype = $"Correctness on %s{datatype}, %A{case}"
 
         let context = case.ClContext.ClContext
         let q = case.ClContext.Queue
@@ -133,7 +133,7 @@ let testFixturesEWiseAddAtLeastOne case =
         let config = defaultConfig
         let wgSize = 256
 
-        let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
+        let getCorrectnessTestName datatype = $"Correctness on %s{datatype}, %A{case}"
 
         let context = case.ClContext.ClContext
         let q = case.ClContext.Queue
@@ -185,7 +185,7 @@ let testFixturesEWiseMulAtLeastOne case =
         let config = defaultConfig
         let wgSize = 256
 
-        let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
+        let getCorrectnessTestName datatype = $"Correctness on %s{datatype}, %A{case}"
 
         let context = case.ClContext.ClContext
         let q = case.ClContext.Queue

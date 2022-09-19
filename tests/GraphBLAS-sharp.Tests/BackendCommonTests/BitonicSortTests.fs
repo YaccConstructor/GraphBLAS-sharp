@@ -15,7 +15,7 @@ let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (array: ('n * 'n
 
         logger.debug (
             eventX "Initial size is {size}"
-            >> setField "size" (sprintf "%A" array.Length)
+            >> setField "size" $"%A{array.Length}"
         )
 
         let rows, cols, vals = Array.unzip3 array
@@ -45,21 +45,13 @@ let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (array: ('n * 'n
             |> Array.sortBy ((<|||) projection)
             |> Array.unzip3
 
-        (sprintf "Row arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualRows expectedRows rows)
+        $"Row arrays should be equal. Actual is \n%A{actualRows}, expected \n%A{expectedRows}, input is \n%A{rows}"
         |> compareArrays (=) actualRows expectedRows
 
-        (sprintf
-            "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
-            actualCols
-            expectedCols
-            cols)
+        $"Column arrays should be equal. Actual is \n%A{actualCols}, expected \n%A{expectedCols}, input is \n%A{cols}"
         |> compareArrays (=) actualCols expectedCols
 
-        (sprintf
-            "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
-            actualVals
-            expectedVals
-            vals)
+        $"Value arrays should be equal. Actual is \n%A{actualVals}, expected \n%A{expectedVals}, input is \n%A{vals}"
         |> compareArrays (=) actualVals expectedVals
 
 let testFixtures<'a when 'a: equality> config wgSize context q =
@@ -67,7 +59,7 @@ let testFixtures<'a when 'a: equality> config wgSize context q =
         BitonicSort.sortKeyValuesInplace context wgSize
 
     makeTest context q sort
-    |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
+    |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
 let tests =
     let context = defaultContext.ClContext
@@ -75,10 +67,11 @@ let tests =
 
     let wgSize = 32
     let q = defaultContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ testFixtures<int> config wgSize context q
-      testFixtures<float> config wgSize context q
-      testFixtures<byte> config wgSize context q
-      testFixtures<bool> config wgSize context q ]
+    [
+        testFixtures<int> config wgSize context q
+        testFixtures<float> config wgSize context q
+        testFixtures<byte> config wgSize context q
+        testFixtures<bool> config wgSize context q
+    ]
     |> testList "Backend.Common.BitonicSort tests"

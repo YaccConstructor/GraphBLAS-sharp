@@ -41,7 +41,7 @@ let checkResult isEqual op zero (arrays: 'a[,][]) (actual: COOMatrix<'a>) =
                 (isEqual actual2D.[i, j] expected2D.[i, j])
                 $"Values should be the same. Actual is {actual2D.[i, j]}, expected {expected2D.[i, j]}."
 
-// TODO ?? CSR ??
+// TODO Add CSR
 let correctnessGenericTest2
     (zero: 'a)
     (op: 'a -> 'a -> 'a)
@@ -75,7 +75,7 @@ let correctnessGenericTest2
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
         checkResult isEqual op zero arrays actual
 
@@ -90,7 +90,6 @@ let testFixturesEWiseAddBatched (case: Utils.OperationCase) =
         let q = case.ClContext.Queue
 
         let intAdd = EWiseAddBatched.eWiseAddBatched context StandardOperations.intSum wgSize
-        let intToCOO = Matrix.toCOO context wgSize
 
         case
         |> correctnessGenericTest2 0 (+) intAdd (=) q

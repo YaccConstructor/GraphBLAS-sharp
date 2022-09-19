@@ -25,7 +25,6 @@ let testCases =
 
             let actual =
                 let clActual = removeDuplicates_wg_2 q clArray
-
                 let actual = Array.zeroCreate clActual.Length
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 

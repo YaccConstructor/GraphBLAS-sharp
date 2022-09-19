@@ -459,53 +459,23 @@ module EWiseAddBatched =
         let copyData = ClArray.copy clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrices: ClCooMatrix<'a>[])  ->
-//            let tmpMatrices = Array.copy matrices |> Array.map (fun m -> getTuples queue m)
-//            let mutable length = tmpMatrices.Length
-//            while length <> 1 do
-//                let ceiled = ceil >> int <| float length / float 2
-//                let isEven = length % 2 = 0
-//                queue.PostAndReply <| Msg.MsgNotifyMe
-//                let syncMsgs = Msg.CreateBarrierMessages ceiled
-//                let queues = Array.create ceiled (clContext.QueueProvider.CreateQueue())
-//                for i in 0 .. ceiled - 1 do
-//                    let mR, mC, mV =
-//                        if not isEven && i = ceiled - 1 then
-//                            tmpMatrices.[i * 2].RowIndices,
-//                            tmpMatrices.[i * 2].ColumnIndices,
-//                            tmpMatrices.[i * 2].Values
-//                        else
-//                            merge
-//                                queues.[i]
-//                                tmpMatrices.[i * 2].RowIndices
-//                                tmpMatrices.[i * 2].ColumnIndices
-//                                tmpMatrices.[i * 2].Values
-//                                tmpMatrices.[i * 2 + 1].RowIndices
-//                                tmpMatrices.[i * 2 + 1].ColumnIndices
-//                                tmpMatrices.[i * 2 + 1].Values
-//
-//                    tmpMatrices.[i] <-
-//                        {
-//                            Context = clContext
-//                            RowIndices = mR
-//                            ColumnIndices = mC
-//                            Values = mV
-//                        }
-//
-//                    queues.[i].Post <| syncMsgs.[i]
-//
-//                length <- ceiled
+            let mutable mergedRows, mergedColumns, mergedValues =
+                copy queue matrices.[0].Rows,
+                copy queue matrices.[0].Columns,
+                copyData queue matrices.[0].Values
 
-            let mutable mergedRows, mergedColumns, mergedValues = (copy queue matrices.[0].Rows, copy queue matrices.[0].Columns, copyData queue matrices.[0].Values)
             for i in 1 .. matrices.Length - 1 do
-                let mR, mC, mV = merge queue mergedRows mergedColumns mergedValues matrices.[i].Rows matrices.[i].Columns matrices.[i].Values
-                queue.PostAndReply(Msg.MsgNotifyMe)
+                let tmpRows, tmpCols, tmpValues =
+                    merge queue mergedRows mergedColumns mergedValues matrices.[i].Rows matrices.[i].Columns matrices.[i].Values
+
                 queue.Post(Msg.CreateFreeMsg<_>(mergedRows))
                 queue.Post(Msg.CreateFreeMsg<_>(mergedColumns))
                 queue.Post(Msg.CreateFreeMsg<_>(mergedValues))
                 queue.PostAndReply(Msg.MsgNotifyMe)
-                mergedRows <- mR
-                mergedColumns <- mC
-                mergedValues <- mV
+
+                mergedRows <- tmpRows
+                mergedColumns <- tmpCols
+                mergedValues <- tmpValues
 
             let combinedIndices = combineIndices queue mergedRows mergedColumns matrices.[0].ColumnCount
             queue.Post(Msg.CreateFreeMsg<_>(mergedRows))
