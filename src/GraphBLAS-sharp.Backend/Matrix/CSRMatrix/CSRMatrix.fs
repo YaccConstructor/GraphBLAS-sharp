@@ -79,12 +79,13 @@ module CSRMatrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
-    let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    ///<remarks>Old version</remarks>
+    let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
         let prepareRows = prepareRows clContext workGroupSize
 
         let eWiseCOO =
-            COOMatrix.eWiseAdd clContext opAdd workGroupSize
+            COOMatrix.elementwise clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
@@ -113,12 +114,13 @@ module CSRMatrix =
 
             toCSRInplace processor m3COO
 
-    let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    ///<remarks>Old version</remarks>
+    let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
         let prepareRows = prepareRows clContext workGroupSize
 
         let eWiseCOO =
-            COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize
+            COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
