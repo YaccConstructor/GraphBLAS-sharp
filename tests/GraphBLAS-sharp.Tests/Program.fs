@@ -18,6 +18,8 @@ let allTests =
           Backend.Copy.tests
           Backend.Replicate.tests
           Backend.Elementwise.tests
+          Backend.Elementwise.tests2
+          Backend.Elementwise.tests3
           Backend.Transpose.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests

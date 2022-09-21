@@ -96,7 +96,8 @@ let testFixturesEWiseAdd case =
       let q = case.ClContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd = Matrix.elementwise context boolSum wgSize
+      let boolAdd =
+          Matrix.elementwise context boolSum wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -112,7 +113,8 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd = Matrix.elementwise context floatSum wgSize
+      let floatAdd =
+          Matrix.elementwise context floatSum wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -120,7 +122,8 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd = Matrix.elementwise context byteSum wgSize
+      let byteAdd =
+          Matrix.elementwise context byteSum wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 

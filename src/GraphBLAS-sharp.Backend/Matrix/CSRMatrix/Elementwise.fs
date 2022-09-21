@@ -16,28 +16,33 @@ module Elementwise =
                 let i = ndRange.GlobalID0
 
                 //Init with zeroes
-                if i < numberOfRows then rowPointers.[i] <- 0
+                if i < numberOfRows then
+                    rowPointers.[i] <- 0
+                elif i = numberOfRows then
+                    rowPointers.[i] <- nnz
 
                 if i < nonZeroRows then
                     rowPointers.[compressedRows.[i]] <-
-                        if i = nonZeroRows - 1 then nnz - compressedRowPointers.[i] else compressedRowPointers.[i + 1] - compressedRowPointers.[i] @>
+                        compressedRowPointers.[i + 1]
+                        - compressedRowPointers.[i] @>
 
-        let sum = ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let sum =
+            ClArray.prefixSumExcludeInplace clContext workGroupSize
 
         let kernel = clContext.Compile(kernel)
 
         fun (processor: MailboxProcessor<_>) (numberOfRows: int) (nnz: int) (compressedRowPointers: ClArray<int>) (compressedRows: ClArray<int>) ->
 
             let rowPointers =
-                    clContext.CreateClArray<int>(
-                        numberOfRows,
-                        hostAccessMode = HostAccessMode.NotAccessible,
-                        deviceAccessMode = DeviceAccessMode.ReadWrite,
-                        allocationMode = AllocationMode.Default
-                    )
+                clContext.CreateClArray<int>(
+                    numberOfRows + 1,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
 
             let ndRange =
-                    Range1D.CreateValid(numberOfRows, workGroupSize)
+                Range1D.CreateValid(numberOfRows + 1, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -46,7 +51,7 @@ module Elementwise =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            compressedRowPointers.Length
+                            compressedRows.Length
                             nnz
                             numberOfRows
                             compressedRowPointers
@@ -56,11 +61,9 @@ module Elementwise =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            processor.PostAndReply(Msg.MsgNotifyMe)
-
             let sumCell = clContext.CreateClCell 0
             sum processor rowPointers sumCell |> ignore
-            //processor.Post(Msg.CreateFreeMsg<_>(sumCell))
+            processor.Post(Msg.CreateFreeMsg<_>(sumCell))
 
             rowPointers
 
@@ -71,38 +74,36 @@ module Elementwise =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rowPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
+
                 if (i < length - 1
-                   && allColumns.[i] = allColumns.[i + 1]
-                    && isEndOfRowBitmap.[i] = 0)
-                then
-                    rawPositions.[i] <- 0
+                    && allColumns.[i] = allColumns.[i + 1]
+                    && isEndOfRowBitmap.[i] = 0) then
+                    rowPositions.[i] <- 0
 
                     match (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i]) with
                     | Some v ->
                         allValues.[i + 1] <- v
-                        rawPositions.[i + 1] <- 1
-                    | None -> rawPositions.[i + 1] <- 0
+                        rowPositions.[i + 1] <- 1
+                    | None -> rowPositions.[i + 1] <- 0
                 elif i = 0
                      || (i < length
-                     && (allColumns.[i] <> allColumns.[i - 1]
-                        || isEndOfRowBitmap.[i - 1] = 1)
-                     )
-                then
+                         && (allColumns.[i] <> allColumns.[i - 1]
+                             || isEndOfRowBitmap.[i - 1] = 1)) then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Some leftValues.[i]) None with
                         | Some v ->
                             allValues.[i] <- v
-                            rawPositions.[i] <- 1
-                        | None -> rawPositions.[i] <- 0
+                            rowPositions.[i] <- 1
+                        | None -> rowPositions.[i] <- 0
                     else
                         match (%opAdd) None (Some rightValues.[i]) with
                         | Some v ->
                             allValues.[i] <- v
-                            rawPositions.[i] <- 1
-                        | None -> rawPositions.[i] <- 0 @>
+                            rowPositions.[i] <- 1
+                        | None -> rowPositions.[i] <- 0 @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -112,7 +113,7 @@ module Elementwise =
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
 
-            let rawPositions =
+            let rowPositions =
                 clContext.CreateClArray<int>(
                     length,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -140,13 +141,13 @@ module Elementwise =
                             leftValues
                             rightValues
                             allValues
-                            rawPositions
+                            rowPositions
                             isEndOfRow
                             isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            rawPositions, allValues
+            rowPositions, allValues
 
     let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -155,37 +156,36 @@ module Elementwise =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rowPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
+
                 if (i < length - 1
-                   && allColumns.[i] = allColumns.[i + 1]
-                    && isEndOfRowBitmap.[i] = 0)
-                then
-                    rawPositions.[i] <- 0
+                    && allColumns.[i] = allColumns.[i + 1]
+                    && isEndOfRowBitmap.[i] = 0) then
+                    rowPositions.[i] <- 0
 
                     match (%opAdd) (Both(leftValues.[i + 1], rightValues.[i])) with
                     | Some v ->
                         allValues.[i + 1] <- v
-                        rawPositions.[i + 1] <- 1
-                    | None -> rawPositions.[i + 1] <- 0
+                        rowPositions.[i + 1] <- 1
+                    | None -> rowPositions.[i + 1] <- 0
                 elif i = 0
                      || (i < length
-                     && allColumns.[i] <> allColumns.[i - 1]
-                     || isEndOfRowBitmap.[i - 1] = 1)
-                then
+                         && (allColumns.[i] <> allColumns.[i - 1]
+                             || isEndOfRowBitmap.[i - 1] = 1)) then
                     if isLeftBitmap.[i] = 1 then
                         match (%opAdd) (Left leftValues.[i]) with
                         | Some v ->
                             allValues.[i] <- v
-                            rawPositions.[i] <- 1
-                        | None -> rawPositions.[i] <- 0
+                            rowPositions.[i] <- 1
+                        | None -> rowPositions.[i] <- 0
                     else
                         match (%opAdd) (Right rightValues.[i]) with
                         | Some v ->
                             allValues.[i] <- v
-                            rawPositions.[i] <- 1
-                        | None -> rawPositions.[i] <- 0 @>
+                            rowPositions.[i] <- 1
+                        | None -> rowPositions.[i] <- 0 @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -195,7 +195,7 @@ module Elementwise =
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
 
-            let rawPositions =
+            let rowPositions =
                 clContext.CreateClArray<int>(
                     length,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -223,13 +223,13 @@ module Elementwise =
                             leftValues
                             rightValues
                             allValues
-                            rawPositions
+                            rowPositions
                             isEndOfRow
                             isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            rawPositions, allValues
+            rowPositions, allValues
 
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
@@ -240,8 +240,7 @@ module Elementwise =
 
                 if i = prefixSumArrayLength - 1
                    || i < prefixSumArrayLength
-                      && prefixSumArray.[i]
-                         <> prefixSumArray.[i + 1] then
+                      && prefixSumArray.[i] <> prefixSumArray.[i + 1] then
                     let index = prefixSumArray.[i]
 
                     resultColumns.[index] <- allColumns.[i]
@@ -261,11 +260,9 @@ module Elementwise =
 
             let _, r = sum processor positions resultLengthGpu
 
-            processor.PostAndReply(Msg.MsgNotifyMe)
-
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
             let resultLength = resultLength.[0]
-            //processor.Post(Msg.CreateFreeMsg<_>(r))
+            processor.Post(Msg.CreateFreeMsg<_>(r))
 
             let resultColumns =
                 clContext.CreateClArray<int>(
@@ -308,26 +305,30 @@ module Elementwise =
     let private getCompressedRowPointers (clContext: ClContext) workGroupSize =
 
         let getCompressedRowPointers =
-            <@ fun (ndRange: Range1D) arrayLength (allRows: ClArray<int>) (positions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (rowPointers: ClArray<int>) (compressedRows: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) allRowsLength nonZeroRows nnz (allRows: ClArray<int>) (positions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (rowPointers: ClArray<int>) (compressedRows: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
                 if i > 0
-                    && i < arrayLength
-                    && isEndOfRowBitmap.[i]
-                        <> isEndOfRowBitmap.[i - 1] then
+                   && i < allRowsLength
+                   && isEndOfRowBitmap.[i] <> isEndOfRowBitmap.[i - 1] then
                     let row = isEndOfRowBitmap.[i]
 
                     rowPointers.[row] <- positions.[i]
                     compressedRows.[row] <- allRows.[i]
                 elif i = 0 then
                     rowPointers.[0] <- 0
-                    compressedRows.[0] <- allRows.[0] @>
+                    compressedRows.[0] <- allRows.[0]
+                elif i = allRowsLength then
+                    rowPointers.[nonZeroRows] <- nnz @>
 
-        let kernel = clContext.Compile(getCompressedRowPointers)
-        let sum = ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let kernel =
+            clContext.Compile(getCompressedRowPointers)
 
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (positions: ClArray<int>) (isRowEnd: ClArray<int>) ->
+        let sum =
+            ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) nnz (allRows: ClArray<int>) (positions: ClArray<int>) (isRowEnd: ClArray<int>) ->
 
             let nonZeroRows = Array.zeroCreate 1
 
@@ -337,11 +338,11 @@ module Elementwise =
 
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(rowEndSum, nonZeroRows, ch))
             let nonZeroRows = nonZeroRows.[0]
-            //processor.Post(Msg.CreateFreeMsg<_>(rowEndSum))
+            processor.Post(Msg.CreateFreeMsg<_>(rowEndSum))
 
             let compressedRowPointers =
                 clContext.CreateClArray<int>(
-                    nonZeroRows,
+                    nonZeroRows + 1,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
@@ -356,7 +357,7 @@ module Elementwise =
                 )
 
             let ndRange =
-                Range1D.CreateValid(allRows.Length, workGroupSize)
+                Range1D.CreateValid(allRows.Length + 1, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -366,6 +367,8 @@ module Elementwise =
                         kernel.KernelFunc
                             ndRange
                             allRows.Length
+                            nonZeroRows
+                            nnz
                             allRows
                             positions
                             isRowEnd
@@ -379,43 +382,30 @@ module Elementwise =
 
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
         let localArraySize = workGroupSize + 2
+
         let merge =
-            <@ fun
-                (ndRange: Range1D)
-                rows
-                firstNNZ
-                secondNNZ
-                (firstRowPointers: ClArray<int>)
-                (firstColumns: ClArray<int>)
-                (firstValues: ClArray<'a>)
-                (secondRowPointers: ClArray<int>)
-                (secondColumns: ClArray<int>)
-                (secondValues: ClArray<'b>)
-                (allRows: ClArray<int>)
-                (allColumns: ClArray<int>)
-                (leftMergedValues: ClArray<'a>)
-                (rightMergedValues: ClArray<'b>)
-                (isEndOfRowBitmap: ClArray<int>)
-                (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rows (firstRowPointers: ClArray<int>) (firstColumns: ClArray<int>) (firstValues: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumns: ClArray<int>) (secondValues: ClArray<'b>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftMergedValues: ClArray<'a>) (rightMergedValues: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
-                    let globalID = ndRange.GlobalID0
-                    let localID = ndRange.LocalID0
-                    let MaxVal = Int32.MaxValue
+                let globalID = ndRange.GlobalID0
+                let localID = ndRange.LocalID0
+                let MaxVal = Int32.MaxValue
 
-                    let row = globalID / workGroupSize
+                let row = globalID / workGroupSize
 
+                if row < rows then
                     let firstOffset = firstRowPointers.[row]
                     let secondOffset = secondRowPointers.[row]
                     let resOffset = firstOffset + secondOffset
 
-                    let firstRowEnd = if row = rows - 1 then firstNNZ else firstRowPointers.[row + 1]
-                    let secondRowEnd = if row = rows - 1 then secondNNZ else secondRowPointers.[row + 1]
+                    let firstRowEnd = firstRowPointers.[row + 1]
+                    let secondRowEnd = secondRowPointers.[row + 1]
 
                     let firstRowLength = firstRowEnd - firstOffset
                     let secondRowLength = secondRowEnd - secondOffset
                     let resRowLength = firstRowLength + secondRowLength
 
-                    let workBlockCount = (resRowLength + workGroupSize - 1) / workGroupSize
+                    let workBlockCount =
+                        (resRowLength + workGroupSize - 1) / workGroupSize
 
                     //Offsets of a sliding window, computed with maxFirstIndex and maxSecondIndex on each iteration
                     let mutable firstLocalOffset = 0
@@ -434,8 +424,11 @@ module Elementwise =
                         let mutable maxFirstIndexPerThread = 0
                         let mutable maxSecondIndexPerThread = 0
 
-                        let firstBufferSize = min (firstRowLength - firstLocalOffset) workGroupSize
-                        let secondBufferSize = min (secondRowLength - secondLocalOffset) workGroupSize
+                        let firstBufferSize =
+                            min (firstRowLength - firstLocalOffset) workGroupSize
+
+                        let secondBufferSize =
+                            min (secondRowLength - secondLocalOffset) workGroupSize
 
                         if localID = 0 then
                             maxFirstIndex <- 0
@@ -447,6 +440,7 @@ module Elementwise =
                                 firstRowLocal.[j] <- firstColumns.[firstOffset + j - 1 + firstLocalOffset]
                             else
                                 firstRowLocal.[j] <- MaxVal
+
                             if j > 0 && j - 1 < secondBufferSize then
                                 secondRowLocal.[j] <- secondColumns.[secondOffset + j - 1 + secondLocalOffset]
                             else
@@ -454,11 +448,16 @@ module Elementwise =
 
                         barrierFull ()
 
-                        let workSize = min (firstBufferSize + secondBufferSize) workGroupSize
+                        let workSize =
+                            min (firstBufferSize + secondBufferSize) workGroupSize
 
                         let mutable res = MaxVal
 
-                        let i = if dir then localID else workGroupSize - 1 - localID
+                        let i =
+                            if dir then
+                                localID
+                            else
+                                workGroupSize - 1 - localID
 
                         //Binary search for intersection on diagonal
                         //X axis points from left to right and corresponds to the first array
@@ -473,7 +472,10 @@ module Elementwise =
 
                             while (r - l > 1) do
                                 let mid = (r - l) / 2
-                                let ans = secondRowLocal.[y - l - mid] > firstRowLocal.[x + l + mid]
+
+                                let ans =
+                                    secondRowLocal.[y - l - mid] > firstRowLocal.[x + l + mid]
+
                                 if ans then
                                     l <- l + mid
                                 else
@@ -482,30 +484,45 @@ module Elementwise =
                             let resX = x + l
                             let resY = y - l
 
-                            let outputIndex = resOffset + firstLocalOffset + secondLocalOffset + i
+                            let outputIndex =
+                                resOffset
+                                + firstLocalOffset
+                                + secondLocalOffset
+                                + i
 
                             if resY = 1 || resX = 0 then
                                 if resY = 1 then
                                     res <- firstRowLocal.[resX]
-                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1]
+
+                                    leftMergedValues.[outputIndex] <-
+                                        firstValues.[firstOffset + firstLocalOffset + resX - 1]
+
                                     isLeftBitmap.[outputIndex] <- 1
                                     maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
                                 else
                                     res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
+
+                                    rightMergedValues.[outputIndex] <-
+                                        secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
+
                                     isLeftBitmap.[outputIndex] <- 0
                                     maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
+                            else if secondRowLocal.[resY - 1] > firstRowLocal.[resX] then
+                                res <- secondRowLocal.[resY - 1]
+
+                                rightMergedValues.[outputIndex] <-
+                                    secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
+
+                                isLeftBitmap.[outputIndex] <- 0
+                                maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
                             else
-                                if secondRowLocal.[resY - 1] > firstRowLocal.[resX] then
-                                    res <- secondRowLocal.[resY - 1]
-                                    rightMergedValues.[outputIndex] <- secondValues.[secondOffset + secondLocalOffset + resY - 1 - 1]
-                                    isLeftBitmap.[outputIndex] <- 0
-                                    maxSecondIndexPerThread <- max maxSecondIndexPerThread (resY - 1)
-                                else
-                                    res <- firstRowLocal.[resX]
-                                    leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1]
-                                    isLeftBitmap.[outputIndex] <- 1
-                                    maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
+                                res <- firstRowLocal.[resX]
+
+                                leftMergedValues.[outputIndex] <-
+                                    firstValues.[firstOffset + firstLocalOffset + resX - 1]
+
+                                isLeftBitmap.[outputIndex] <- 1
+                                maxFirstIndexPerThread <- max maxFirstIndexPerThread resX
 
                             allRows.[outputIndex] <- row
                             allColumns.[outputIndex] <- res
@@ -513,8 +530,11 @@ module Elementwise =
 
                         //Moving the window of search
                         if block < workBlockCount - 1 then
-                            atomic (max) maxFirstIndex maxFirstIndexPerThread |> ignore
-                            atomic (max) maxSecondIndex maxSecondIndexPerThread |> ignore
+                            atomic (max) maxFirstIndex maxFirstIndexPerThread
+                            |> ignore
+
+                            atomic (max) maxSecondIndex maxSecondIndexPerThread
+                            |> ignore
 
                             barrierFull ()
 
@@ -524,7 +544,11 @@ module Elementwise =
                             secondLocalOffset <- secondLocalOffset + maxSecondIndex
 
                             barrierLocal ()
-                        else if i = workSize - 1 then isEndOfRowBitmap.[resOffset + firstLocalOffset + secondLocalOffset + i] <- 1 @>
+                        else if i = workSize - 1 then
+                            isEndOfRowBitmap.[resOffset
+                                              + firstLocalOffset
+                                              + secondLocalOffset
+                                              + i] <- 1 @>
 
         let kernel = clContext.Compile(merge)
 
@@ -583,7 +607,7 @@ module Elementwise =
                 )
 
             let ndRange =
-                Range1D.CreateValid(matrixLeftRowPointers.Length * workGroupSize, workGroupSize)
+                Range1D.CreateValid((matrixLeftRowPointers.Length - 1) * workGroupSize, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -592,9 +616,7 @@ module Elementwise =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            matrixLeftRowPointers.Length
-                            matrixLeftValues.Length
-                            matrixRightValues.Length
+                            (matrixLeftRowPointers.Length - 1)
                             matrixLeftRowPointers
                             matrixLeftColumns
                             matrixLeftValues
@@ -624,11 +646,14 @@ module Elementwise =
         let preparePositions =
             preparePositions clContext opAdd Utils.defaultWorkGroupSize
 
-        let setPositions = setPositions<'c> clContext Utils.defaultWorkGroupSize
+        let setPositions =
+            setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        let getCompressedRowPointers = getCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let getCompressedRowPointers =
+            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
-        let expandCompressedRowPointers = expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let expandCompressedRowPointers =
+            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -642,12 +667,8 @@ module Elementwise =
                     matrixRight.Columns
                     matrixRight.Values
 
-            queue.PostAndReply(Msg.MsgNotifyMe)
-
             let positions, allValues =
                 preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
-
-            queue.PostAndReply(Msg.MsgNotifyMe)
 
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
@@ -655,18 +676,18 @@ module Elementwise =
             let resultColumns, resultValues, positions, positionsSum =
                 setPositions queue allColumns allValues positions
 
-            queue.PostAndReply(Msg.MsgNotifyMe)
-
             //Getting DCSR row pointers
             let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue allRows positions isRowEnd
-
-            queue.PostAndReply(Msg.MsgNotifyMe)
+                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
 
             //Converting DCSR to CSR
-            let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
-
-            queue.PostAndReply(Msg.MsgNotifyMe)
+            let rowPointers =
+                expandCompressedRowPointers
+                    queue
+                    matrixLeft.RowCount
+                    resultValues.Length
+                    compressedRowPointers
+                    compressedRows
 
             queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
             queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
@@ -682,8 +703,7 @@ module Elementwise =
               ColumnCount = matrixLeft.ColumnCount
               RowPointers = rowPointers
               Columns = resultColumns
-              Values = resultValues
-              }
+              Values = resultValues }
 
     let elementwiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -696,11 +716,14 @@ module Elementwise =
         let preparePositions =
             preparePositionsAtLeastOne clContext opAdd Utils.defaultWorkGroupSize
 
-        let setPositions = setPositions<'c> clContext Utils.defaultWorkGroupSize
+        let setPositions =
+            setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        let getCompressedRowPointers = getCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let getCompressedRowPointers =
+            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
-        let expandCompressedRowPointers = expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let expandCompressedRowPointers =
+            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -714,12 +737,8 @@ module Elementwise =
                     matrixRight.Columns
                     matrixRight.Values
 
-            queue.PostAndReply(Msg.MsgNotifyMe)
-
             let positions, allValues =
                 preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
-
-            queue.PostAndReply(Msg.MsgNotifyMe)
 
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
@@ -727,16 +746,16 @@ module Elementwise =
             let resultColumns, resultValues, positions, positionsSum =
                 setPositions queue allColumns allValues positions
 
-            queue.PostAndReply(Msg.MsgNotifyMe)
-
             let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue allRows positions isRowEnd
+                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
 
-            queue.PostAndReply(Msg.MsgNotifyMe)
-
-            let rowPointers = expandCompressedRowPointers queue matrixLeft.RowCount resultValues.Length compressedRowPointers compressedRows
-
-            queue.PostAndReply(Msg.MsgNotifyMe)
+            let rowPointers =
+                expandCompressedRowPointers
+                    queue
+                    matrixLeft.RowCount
+                    resultValues.Length
+                    compressedRowPointers
+                    compressedRows
 
             queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
             queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
@@ -752,5 +771,4 @@ module Elementwise =
               ColumnCount = matrixLeft.ColumnCount
               RowPointers = rowPointers
               Columns = resultColumns
-              Values = resultValues
-              }
+              Values = resultValues }
