@@ -163,7 +163,7 @@ and CSRMatrix<'a> =
               convertedMatrix
               |> (snd >> List.unzip >> snd)
               |> List.toArray
-          RowPointers = (convertedMatrix |> fst |> List.rev |> List.toArray)
+          RowPointers = convertedMatrix |> fst |> List.rev |> List.toArray
           RowCount = rowsCount
           ColumnCount = columnsCount }
 
