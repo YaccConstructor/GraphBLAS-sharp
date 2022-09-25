@@ -7,8 +7,8 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
-module Elementwise =
-    let private expandCompressedRowPointers (clContext: ClContext) workGroupSize =
+module internal Elementwise =
+    let expandCompressedRowPointers (clContext: ClContext) workGroupSize =
 
         let kernel =
             <@ fun (ndRange: Range1D) nonZeroRows nnz numberOfRows (compressedRowPointers: ClArray<int>) (compressedRows: ClArray<int>) (rowPointers: ClArray<int>) ->
@@ -67,7 +67,7 @@ module Elementwise =
 
             rowPointers
 
-    let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -149,7 +149,7 @@ module Elementwise =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             rowPositions, allValues
 
-    let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
@@ -231,7 +231,7 @@ module Elementwise =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             rowPositions, allValues
 
-    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
             <@ fun (ndRange: Range1D) prefixSumArrayLength (allColumns: ClArray<int>) (allValues: ClArray<'a>) (prefixSumArray: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'a>) ->
@@ -302,7 +302,7 @@ module Elementwise =
 
             resultColumns, resultValues, positions, resultLength
 
-    let private getCompressedRowPointers (clContext: ClContext) workGroupSize =
+    let getCompressedRowPointers (clContext: ClContext) workGroupSize =
 
         let getCompressedRowPointers =
             <@ fun (ndRange: Range1D) allRowsLength nonZeroRows nnz (allRows: ClArray<int>) (positions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (rowPointers: ClArray<int>) (compressedRows: ClArray<int>) ->
@@ -380,7 +380,7 @@ module Elementwise =
 
             compressedRowPointers, compressedRows, nonZeroRows
 
-    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
+    let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
         let localArraySize = workGroupSize + 2
 
         let merge =
@@ -634,141 +634,3 @@ module Elementwise =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allRows, allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
-
-    let elementwise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<'a option -> 'b option -> 'c option>)
-        workGroupSize
-        =
-
-        let merge = merge clContext workGroupSize
-
-        let preparePositions =
-            preparePositions clContext opAdd Utils.defaultWorkGroupSize
-
-        let setPositions =
-            setPositions<'c> clContext Utils.defaultWorkGroupSize
-
-        let getCompressedRowPointers =
-            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        let expandCompressedRowPointers =
-            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
-
-            let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
-                merge
-                    queue
-                    matrixLeft.RowPointers
-                    matrixLeft.Columns
-                    matrixLeft.Values
-                    matrixRight.RowPointers
-                    matrixRight.Columns
-                    matrixRight.Values
-
-            let positions, allValues =
-                preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
-
-            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
-            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
-
-            let resultColumns, resultValues, positions, positionsSum =
-                setPositions queue allColumns allValues positions
-
-            //Getting DCSR row pointers
-            let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
-
-            //Converting DCSR to CSR
-            let rowPointers =
-                expandCompressedRowPointers
-                    queue
-                    matrixLeft.RowCount
-                    resultValues.Length
-                    compressedRowPointers
-                    compressedRows
-
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
-            queue.Post(Msg.CreateFreeMsg<_>(allRows))
-            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
-            queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
-            queue.Post(Msg.CreateFreeMsg<_>(positions))
-            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
-            queue.Post(Msg.CreateFreeMsg<_>(allValues))
-
-            { Context = clContext
-              RowCount = matrixLeft.RowCount
-              ColumnCount = matrixLeft.ColumnCount
-              RowPointers = rowPointers
-              Columns = resultColumns
-              Values = resultValues }
-
-    let elementwiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        workGroupSize
-        =
-
-        let merge = merge clContext workGroupSize
-
-        let preparePositions =
-            preparePositionsAtLeastOne clContext opAdd Utils.defaultWorkGroupSize
-
-        let setPositions =
-            setPositions<'c> clContext Utils.defaultWorkGroupSize
-
-        let getCompressedRowPointers =
-            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        let expandCompressedRowPointers =
-            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
-
-            let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
-                merge
-                    queue
-                    matrixLeft.RowPointers
-                    matrixLeft.Columns
-                    matrixLeft.Values
-                    matrixRight.RowPointers
-                    matrixRight.Columns
-                    matrixRight.Values
-
-            let positions, allValues =
-                preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
-
-            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
-            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
-
-            let resultColumns, resultValues, positions, positionsSum =
-                setPositions queue allColumns allValues positions
-
-            let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
-
-            let rowPointers =
-                expandCompressedRowPointers
-                    queue
-                    matrixLeft.RowCount
-                    resultValues.Length
-                    compressedRowPointers
-                    compressedRows
-
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
-            queue.Post(Msg.CreateFreeMsg<_>(allRows))
-            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
-            queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
-            queue.Post(Msg.CreateFreeMsg<_>(positions))
-            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
-            queue.Post(Msg.CreateFreeMsg<_>(allValues))
-
-            { Context = clContext
-              RowCount = matrixLeft.RowCount
-              ColumnCount = matrixLeft.ColumnCount
-              RowPointers = rowPointers
-              Columns = resultColumns
-              Values = resultValues }

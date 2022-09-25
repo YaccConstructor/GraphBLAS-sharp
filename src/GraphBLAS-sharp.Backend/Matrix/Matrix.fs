@@ -99,7 +99,7 @@ module Matrix =
             COOMatrix.elementwise clContext opAdd workGroupSize
 
         let CSRElementwise =
-            Elementwise.elementwise clContext opAdd workGroupSize
+            CSRMatrix.elementwise clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
@@ -112,7 +112,7 @@ module Matrix =
             COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
 
         let CSRElementwise =
-            Elementwise.elementwiseAtLeastOne clContext opAdd workGroupSize
+            CSRMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
