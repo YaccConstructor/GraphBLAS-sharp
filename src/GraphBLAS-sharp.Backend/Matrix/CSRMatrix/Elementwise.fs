@@ -232,7 +232,7 @@ module internal Elementwise =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allColumns: ClArray<int>) (allValues: ClArray<'a>) (prefixSumArray: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (prefixSumArray: ClArray<int>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'a>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -241,6 +241,7 @@ module internal Elementwise =
                       && prefixSumArray.[i] <> prefixSumArray.[i + 1] then
                     let index = prefixSumArray.[i]
 
+                    resultRows.[index] <- allRows.[i]
                     resultColumns.[index] <- allColumns.[i]
                     resultValues.[index] <- allValues.[i] @>
 
@@ -249,7 +250,7 @@ module internal Elementwise =
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
             let resultLength = Array.zeroCreate 1
             let prefixSumArrayLength = positions.Length
@@ -261,6 +262,14 @@ module internal Elementwise =
             processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
             let resultLength = resultLength.[0]
             processor.Post(Msg.CreateFreeMsg<_>(r))
+
+            let resultRows =
+                clContext.CreateClArray<int>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
 
             let resultColumns =
                 clContext.CreateClArray<int>(
@@ -289,16 +298,18 @@ module internal Elementwise =
                         kernel.KernelFunc
                             ndRange
                             prefixSumArrayLength
+                            allRows
                             allColumns
                             allValues
                             positions
+                            resultRows
                             resultColumns
                             resultValues)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultColumns, resultValues, positions, resultLength
+            resultRows, resultColumns, resultValues, positions, resultLength
 
     let getCompressedRowPointers (clContext: ClContext) workGroupSize =
 
@@ -487,11 +498,12 @@ module internal Elementwise =
                             + secondLocalOffset
                             + i
 
-                        if resY = 1 || (resX <> 0 && secondRowLocal.[resY - 1] <= firstRowLocal.[resX]) then
+                        if resY = 1
+                           || (resX <> 0
+                               && secondRowLocal.[resY - 1] <= firstRowLocal.[resX]) then
                             res <- firstRowLocal.[resX]
 
-                            leftMergedValues.[outputIndex] <-
-                                firstValues.[firstOffset + firstLocalOffset + resX - 1]
+                            leftMergedValues.[outputIndex] <- firstValues.[firstOffset + firstLocalOffset + resX - 1]
 
                             isLeftBitmap.[outputIndex] <- 1
                             maxFirstIndexPerThread <- max maxFirstIndexPerThread resX

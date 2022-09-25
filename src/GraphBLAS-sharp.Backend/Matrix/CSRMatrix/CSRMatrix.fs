@@ -116,7 +116,11 @@ module CSRMatrix =
             toCSRInplace processor m3COO
 
     ///<remarks>Old version</remarks>
-    let elementwiseAtLeastOneWithCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let elementwiseAtLeastOneWithCOO
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
 
         let prepareRows = prepareRows clContext workGroupSize
 
@@ -195,11 +199,8 @@ module CSRMatrix =
         let setPositions =
             setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        let getCompressedRowPointers =
-            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        let expandCompressedRowPointers =
-            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let prepareRowPointers =
+            COOMatrix.prepareRowPointers clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -219,24 +220,13 @@ module CSRMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
-            let resultColumns, resultValues, positions, positionsSum =
-                setPositions queue allColumns allValues positions
+            let resultRows, resultColumns, resultValues, positions, positionsSum =
+                setPositions queue allRows allColumns allValues positions
 
-            //Getting DCSR row pointers
-            let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
-
-            //Converting DCSR to CSR
             let rowPointers =
-                expandCompressedRowPointers
-                    queue
-                    matrixLeft.RowCount
-                    resultValues.Length
-                    compressedRowPointers
-                    compressedRows
+                prepareRowPointers queue resultRows matrixLeft.RowCount
 
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
+            queue.Post(Msg.CreateFreeMsg<_>(resultRows))
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
@@ -265,11 +255,8 @@ module CSRMatrix =
         let setPositions =
             setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        let getCompressedRowPointers =
-            getCompressedRowPointers clContext Utils.defaultWorkGroupSize
-
-        let expandCompressedRowPointers =
-            expandCompressedRowPointers clContext Utils.defaultWorkGroupSize
+        let prepareRowPointers =
+            COOMatrix.prepareRowPointers clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSRMatrix<'b>) ->
 
@@ -289,22 +276,13 @@ module CSRMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
-            let resultColumns, resultValues, positions, positionsSum =
-                setPositions queue allColumns allValues positions
-
-            let compressedRowPointers, compressedRows, nonZeroRowsSum =
-                getCompressedRowPointers queue positionsSum allRows positions isRowEnd
+            let resultRows, resultColumns, resultValues, positions, positionsSum =
+                setPositions queue allRows allColumns allValues positions
 
             let rowPointers =
-                expandCompressedRowPointers
-                    queue
-                    matrixLeft.RowCount
-                    resultValues.Length
-                    compressedRowPointers
-                    compressedRows
+                prepareRowPointers queue resultRows matrixLeft.RowCount
 
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRowPointers))
-            queue.Post(Msg.CreateFreeMsg<_>(compressedRows))
+            queue.Post(Msg.CreateFreeMsg<_>(resultRows))
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))

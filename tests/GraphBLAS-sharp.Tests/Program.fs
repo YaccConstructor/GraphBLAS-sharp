@@ -12,15 +12,15 @@ let allTests =
     testList
         "All tests"
         [ Backend.BitonicSort.tests
-//          Backend.PrefixSum.tests
-//          Backend.Convert.tests
-//          Backend.RemoveDuplicates.tests
-//          Backend.Copy.tests
-//          Backend.Replicate.tests
+          Backend.PrefixSum.tests
+          Backend.Convert.tests
+          Backend.RemoveDuplicates.tests
+          Backend.Copy.tests
+          Backend.Replicate.tests
           Backend.Elementwise.elementwiseAddTests
           Backend.Elementwise.elementwiseAddAtLeastOneTests
           Backend.Elementwise.elementwiseMulAtLeastOneTests
-//          Backend.Transpose.tests
+          Backend.Transpose.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
           //Algo.Bfs.tests
