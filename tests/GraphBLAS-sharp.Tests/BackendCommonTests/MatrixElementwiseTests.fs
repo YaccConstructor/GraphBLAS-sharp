@@ -131,7 +131,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let tests =
+let elementwiseAddTests =
     testCases
     |> List.filter
         (fun case ->
@@ -195,7 +195,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let tests2 =
+let elementwiseAddAtLeastOneTests =
     testCases
     |> List.filter
         (fun case ->
@@ -260,7 +260,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> correctnessGenericTest 0uy (*) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let tests3 =
+let elementwiseMulAtLeastOneTests =
     testCases
     |> List.filter
         (fun case ->
