@@ -107,6 +107,19 @@ module Matrix =
             | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
             | _ -> failwith "Matrix formats are not matching"
 
+    let elementwiseToCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+        let COOElementwise =
+            COOMatrix.elementwise clContext opAdd workGroupSize
+
+        let CSRElementwise =
+            CSRMatrix.elementwiseToCOO clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
+            match matrix1, matrix2 with
+            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
+            | _ -> failwith "Matrix formats are not matching"
+
     let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let COOElementwise =
             COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
@@ -118,6 +131,19 @@ module Matrix =
             match matrix1, matrix2 with
             | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
             | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
+            | _ -> failwith "Matrix formats are not matching"
+
+    let elementwiseAtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+        let COOElementwise =
+            COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
+
+        let CSRElementwise =
+            CSRMatrix.elementwiseAtLeastOneToCOO clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
+            match matrix1, matrix2 with
+            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
             | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>

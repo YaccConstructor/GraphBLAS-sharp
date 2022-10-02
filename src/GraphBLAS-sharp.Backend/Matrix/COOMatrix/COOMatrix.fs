@@ -454,7 +454,7 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    let internal prepareRowPointers (clContext: ClContext) workGroupSize =
+    let private prepareRowPointers (clContext: ClContext) workGroupSize =
 
         let prepareRowPointers =
             <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->

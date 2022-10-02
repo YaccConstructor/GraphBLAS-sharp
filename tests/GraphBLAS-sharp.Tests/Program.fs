@@ -19,6 +19,7 @@ let allTests =
           Backend.Replicate.tests
           Backend.Elementwise.elementwiseAddTests
           Backend.Elementwise.elementwiseAddAtLeastOneTests
+          Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
           Backend.Elementwise.elementwiseMulAtLeastOneTests
           Backend.Transpose.tests
           //Matrix.GetTuples.tests
