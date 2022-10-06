@@ -24,6 +24,7 @@
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
     <Compile Include="Matrix/Matrix.fs" />
+    <Compile Include="Objects\Vector.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->
