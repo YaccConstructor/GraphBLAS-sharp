@@ -18,5 +18,7 @@ module COOVector =
         <| COOVector.FromTuples(indices, values)
 
     let mask (clContext: ClContext) (workGroupSize: int) =
+        let toOptionArray = ClArray.toOptionArray clContext workGroupSize
 
-
+        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
+            toOptionArray processor vector.Indices
