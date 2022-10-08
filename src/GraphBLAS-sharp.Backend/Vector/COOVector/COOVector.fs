@@ -1,7 +1,5 @@
 namespace GraphBLAS.FSharp.Backend
 
-open
-
 module COOVector =
     let zeroCreate<'a when 'a : struct> : Vector<'a> =
         VectorCOO <| COOVector.FromTuples([||], [||])
@@ -15,3 +13,6 @@ module COOVector =
 
         VectorCOO
         <| COOVector.FromTuples(indices, values)
+
+
+
