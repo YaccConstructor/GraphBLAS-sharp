@@ -34,15 +34,14 @@ module DenseVector =
 
         let kernel = clContext.Compile(getBitmap)
 
-        fun (processor: MailboxProcessor<_>) (vector: DenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
             let vectorSize = vector.Size
 
             let bitmap = Array.create vectorSize 1
             let clBitmap = clContext.CreateClArray<int> bitmap
 
-            let clVector = vector.ToDevice clContext
-
-            let ndRange = Range1D.CreateValid(vectorSize, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(vectorSize, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -51,7 +50,7 @@ module DenseVector =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            clVector
+                            vector
                             vectorSize
                             clBitmap)
             )
@@ -82,10 +81,8 @@ module DenseVector =
 
         let getBitmap = getBitmap clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: DenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
             let positions = getBitmap processor vector
-
-            let clVector = vector.ToDevice clContext
 
             let prefixSumArrayLength = positions.Length
 
@@ -129,7 +126,7 @@ module DenseVector =
                             ndRange
                             prefixSumArrayLength
                             positions
-                            clVector
+                            vector
                             prefixSumArray
                             resultValues
                             resultIndices)
@@ -140,47 +137,12 @@ module DenseVector =
             resultValues, resultIndices
 
     let mask (clContext: ClContext) (workGroupSize: int) =
-        let toOptionIndices =
-            <@
-                fun (ndRange: Range1D) length (indices: ClArray<int>) (resultArray: ClArray<int option>) ->
-                    let gid = ndRange.GlobalID0
-
-                    if gid < length then
-                        resultArray[gid] <- Some indices[gid]
-            @>
-
-        let kernel = clContext.Compile(toOptionIndices)
-
         let unzip = unzip clContext workGroupSize
+        let toOptionArray = ClArray.toOptionArray clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: DenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
             let _, indices = unzip processor vector
 
-            let resultLength = indices.Length
+            let optionIndices = toOptionArray processor indices
 
-            let ndRange =
-                Range1D.CreateValid(resultLength, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            let resultIndices =
-                clContext.CreateClArray<int option>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            resultLength
-                            indices
-                            resultIndices)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultIndices :?> ClDenseVector<int>
+            optionIndices :?> ClDenseVector<int>

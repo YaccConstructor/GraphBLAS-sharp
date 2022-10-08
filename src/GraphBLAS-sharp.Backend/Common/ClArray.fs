@@ -452,3 +452,47 @@ module ClArray =
                 setPositions processor workGroupSize inputArray positions resultLength
 
             outputArray
+
+
+    let toOptionArray (clContext: ClContext) (workGroupSize: int) =
+        let toOptionValues =
+            <@
+                fun (ndRange: Range1D) length (array: ClArray<'a>) (resultArray: ClArray<'a option>) ->
+                    let gid = ndRange.GlobalID0
+
+                    if gid < length then
+                        resultArray[gid] <- Some array[gid]
+            @>
+
+        let kernel = clContext.Compile(toOptionValues)
+
+        fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) ->
+
+            let resultLength = array.Length
+
+            let ndRange =
+                Range1D.CreateValid(resultLength, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            let resultArray =
+                clContext.CreateClArray<'a option>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            resultLength
+                            array
+                            resultArray)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultArray

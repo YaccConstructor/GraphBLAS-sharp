@@ -1,5 +1,8 @@
 namespace GraphBLAS.FSharp.Backend
 
+open Brahma.FSharp
+open GraphBLAS.FSharp.Backend
+
 module COOVector =
     let zeroCreate<'a when 'a : struct> : Vector<'a> =
         VectorCOO <| COOVector.FromTuples([||], [||])
@@ -14,5 +17,6 @@ module COOVector =
         VectorCOO
         <| COOVector.FromTuples(indices, values)
 
+    let mask (clContext: ClContext) (workGroupSize: int) =
 
 
