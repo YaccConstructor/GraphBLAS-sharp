@@ -10,7 +10,7 @@ module DenseVector =
             |> VectorDense
 
     let ofList (elements: (int * 'a) list) (isZero: 'a -> bool) : Vector<'a> =
-        let (_, values) =
+        let _, values =
             elements
             |> Array.ofList
             |> Array.sortBy fst
@@ -29,7 +29,7 @@ module DenseVector =
                     if gid < vectorSize then
                         match vector[gid] with
                         | None -> bitmap[gid] <- 0
-                        | Some _ -> ()
+                        | _ -> ()
             @>
 
         let kernel = clContext.Compile(getBitmap)
@@ -38,7 +38,14 @@ module DenseVector =
             let vectorSize = vector.Size
 
             let bitmap = Array.create vectorSize 1
-            let clBitmap = clContext.CreateClArray<int> bitmap
+
+            let clBitmap =
+                clContext.CreateClArray(
+                    bitmap,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
 
             let ndRange =
                 Range1D.CreateValid(vectorSize, workGroupSize)
