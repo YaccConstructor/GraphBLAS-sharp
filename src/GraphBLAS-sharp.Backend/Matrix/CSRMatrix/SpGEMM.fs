@@ -10,130 +10,174 @@ module internal SpGEMM =
     let private calculate
         (context: ClContext)
         workGroupSize
-        (opAdd: Expr<'c option -> 'c option -> 'c option>)
-        (opMul: Expr<'a option -> 'b option -> 'c option>)
+        (opAdd: Expr<'c -> 'c -> 'c option>)
+        (opMul: Expr<'a -> 'b -> 'c option>)
         =
 
         let run =
-            <@
-                fun (ndRange: Range1D)
-                    (leftRowPointers: ClArray<int>)
-                    (leftColumns: ClArray<int>)
-                    (leftValues: ClArray<'a>)
-                    (rightRows: ClArray<int>)
-                    (rightColumnPointers: ClArray<int>)
-                    (rightValues: ClArray<'b>)
-                    (maskRows: ClArray<int>)
-                    (maskColumns: ClArray<int>)
-                    (resultValues: ClArray<'c>)
-                    (resultValuesBitmap: ClArray<int>)
-                    ->
+            <@ fun (ndRange: Range1D) (leftRowPointers: ClArray<int>) (leftColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightRows: ClArray<int>) (rightColumnPointers: ClArray<int>) (rightValues: ClArray<'b>) (maskRows: ClArray<int>) (maskColumns: ClArray<int>) (resultValues: ClArray<'c>) (resultValuesBitmap: ClArray<int>) ->
 
-                    let gid = ndRange.GlobalID0
-                    let groupId = gid / workGroupSize
-                    let row = maskRows.[groupId]
-                    let col = maskColumns.[groupId]
+                let gid = ndRange.GlobalID0
+                let groupId = gid / workGroupSize
+                let row = maskRows.[groupId]
+                let col = maskColumns.[groupId]
 
-                    let rowBeginIdx = leftRowPointers.[row]
-                    let nnzPerRow = leftRowPointers.[row + 1] - rowBeginIdx
+                let rowBeginIdx = leftRowPointers.[row]
+                let nnzPerRow = leftRowPointers.[row + 1] - rowBeginIdx
 
-                    let colBeginIdx = rightColumnPointers.[col]
-                    let nnzPerCol = rightColumnPointers.[col + 1] - colBeginIdx
+                let colBeginIdx = rightColumnPointers.[col]
 
-                    // let mutable arrayToProcess = rightRows
-                    // let mutable valuesToProcess = rightValues
-                    // let mutable processedSize = nnzPerCol
-                    // let mutable arrayToSearch = leftColumns
-                    // let mutable valuesToSearch = leftValues
-                    // let mutable searchSize = nnzPerRow
-                    // if nnzPerRow < nnzPerCol then
-                    //     arrayToProcess <- leftColumns
-                    //     valuesToProcess <- leftValues
-                    //     processedSize <- nnzPerRow
-                    //     arrayToSearch <- rightRows
-                    //     valuesToSearch <- rightValues
-                    //     searchSize <- nnzPerCol
+                let nnzPerCol =
+                    rightColumnPointers.[col + 1] - colBeginIdx
 
-                    let lid = ndRange.LocalID0
+                let lid = ndRange.LocalID0
 
-                    let products = localArray<'c option> workGroupSize
-                    products.[lid] <- None
+                let products = localArray<'c option> workGroupSize
+                products.[lid] <- None
 
-                    barrierLocal()
+                // barrierLocal ()
 
-                    let mutable i = lid
-                    while i < nnzPerRow do
-                        let indexToFind = leftColumns.[rowBeginIdx + i]
+                let threadProcessedSize = (nnzPerRow + workGroupSize - 1) / workGroupSize
+                let mutable start = threadProcessedSize * lid
+                let mutable i = threadProcessedSize * lid
+                while i - start < threadProcessedSize && i < nnzPerRow do
+                    let indexToFind = leftColumns.[rowBeginIdx + i]
 
-                        // Binary search
-                        let mutable leftEdge = colBeginIdx
-                        let mutable rightEdge = leftEdge + nnzPerCol
-                        while leftEdge < rightEdge do
-                            let middle = (leftEdge + rightEdge) / 2
-                            let foundIdx = rightRows.[middle]
+                    // Binary search
+                    let mutable leftEdge = colBeginIdx
+                    let mutable rightEdge = leftEdge + nnzPerCol
 
-                            if foundIdx < indexToFind then
-                                leftEdge <- middle + 1
-                            elif foundIdx > indexToFind then
-                                rightEdge <- middle
-                            else
-                                // Found needed index
-                                let product = (%opMul) (Some leftValues.[rowBeginIdx + i]) (Some rightValues.[middle])
-                                let buff = (%opAdd) products.[lid] product
+                    while leftEdge < rightEdge do
+                        let middle = (leftEdge + rightEdge) / 2
+                        let foundIdx = rightRows.[middle]
+
+                        if foundIdx < indexToFind then
+                            leftEdge <- middle + 1
+                        elif foundIdx > indexToFind then
+                            rightEdge <- middle
+                        else
+                            // Found needed index
+                            let a = leftValues.[rowBeginIdx + i]
+                            let b = rightValues.[middle]
+                            let increase = (%opMul) a b
+                            // match increase with
+                            // | Some v -> if groupId = 1 then debug.[1] <- 1uy
+                            // | _ -> ()
+
+                            let product = products.[lid]
+                            match product, increase with
+                            | Some x, Some y ->
+                                let buff = (%opAdd) x y
                                 products.[lid] <- buff
+                            | None, Some _ ->
+                                products.[lid] <- increase
+                            | _ -> ()
 
-                                // Break alternative
-                                leftEdge <- rightEdge
+                            // match product, increase with
+                            // | Some x, Some y ->
+                            //     let buff = (%opAdd) x y
+                            //     products.[lid] <- buff
+                            //     if groupId = 1 then debug.[1] <- debug.[1] + 4uy
+                            // | None, Some _ ->
+                            //     products.[lid] <- increase
+                            //     if groupId = 1 then debug.[1] <- debug.[1] + 8uy
+                            // | Some _, None -> if groupId = 1 then debug.[1] <- debug.[1] + 16uy
+                            // | None, None -> if groupId = 1 then debug.[1] <- debug.[1] + 32uy
 
-                        i <- i + workGroupSize
+                            // match increase with
+                            // | Some v -> if groupId = 1 then debug.[1] <- debug.[1] + 64uy
+                            // | _ -> if groupId = 1 then debug.[1] <- debug.[1] + 128uy
 
-                    // Sum up all products
-                    let mutable step = 2
-                    while step <= workGroupSize do
-                        barrierLocal()
+                            // Break alternative
+                            leftEdge <- rightEdge
 
-                        if lid < workGroupSize / step then
-                            let i = step * (lid + 1) - 1
-                            let buff = (%opAdd) products.[i - (step >>> 1)] products.[i]
+                    i <- i + 1
+
+                // Sum up all products
+                let mutable step = 2
+
+                while step <= workGroupSize do
+                    barrierLocal ()
+
+                    if lid < workGroupSize / step then
+                        let i = step * (lid + 1) - 1
+
+                        // match containsProduct.[i - (step >>> 1)], containsProduct.[i] with
+                        // | true, true ->
+                        //     let buff = (%opAdd) products.[i - (step >>> 1)] products.[i]
+                        //     match buff with
+                        //     | Some b -> products.[i] <- b
+                        //     | None   -> containsProduct.[i] <- false
+                        // | true, false ->
+                        //     products.[i] <- products.[i - (step >>> 1)]
+                        //     containsProduct.[i] <- true
+                        // | _ -> ()
+
+                        let increase = products.[i - (step >>> 1)]
+                        match increase, products.[i] with
+                        | Some x, Some y ->
+                            let buff = (%opAdd) x y
                             products.[i] <- buff
+                        | Some _, None -> products.[i] <- increase
+                        | _ -> ()
 
-                        step <- step <<< 1
+                    step <- step <<< 1
 
-                    barrierLocal()
+                // barrierLocal ()
 
-                    if lid = workGroupSize - 1 then
-                        match products.[lid] with
-                        | Some p ->
-                            resultValues.[groupId] <- p
-                            resultValuesBitmap.[groupId] <- 1
-                        | None ->
-                            resultValuesBitmap.[groupId] <- 0
-            @>
+                if lid = 0 then
+                    // if containsProduct.[workGroupSize - 1] then
+                    //     resultValues.[groupId] <- products.[workGroupSize - 1]
+                    //     resultValuesBitmap.[groupId] <- 1
+                    // else
+                    //     resultValuesBitmap.[groupId] <- 0 @>
+
+                    match products.[workGroupSize - 1] with
+                    | Some p ->
+                        resultValues.[groupId] <- p
+                        resultValuesBitmap.[groupId] <- 1
+                    | None -> resultValuesBitmap.[groupId] <- 0 @>
+
         let program = context.Compile(run)
 
-        fun (queue: MailboxProcessor<_>)
-            (matrixLeft: CSRMatrix<'a>)
-            (matrixRight: CSCMatrix<'b>)
-            (mask: Mask2D)
-            (values: ClArray<'c>)
-            (bitmap: ClArray<int>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSCMatrix<'b>) (mask: Mask2D) ->
+
+            let values =
+                context.CreateClArray<'c>(
+                    mask.NNZ,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let bitmap =
+                context.CreateClArray<int>(
+                    mask.NNZ,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(workGroupSize * mask.NNZ, workGroupSize)
-            queue.Post(Msg.MsgSetArguments(fun () ->
-                kernel.KernelFunc
-                    ndRange
-                    matrixLeft.RowPointers
-                    matrixLeft.Columns
-                    matrixLeft.Values
-                    matrixRight.Rows
-                    matrixRight.ColumnPointers
-                    matrixRight.Values
-                    mask.Rows
-                    mask.Columns
-                    values
-                    bitmap))
+            let ndRange =
+                Range1D.CreateValid(workGroupSize * mask.NNZ, workGroupSize)
+
+            queue.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            matrixLeft.RowPointers
+                            matrixLeft.Columns
+                            matrixLeft.Values
+                            matrixRight.Rows
+                            matrixRight.ColumnPointers
+                            matrixRight.Values
+                            mask.Rows
+                            mask.Columns
+                            values
+                            bitmap)
+            )
+
             queue.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             values, bitmap
@@ -141,40 +185,31 @@ module internal SpGEMM =
     let run
         (context: ClContext)
         workGroupSize
-        (opAdd: Expr<'c option -> 'c option -> 'c option>)
-        (opMul: Expr<'a option -> 'b option -> 'c option>)
+        (opAdd: Expr<'c -> 'c -> 'c option>)
+        (opMul: Expr<'a -> 'b -> 'c option>)
         =
 
-        let calculate = calculate context workGroupSize opAdd opMul
+        let calculate =
+            calculate context workGroupSize opAdd opMul
 
         let scatter = Scatter.runInplace context workGroupSize
         let scatterData = Scatter.runInplace context workGroupSize
-        let scanInplace = PrefixSum.standardExcludeInplace context workGroupSize
 
-        fun (queue: MailboxProcessor<_>)
-            (matrixLeft: CSRMatrix<'a>)
-            (matrixRight: CSCMatrix<'b>)
-            (mask: Mask2D) ->
+        let scanInplace =
+            PrefixSum.standardExcludeInplace context workGroupSize
 
-            let values = context.CreateClArray<'c>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-            let bitmap = context.CreateClArray<int>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSCMatrix<'b>) (mask: Mask2D) ->
 
-            let values, bitmap = calculate queue matrixLeft matrixRight mask values bitmap
+            let values, bitmap =
+                calculate queue matrixLeft matrixRight mask
 
             let total = context.CreateClCell 0
             let positions, total = scanInplace queue bitmap total
 
             let resultNNZ =
                 let res =
-                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(total, Array.zeroCreate 1, ch))
+                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(total, [| 0 |], ch))
+
                 queue.Post(Msg.CreateFreeMsg<_>(total))
                 res.[0]
 

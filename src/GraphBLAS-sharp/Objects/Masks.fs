@@ -99,4 +99,5 @@ type Mask2D =
           Rows = rows
           Columns = cols }
 
-    static member FromArray2D(array: 'a [,], isZero: 'a -> bool) = Mask2D.FromArray2D(array, isZero, false)
+    static member FromArray2D(array: 'a [,], isZero: 'a -> bool) =
+        Mask2D.FromArray2D(array, isZero, false)

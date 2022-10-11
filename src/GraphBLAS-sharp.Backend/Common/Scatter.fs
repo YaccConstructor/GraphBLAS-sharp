@@ -22,52 +22,37 @@ module internal Scatter =
     /// > val result = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
     /// </code>
     /// </example>
-    let runInplace
-        (clContext: ClContext)
-        workGroupSize =
+    let runInplace (clContext: ClContext) workGroupSize =
 
         let run =
-            <@
-                fun (ndRange: Range1D)
-                    (positions: ClArray<int>)
-                    (positionsLength: int)
-                    (values: ClArray<'a>)
-                    (result: ClArray<'a>)
-                    (resultLength: int) ->
+            <@ fun (ndRange: Range1D) (positions: ClArray<int>) (positionsLength: int) (values: ClArray<'a>) (result: ClArray<'a>) (resultLength: int) ->
 
-                    let i = ndRange.GlobalID0
+                let i = ndRange.GlobalID0
 
-                    if i < positionsLength then
-                        let index = positions.[i]
-                        if 0 <= index && index < resultLength then
-                            if i < positionsLength - 1 then
-                                if index <> positions.[i + 1] then
-                                    result.[index] <- values.[i]
-                            else
+                if i < positionsLength then
+                    let index = positions.[i]
+
+                    if 0 <= index && index < resultLength then
+                        if i < positionsLength - 1 then
+                            if index <> positions.[i + 1] then
                                 result.[index] <- values.[i]
-            @>
+                        else
+                            result.[index] <- values.[i] @>
+
         let program = clContext.Compile(run)
 
-        fun (processor: MailboxProcessor<_>)
-            (positions: ClArray<int>)
-            (values: ClArray<'a>)
-            (result: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (result: ClArray<'a>) ->
 
             let positionsLength = positions.Length
 
-            let ndRange = Range1D.CreateValid(positionsLength, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(positionsLength, workGroupSize)
 
             let kernel = program.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            positions
-                            positionsLength
-                            values
-                            result
-                            result.Length)
+                    (fun () -> kernel.KernelFunc ndRange positions positionsLength values result result.Length)
             )
+
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

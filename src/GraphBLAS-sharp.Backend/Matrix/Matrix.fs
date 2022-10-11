@@ -54,7 +54,9 @@ module Matrix =
     let toCSR (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
         let copy = copy clContext workGroupSize
-        let transpose = CSRMatrix.transpose clContext workGroupSize
+
+        let transpose =
+            CSRMatrix.transpose clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -81,7 +83,8 @@ module Matrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        let transposeInplace = CSRMatrix.transposeInplace clContext workGroupSize
+        let transposeInplace =
+            CSRMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -106,7 +109,9 @@ module Matrix =
     let toCOO (clContext: ClContext) workGroupSize =
         let toCOO = CSRMatrix.toCOO clContext workGroupSize
         let copy = copy clContext workGroupSize
-        let transposeInplace = COOMatrix.transposeInplace clContext workGroupSize
+
+        let transposeInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -134,7 +139,8 @@ module Matrix =
         let toCOOInplace =
             CSRMatrix.toCOOInplace clContext workGroupSize
 
-        let transposeInplace = COOMatrix.transposeInplace clContext workGroupSize
+        let transposeInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -160,8 +166,12 @@ module Matrix =
     let toCSC (clContext: ClContext) workGroupSize =
         let toCSR = COOMatrix.toCSR clContext workGroupSize
         let copy = copy clContext workGroupSize
-        let transposeCSR = CSRMatrix.transpose clContext workGroupSize
-        let transposeCOO = COOMatrix.transpose clContext workGroupSize
+
+        let transposeCSR =
+            CSRMatrix.transpose clContext workGroupSize
+
+        let transposeCOO =
+            COOMatrix.transpose clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -195,9 +205,14 @@ module Matrix =
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSCInplace (clContext: ClContext) workGroupSize =
-        let toCSRInplace = COOMatrix.toCSRInplace clContext workGroupSize
-        let transposeCSRInplace = CSRMatrix.transposeInplace clContext workGroupSize
-        let transposeCOOInplace = COOMatrix.transposeInplace clContext workGroupSize
+        let toCSRInplace =
+            COOMatrix.toCSRInplace clContext workGroupSize
+
+        let transposeCSRInplace =
+            CSRMatrix.transposeInplace clContext workGroupSize
+
+        let transposeCOOInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
             match matrix with
@@ -243,6 +258,7 @@ module Matrix =
                       RowPointers = m1.ColumnPointers
                       Columns = m1.Rows
                       Values = m1.Values }
+
                 let csrT2 =
                     { Context = m2.Context
                       RowCount = m2.ColumnCount
@@ -252,6 +268,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSReWiseAdd processor csrT1 csrT2
+
                 { Context = resT.Context
                   RowCount = resT.ColumnCount
                   ColumnCount = resT.RowCount
@@ -280,6 +297,7 @@ module Matrix =
                       RowPointers = m1.ColumnPointers
                       Columns = m1.Rows
                       Values = m1.Values }
+
                 let csrT2 =
                     { Context = m2.Context
                       RowCount = m2.ColumnCount
@@ -289,6 +307,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSReWiseAdd processor csrT1 csrT2
+
                 { Context = resT.Context
                   RowCount = resT.ColumnCount
                   ColumnCount = resT.RowCount
@@ -325,6 +344,7 @@ module Matrix =
                       Values = m.Values }
 
                 let resT = CSRtransposeInplace processor csrT
+
                 { Context = resT.Context
                   RowCount = resT.ColumnCount
                   ColumnCount = resT.RowCount
@@ -359,6 +379,7 @@ module Matrix =
                       Values = m.Values }
 
                 let resT = CSRtranspose processor csrT
+
                 { Context = resT.Context
                   RowCount = resT.ColumnCount
                   ColumnCount = resT.RowCount
@@ -367,14 +388,17 @@ module Matrix =
                   Values = resT.Values }
                 |> MatrixCSC
 
-    let spgemm (clContext: ClContext) workGroupSize (opAdd: Expr<'c option -> 'c option -> 'c option>) (opMul: Expr<'a option -> 'b option -> 'c option>) =
+    let mxm
+        (clContext: ClContext)
+        workGroupSize
+        (opAdd: Expr<'c -> 'c -> 'c option>)
+        (opMul: Expr<'a -> 'b -> 'c option>)
+        =
 
-        let runCSRnCSC = CSRMatrix.spgemm clContext workGroupSize opAdd opMul
+        let runCSRnCSC =
+            CSRMatrix.spgemmCSC clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>)
-            (matrix1: Matrix<'a>)
-            (matrix2: Matrix<'b>)
-            (mask: Mask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrix1: Matrix<'a>) (matrix2: Matrix<'b>) (mask: Mask2D) ->
 
             match matrix1, matrix2, mask.IsComplemented with
             | MatrixCSR m1, MatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> MatrixCOO

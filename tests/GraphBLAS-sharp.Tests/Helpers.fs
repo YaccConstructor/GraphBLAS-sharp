@@ -331,6 +331,75 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
+    type PairOfMatricesOfCompatibleSizeWithMask() =
+        static let pairOfMatricesOfCompatibleSizeWithMaskGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nrowsA, ncolsA)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (ncolsA, ncolsB)
+
+                let! mask =
+                    (genericSparseGenerator false Arb.generate<bool>)
+                    <| Gen.array2DOfDim (nrowsA, ncolsB)
+
+                return (matrixA, matrixB, mask)
+            }
+
+        static member IntType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> (genericSparseGenerator 0 Arb.generate<int>)
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0 Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0u Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
     type ArrayOfDistinctKeys() =
         static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
             let tuplesGenerator =

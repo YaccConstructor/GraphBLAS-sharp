@@ -22,10 +22,10 @@ let allTests =
         //   Backend.EwiseAdd.tests2
         //   //Backend.EwiseAdd.tests3
         //   Backend.Transpose.tests
-          //Matrix.GetTuples.tests
-          //Matrix.Mxv.tests
-          //Algo.Bfs.tests
-          ]
+        //Matrix.GetTuples.tests
+        //Matrix.Mxv.tests
+        //Algo.Bfs.tests
+         ]
     |> testSequenced
 
 [<EntryPoint>]

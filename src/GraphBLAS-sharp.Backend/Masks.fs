@@ -7,7 +7,7 @@ type MaskType =
     | Complemented
     | NoMask
 
-and Mask1D =
+type Mask1D =
     { Context: ClContext
       IsComplemented: bool
       Size: int
@@ -15,12 +15,11 @@ and Mask1D =
 
     member this.NNZ = this.Indices.Length
 
-    interface IDeviceMemObject with
-        member this.Dispose q =
-            q.Post(Msg.CreateFreeMsg<_>(this.Indices))
-            q.PostAndReply(Msg.MsgNotifyMe)
+    member this.Dispose (q: MailboxProcessor<_>) =
+        q.Post(Msg.CreateFreeMsg<_>(this.Indices))
+        q.PostAndReply(Msg.MsgNotifyMe)
 
-and Mask2D =
+type Mask2D =
     { Context: ClContext
       IsComplemented: bool
       RowCount: int
@@ -30,8 +29,7 @@ and Mask2D =
 
     member this.NNZ = this.Rows.Length
 
-    interface IDeviceMemObject with
-        member this.Dispose q =
-            q.Post(Msg.CreateFreeMsg<_>(this.Rows))
-            q.Post(Msg.CreateFreeMsg<_>(this.Columns))
-            q.PostAndReply(Msg.MsgNotifyMe)
+    member this.Dispose (q: MailboxProcessor<_>) =
+        q.Post(Msg.CreateFreeMsg<_>(this.Rows))
+        q.Post(Msg.CreateFreeMsg<_>(this.Columns))
+        q.PostAndReply(Msg.MsgNotifyMe)
