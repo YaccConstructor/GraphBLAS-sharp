@@ -50,7 +50,7 @@ module COOVector =
     let private merge (clContext: ClContext) (workGroupSize: int) =
         let merge =
             <@
-                fun (ndRange: Range1D) (sumOfSides: int) (firstSide: int) (secondSide: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (scalarBuffer: ClArray<'a>) (allIndicesBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) ->
+                fun (ndRange: Range1D) (sumOfSides: int) (firstSide: int) (secondSide: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'a>) (allIndicesBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (isLeftBitMap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -156,15 +156,16 @@ module COOVector =
 
                         if not isValidX || isValidY && fstIdx <= sndIdx then
                             allIndicesBuffer.[i] <- sndIdx
-                            allValuesBuffer.[i] <- scalarBuffer.[0]
+                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                            isLeftBitMap.[i] <- 0
                         else
                             allIndicesBuffer.[i] <- fstIdx
                             allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-            @>
+                            isLeftBitMap.[i] <- 1 @>
 
         let kernel = clContext.Compile(merge)
 
-        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (scalar: ClArray<'a>) () ->
+        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (scalar: ClArray<'a>) ->
             let firstSide = firstIndices.Length
 
             let secondSide = secondIndices.Length
@@ -181,6 +182,14 @@ module COOVector =
 
             let allValues =
                 clContext.CreateClArray<'a>(
+                    sumOfSides,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let isLeftBitmap =
+                clContext.CreateClArray<int>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
@@ -204,12 +213,15 @@ module COOVector =
                             secondIndices
                             scalar
                             allIndices
-                            allValues)
+                            allValues
+                            isLeftBitmap)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            allIndices, allValues
+            allIndices, allValues, isLeftBitmap
+
+
 
 
     (*let fillSubVector (clContext: ClContext) (workGroupSize: int) =
