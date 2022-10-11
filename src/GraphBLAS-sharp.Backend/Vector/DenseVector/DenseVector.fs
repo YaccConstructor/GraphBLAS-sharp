@@ -29,9 +29,11 @@ module DenseVector =
             toOptionArray processor values indices elements.Length :?> ClDenseVector<'a>
 
 
-    (*let mask (clContext: ClContext) (workGroupSize: int) =
+    let copy (clContext: ClContext) (workGroupSize: int) =
         let copy = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
-            copy processor vector :?> ClDenseVector<'a>*)
+            copy processor vector :?> ClDenseVector<'a>
+
+
 
