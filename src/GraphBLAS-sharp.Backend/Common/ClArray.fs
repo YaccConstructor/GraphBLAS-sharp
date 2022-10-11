@@ -453,46 +453,35 @@ module ClArray =
 
             outputArray
 
-
+    //TODO(comments)
     let toOptionArray (clContext: ClContext) (workGroupSize: int) =
-        let toOptionValues =
+        let toDense =
             <@
-                fun (ndRange: Range1D) length (array: ClArray<'a>) (resultArray: ClArray<'a option>) ->
+                fun (ndRange: Range1D) (length: int) (values: ClArray<'a>) (indices: ClArray<int>) (outputArray: ClArray<'a option>) ->
                     let gid = ndRange.GlobalID0
 
                     if gid < length then
-                        resultArray[gid] <- Some array[gid]
+                        let resultIndex = indices[gid]
+
+                        outputArray[resultIndex] <- Some values[resultIndex]
             @>
 
-        let kernel = clContext.Compile(toOptionValues)
+        let kernel = clContext.Compile(toDense)
 
-        fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) ->
+        let zeroCreate = zeroCreate clContext workGroupSize
 
-            let resultLength = array.Length
+        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (indices: ClArray<int>) (size: int) ->
+            let outputArray = zeroCreate processor size
 
-            let ndRange =
-                Range1D.CreateValid(resultLength, workGroupSize)
+            let ndRange = Range1D.CreateValid(size, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
-            let resultArray =
-                clContext.CreateClArray<'a option>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            resultLength
-                            array
-                            resultArray)
+                    (fun () -> kernel.KernelFunc ndRange size values indices outputArray)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            resultArray
+            outputArray

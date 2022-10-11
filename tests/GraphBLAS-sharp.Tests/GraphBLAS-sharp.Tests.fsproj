@@ -20,7 +20,6 @@
         <Compile Include="BackendCommonTests/MatrixEwiseAddTests.fs" />
         <Compile Include="BackendCommonTests/ConvertTests.fs" />
         <Compile Include="BackendCommonTests/TransposeTests.fs" />
-        <Compile Include="BackendCommonTests\VectorTest.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
@@ -29,6 +28,7 @@
         <!--Compile Include="MatrixOperationsTests/TransposeTests.fs" /-->
         <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
     <Compile Include="Program.fs" />
+    <Compile Include="VectorOperationsTests\zeroCreateTests.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

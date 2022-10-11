@@ -9,9 +9,8 @@ type VectorFormat =
 
 type COOVector<'a> =
     { Indices: int []
-      Values: 'a [] }
-
-    member this.Size = this.Indices.Length
+      Values: 'a []
+      Size: int }
 
     override this.ToString() =
         [ sprintf "Sparse Vector\n"
@@ -26,9 +25,13 @@ type COOVector<'a> =
 
         { Context = context
           Indices = indices
-          Values = values }
+          Values = values
+          Size = this.Size }
 
-    static member FromTuples(indices: int [], values: 'a []) = { Indices = indices; Values = values }
+    static member FromTuples(indices: int [], values: 'a [], size: int) =
+        { Indices = indices
+          Values = values
+          Size = size }
 
     static member FromArray(array: 'a [], isZero: 'a -> bool) =
         let (indices, vals) =
@@ -39,14 +42,13 @@ type COOVector<'a> =
             |> Array.ofSeq
             |> Array.unzip
 
-        COOVector.FromTuples(indices, vals)
+        COOVector.FromTuples(indices, vals, array.Length)
 
 and ClCooVector<'a> =
     { Context: ClContext
       Indices: ClArray<int>
-      Values: ClArray<'a> }
-
-    member this.Size = this.Indices.Length
+      Values: ClArray<'a>
+      Size: int }
 
     member this.ToHost(q: MailboxProcessor<_>) =
         let indices = Array.zeroCreate this.Indices.Length
@@ -58,7 +60,9 @@ and ClCooVector<'a> =
         let _ =
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this.Values, values, ch))
 
-        { Indices = indices; Values = values }
+        { Indices = indices
+          Values = values
+          Size = this.Size }
 
     interface IDeviceMemObject with
         member this.Dispose(q) =
@@ -112,7 +116,8 @@ and ClDenseVector<'a> =
 
 type TuplesVector<'a> =
     { Indices: int []
-      Values: 'a [] }
+      Values: 'a []
+      Size: int }
 
     override this.ToString() =
         [ sprintf "Tuples Vector\n"
@@ -120,24 +125,25 @@ type TuplesVector<'a> =
           sprintf "Values:  %A \n" this.Values ]
         |> String.concat ""
 
-    member this.Size = this.Indices.Length
-
     member this.ToDevice(context: ClContext) =
         let indices = context.CreateClArray this.Indices
         let values = context.CreateClArray this.Values
 
         { Context = context
           Indices = indices
-          Values = values }
+          Values = values
+          Size = this.Size }
 
-    static member FromTuples(indices: int [], values: 'a []) = { Indices = indices; Values = values }
+    static member FromTuples(indices: int [], values: 'a [], size: int) =
+        { Indices = indices
+          Values = values
+          Size = size }
 
 and ClTuplesVector<'a> =
     { Context: ClContext
       Indices: ClArray<int>
-      Values: ClArray<'a> }
-
-    member this.Size = this.Indices.Length
+      Values: ClArray<'a>
+      Size: int }
 
     member this.ToHost(q: MailboxProcessor<_>) =
         let indices = Array.zeroCreate this.Indices.Length
@@ -149,7 +155,9 @@ and ClTuplesVector<'a> =
         let _ =
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this.Values, values, ch))
 
-        { Indices = indices; Values = values }
+        { Indices = indices
+          Values = values
+          Size = this.Size }
 
     interface IDeviceMemObject with
         member this.Dispose(q) =
