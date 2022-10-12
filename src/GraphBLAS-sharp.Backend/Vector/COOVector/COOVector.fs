@@ -49,6 +49,7 @@ module COOVector =
               Size = resultSize }
 
     let private merge (clContext: ClContext) (workGroupSize: int) =
+
         let merge =
             <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
 
@@ -281,6 +282,14 @@ module COOVector =
                     allocationMode = AllocationMode.Default
                 )
 
+            let positions =
+                clContext.CreateClArray(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
             let ndRange = Range1D.CreateValid(length, workGroupSize)
 
             let kernel = kernel.GetKernel ()
@@ -290,7 +299,93 @@ module COOVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                    )
+                            length
+                            allIndices
+                            leftValues
+                            rightValues
+                            isLeft
+                            allValues
+                            positions)
                 )
 
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+            allValues, positions
+
+
+    let setPositionsAtLeasOne (clContext: ClContext) (workGroupSize: int) =
+
+        let setPositions =
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'c>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i = prefixSumArrayLength - 1
+                   || i < prefixSumArrayLength
+                      && prefixSumBuffer.[i]
+                         <> prefixSumBuffer.[i + 1] then
+                    let index = prefixSumBuffer.[i]
+
+                    resultValues.[index] <- allValues.[i]
+                    resultIndices.[index] <- allIndices.[i]
+            @>
+
+        let kernel = clContext.Compile(setPositions)
+
+        let sum =
+            ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate 1
+
+        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'c>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+
+            let prefixSumArrayLength = positions.Length
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r = sum processor positions resultLengthGpu
+
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+                processor.Post(Msg.CreateFreeMsg<_>(r))
+
+                res.[0]
+
+            let resultValues =
+                clContext.CreateClArray<'c>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let resultIndices =
+                clContext.CreateClArray<int>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange = Range1D.CreateValid(prefixSumArrayLength, workGroupSize)
+
+            let kernel = kernel.GetKernel ()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            prefixSumArrayLength
+                            allValues
+                            allIndices
+                            positions
+                            resultValues
+                            resultIndices)
+                )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultValues, resultIndices
