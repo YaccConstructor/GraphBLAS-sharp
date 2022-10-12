@@ -454,9 +454,9 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    let private prepareRowPointers (clContext: ClContext) workGroupSize =
+    let private compressRows (clContext: ClContext) workGroupSize =
 
-        let prepareRowPointers =
+        let compressRows =
             <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
@@ -467,7 +467,7 @@ module COOMatrix =
                     if i = 0 || row <> rows.[i - 1] then
                         rowPointers.[row] <- i @>
 
-        let program = clContext.Compile(prepareRowPointers)
+        let program = clContext.Compile(compressRows)
 
         let create = ClArray.create clContext workGroupSize
 
@@ -493,7 +493,7 @@ module COOMatrix =
 
     let toCSR (clContext: ClContext) workGroupSize =
         let prepare =
-            prepareRowPointers clContext workGroupSize
+            compressRows clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
@@ -514,7 +514,7 @@ module COOMatrix =
 
     let toCSRInplace (clContext: ClContext) workGroupSize =
         let prepare =
-            prepareRowPointers clContext workGroupSize
+            compressRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
             let rowPointers =

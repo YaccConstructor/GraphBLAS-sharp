@@ -318,75 +318,80 @@ module Matrix =
             | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>
-    /// Transposes the given matrix and returns result. The storage format is preserved.
+    /// Transposes the given matrix and returns result.
     /// The given matrix should neither be used afterwards nor be disposed.
+    /// The storage format is not guaranteed to be preserved.
     /// </summary>
+    /// <remarks>
+    /// The format changes according to the following:
+    /// * COO -> COO
+    /// * CSR -> CSC
+    /// * CSC -> CSR
+    /// </remarks>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transposeInplace (clContext: ClContext) workGroupSize =
         let COOtransposeInplace =
             COOMatrix.transposeInplace clContext workGroupSize
 
-        let CSRtransposeInplace =
-            CSRMatrix.transposeInplace clContext workGroupSize
-
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
             | MatrixCOO m -> COOtransposeInplace processor m |> MatrixCOO
-            | MatrixCSR m -> CSRtransposeInplace processor m |> MatrixCSR
-            | MatrixCSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
-
-                let resT = CSRtransposeInplace processor csrT
-
-                { Context = resT.Context
-                  RowCount = resT.ColumnCount
-                  ColumnCount = resT.RowCount
-                  Rows = resT.Columns
-                  ColumnPointers = resT.RowPointers
-                  Values = resT.Values }
+            | MatrixCSR m ->
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  Rows = m.Columns
+                  ColumnPointers = m.RowPointers
+                  Values = m.Values }
                 |> MatrixCSC
+            | MatrixCSC m ->
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = m.ColumnPointers
+                  Columns = m.Rows
+                  Values = m.Values }
+                |> MatrixCSR
 
     /// <summary>
-    /// Transposes the given matrix and returns result as a new matrix. The storage format is preserved.
+    /// Transposes the given matrix and returns result as a new matrix.
+    /// The storage format is not guaranteed to be preserved.
     /// </summary>
+    /// <remarks>
+    /// The format changes according to the following:
+    /// * COO -> COO
+    /// * CSR -> CSC
+    /// * CSC -> CSR
+    /// </remarks>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
         let COOtranspose =
             COOMatrix.transpose clContext workGroupSize
 
-        let CSRtranspose =
-            CSRMatrix.transpose clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
             | MatrixCOO m -> COOtranspose processor m |> MatrixCOO
-            | MatrixCSR m -> CSRtranspose processor m |> MatrixCSR
-            | MatrixCSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
-
-                let resT = CSRtranspose processor csrT
-
-                { Context = resT.Context
-                  RowCount = resT.ColumnCount
-                  ColumnCount = resT.RowCount
-                  Rows = resT.Columns
-                  ColumnPointers = resT.RowPointers
-                  Values = resT.Values }
+            | MatrixCSR m ->
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  Rows = copy processor m.Columns
+                  ColumnPointers = copy processor m.RowPointers
+                  Values = copyData processor m.Values }
                 |> MatrixCSC
+            | MatrixCSC m ->
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = copy processor m.ColumnPointers
+                  Columns = copy processor m.Rows
+                  Values = copyData processor m.Values }
+                |> MatrixCSR
 
     let mxm
         (clContext: ClContext)

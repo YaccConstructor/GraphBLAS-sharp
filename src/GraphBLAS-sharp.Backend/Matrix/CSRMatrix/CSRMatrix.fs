@@ -6,9 +6,9 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let private prepareRows (clContext: ClContext) workGroupSize =
+    let private expandRowPointers (clContext: ClContext) workGroupSize =
 
-        let prepareRows =
+        let expandRowPointers =
             <@ fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
@@ -19,7 +19,7 @@ module CSRMatrix =
                     if rowPointer <> rowPointers.[i + 1] then
                         rows.[rowPointer] <- i @>
 
-        let program = clContext.Compile(prepareRows)
+        let program = clContext.Compile(expandRowPointers)
 
         let create = ClArray.create clContext workGroupSize
 
@@ -45,7 +45,7 @@ module CSRMatrix =
             rows
 
     let toCOO (clContext: ClContext) workGroupSize =
-        let prepare = prepareRows clContext workGroupSize
+        let prepare = expandRowPointers clContext workGroupSize
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
@@ -64,7 +64,7 @@ module CSRMatrix =
               Values = vals }
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
-        let prepare = prepareRows clContext workGroupSize
+        let prepare = expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
             let rows =
@@ -81,7 +81,7 @@ module CSRMatrix =
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
-        let prepareRows = prepareRows clContext workGroupSize
+        let prepareRows = expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
@@ -115,7 +115,7 @@ module CSRMatrix =
 
     let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
-        let prepareRows = prepareRows clContext workGroupSize
+        let prepareRows = expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize

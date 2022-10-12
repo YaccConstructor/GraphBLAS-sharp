@@ -5,7 +5,6 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "PrefixSum.Tests"
