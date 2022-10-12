@@ -389,3 +389,49 @@ module COOVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             resultValues, resultIndices
+
+    //TODO comment
+    let elementWiseAdd (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (workGroupSize: int) =
+
+        let merge = merge clContext workGroupSize
+
+        let prepare = preparePositionsAtLeasOne clContext opAdd workGroupSize
+
+        let setPositions = setPositionsAtLeasOne clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (rightVector: ClCooVector<'b>) ->
+
+            let allIndices, leftValues, rightValues, isLeft =
+                merge
+                    processor
+                    leftVector.Indices
+                    leftVector.Values
+                    rightVector.Indices
+                    rightVector.Values
+
+            let allValues, positions =
+                prepare
+                    processor
+                    allIndices
+                    leftValues
+                    rightValues
+                    isLeft
+
+            processor.Post(Msg.CreateFreeMsg<_>(leftValues))
+            processor.Post(Msg.CreateFreeMsg<_>(rightValues))
+
+            let resultValues, resultIndices =
+                setPositions
+                    processor
+                    allValues
+                    allIndices
+                    positions
+
+            processor.Post(Msg.CreateFreeMsg<_>(allValues))
+            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+            processor.Post(Msg.CreateFreeMsg<_>(positions))
+
+            { ClCooVector.Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = leftVector.Size }
