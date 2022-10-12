@@ -2,7 +2,8 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
-open Microsoft.FSharp.Control
+open GraphBLAS.FSharp.Backend.Common
+open Microsoft.FSharp.Quotations
 
 module COOVector =
     let zeroCreate (clContext: ClContext) =
@@ -49,8 +50,7 @@ module COOVector =
 
     let private merge (clContext: ClContext) (workGroupSize: int) =
         let merge =
-            <@
-                fun (ndRange: Range1D) (sumOfSides: int) (firstSide: int) (secondSide: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'a>) (allIndicesBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (isLeftBitMap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -156,16 +156,16 @@ module COOVector =
 
                         if not isValidX || isValidY && fstIdx <= sndIdx then
                             allIndicesBuffer.[i] <- sndIdx
-                            allValuesBuffer.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
+                            secondResultValues.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
                             isLeftBitMap.[i] <- 0
                         else
                             allIndicesBuffer.[i] <- fstIdx
-                            allValuesBuffer.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
+                            firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                             isLeftBitMap.[i] <- 1 @>
 
         let kernel = clContext.Compile(merge)
 
-        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (scalar: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
             let firstSide = firstIndices.Length
 
             let secondSide = secondIndices.Length
@@ -180,8 +180,16 @@ module COOVector =
                     allocationMode = AllocationMode.Default
                 )
 
-            let allValues =
+            let firstResultValues =
                 clContext.CreateClArray<'a>(
+                    sumOfSides,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let secondResultValues =
+                clContext.CreateClArray<'b>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
@@ -211,20 +219,78 @@ module COOVector =
                             firstIndices
                             firstValues
                             secondIndices
-                            scalar
+                            secondValues
                             allIndices
-                            allValues
+                            firstResultValues
+                            secondResultValues
                             isLeftBitmap)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            allIndices, allValues, isLeftBitmap
+            allIndices, firstResultValues, secondResultValues, isLeftBitmap
 
+    let private preparePositionsAtLeasOne
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        (workGroupSize: int)
+        =
 
+        let preparePositions =
+            <@  fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
 
+                    let gid = ndRange.GlobalID0
 
-    (*let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+                    if gid < length - 1 && allIndices[gid] = allIndices[gid + 1] then
+                        positions[gid] <- 0
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (mask: ClVector<'b>) (scalar: 'c) ->*)
+                        match (%opAdd) (Both (leftValues[gid + 1], rightValues[gid])) with
+                        | Some value ->
+                            allValues[gid + 1] <- value
+                            positions[gid + 1] <- 1
+                        | None ->
+                            positions[gid + 1] <- 1
+                    elif (gid < length && gid > 0 && allIndices[gid - 1] <> allIndices[gid]) || gid = 0 then
+                        if isLeft[gid] = 1 then
+                            match (%opAdd) (Left leftValues[gid]) with
+                            | Some value ->
+                                allValues[gid] <- value
+                                positions[gid] <- 1
+                            | None ->
+                                positions[gid] <- 0
+                        else
+                            match (%opAdd) (Right rightValues[gid]) with
+                            | Some value ->
+                                allValues[gid] <- value
+                                positions[gid] <- 1
+                            | None ->
+                                positions[gid] <- 0
+            @>
+
+        let kernel = clContext.Compile(preparePositions)
+
+        fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
+
+            let length = allIndices.Length
+
+            let allValues =
+                clContext.CreateClArray(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+            let kernel = kernel.GetKernel ()
+
+            processor.Post(
+                Msg.MsgSetArguments(
+                    fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                    )
+                )
+
 
