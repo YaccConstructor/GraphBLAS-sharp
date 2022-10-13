@@ -391,7 +391,7 @@ module COOVector =
             resultValues, resultIndices
 
     //TODO comment
-    let elementWiseAdd (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (workGroupSize: int) =
+    let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (workGroupSize: int) =
 
         let merge = merge clContext workGroupSize
 
@@ -435,3 +435,32 @@ module COOVector =
               Values = resultValues
               Indices = resultIndices
               Size = leftVector.Size }
+
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+
+        let opAdd =
+            <@ fun (value: AtLeastOne<'a, 'a>) ->
+                match value with
+                | Both (_, right) -> Some right
+                | Left left -> Some left
+                | Right _ -> None @>
+
+        let create = ClArray.create clContext workGroupSize
+
+        let eWiseAdd = elementWiseAddAtLeastOne clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (maskVector: ClCooVector<'b>) (scalar: 'a) ->
+
+            let maskSize = maskVector.Size
+
+            let maskValues = create processor maskVector.Size scalar
+
+            let maskIndices = maskVector.Indices
+
+            let rightVector =
+                { ClCooVector.Context = clContext
+                  Indices = maskIndices
+                  Values = maskValues
+                  Size = maskSize }
+
+            eWiseAdd processor leftVector rightVector
