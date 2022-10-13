@@ -438,20 +438,15 @@ module COOVector =
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
 
-        let opAdd =
-            <@ fun (value: AtLeastOne<'a, 'a>) ->
-                match value with
-                | Both (_, right) -> Some right
-                | Left left -> Some left
-                | Right _ -> None @>
-
         let create = ClArray.create clContext workGroupSize
+
+        let opAdd = VectorOperations.fillSubAddAtLeastOne None
 
         let eWiseAdd = elementWiseAddAtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (maskVector: ClCooVector<'b>) (scalar: 'a) ->
 
-            let maskSize = maskVector.Size
+            let maskSize = maskVector.Size //TODO()
 
             let maskValues = create processor maskVector.Size scalar
 
