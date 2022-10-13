@@ -17,6 +17,7 @@
     <Compile Include="Common/PrefixSum.fs" />
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/StandardOperations.fs" />
+    <Compile Include="Common\Reduce.fs" />
     <Compile Include="Predefined/PrefixSum.fs" />
     <Compile Include="Matrices.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />

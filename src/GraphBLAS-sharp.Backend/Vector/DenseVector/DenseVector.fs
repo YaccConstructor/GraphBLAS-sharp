@@ -213,4 +213,3 @@ module DenseVector =
                 )
 
             resultArray :?> ClDenseVector<'a>
-
