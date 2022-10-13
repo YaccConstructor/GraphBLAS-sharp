@@ -169,4 +169,48 @@ module DenseVector =
 
            resultVector
 
+    let Complemented (clContext: ClContext) (workGroupSize: int) =
+
+        let complemented =
+            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (resultArray: ClArray<'a option>) ->
+
+                 let gid = ndRange.GlobalID0
+
+                 if gid < length then
+                    match inputArray.[gid] with
+                    | Some _ ->
+                        resultArray.[gid] <- None
+                    | None ->
+                        resultArray.[gid] <- Some Unchecked.defaultof<'a> @>
+
+
+        let kernel = clContext.Compile(complemented)
+
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+
+            let length = vector.Size
+
+            let resultArray =
+                clContext.CreateClArray(
+                    length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange = Range1D.CreateValid(length, workGroupSize)
+
+            let kernel = kernel.GetKernel ()
+
+            processor.Post(
+                Msg.MsgSetArguments(
+                    fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            length
+                            vector
+                            resultArray)
+                )
+
+            resultArray :?> ClDenseVector<'a>
 
