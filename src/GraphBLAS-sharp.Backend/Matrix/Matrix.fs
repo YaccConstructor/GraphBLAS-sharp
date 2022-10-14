@@ -394,10 +394,10 @@ module Matrix =
                 |> MatrixCSR
 
     let mxm
-        (clContext: ClContext)
-        workGroupSize
         (opAdd: Expr<'c -> 'c -> 'c option>)
         (opMul: Expr<'a -> 'b -> 'c option>)
+        (clContext: ClContext)
+        workGroupSize
         =
 
         let runCSRnCSC =

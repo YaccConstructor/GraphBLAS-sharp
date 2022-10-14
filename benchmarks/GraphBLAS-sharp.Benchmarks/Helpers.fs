@@ -14,6 +14,10 @@ open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Jobs
 open GraphBLAS.FSharp
 
+open System.IO
+open GraphBLAS.FSharp
+open System
+
 type CommonConfig() =
     inherit ManualConfig()
 
@@ -247,3 +251,67 @@ module Utils =
             rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
 
         rowPointers
+
+    // let csr2csc (rowPointers: int []) (columnIndices: int []) columnCount =
+    //     let rowIndices = rowPointers2rowIndices rowPointers
+    //     let rowIndices, columnIndices =
+    //         (rowIndices, columnIndices)
+    //         ||> Array.zip
+    //         |> Array.sortBy snd
+    //         |> Array.unzip
+    //     let columnPointers = rowIndices2rowPointers columnIndices columnCount
+    //     rowIndices, columnPointers
+
+    let inline buildCooMatrix (context:ClContext) matrix =
+        match matrix with
+        | MatrixCOO m ->
+            let rows =
+                context.CreateClArray (m.Rows, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (m.Columns, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.COOMatrix.Context = context
+              Backend.COOMatrix.RowCount = m.RowCount
+              Backend.COOMatrix.ColumnCount = m.ColumnCount
+              Backend.COOMatrix.Rows = rows
+              Backend.COOMatrix.Columns = cols
+              Backend.COOMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"
+
+    let inline buildCsrMatrix (context:ClContext) matrix =
+        match matrix with
+        | MatrixCOO m ->
+            let rowPointers =
+                context.CreateClArray(
+                    Utils.rowIndices2rowPointers m.Rows m.RowCount
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (
+                    m.Columns
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (
+                    m.Values
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.CSRMatrix.Context = context
+              Backend.CSRMatrix.RowCount = m.RowCount
+              Backend.CSRMatrix.ColumnCount = m.ColumnCount
+              Backend.CSRMatrix.RowPointers = rowPointers
+              Backend.CSRMatrix.Columns = cols
+              Backend.CSRMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"

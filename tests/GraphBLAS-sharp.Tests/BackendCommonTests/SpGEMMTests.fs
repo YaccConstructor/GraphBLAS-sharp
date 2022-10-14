@@ -82,7 +82,7 @@ let tests =
 
       let mult = <@ fun x y -> Some (x * y) @>
 
-      let spgemmFun = Matrix.mxm context workGroupSize add mult
+      let spgemmFun = Matrix.mxm add mult context workGroupSize
       makeTest context q 0 (=) (+) (*) spgemmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
@@ -103,7 +103,7 @@ let tests =
 
           res @>
 
-      let spgemmFun = Matrix.mxm context workGroupSize logicalOr logicalAnd
+      let spgemmFun = Matrix.mxm logicalOr logicalAnd context workGroupSize
       makeTest context q false (=) (||) (&&) spgemmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
     |> testList "SpGEMM tests"
