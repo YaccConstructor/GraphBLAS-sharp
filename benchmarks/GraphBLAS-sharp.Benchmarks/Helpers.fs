@@ -252,16 +252,6 @@ module Utils =
 
         rowPointers
 
-    // let csr2csc (rowPointers: int []) (columnIndices: int []) columnCount =
-    //     let rowIndices = rowPointers2rowIndices rowPointers
-    //     let rowIndices, columnIndices =
-    //         (rowIndices, columnIndices)
-    //         ||> Array.zip
-    //         |> Array.sortBy snd
-    //         |> Array.unzip
-    //     let columnPointers = rowIndices2rowPointers columnIndices columnCount
-    //     rowIndices, columnPointers
-
     let inline buildCooMatrix (context:ClContext) matrix =
         match matrix with
         | MatrixCOO m ->
