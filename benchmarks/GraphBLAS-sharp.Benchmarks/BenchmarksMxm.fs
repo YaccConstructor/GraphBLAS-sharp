@@ -235,7 +235,7 @@ type MxmBenchmarks4Float32MultiplicationOnly() =
         )
 
     static member InputMatrixProvider =
-        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "MxmBenchmarks4Float32.txt"
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
 type MxmBenchmarks4Float32WithTransposing() =
 
@@ -247,7 +247,7 @@ type MxmBenchmarks4Float32WithTransposing() =
         )
 
     static member InputMatrixProvider =
-        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "MxmBenchmarks4Float32.txt"
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
 type MxmBenchmarks4BoolMultiplicationOnly() =
 
@@ -259,7 +259,7 @@ type MxmBenchmarks4BoolMultiplicationOnly() =
         )
 
     static member InputMatrixProvider =
-        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "MxmBenchmarks4Bool.txt"
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
 
 type MxmBenchmarks4BoolWithTransposing() =
 
@@ -271,4 +271,4 @@ type MxmBenchmarks4BoolWithTransposing() =
         )
 
     static member InputMatrixProvider =
-        EWiseAddBenchmarks<_,_>.InputMatricesProviderBuilder "MxmBenchmarks4Bool.txt"
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
