@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
@@ -90,7 +91,11 @@ module DenseVector =
 
             resultArray :?> ClDenseVector<'b>
 
-    let elementWiseAddAtLeasOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (workGroupSize: int) =
+    let elementWiseAddAtLeasOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        (workGroupSize: int)
+        =
 
         let eWiseAdd =
             <@ fun (ndRange: Range1D) leftVectorLength rightVectorLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
@@ -148,7 +153,7 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultVector
+            resultVector :?> ClDenseVector<'c>
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
 
@@ -169,7 +174,7 @@ module DenseVector =
 
            resultVector
 
-    let Complemented (clContext: ClContext) (workGroupSize: int) =
+    let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let complemented =
             <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (resultArray: ClArray<'a option>) ->
@@ -213,3 +218,163 @@ module DenseVector =
                 )
 
             resultArray :?> ClDenseVector<'a>
+
+    let getSomeBitmap (clContext: ClContext) (workGroupSize: int) =
+
+        let getSomeBitmap =
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    match vector[gid] with
+                    | Some _ ->
+                        positions[gid] <- 1
+                    | None ->
+                        positions[gid] <- 0 @>
+
+        let kernel = clContext.Compile(getSomeBitmap)
+
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+
+            let positions =
+                clContext.CreateClArray(
+                    vector.Size,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel ()
+
+            processor.Post(
+                Msg.MsgSetArguments(
+                    fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vector.Length
+                            vector
+                            positions))
+
+            processor.Post(Msg.CreateRunMsg(kernel))
+
+            positions
+
+    let unzip (clContext: ClContext) (workGroupSize: int) =
+
+        let unzip =
+            <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (prefixSumBuffer: ClArray<int>) (bitmap: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length && bitmap[gid] = 1 then
+                    let index = prefixSumBuffer[gid]
+
+                    match denseVector[gid] with
+                    | Some value ->
+                        resultValues[index] <- value
+                        resultIndices[index] <- gid
+                    | None -> () @>
+
+
+        let kernel = clContext.Compile(unzip)
+
+        let getBitmap = getSomeBitmap clContext workGroupSize
+
+        let copy = ClArray.copy clContext workGroupSize
+
+        let prefixSum = ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate 1
+
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+
+            let bitmap = getBitmap processor vector
+
+            let prefixSumArray = copy processor bitmap
+
+            let prefixSumArrayLength = prefixSumArray.Length
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r = prefixSum processor prefixSumArray resultLengthGpu
+
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+                processor.Post(Msg.CreateFreeMsg<_>(r))
+
+                res.[0]
+
+            let resultValues =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default)
+
+            let resultIndices =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default)
+
+            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel ()
+
+            processor.Post(
+                Msg.MsgSetArguments(
+                    fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vector.Size
+                            vector
+                            prefixSumArray
+                            bitmap
+                            resultValues
+                            resultIndices)
+                )
+
+            processor.Post(Msg.CreateRunMsg(kernel))
+
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+            processor.Post(Msg.CreateFreeMsg<_>(prefixSumArray))
+
+            resultValues, resultIndices
+
+    let toCoo (clContext: ClContext) (workGroupSize: int) =
+
+        let unzip = unzip clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+
+            let values, indices = unzip processor vector
+
+            { ClCooVector.Context = clContext
+              Indices = indices
+              Values = values
+              Size = vector.Size }
+
+
+    let reduce
+        (clContext: ClContext)
+        (workGroupSize: int)
+        (opAdd: Expr<'a -> 'a -> 'a>)
+        =
+
+        let unzip = unzip clContext workGroupSize
+
+        let reduce = Reduce.reduce clContext workGroupSize opAdd Unchecked.defaultof<'a> //TODO()
+
+        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+
+            let values, indices = unzip processor vector
+
+            processor.Post(Msg.CreateFreeMsg<_>(indices))
+
+            reduce processor values

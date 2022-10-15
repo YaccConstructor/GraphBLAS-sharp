@@ -49,7 +49,7 @@ module COOVector =
               Values = resultValues
               Size = resultSize }
 
-    let private merge (clContext: ClContext) (workGroupSize: int) =
+    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let merge =
             <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
@@ -232,7 +232,7 @@ module COOVector =
 
             allIndices, firstResultValues, secondResultValues, isLeftBitmap
 
-    let private preparePositionsAtLeasOne
+    let private preparePositionsAtLeasOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         (workGroupSize: int)
@@ -317,7 +317,7 @@ module COOVector =
     let setPositions (clContext: ClContext) (workGroupSize: int) =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'c>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
@@ -338,7 +338,7 @@ module COOVector =
 
         let resultLength = Array.zeroCreate 1
 
-        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'c>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
             let prefixSumArrayLength = positions.Length
 
@@ -355,7 +355,7 @@ module COOVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArray<'c>(
+                clContext.CreateClArray<'a>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
@@ -392,7 +392,11 @@ module COOVector =
             resultValues, resultIndices
 
     //TODO comment
-    let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (workGroupSize: int) =
+    let elementWiseAddAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        (workGroupSize: int)
+        =
 
         let merge = merge clContext workGroupSize
 
@@ -499,13 +503,19 @@ module COOVector =
 
             positions
 
-    let complemented (clContext: ClContext) (workGroupSize: int) =
+    let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
-        let init = ClArray.init <@ id @> clContext workGroupSize
+        let preparePositions =
+            preparePositionsComplemented clContext workGroupSize
 
-        let preparePositions = preparePositionsComplemented clContext workGroupSize
+        let init =
+            ClArray.init <@ id @> clContext workGroupSize
 
-        let setPositions = setPositions clContext workGroupSize
+        let create =
+            ClArray.zeroCreate clContext workGroupSize
+
+        let setPositions =
+            setPositions clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
 
@@ -515,8 +525,10 @@ module COOVector =
             let allIndices =
                 init processor vector.Size
 
+            let (values: ClArray<'a>) = create processor vector.Size //TODO()
+
             let resultValues, resultIndices =
-                setPositions processor allIndices allIndices positions
+                setPositions processor values allIndices positions
 
             processor.Post(Msg.CreateFreeMsg<_>(positions))
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
