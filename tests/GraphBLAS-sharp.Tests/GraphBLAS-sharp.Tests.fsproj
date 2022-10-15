@@ -21,7 +21,7 @@
     <Compile Include="BackendCommonTests/MatrixEwiseAddTests.fs" />
     <Compile Include="BackendCommonTests/ConvertTests.fs" />
     <Compile Include="BackendCommonTests/TransposeTests.fs" />
-    <Compile Include="BackendCommonTests/SpGEMMTests.fs" />
+    <Compile Include="BackendCommonTests/MxmTests.fs" />
     <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxmTests.fs" /-->
     <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->

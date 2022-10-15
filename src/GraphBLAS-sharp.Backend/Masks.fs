@@ -15,7 +15,7 @@ type Mask1D =
 
     member this.NNZ = this.Indices.Length
 
-    member this.Dispose (q: MailboxProcessor<_>) =
+    member this.Dispose(q: MailboxProcessor<_>) =
         q.Post(Msg.CreateFreeMsg<_>(this.Indices))
         q.PostAndReply(Msg.MsgNotifyMe)
 
@@ -29,7 +29,7 @@ type Mask2D =
 
     member this.NNZ = this.Rows.Length
 
-    member this.Dispose (q: MailboxProcessor<_>) =
+    member this.Dispose(q: MailboxProcessor<_>) =
         q.Post(Msg.CreateFreeMsg<_>(this.Rows))
         q.Post(Msg.CreateFreeMsg<_>(this.Columns))
         q.PostAndReply(Msg.MsgNotifyMe)

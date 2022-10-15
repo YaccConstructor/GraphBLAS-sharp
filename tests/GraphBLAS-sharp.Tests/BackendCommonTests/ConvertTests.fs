@@ -14,7 +14,8 @@ let config = defaultConfig
 let wgSize = 32
 
 let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
-    let mtx = createMatrixFromArray2D formatFrom array isZero
+    let mtx =
+        createMatrixFromArray2D formatFrom array isZero
 
     if mtx.NNZCount > 0 then
         let actual =
@@ -30,7 +31,8 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
             >> setField "actual" (sprintf "%A" actual)
         )
 
-        let expected = createMatrixFromArray2D formatTo array isZero
+        let expected =
+            createMatrixFromArray2D formatTo array isZero
 
         "Matrices should be equal"
         |> Expect.equal actual expected

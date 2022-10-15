@@ -482,17 +482,13 @@ module Generators =
             gen {
                 let! length = Gen.sized <| fun size -> Gen.choose (1, size)
 
-                let! array =
-                    Gen.arrayOfLength
-                    <| length
-                    <| tuplesGenerator
+                let! array = Gen.arrayOfLength <| length <| tuplesGenerator
 
                 return array |> Array.sortBy fst
             }
 
         static member IntType() =
-            arrayOfAscendingKeysGenerator
-            <| Arb.generate<int>
+            arrayOfAscendingKeysGenerator <| Arb.generate<int>
             |> Arb.fromGen
 
         static member FloatType() =

@@ -45,7 +45,9 @@ module CSRMatrix =
             rows
 
     let toCOO (clContext: ClContext) workGroupSize =
-        let prepare = expandRowPointers clContext workGroupSize
+        let prepare =
+            expandRowPointers clContext workGroupSize
+
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
@@ -64,7 +66,8 @@ module CSRMatrix =
               Values = vals }
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
-        let prepare = expandRowPointers clContext workGroupSize
+        let prepare =
+            expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
             let rows =
@@ -81,7 +84,8 @@ module CSRMatrix =
 
     let eWiseAdd (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
-        let prepareRows = expandRowPointers clContext workGroupSize
+        let prepareRows =
+            expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAdd clContext opAdd workGroupSize
@@ -115,7 +119,8 @@ module CSRMatrix =
 
     let eWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
-        let prepareRows = expandRowPointers clContext workGroupSize
+        let prepareRows =
+            expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.eWiseAddAtLeastOne clContext opAdd workGroupSize

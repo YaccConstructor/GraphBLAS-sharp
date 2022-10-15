@@ -492,8 +492,7 @@ module COOMatrix =
             rowPointers
 
     let toCSR (clContext: ClContext) workGroupSize =
-        let prepare =
-            compressRows clContext workGroupSize
+        let prepare = compressRows clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
@@ -513,8 +512,7 @@ module COOMatrix =
               Values = vals }
 
     let toCSRInplace (clContext: ClContext) workGroupSize =
-        let prepare =
-            compressRows clContext workGroupSize
+        let prepare = compressRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: COOMatrix<'a>) ->
             let rowPointers =

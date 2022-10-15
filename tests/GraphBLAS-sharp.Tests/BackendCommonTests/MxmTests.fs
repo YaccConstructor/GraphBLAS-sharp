@@ -1,4 +1,4 @@
-module Backend.SpGEMM
+module Backend.Mxm
 
 open Expecto
 open Expecto.Logging
@@ -9,21 +9,12 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 
-let logger = Log.create "SpGEMM.Tests"
+let logger = Log.create "Mxm.Tests"
 
 let context = defaultContext.ClContext
 let workGroupSize = 32
 
-let makeTest
-    context
-    q
-    zero
-    isEqual
-    plus
-    mul
-    spgemmFun
-    (leftMatrix: 'a [,], rightMatrix: 'a [,], mask: bool [,])
-    =
+let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMatrix: 'a [,], mask: bool [,]) =
 
     let m1 =
         createMatrixFromArray2D CSR leftMatrix (isEqual zero)
@@ -41,7 +32,8 @@ let makeTest
                     (leftMatrix.[i, *], rightMatrix.[*, j])
                     ||> Array.map2 mul
                     |> Array.reduce plus
-                else zero
+                else
+                    zero
 
         let expected =
             createMatrixFromArray2D COO expected (isEqual zero)
@@ -49,9 +41,11 @@ let makeTest
         if expected.NNZCount > 0 then
             let m1 = m1.ToBackend context
             let m2 = m2.ToBackend context
-            let mask = Mask2D.FromArray2D(mask, not).ToBackend context
 
-            let result = spgemmFun q m1 m2 mask
+            let mask =
+                Mask2D.FromArray2D(mask, not).ToBackend context
+
+            let result = mxmFun q m1 m2 mask
             let actual = Matrix.FromBackend q result
 
             m1.Dispose q
@@ -65,8 +59,7 @@ let makeTest
 
 let tests =
 
-    let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s" datatype
+    let getCorrectnessTestName datatype = sprintf "Correctness on %s" datatype
 
     let config =
         { defaultConfig with
@@ -75,35 +68,43 @@ let tests =
     let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let add = <@ fun x y ->
-          let mutable res = x + y
+    [ let add =
+          <@ fun x y ->
+              let mutable res = x + y
 
-          if res = 0 then None else (Some res) @>
+              if res = 0 then None else (Some res) @>
 
-      let mult = <@ fun x y -> Some (x * y) @>
+      let mult = <@ fun x y -> Some(x * y) @>
 
-      let spgemmFun = Matrix.mxm add mult context workGroupSize
-      makeTest context q 0 (=) (+) (*) spgemmFun
+      let mxmFun =
+          Matrix.mxm add mult context workGroupSize
+
+      makeTest context q 0 (=) (+) (*) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let logicalOr = <@ fun x y ->
-          let mutable res = None
+      let logicalOr =
+          <@ fun x y ->
+              let mutable res = None
 
-          match x, y with
-          | false, false -> res <- None
-          | _            -> res <- Some true
+              match x, y with
+              | false, false -> res <- None
+              | _ -> res <- Some true
 
-          res @>
-      let logicalAnd = <@ fun x y ->
-          let mutable res = None
+              res @>
 
-          match x, y with
-          | true, true -> res <- Some true
-          | _          -> res <- None
+      let logicalAnd =
+          <@ fun x y ->
+              let mutable res = None
 
-          res @>
+              match x, y with
+              | true, true -> res <- Some true
+              | _ -> res <- None
 
-      let spgemmFun = Matrix.mxm logicalOr logicalAnd context workGroupSize
-      makeTest context q false (=) (||) (&&) spgemmFun
+              res @>
+
+      let mxmFun =
+          Matrix.mxm logicalOr logicalAnd context workGroupSize
+
+      makeTest context q false (=) (||) (&&) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
-    |> testList "SpGEMM tests"
+    |> testList "Mxm tests"

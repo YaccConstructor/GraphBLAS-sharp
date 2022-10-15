@@ -35,9 +35,12 @@ module internal SpGEMM =
                 let products = localArray<'c option> workGroupSize
                 products.[lid] <- None
 
-                let threadProcessedSize = (nnzPerRow + workGroupSize - 1) / workGroupSize
+                let threadProcessedSize =
+                    (nnzPerRow + workGroupSize - 1) / workGroupSize
+
                 let mutable start = threadProcessedSize * lid
                 let mutable i = threadProcessedSize * lid
+
                 while i - start < threadProcessedSize && i < nnzPerRow do
                     let indexToFind = leftColumns.[rowBeginIdx + i]
 
@@ -60,12 +63,12 @@ module internal SpGEMM =
                             let increase = (%opMul) a b
 
                             let product = products.[lid]
+
                             match product, increase with
                             | Some x, Some y ->
                                 let buff = (%opAdd) x y
                                 products.[lid] <- buff
-                            | None, Some _ ->
-                                products.[lid] <- increase
+                            | None, Some _ -> products.[lid] <- increase
                             | _ -> ()
 
                             // Break alternative
@@ -83,6 +86,7 @@ module internal SpGEMM =
                         let i = step * (lid + 1) - 1
 
                         let increase = products.[i - (step >>> 1)]
+
                         match increase, products.[i] with
                         | Some x, Some y ->
                             let buff = (%opAdd) x y
