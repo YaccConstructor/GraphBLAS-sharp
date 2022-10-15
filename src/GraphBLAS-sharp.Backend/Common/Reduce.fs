@@ -5,11 +5,11 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module Reduce =
-    let private reduce
-        (opAdd: Expr<'a -> 'a -> 'a>)
-        (zero: 'a)
+    let reduce
         (clContext: ClContext)
         (workGroupSize: int)
+        (opAdd: Expr<'a -> 'a -> 'a>)
+        (zero: 'a)
         =
 
         let reduce =

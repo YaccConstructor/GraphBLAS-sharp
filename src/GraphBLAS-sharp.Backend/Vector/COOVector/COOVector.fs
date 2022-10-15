@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module COOVector =
@@ -524,3 +525,18 @@ module COOVector =
               Indices = resultIndices
               Values = resultValues
               Size = vector.Size }
+
+    let reduce
+        (clContext: ClContext)
+        (workGroupSize: int)
+        (opAdd: Expr<'a -> 'a -> 'a>)
+        =
+
+        let reduce = Reduce.reduce clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) (-) ->
+
+            let resultCell =
+                clContext.CreateClCell Unchecked.defaultof<'a>
+
+            reduce opAdd Unchecked.defaultof<'a> processor vector.Values resultCell
