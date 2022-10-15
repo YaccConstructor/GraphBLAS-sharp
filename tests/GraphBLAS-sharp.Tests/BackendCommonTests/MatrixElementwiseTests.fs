@@ -63,27 +63,30 @@ let correctnessGenericTest
         createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
-        let m1 = mtx1.ToBackend case.ClContext.ClContext
-        let m2 = mtx2.ToBackend case.ClContext.ClContext
+        try
+            let m1 = mtx1.ToBackend case.ClContext.ClContext
+            let m2 = mtx2.ToBackend case.ClContext.ClContext
 
-        let res = addFun q m1 m2
+            let res = addFun q m1 m2
 
-        m1.Dispose q
-        m2.Dispose q
+            m1.Dispose q
+            m2.Dispose q
 
-        let cooRes = toCOOFun q res
-        let actual = Matrix.FromBackend q cooRes
+            let cooRes = toCOOFun q res
+            let actual = Matrix.FromBackend q cooRes
 
-        cooRes.Dispose q
-        res.Dispose q
+            cooRes.Dispose q
+            res.Dispose q
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
-        )
+            logger.debug (
+                eventX "Actual is {actual}"
+                >> setField "actual" (sprintf "%A" actual)
+            )
 
-        checkResult isEqual op zero leftMatrix rightMatrix actual
-
+            checkResult isEqual op zero leftMatrix rightMatrix actual
+        with
+        | ex when ex.Message = "InvalidBufferSize" -> ()
+        | ex -> raise ex
 
 let testFixturesEWiseAdd case =
     [ let config = defaultConfig
