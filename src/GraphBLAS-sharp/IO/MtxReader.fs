@@ -76,9 +76,11 @@ type MtxReader(pathToFile: string) =
                         (fun line ->
                             let i = int line.[0]
                             let j = int line.[1]
+
                             let v =
                                 converter
                                 <| if line.Length > 2 then line.[2] else ""
+
                             struct (pack i j, v))
                     |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
                 | Symmetric ->
@@ -89,14 +91,21 @@ type MtxReader(pathToFile: string) =
                         (fun line ->
                             let i = int line.[0]
                             let j = int line.[1]
+
                             let v =
                                 converter
                                 <| if line.Length > 2 then line.[2] else ""
-                            if i = j then [| struct (pack i j, v) |]
-                            else [| struct (pack i j, v); struct (pack j i, v) |])
+
+                            if i = j then
+                                [| struct (pack i j, v) |]
+                            else
+                                [| struct (pack i j, v)
+                                   struct (pack j i, v) |])
                     |> Array.concat
                     |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
-                | _ -> failwith <| sprintf "This symmetry processing is not implemented: %A" this.Symmetry
+                | _ ->
+                    failwith
+                    <| sprintf "This symmetry processing is not implemented: %A" this.Symmetry
 
             let rows = Array.zeroCreate sortedData.Length
             let cols = Array.zeroCreate sortedData.Length
