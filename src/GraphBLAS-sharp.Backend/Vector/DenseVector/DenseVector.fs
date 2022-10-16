@@ -3,44 +3,14 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
-open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
-    let zeroCreate (clContext: ClContext) (workGroupSize: int)  =
-        let zeroCreate = ClArray.zeroCreate clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (length: int) ->
-            let resultValues = zeroCreate processor length
-
-            resultValues :?> ClDenseVector<'a>
-
-    let ofList (clContext: ClContext) (workGroupSize: int) (elements: (int * 'a) list) =
-        let indices, values =
-            elements
-            |> Array.ofList
-            |> Array.sortBy fst
-            |> Array.unzip
-
-        let toOptionArray = ClArray.toOptionArray clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) ->
-            let values = clContext.CreateClArray values
-            let indices = clContext.CreateClArray indices
-
-            toOptionArray processor values indices elements.Length :?> ClDenseVector<'a>
-
-
-    let copy (clContext: ClContext) (workGroupSize: int) =
-        let copy = ClArray.copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
-            copy processor vector :?> ClDenseVector<'a>
-
     let private copyWithValue (clContext: ClContext) (workGroupSize: int) =
 
         let fillVector =
-            <@ fun (ndRange: Range1D) length (maskArray: ClArray<'a option>) (scalar: ClCell<'b>) (resultArray: ClArray<'b option>)->
+            <@
+               fun (ndRange: Range1D) length (maskArray: ClArray<'a option>) (scalar: ClCell<'b>) (resultArray: ClArray<'b option>)->
 
                 let gid = ndRange.GlobalID0
 
@@ -49,7 +19,8 @@ module DenseVector =
                         | Some _ ->
                             resultArray.[gid] <- Some scalar.Value
                         | None ->
-                            resultArray.[gid] <- None @>
+                            resultArray.[gid] <- None
+            @>
 
         let kernel = clContext.Compile(fillVector)
 
@@ -73,7 +44,7 @@ module DenseVector =
 
             let ndRange = Range1D.CreateValid(maskVector.Size, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -98,7 +69,8 @@ module DenseVector =
         =
 
         let eWiseAdd =
-            <@ fun (ndRange: Range1D) leftVectorLength rightVectorLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
+            <@
+               fun (ndRange: Range1D) leftVectorLength rightVectorLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
                  let gid = ndRange.GlobalID0
 
@@ -119,7 +91,8 @@ module DenseVector =
                  | None, Some right ->
                     resultVector.[gid] <- (%opAdd) (Right right)
                  | None, None ->
-                    resultVector.[gid] <- None @>
+                    resultVector.[gid] <- None
+            @>
 
         let kernel = clContext.Compile(eWiseAdd)
 
@@ -137,7 +110,7 @@ module DenseVector =
 
             let ndRange = Range1D.CreateValid (resultLength, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -177,16 +150,18 @@ module DenseVector =
     let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let complemented =
-            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (resultArray: ClArray<'a option>) ->
+            <@
+                fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (resultArray: ClArray<'a option>) ->
 
-                 let gid = ndRange.GlobalID0
+                    let gid = ndRange.GlobalID0
 
-                 if gid < length then
-                    match inputArray.[gid] with
-                    | Some _ ->
-                        resultArray.[gid] <- None
-                    | None ->
-                        resultArray.[gid] <- Some Unchecked.defaultof<'a> @>
+                    if gid < length then
+                        match inputArray.[gid] with
+                        | Some _ ->
+                            resultArray.[gid] <- None
+                        | None ->
+                            resultArray.[gid] <- Some Unchecked.defaultof<'a>
+            @>
 
 
         let kernel = clContext.Compile(complemented)
@@ -205,7 +180,7 @@ module DenseVector =
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -219,19 +194,21 @@ module DenseVector =
 
             resultArray :?> ClDenseVector<'a>
 
-    let getSomeBitmap (clContext: ClContext) (workGroupSize: int) =
+    let getSomeBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let getSomeBitmap =
-            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
 
-                let gid = ndRange.GlobalID0
+                    let gid = ndRange.GlobalID0
 
-                if gid < length then
-                    match vector[gid] with
-                    | Some _ ->
-                        positions[gid] <- 1
-                    | None ->
-                        positions[gid] <- 0 @>
+                    if gid < length then
+                        match vector[gid] with
+                        | Some _ ->
+                            positions[gid] <- 1
+                        | None ->
+                            positions[gid] <- 0
+            @>
 
         let kernel = clContext.Compile(getSomeBitmap)
 
@@ -247,7 +224,7 @@ module DenseVector =
 
             let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -262,21 +239,23 @@ module DenseVector =
 
             positions
 
-    let unzip (clContext: ClContext) (workGroupSize: int) =
+    let unzip<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let unzip =
-            <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (prefixSumBuffer: ClArray<int>) (bitmap: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (prefixSumBuffer: ClArray<int>) (bitmap: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
-                let gid = ndRange.GlobalID0
+                    let gid = ndRange.GlobalID0
 
-                if gid < length && bitmap[gid] = 1 then
-                    let index = prefixSumBuffer[gid]
+                    if gid < length && bitmap[gid] = 1 then
+                        let index = prefixSumBuffer[gid]
 
-                    match denseVector[gid] with
-                    | Some value ->
-                        resultValues[index] <- value
-                        resultIndices[index] <- gid
-                    | None -> () @>
+                        match denseVector[gid] with
+                        | Some value ->
+                            resultValues[index] <- value
+                            resultIndices[index] <- gid
+                        | None -> ()
+            @>
 
 
         let kernel = clContext.Compile(unzip)
@@ -294,8 +273,6 @@ module DenseVector =
             let bitmap = getBitmap processor vector
 
             let prefixSumArray = copy processor bitmap
-
-            let prefixSumArrayLength = prefixSumArray.Length
 
             let resultLengthGpu = clContext.CreateClCell 0
 
@@ -325,7 +302,7 @@ module DenseVector =
 
             let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(

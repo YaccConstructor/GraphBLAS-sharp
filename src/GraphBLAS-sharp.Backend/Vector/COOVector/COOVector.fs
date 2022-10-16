@@ -7,52 +7,11 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module COOVector =
-    let zeroCreate (clContext: ClContext) =
-        let resultIndices = clContext.CreateClArray [||]
-        let resultValues = clContext.CreateClArray [||]
-
-        { ClCooVector.Context = clContext
-          Indices = resultIndices
-          Values = resultValues
-          Size = 0 }
-
-    let ofList (clContext: ClContext) (elements: (int * 'a) list) =
-        let indices, values =
-            elements
-            |> Array.ofList
-            |> Array.sortBy fst
-            |> Array.unzip
-
-        let resultSize = elements.Length
-
-        let resultIndices = clContext.CreateClArray indices
-        let resultValues = clContext.CreateClArray values
-
-        { ClCooVector.Context = clContext
-          Indices = resultIndices
-          Values = resultValues
-          Size = resultSize }
-
-    let copy (clContext: ClContext) (workGroupSize: int) =
-        let copy = ClArray.copy clContext workGroupSize
-        let copyData = ClArray.copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
-            let resultIndices = copy processor vector.Indices
-
-            let resultValues = copyData processor vector.Values
-
-            let resultSize = vector.Size
-
-            { ClCooVector.Context = clContext
-              Indices = resultIndices
-              Values = resultValues
-              Size = resultSize }
-
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let merge =
-            <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
 
                     let i = ndRange.GlobalID0
 
@@ -163,7 +122,8 @@ module COOVector =
                         else
                             allIndicesBuffer.[i] <- fstIdx
                             firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-                            isLeftBitMap.[i] <- 1 @>
+                            isLeftBitMap.[i] <- 1
+            @>
 
         let kernel = clContext.Compile(merge)
 
@@ -208,7 +168,7 @@ module COOVector =
 
             let ndRange = Range1D.CreateValid(sumOfSides, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -239,7 +199,8 @@ module COOVector =
         =
 
         let preparePositions =
-            <@  fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -293,7 +254,7 @@ module COOVector =
 
             let ndRange = Range1D.CreateValid(length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -317,18 +278,19 @@ module COOVector =
     let setPositions (clContext: ClContext) (workGroupSize: int) =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
-                let i = ndRange.GlobalID0
+                    let i = ndRange.GlobalID0
 
-                if i = prefixSumArrayLength - 1
-                   || i < prefixSumArrayLength
-                      && prefixSumBuffer.[i]
-                         <> prefixSumBuffer.[i + 1] then
-                    let index = prefixSumBuffer.[i]
+                    if i = prefixSumArrayLength - 1
+                       || i < prefixSumArrayLength
+                          && prefixSumBuffer.[i]
+                             <> prefixSumBuffer.[i + 1] then
+                        let index = prefixSumBuffer.[i]
 
-                    resultValues.[index] <- allValues.[i]
-                    resultIndices.[index] <- allIndices.[i]
+                        resultValues.[index] <- allValues.[i]
+                        resultIndices.[index] <- allIndices.[i]
             @>
 
         let kernel = clContext.Compile(setPositions)
@@ -372,7 +334,7 @@ module COOVector =
 
             let ndRange = Range1D.CreateValid(prefixSumArrayLength, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -468,14 +430,16 @@ module COOVector =
     let preparePositionsComplemented (clContext: ClContext) (workGroupSize: int) =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) indicesArrayLength (inputIndices: ClArray<int>) (positions: ClArray<int>) ->
+            <@
+                fun (ndRange: Range1D) indicesArrayLength (inputIndices: ClArray<int>) (positions: ClArray<int>) ->
 
                     let gid = ndRange.GlobalID0
 
                     if gid < indicesArrayLength then
                         let index = inputIndices.[gid]
 
-                        positions.[index] <- 0 @> //TODO
+                        positions.[index] <- 0
+            @> //TODO
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -487,7 +451,7 @@ module COOVector =
 
             let ndRange = Range1D.CreateValid(inputIndices.Length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(

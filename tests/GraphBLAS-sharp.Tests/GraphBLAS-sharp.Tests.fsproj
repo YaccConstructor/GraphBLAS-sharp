@@ -28,7 +28,6 @@
         <!--Compile Include="MatrixOperationsTests/TransposeTests.fs" /-->
         <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
     <Compile Include="Program.fs" />
-    <Compile Include="VectorOperationsTests\zeroCreateTests.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

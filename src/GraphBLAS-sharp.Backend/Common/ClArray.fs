@@ -455,6 +455,7 @@ module ClArray =
 
     //TODO(comments)
     let toOptionArray (clContext: ClContext) (workGroupSize: int) =
+
         let toDense =
             <@
                 fun (ndRange: Range1D) (length: int) (values: ClArray<'a>) (indices: ClArray<int>) (outputArray: ClArray<'a option>) ->
