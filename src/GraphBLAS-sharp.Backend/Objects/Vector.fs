@@ -84,7 +84,7 @@ type DenseVector<'a> =
         |> String.concat ""
 
     member this.ToDevice(context: ClContext) =
-        context.CreateClArray this.Values :?> ClDenseVector<'a>
+        { ClDenseVector.Values = context.CreateClArray this.Values }
 
     static member FromArray(array: 'a [], isZero: 'a -> bool) =
         { Values =
@@ -92,27 +92,27 @@ type DenseVector<'a> =
               |> Array.map (fun v -> if isZero v then None else Some v) }
 
 and ClDenseVector<'a> =
-    inherit ClArray<'a option>
+    { Values: ClArray<'a option> }
 
-    member this.Size = this.Length
+    member this.Size = this.Values.Length
 
     member this.ToHost(q: MailboxProcessor<_>) =
-        let vector = Array.zeroCreate this.Length
+        let vector = Array.zeroCreate this.Values.Length
 
         let _ =
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this, vector, ch))
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this.Values, vector, ch))
 
-        { Values = vector }
+        { DenseVector.Values = vector }
 
     interface IDeviceMemObject with
         member this.Dispose(q) =
-            q.Post(Msg.CreateFreeMsg<_>(this))
+            q.Post(Msg.CreateFreeMsg<_>(this.Values))
             q.PostAndReply(Msg.MsgNotifyMe)
 
     member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
     static member FromArray(context: ClContext, array: 'a option []) =
-        context.CreateClArray array :?> ClDenseVector<'a>
+        { Values = context.CreateClArray array }
 
 type TuplesVector<'a> =
     { Indices: int []
