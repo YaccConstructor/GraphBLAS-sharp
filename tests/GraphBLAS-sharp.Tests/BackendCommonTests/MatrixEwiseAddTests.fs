@@ -56,10 +56,10 @@ let correctnessGenericTest
     =
 
     let mtx1 =
-        createMatrixFromArray2D case.MatrixCase leftMatrix (isEqual zero)
+        createMatrixFromArray2D case.FormatCase leftMatrix (isEqual zero)
 
     let mtx2 =
-        createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
+        createMatrixFromArray2D case.FormatCase rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
         let m1 = mtx1.ToBackend case.ClContext.ClContext
@@ -140,7 +140,7 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixturesEWiseAdd
     |> testList "Backend.Matrix.eWiseAdd tests"
 
@@ -204,7 +204,7 @@ let tests2 =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixturesEWiseAddAtLeastOne
     |> testList "Backend.Matrix.eWiseAddAtLeastOne tests"
 
@@ -269,6 +269,6 @@ let tests3 =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixturesEWiseMulAtLeastOne
     |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"

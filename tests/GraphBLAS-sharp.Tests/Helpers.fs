@@ -506,7 +506,7 @@ module Utils =
 
     type OperationCase<'a> =
         { ClContext: TestContext
-          MatrixCase: 'a }
+          FormatCase: 'a }
 
     let cartesian firstList secondList =
         firstList
@@ -524,7 +524,7 @@ module Utils =
         cartesian avaliableCotextes listOfUnionCases
         |> List.map (fun pair ->
             { ClContext = fst pair
-              MatrixCase = snd pair })
+              FormatCase = snd pair })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with

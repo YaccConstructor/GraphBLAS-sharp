@@ -6,21 +6,21 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module Vector =
-    let zeroCreate (clContext: ClContext) (workGroupSize: int) =
+    let zeroCreate<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
             match format with
             | COO ->
-                let indices = clContext.CreateClArray [||]
-                let values = clContext.CreateClArray [||]
+                let indices = clContext.CreateClArray<int> [| 0 |]
+                let values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
 
                 let vector =
                     { ClCooVector.Context = clContext
                       Indices = indices
                       Values = values
-                      Size = size }
+                      Size = 0 }
 
                 ClVectorCOO vector
             | Dense ->

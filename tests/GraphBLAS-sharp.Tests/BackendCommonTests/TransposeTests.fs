@@ -54,7 +54,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
 let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+        createMatrixFromArray2D case.FormatCase array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
@@ -81,7 +81,7 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
 let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+        createMatrixFromArray2D case.FormatCase array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
@@ -103,7 +103,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.MatrixCase
+        sprintf "Correctness on %s, %A" datatype case.FormatCase
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -167,6 +167,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
     |> testList "Transpose tests"
