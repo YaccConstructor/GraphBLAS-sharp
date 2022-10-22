@@ -2,6 +2,7 @@
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.ArraysExtensions
 
 type VectorFormat =
     | COO
@@ -72,48 +73,6 @@ and ClCooVector<'a> =
 
     member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
-type DenseVector<'a> =
-    { Values: 'a option [] }
-
-    member this.Size = this.Values.Length
-
-    override this.ToString() =
-        [ sprintf "Dense Vector\n"
-          sprintf "Size:    %i \n" this.Values.Length
-          sprintf "Values:  %A \n" this.Values ]
-        |> String.concat ""
-
-    member this.ToDevice(context: ClContext) =
-        { ClDenseVector.Values = context.CreateClArray this.Values }
-
-    static member FromArray(array: 'a [], isZero: 'a -> bool) =
-        { Values =
-              array
-              |> Array.map (fun v -> if isZero v then None else Some v) }
-
-and ClDenseVector<'a> =
-    { Values: ClArray<'a option> }
-
-    member this.Size = this.Values.Length
-
-    member this.ToHost(q: MailboxProcessor<_>) =
-        let vector = Array.zeroCreate this.Values.Length
-
-        let _ =
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this.Values, vector, ch))
-
-        { DenseVector.Values = vector }
-
-    interface IDeviceMemObject with
-        member this.Dispose(q) =
-            q.Post(Msg.CreateFreeMsg<_>(this.Values))
-            q.PostAndReply(Msg.MsgNotifyMe)
-
-    member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
-
-    static member FromArray(context: ClContext, array: 'a option []) =
-        { Values = context.CreateClArray array }
-
 type TuplesVector<'a> =
     { Indices: int []
       Values: 'a []
@@ -169,7 +128,7 @@ and ClTuplesVector<'a> =
 
 type Vector<'a when 'a: struct> =
     | VectorCOO of COOVector<'a>
-    | VectorDense of DenseVector<'a>
+    | VectorDense of 'a option []
     member this.Size =
         match this with
         | VectorCOO vector -> vector.Size
@@ -182,7 +141,7 @@ type Vector<'a when 'a: struct> =
 
 and ClVector<'a when 'a: struct> =
     | ClVectorCOO of ClCooVector<'a>
-    | ClVectorDense of ClDenseVector<'a>
+    | ClVectorDense of ClArray<'a option>
     member this.Size =
         match this with
         | ClVectorCOO vector -> vector.Size

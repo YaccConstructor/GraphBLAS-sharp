@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -19,6 +19,7 @@
     <Compile Include="Common/StandardOperations.fs" />
     <Compile Include="Predefined/PrefixSum.fs" />
     <Compile Include="Objects/Common.fs" />
+    <Compile Include="Objects/ArraysExtentions.fs" />
     <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
