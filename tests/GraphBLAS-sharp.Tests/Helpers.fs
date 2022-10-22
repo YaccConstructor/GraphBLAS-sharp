@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Tests
 open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open FsCheck
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
@@ -537,6 +538,7 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
+        | VectorFormat.Dense -> VectorDense <| DenseVector.FromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

@@ -37,10 +37,10 @@ module COOVector =
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex = firstIndicesBuffer.[middleIdx]
+                            let firstIndex = firstIndicesBuffer[middleIdx]
 
                             let secondIndex =
-                                secondIndicesBuffer.[diagonalNumber - middleIdx]
+                                secondIndicesBuffer[diagonalNumber - middleIdx]
 
                             if firstIndex <= secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -70,10 +70,10 @@ module COOVector =
                     let localIndices = localArray<int> workGroupSize
 
                     if localID < firstLocalLength then
-                        localIndices.[localID] <- firstIndicesBuffer.[beginIdx + localID]
+                        localIndices[localID] <- firstIndicesBuffer[beginIdx + localID]
 
                     if localID < secondLocalLength then
-                        localIndices.[firstLocalLength + localID] <- secondIndicesBuffer.[i - beginIdx]
+                        localIndices[firstLocalLength + localID] <- secondIndicesBuffer[i - beginIdx]
 
                     barrierLocal ()
 
@@ -88,10 +88,10 @@ module COOVector =
 
                         while leftEdge <= rightEdge do
                             let middleIdx = (leftEdge + rightEdge) / 2
-                            let firstIndex = localIndices.[middleIdx]
+                            let firstIndex = localIndices[middleIdx]
 
                             let secondIndex =
-                                localIndices.[firstLocalLength + localID - middleIdx]
+                                localIndices[firstLocalLength + localID - middleIdx]
 
                             if firstIndex <= secondIndex then
                                 leftEdge <- middleIdx + 1
@@ -108,21 +108,21 @@ module COOVector =
                         let mutable fstIdx = 0
 
                         if isValidX then
-                            fstIdx <- localIndices.[boundaryX]
+                            fstIdx <- localIndices[boundaryX]
 
                         let mutable sndIdx = 0
 
                         if isValidY then
-                            sndIdx <- localIndices.[firstLocalLength + boundaryY]
+                            sndIdx <- localIndices[firstLocalLength + boundaryY]
 
                         if not isValidX || isValidY && fstIdx <= sndIdx then
-                            allIndicesBuffer.[i] <- sndIdx
-                            secondResultValues.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
-                            isLeftBitMap.[i] <- 0
+                            allIndicesBuffer[i] <- sndIdx
+                            secondResultValues[i] <- secondValuesBuffer[i - localID - beginIdx + boundaryY]
+                            isLeftBitMap[i] <- 0
                         else
-                            allIndicesBuffer.[i] <- fstIdx
-                            firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-                            isLeftBitMap.[i] <- 1
+                            allIndicesBuffer[i] <- fstIdx
+                            firstResultValues[i] <- firstValuesBuffer[beginIdx + boundaryX]
+                            isLeftBitMap[i] <- 1
             @>
 
         let kernel = clContext.Compile(merge)
@@ -285,12 +285,12 @@ module COOVector =
 
                     if i = prefixSumArrayLength - 1
                        || i < prefixSumArrayLength
-                          && prefixSumBuffer.[i]
-                             <> prefixSumBuffer.[i + 1] then
-                        let index = prefixSumBuffer.[i]
+                          && prefixSumBuffer[i]
+                             <> prefixSumBuffer[i + 1] then
+                        let index = prefixSumBuffer[i]
 
-                        resultValues.[index] <- allValues.[i]
-                        resultIndices.[index] <- allIndices.[i]
+                        resultValues[index] <- allValues[i]
+                        resultIndices[index] <- allIndices[i]
             @>
 
         let kernel = clContext.Compile(setPositions)
@@ -314,7 +314,7 @@ module COOVector =
 
                 processor.Post(Msg.CreateFreeMsg<_>(r))
 
-                res.[0]
+                res[0]
 
             let resultValues =
                 clContext.CreateClArray<'a>(
@@ -436,9 +436,9 @@ module COOVector =
                     let gid = ndRange.GlobalID0
 
                     if gid < indicesArrayLength then
-                        let index = inputIndices.[gid]
+                        let index = inputIndices[gid]
 
-                        positions.[index] <- 0
+                        positions[index] <- 0
             @> //TODO
 
         let kernel = clContext.Compile(preparePositions)
@@ -508,11 +508,7 @@ module COOVector =
         (opAdd: Expr<'a -> 'a -> 'a>)
         =
 
-        let reduce = Reduce.reduce clContext workGroupSize
+        let reduce = Reduce.run clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) (-) ->
-
-            let resultCell =
-                clContext.CreateClCell Unchecked.defaultof<'a>
-
-            reduce opAdd Unchecked.defaultof<'a> processor vector.Values resultCell
+        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
+            reduce opAdd Unchecked.defaultof<'a> processor vector.Values

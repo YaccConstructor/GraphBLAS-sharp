@@ -456,7 +456,7 @@ module ClArray =
     //TODO(comments)
     let toOptionArray (clContext: ClContext) (workGroupSize: int) =
 
-        let toDense =
+        let toOption =
             <@
                 fun (ndRange: Range1D) (length: int) (values: ClArray<'a>) (indices: ClArray<int>) (outputArray: ClArray<'a option>) ->
                     let gid = ndRange.GlobalID0
@@ -467,7 +467,7 @@ module ClArray =
                         outputArray[resultIndex] <- Some values[resultIndex]
             @>
 
-        let kernel = clContext.Compile(toDense)
+        let kernel = clContext.Compile(toOption)
 
         let zeroCreate = zeroCreate clContext workGroupSize
 

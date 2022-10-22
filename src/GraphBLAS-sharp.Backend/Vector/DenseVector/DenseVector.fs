@@ -15,11 +15,11 @@ module DenseVector =
                 let gid = ndRange.GlobalID0
 
                 if gid < length then
-                    match maskArray.[gid] with
+                    match maskArray[gid] with
                         | Some _ ->
-                            resultArray.[gid] <- Some scalar.Value
+                            resultArray[gid] <- Some scalar.Value
                         | None ->
-                            resultArray.[gid] <- None
+                            resultArray[gid] <- None
             @>
 
         let kernel = clContext.Compile(fillVector)
@@ -52,7 +52,7 @@ module DenseVector =
                         kernel.KernelFunc
                             ndRange
                             maskVector.Size
-                            maskVector
+                            maskVector.Values
                             clScalar
                             resultArray)
                 )
@@ -60,7 +60,7 @@ module DenseVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             processor.Post(Msg.CreateFreeMsg<_>(clScalar))
 
-            resultArray :?> ClDenseVector<'b>
+            { Values = resultArray }
 
     let elementWiseAddAtLeasOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
@@ -85,13 +85,13 @@ module DenseVector =
 
                  match leftItem, rightItem with
                  | Some left, Some right ->
-                    resultVector.[gid] <- (%opAdd) (Both (left, right))
+                    resultVector[gid] <- (%opAdd) (Both (left, right))
                  | Some left, None ->
-                    resultVector.[gid] <- (%opAdd) (Left left)
+                    resultVector[gid] <- (%opAdd) (Left left)
                  | None, Some right ->
-                    resultVector.[gid] <- (%opAdd) (Right right)
+                    resultVector[gid] <- (%opAdd) (Right right)
                  | None, None ->
-                    resultVector.[gid] <- None
+                    resultVector[gid] <- None
             @>
 
         let kernel = clContext.Compile(eWiseAdd)
@@ -119,14 +119,14 @@ module DenseVector =
                             ndRange
                             leftVector.Size
                             rightVector.Size
-                            leftVector
-                            rightVector
+                            leftVector.Values
+                            rightVector.Values
                             resultVector)
                 )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultVector :?> ClDenseVector<'c>
+            { Values = resultVector }
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
 
@@ -143,7 +143,7 @@ module DenseVector =
            let resultVector =
                eWiseAdd processor leftVector maskVector
 
-           processor.Post(Msg.CreateFreeMsg<_>(maskVector))
+           processor.Post(Msg.CreateFreeMsg<_>(maskVector.Values))
 
            resultVector
 
@@ -156,11 +156,11 @@ module DenseVector =
                     let gid = ndRange.GlobalID0
 
                     if gid < length then
-                        match inputArray.[gid] with
+                        match inputArray[gid] with
                         | Some _ ->
-                            resultArray.[gid] <- None
+                            resultArray[gid] <- None
                         | None ->
-                            resultArray.[gid] <- Some Unchecked.defaultof<'a>
+                            resultArray[gid] <- Some Unchecked.defaultof<'a>
             @>
 
 
@@ -188,11 +188,11 @@ module DenseVector =
                         kernel.KernelFunc
                             ndRange
                             length
-                            vector
+                            vector.Values
                             resultArray)
                 )
 
-            resultArray :?> ClDenseVector<'a>
+            { Values = resultArray }
 
     let getSomeBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
@@ -222,7 +222,7 @@ module DenseVector =
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
+            let ndRange = Range1D.CreateValid(vector.Size, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -231,8 +231,8 @@ module DenseVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                            vector.Length
-                            vector
+                            vector.Size
+                            vector.Values
                             positions))
 
             processor.Post(Msg.CreateRunMsg(kernel))
@@ -284,7 +284,7 @@ module DenseVector =
 
                 processor.Post(Msg.CreateFreeMsg<_>(r))
 
-                res.[0]
+                res[0]
 
             let resultValues =
                 clContext.CreateClArray(
@@ -300,7 +300,7 @@ module DenseVector =
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default)
 
-            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
+            let ndRange = Range1D.CreateValid(vector.Size, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -310,7 +310,7 @@ module DenseVector =
                         kernel.KernelFunc
                             ndRange
                             vector.Size
-                            vector
+                            vector.Values
                             prefixSumArray
                             bitmap
                             resultValues
@@ -346,7 +346,7 @@ module DenseVector =
 
         let unzip = unzip clContext workGroupSize
 
-        let reduce = Reduce.reduce clContext workGroupSize opAdd Unchecked.defaultof<'a> //TODO()
+        let reduce = Reduce.run clContext workGroupSize opAdd Unchecked.defaultof<'a> //TODO()
 
         fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
 

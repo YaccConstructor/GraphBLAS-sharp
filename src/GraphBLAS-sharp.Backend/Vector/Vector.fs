@@ -25,7 +25,7 @@ module Vector =
                 ClVectorCOO vector
             | Dense ->
                 let resultValues = zeroCreate processor size
-                let vector = resultValues :?> ClDenseVector<'a>
+                let vector = { Values = resultValues }
 
                 ClVectorDense vector
 
@@ -60,7 +60,7 @@ module Vector =
                     toOptionArray processor values indices elements.Length
 
                 let vector =
-                    array :?> ClDenseVector<'a>
+                    { Values = array }
 
                 ClVectorDense vector
 
@@ -86,9 +86,9 @@ module Vector =
                ClVectorCOO vector
            | ClVectorDense vector ->
                let vector =
-                   copyOptionData processor vector :?> ClDenseVector<'a>
+                   copyOptionData processor vector.Values
 
-               ClVectorDense vector
+               ClVectorDense { Values = vector }
 
     let mask = copy
 

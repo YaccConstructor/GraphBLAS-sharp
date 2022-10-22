@@ -5,7 +5,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module Reduce =
-    let reduce
+    let run
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
@@ -13,44 +13,51 @@ module Reduce =
         =
 
         let reduce =
-            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) ->
+            <@
+                fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) ->
 
-                let gid = ndRange.GlobalID0
-                let lid = ndRange.LocalID0
+                    let gid = ndRange.GlobalID0
+                    let lid = ndRange.LocalID0
 
-                let localValues = localArray<'a> workGroupSize
+                    let i = (gid - lid) * 2 + lid
 
-                if gid < length then
-                    localValues[lid] <- inputArray[gid]
-                else
-                    localValues[lid] <- zero
+                    let localValues = localArray<'a> workGroupSize
 
-                barrierLocal ()
-
-                let mutable step = 2
-
-                while step <= workGroupSize do
-
-                    if lid < workGroupSize / step then
-                        let firstValue = localValues[lid]
-                        let secondValue = localValues[lid + workGroupSize / step]
-
-                        localValues[lid] <- (%opAdd) firstValue secondValue
-
-                    step <- step <<< 1
-
+                    if i + workGroupSize < length then
+                        localValues[lid] <- (%opAdd) inputArray[i] inputArray[i + workGroupSize]
+                    elif i < length then
+                        localValues[lid] <- inputArray[i]
+                    else
+                        localValues[lid] <- zero
                     barrierLocal ()
 
-                if lid = 0 then
-                    atomic (%opAdd) localValues.[0] totalSum.Value |> ignore @> //TODO right atomic usage ?
+                    let mutable step = 2
 
-        let kernel = clContext.Compile reduce
+                    while step <= workGroupSize do
+                        if lid < workGroupSize / step then
+                            let firstValue = localValues[lid]
+                            let secondValue = localValues[lid + workGroupSize / step]
 
-        fun (processor: MailboxProcessor<_>) (valuesArray: ClArray<'a>) (totalSum: ClCell<'a>) ->
+                            localValues[lid] <- (%opAdd) firstValue secondValue
+
+                        step <- step <<< 1
+
+                        barrierLocal ()
+
+                    if lid = 0 then
+                       atomic (%opAdd) totalSum.Value localValues[0] |> ignore
+            @>
+
+        let kernel = clContext.Compile(reduce)
+
+        fun (processor: MailboxProcessor<_>) (valuesArray: ClArray<'a>) ->
 
             let ndRange = Range1D.CreateValid(valuesArray.Length, workGroupSize)
 
-            let kernel = kernel.GetKernel ()
+            let totalSum =
+                clContext.CreateClCell(zero)
+
+            let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments(
@@ -61,5 +68,7 @@ module Reduce =
                             valuesArray
                             totalSum)
                 )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             totalSum
