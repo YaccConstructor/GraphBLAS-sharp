@@ -51,7 +51,7 @@ let correctnessGenericTest
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q
-    (case: OperationCase)
+    (case: OperationCase<MatrixFormat>)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
 

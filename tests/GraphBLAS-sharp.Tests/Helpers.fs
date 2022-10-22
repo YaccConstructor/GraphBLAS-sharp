@@ -424,18 +424,6 @@ module Utils =
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys> ] }
 
-    let rec cartesian listOfLists =
-        match listOfLists with
-        | [ x ] -> List.fold (fun acc elem -> [ elem ] :: acc) [] x
-        | h :: t ->
-            List.fold
-                (fun cacc celem ->
-                    (List.fold (fun acc elem -> (elem :: celem) :: acc) [] h)
-                    @ cacc)
-                []
-                (cartesian t)
-        | _ -> []
-
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
@@ -516,19 +504,27 @@ module Utils =
 
         { ClContext = context; Queue = queue }
 
-    type OperationCase =
+    type OperationCase<'a> =
         { ClContext: TestContext
-          MatrixCase: MatrixFormat }
+          MatrixCase: 'a }
 
-    let testCases =
-        [ avaliableContexts "" |> Seq.map box
-          listOfUnionCases<MatrixFormat> |> Seq.map box ]
-        |> List.map List.ofSeq
-        |> cartesian
-        |> List.map
-            (fun list ->
-                { ClContext = unbox list.[0]
-                  MatrixCase = unbox list.[1] })
+    let cartesian firstList secondList =
+        firstList
+        |> List.collect (fun x -> secondList |> List.map (fun y -> x, y))
+
+    let testCases<'a> =
+        let avaliableCotextes =
+            avaliableContexts ""
+            |> List.ofSeq
+
+        let listOfUnionCases =
+            listOfUnionCases<'a>
+            |> List.ofSeq
+
+        cartesian avaliableCotextes listOfUnionCases
+        |> List.map (fun pair ->
+            { ClContext = fst pair
+              MatrixCase = snd pair })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
