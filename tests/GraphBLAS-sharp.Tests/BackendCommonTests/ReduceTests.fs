@@ -58,7 +58,7 @@ let testFixtures config wgSize q plus plusQ zero isEqual filter name =
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
-    let config = { defaultConfig with endSize =  500 } //TODO()
+    let config = defaultConfig
 
     let wgSize = 32
     let q = defaultContext.Queue
