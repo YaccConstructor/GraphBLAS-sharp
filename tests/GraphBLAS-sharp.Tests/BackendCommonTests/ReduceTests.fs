@@ -54,8 +54,12 @@ let testFixtures config wgSize q plus plusQ zero isEqual filter name =
     let reduce =
         Reduce.run context wgSize plusQ
 
+    let atomicResult =
+        Reduce.atomicRun context wgSize plusQ
+
     makeTest q reduce plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+
 
 let tests =
     let config = defaultConfig
