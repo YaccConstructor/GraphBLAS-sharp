@@ -6,7 +6,8 @@ module ArraysExtensions =
 
     type ClArray<'a> with
         member this.Dispose(q: MailboxProcessor<Msg>) =
-            q.PostAndReply(fun _ -> Msg.CreateFreeMsg this)
+            q.Post(Msg.CreateFreeMsg this)
+            q.PostAndReply(Msg.MsgNotifyMe)
 
         member this.ToHost(q: MailboxProcessor<Msg>) =
             let dst = Array.zeroCreate this.Length
@@ -25,6 +26,6 @@ module ArraysExtensions =
 
         member this.ToDevice(context: ClContext) = context.CreateClArray this
 
-        static member FromArray(array: 'a [], isZero: 'a -> bool) =
-            array
-            |> Array.map (fun v -> if isZero v then None else Some v)
+    let FromArray (array: 'a [], isZero: 'a -> bool) =
+        array
+        |> Array.map (fun v -> if isZero v then None else Some v)
