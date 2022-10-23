@@ -25,6 +25,7 @@
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
     <Compile Include="Matrix/Matrix.fs" />
+    <Compile Include="Objects\ArrayExtensions.fs" />
     <Compile Include="Objects\Vector.fs" />
     <Compile Include="Vector\VectorOperaions.fs" />
     <Compile Include="Vector\COOVector\COOVector.fs" />

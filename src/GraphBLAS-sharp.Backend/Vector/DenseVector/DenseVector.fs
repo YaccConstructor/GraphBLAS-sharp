@@ -6,7 +6,8 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
-    let private copyWithValue (clContext: ClContext) (workGroupSize: int) =
+
+    let private maskWithValue (clContext: ClContext) (workGroupSize: int) = //TODO()
 
         let fillVector =
             <@
@@ -24,11 +25,11 @@ module DenseVector =
 
         let kernel = clContext.Compile(fillVector)
 
-        fun (processor: MailboxProcessor<_>) (maskVector: ClDenseVector<'a>) (scalar: 'b) ->
+        fun (processor: MailboxProcessor<_>) (maskVector: ClArray<'a option>) (scalar: 'b) ->
 
             let resultArray =
                 clContext.CreateClArray(
-                    maskVector.Size,
+                    maskVector.Length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
@@ -42,7 +43,7 @@ module DenseVector =
                     allocationMode = AllocationMode.Default
                     )
 
-            let ndRange = Range1D.CreateValid(maskVector.Size, workGroupSize)
+            let ndRange = Range1D.CreateValid(maskVector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -51,8 +52,8 @@ module DenseVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                            maskVector.Size
-                            maskVector.Values
+                            maskVector.Length
+                            maskVector
                             clScalar
                             resultArray)
                 )
@@ -60,7 +61,7 @@ module DenseVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             processor.Post(Msg.CreateFreeMsg<_>(clScalar))
 
-            { Values = resultArray }
+            resultArray
 
     let elementWiseAddAtLeasOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
@@ -96,17 +97,17 @@ module DenseVector =
 
         let kernel = clContext.Compile(eWiseAdd)
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClDenseVector<'a>) (rightVector: ClDenseVector<'b>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
             let resultVector =
                 clContext.CreateClArray(
-                    leftVector.Size,
+                    leftVector.Length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     allocationMode = AllocationMode.Default
                 )
 
-            let resultLength = max leftVector.Size rightVector.Size
+            let resultLength = max leftVector.Length rightVector.Length
 
             let ndRange = Range1D.CreateValid (resultLength, workGroupSize)
 
@@ -117,16 +118,16 @@ module DenseVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                            leftVector.Size
-                            rightVector.Size
-                            leftVector.Values
-                            rightVector.Values
+                            leftVector.Length
+                            rightVector.Length
+                            leftVector
+                            rightVector
                             resultVector)
                 )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            { Values = resultVector }
+            resultVector
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
 
@@ -134,16 +135,16 @@ module DenseVector =
 
         let eWiseAdd = elementWiseAddAtLeasOne clContext opAdd workGroupSize
 
-        let copyWithValue = copyWithValue clContext workGroupSize
+        let copyWithValue = maskWithValue clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClDenseVector<'a>) (maskVector: ClDenseVector<'b>) (scalar: 'a) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (scalar: 'a) ->
 
            let maskVector = copyWithValue processor maskVector scalar
 
            let resultVector =
                eWiseAdd processor leftVector maskVector
 
-           processor.Post(Msg.CreateFreeMsg<_>(maskVector.Values))
+           processor.Post(Msg.CreateFreeMsg<_>(maskVector))
 
            resultVector
 
@@ -166,9 +167,9 @@ module DenseVector =
 
         let kernel = clContext.Compile(complemented)
 
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
-            let length = vector.Size
+            let length = vector.Length
 
             let resultArray =
                 clContext.CreateClArray(
@@ -188,11 +189,11 @@ module DenseVector =
                         kernel.KernelFunc
                             ndRange
                             length
-                            vector.Values
+                            vector
                             resultArray)
                 )
 
-            { Values = resultArray }
+            resultArray
 
     let getSomeBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
@@ -212,17 +213,17 @@ module DenseVector =
 
         let kernel = clContext.Compile(getSomeBitmap)
 
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let positions =
                 clContext.CreateClArray(
-                    vector.Size,
+                    vector.Length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange = Range1D.CreateValid(vector.Size, workGroupSize)
+            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -231,8 +232,8 @@ module DenseVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                            vector.Size
-                            vector.Values
+                            vector.Length
+                            vector
                             positions))
 
             processor.Post(Msg.CreateRunMsg(kernel))
@@ -268,7 +269,7 @@ module DenseVector =
 
         let resultLength = Array.zeroCreate 1
 
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let bitmap = getBitmap processor vector
 
@@ -300,7 +301,7 @@ module DenseVector =
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default)
 
-            let ndRange = Range1D.CreateValid(vector.Size, workGroupSize)
+            let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -309,8 +310,8 @@ module DenseVector =
                     fun () ->
                         kernel.KernelFunc
                             ndRange
-                            vector.Size
-                            vector.Values
+                            vector.Length
+                            vector
                             prefixSumArray
                             bitmap
                             resultValues
@@ -328,14 +329,14 @@ module DenseVector =
 
         let unzip = unzip clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let values, indices = unzip processor vector
 
             { ClCooVector.Context = clContext
               Indices = indices
               Values = values
-              Size = vector.Size }
+              Size = vector.Length }
 
 
     let reduce
@@ -348,7 +349,7 @@ module DenseVector =
 
         let reduce = Reduce.run clContext workGroupSize opAdd Unchecked.defaultof<'a> //TODO()
 
-        fun (processor: MailboxProcessor<_>) (vector: ClDenseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let values, indices = unzip processor vector
 

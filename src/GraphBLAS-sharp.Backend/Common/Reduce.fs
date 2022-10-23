@@ -19,24 +19,25 @@ module Reduce =
                     let gid = ndRange.GlobalID0
                     let lid = ndRange.LocalID0
 
-                    // let i = (gid - lid) * 2 + lid
+                    let i = (gid - lid) * 2 + lid
 
                     let localValues = localArray<'a> workGroupSize
 
-                    if gid < length then
-                        localValues[lid] <- inputArray[gid]
-                    else
-                        localValues[lid] <- zero
-
-                    barrierLocal ()
-
-                    // if i + workGroupSize < length then
-                    //     localValues[lid] <- (%opAdd) inputArray[i] inputArray[i + workGroupSize]
-                    // elif i < length then
-                    //     localValues[lid] <- inputArray[i]
+                    //
+                    // if gid < length then
+                    //     localValues[lid] <- inputArray[gid]
                     // else
                     //     localValues[lid] <- zero
+                    //
                     // barrierLocal ()
+
+                    if i + workGroupSize < length then
+                        localValues[lid] <- (%opAdd) inputArray[i] inputArray[i + workGroupSize]
+                    elif i < length then
+                        localValues[lid] <- inputArray[i]
+                    else
+                        localValues[lid] <- zero
+                    barrierLocal ()
 
                     let mutable step = 2
 

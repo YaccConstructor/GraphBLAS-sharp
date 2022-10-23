@@ -8,7 +8,7 @@ open Microsoft.FSharp.Quotations
 module Vector =
     let zeroCreate<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
-        let zeroCreate = ClArray.zeroCreate clContext workGroupSize
+        let denseZeroCreate = ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
             match format with
@@ -24,10 +24,9 @@ module Vector =
 
                 ClVectorCOO vector
             | Dense ->
-                let resultValues = zeroCreate processor size
-                let vector = { Values = resultValues }
+                let resultValues = denseZeroCreate processor size
 
-                ClVectorDense vector
+                ClVectorDense resultValues
 
     let ofList (clContext: ClContext) (workGroupSize: int) (elements: (int * 'a) list) =
 
@@ -39,8 +38,8 @@ module Vector =
             |> Array.sortBy fst
             |> Array.unzip
 
-        let indices = clContext.CreateClArray indices
-        let values = clContext.CreateClArray values
+        let clIndices = clContext.CreateClArray indices
+        let clValues = clContext.CreateClArray values
 
         fun (processor: MailboxProcessor<_>) (format: VectorFormat) ->
             match format with
@@ -49,20 +48,19 @@ module Vector =
 
                 let vector =
                   { ClCooVector.Context = clContext
-                    Indices = indices
-                    Values = values
+                    Indices = clIndices
+                    Values = clValues
                     Size = resultSize }
 
                 ClVectorCOO vector
 
             | Dense ->
+                let size = Array.max indices
+
                 let array =
-                    toOptionArray processor values indices elements.Length
+                    toOptionArray processor clValues clIndices size
 
-                let vector =
-                    { Values = array }
-
-                ClVectorDense vector
+                ClVectorDense array
 
     let copy (clContext: ClContext) (workGroupSize: int) =
        let copy =
@@ -85,10 +83,10 @@ module Vector =
 
                ClVectorCOO vector
            | ClVectorDense vector ->
-               let vector =
-                   copyOptionData processor vector.Values
+               let array =
+                   copyOptionData processor vector
 
-               ClVectorDense { Values = vector }
+               ClVectorDense array
 
     let mask = copy
 

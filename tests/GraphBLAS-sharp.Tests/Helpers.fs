@@ -5,6 +5,7 @@ open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
+open MathNet.Numerics.LinearAlgebra.Complex32
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
 open Brahma.FSharp.ClContextExtensions
@@ -534,7 +535,12 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
-        | VectorFormat.Dense -> VectorDense <| DenseVector.FromArray(array, isZero)
+        | VectorFormat.Dense ->
+            VectorDense
+            <| Array.map
+                (fun (item :'a) -> if isZero item then None else Some item )
+                array
+
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
@@ -549,3 +555,19 @@ module Utils =
                 <| actual.[i]
                 <| expected.[i]
                 |> failtestf "%s"
+
+    let createOptionArray elements =
+
+        let indices, values =
+            elements
+            |> Array.ofList
+            |> Array.unzip
+
+        let result = Array.zeroCreate <| Array.max indices
+
+        for i in 0 .. indices.Length do
+            let index = indices[i]
+
+            result[index] <- Some values[i]
+
+        result
