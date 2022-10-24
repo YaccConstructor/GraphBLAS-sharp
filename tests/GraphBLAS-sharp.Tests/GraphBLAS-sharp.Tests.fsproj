@@ -32,6 +32,8 @@
     <Compile Include="VectorOperationsTests\OfListTests.fs" />
     <Compile Include="VectorOperationsTests\CopyTests.fs" />
     <Compile Include="VectorOperationsTests\FillSubVectorTest.fs" />
+    <Compile Include="VectorOperationsTests\ElementWiseAddAtLeastOne.fs" />
+    <Compile Include="VectorOperationsTests\ConvertTest.fs" />
     <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

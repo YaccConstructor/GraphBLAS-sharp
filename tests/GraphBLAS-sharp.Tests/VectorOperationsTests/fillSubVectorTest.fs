@@ -2,14 +2,12 @@ module Backend.Vector.FillSubVector
 
 open Expecto
 open Expecto.Logging
-
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
 let clContext = defaultContext.ClContext
-
 
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
 
@@ -30,16 +28,12 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the same indices"
     | _, _ -> failwith "Copy format must be the same"
 
-
-
-
 let makeTest<'a, 'b when 'a: struct and 'b: struct>
-    (maskFormat: VectorFormat)
     isEqual
     (isVectorItemZero: 'a -> bool)
     (isMaskItemZero: 'b -> bool)
     (fillVector: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
-    (case: OperationCase<VectorFormat>)
+    case
     (array: 'a [])
     (mask: 'b [])
     (value: 'a)
@@ -57,7 +51,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
             sourceVector.ToDevice context
 
         let maskVector =
-            createVectorFromArray maskFormat mask isMaskItemZero
+            createVectorFromArray case.FormatCase mask isMaskItemZero
 
         let clMaskVector =
             maskVector.ToDevice context
@@ -83,26 +77,26 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         checkResult isEqual actual expected
 
 
-// let testFixtures (case: OperationCase<VectorFormat>) =
-//     let config = defaultConfig
-//
-//     let getCorrectnessTestName datatype =
-//          sprintf "Correctness on %s, %A" datatype case.FormatCase
-//
-//     let wgSize = 32
-//     let context = case.ClContext.ClContext
-//
-//     [ let intFill = Vector.fillSubVector context wgSize
-//       let isZero item = item = 0
-//
-//       case
-//       |> correctnessGenericTest<int> (=) isZero intFill
-//       |> testPropertyWithConfig config (getCorrectnessTestName "int")
-//
-//        ]
-//
-// let tests =
-//      testCases
-//     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
-//     |> List.collect testFixtures
-//     |> testList "Backend.Vector.copy tests"
+let testFixtures (case: OperationCase<VectorFormat>) =
+    let config = defaultConfig
+
+    let getCorrectnessTestName datatype =
+         sprintf "Correctness on %s, %A" datatype case.FormatCase
+
+    let wgSize = 32
+    let context = case.ClContext.ClContext
+
+    [ let intFill = Vector.fillSubVector context wgSize
+      let isZero item = item = 0
+
+      case
+      |> makeTest (=) isZero isZero intFill
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+
+       ]
+
+let tests =
+     testCases
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.collect testFixtures
+    |> testList "Backend.Vector.copy tests"

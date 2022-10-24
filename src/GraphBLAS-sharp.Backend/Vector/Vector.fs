@@ -90,6 +90,18 @@ module Vector =
 
     let mask = copy
 
+    let toCoo (clContext: ClContext) (workGroupSize: int) =
+        let toCoo = DenseVector.toCoo clContext workGroupSize
+
+        let copy = copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
+            match vector with
+            | ClVectorDense vector ->
+                ClVectorCOO <| toCoo processor vector
+            | ClVectorCOO _ ->
+                copy processor vector
+
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
         let cooFillVector =
             COOVector.fillSubVector clContext workGroupSize
