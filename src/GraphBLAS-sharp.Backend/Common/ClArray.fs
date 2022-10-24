@@ -453,7 +453,6 @@ module ClArray =
 
             outputArray
 
-    //TODO(comments)
     let toOptionArray (clContext: ClContext) (workGroupSize: int) =
 
         let toOption =
@@ -464,7 +463,7 @@ module ClArray =
                     if gid < length then
                         let resultIndex = indices[gid]
 
-                        outputArray[resultIndex] <- Some values[resultIndex]
+                        outputArray[resultIndex] <- Some values[gid]
             @>
 
         let kernel = clContext.Compile(toOption)
@@ -480,7 +479,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange size values indices outputArray)
+                    (fun () -> kernel.KernelFunc ndRange indices.Length values indices outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)

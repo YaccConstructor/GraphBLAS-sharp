@@ -535,12 +535,7 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
-        | VectorFormat.Dense ->
-            VectorDense
-            <| Array.map
-                (fun (item :'a) -> if isZero item then None else Some item )
-                array
-
+        | VectorFormat.Dense -> VectorDense <| ArraysExtensions.FromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
@@ -563,9 +558,9 @@ module Utils =
             |> Array.ofList
             |> Array.unzip
 
-        let result = Array.zeroCreate <| Array.max indices
+        let result = Array.zeroCreate <| (Array.max indices) + 1
 
-        for i in 0 .. indices.Length do
+        for i in 0 .. indices.Length - 1 do
             let index = indices[i]
 
             result[index] <- Some values[i]

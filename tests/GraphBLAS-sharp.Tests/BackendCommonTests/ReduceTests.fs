@@ -11,10 +11,9 @@ let logger = Log.create "Reduce.Tests"
 
 let context = defaultContext.ClContext
 
-let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
-    let array = filter array
-
+let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) = // TODO remove isEqual
     if array.Length > 0 then
+        let array = filter array
 
         let reduce = reduce zero q
 
@@ -53,9 +52,6 @@ let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] ->
 let testFixtures config wgSize q plus plusQ zero isEqual filter name =
     let reduce =
         Reduce.run context wgSize plusQ
-
-    let atomicResult =
-        Reduce.atomicRun context wgSize plusQ
 
     makeTest q reduce plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)

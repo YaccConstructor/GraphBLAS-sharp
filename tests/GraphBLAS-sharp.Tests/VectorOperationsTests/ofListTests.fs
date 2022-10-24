@@ -1,13 +1,20 @@
 module Backend.Vector.OfList
 
-open Brahma.FSharp
 open Expecto
 open Expecto.Logging
-
-open GraphBLAS.FSharp.Backend
+open Brahma.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Backend
 
 let logger = Log.create "Vector.zeroCreate.Tests"
+
+let filter elements =
+    List.filter
+    <| (fun item -> fst item > 0)
+    <| elements
+    |> List.distinctBy fst
+
+
 
 let checkResultDense
     (isEqual: 'a -> 'a -> bool)
@@ -45,13 +52,14 @@ let checkResultCOO
 
     compareArrays isEqual actual.Values expectedValues "values must be the same"
 
-
 let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)
     (ofList: (int * 'a) list -> MailboxProcessor<Msg> -> VectorFormat -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (elements: (int * 'a) list)
     =
+
+    let elements = filter elements
 
     if elements.Length > 0 then
 
@@ -89,11 +97,11 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let getCorrectnessTestName datatype =
          sprintf "Correctness on %s, %A" datatype case.FormatCase
 
-      let intOfList =
+      let boolOfList =
         Vector.ofList context wgSize
 
       case
-      |> correctnessGenericTest<bool> (=) intOfList
+      |> correctnessGenericTest<bool> (=) boolOfList
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
 
@@ -104,19 +112,13 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<int> (=) intOfList
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let intOfList =
+
+      let byteOfList =
         Vector.ofList context wgSize
 
       case
-      |> correctnessGenericTest<float> (=) intOfList
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let intOfList =
-        Vector.ofList context wgSize
-
-      case
-      |> correctnessGenericTest<byte> (=) intOfList
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")]
+      |> correctnessGenericTest<byte> (=) byteOfList
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte")]
 
 let tests =
     testCases

@@ -55,7 +55,7 @@ module Vector =
                 ClVectorCOO vector
 
             | Dense ->
-                let size = Array.max indices
+                let size = (Array.max indices) + 1
 
                 let array =
                     toOptionArray processor clValues clIndices size

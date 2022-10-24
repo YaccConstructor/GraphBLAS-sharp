@@ -12,20 +12,17 @@ let checkResult size (actual: Vector<'a>) =
 
     match actual with
     | VectorDense vector ->
-        let actualValues = vector
 
         Expect.equal actual.Size size "The size should be the same"
 
-        for i in 0..actual.Size - 1 do
-            Expect.equal  actualValues[i] None "values must be None"
+        Array.iter
+        <| (fun item -> Expect.equal item None "values must be None")
+        <| vector
     | VectorCOO vector ->
-        let actualValues = vector.Values
-        let actualIndices = vector.Indices
-
         Expect.equal actual.Size 0 "The size should be the 0"
 
-        Expect.equal actualValues [| Unchecked.defaultof<'a> |] "The values array must contain the default value"
-        Expect.equal actualIndices [| |] "The index array must contain the 0"
+        Expect.equal vector.Values [| Unchecked.defaultof<'a> |] "The values array must contain the default value"
+        Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     (wgSize: int)
@@ -48,7 +45,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
 
 let testFixtures (case: OperationCase<VectorFormat>) =
 
-    let config = { defaultConfig with endSize = 10 }
+    let config = { defaultConfig with maxTest = 1}
     let wgSize = 32
 
     case
