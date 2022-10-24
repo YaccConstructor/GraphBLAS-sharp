@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common
 
 module Vector =
     let zeroCreate<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -101,6 +102,26 @@ module Vector =
                 ClVectorCOO <| toCoo processor vector
             | ClVectorCOO _ ->
                 copy processor vector
+
+    let elementWiseAddAtLeastOne
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        =
+
+        let addDense =
+            DenseVector.elementWiseAddAtLeasOne clContext opAdd workGroupSize
+
+        let addCoo =
+            COOVector.elementWiseAddAtLeastOne clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVectorCOO left, ClVectorCOO right ->
+                ClVectorCOO <| addCoo processor left right
+            | ClVectorDense left, ClVectorDense right ->
+                ClVectorDense <| addDense processor left right
+            | _ -> failwith "Vector formats are not matching"
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
         let cooFillVector =

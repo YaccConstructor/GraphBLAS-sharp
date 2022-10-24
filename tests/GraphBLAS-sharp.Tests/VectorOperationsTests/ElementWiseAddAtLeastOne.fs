@@ -1,6 +1,5 @@
 module Backend.Vector.ElementWiseAddAtLeastOne
 
-open System
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
@@ -23,7 +22,7 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
             | None, None -> true
             | _, _ -> false
 
-        compareArrays isEqual actual expected "The values array must contain the default value"
+        compareArrays isEqual actual expected "The values array must contain the same value"
     | VectorCOO actual, VectorCOO expected ->
         compareArrays isEqual actual.Values expected.Values  "The values array must contain the same values"
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the same indices"
