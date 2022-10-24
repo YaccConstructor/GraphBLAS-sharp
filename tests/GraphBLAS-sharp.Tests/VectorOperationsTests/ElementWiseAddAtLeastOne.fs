@@ -4,50 +4,93 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Backend.Common
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
 let clContext = defaultContext.ClContext
 
-let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
+let checkResult
+    (isEqual: 'c -> 'c -> bool)
+    (zero: 'c)
+    (op: AtLeastOne<'a, 'b> -> 'c option)
+    (actual: Vector<'c>)
+    (leftArray: 'a [])
+    (rightArray: 'b []) =
 
-    Expect.equal actual.Size expected.Size "The size should be the same"
+    let resultExpectedLength = max leftArray.Length rightArray.Length
 
-    match actual, expected with
-    | VectorDense actual, VectorDense expected ->
-        let isEqual left right =
-            match left, right with
-            | Some left, Some right ->
-                isEqual left right
-            | None, None -> true
-            | _, _ -> false
+    "The size should be the same"
+    |> Expect.equal actual.Size resultExpectedLength
 
-        compareArrays isEqual actual expected "The values array must contain the same value"
-    | VectorCOO actual, VectorCOO expected ->
-        compareArrays isEqual actual.Values expected.Values  "The values array must contain the same values"
-        compareArrays (=) actual.Indices expected.Indices "The index array must contain the same indices"
-    | _, _ -> failwith "Copy format must be the same"
+    let getValueOreZero = function
+        | Some value -> value
+        | None -> zero
 
-let makeTest
-    isEqual
-    secondVectorFormat
-    (isZero: 'a -> bool)
-    (addFun: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'b> -> ClVector<'c>)
+    let isLeftLess = leftArray.Length < rightArray.Length
+
+    let lowBound =
+        if isLeftLess then leftArray.Length else rightArray.Length
+
+    let expectedArray = Array.create resultExpectedLength zero
+
+    for i in 0 .. resultExpectedLength - 1 do
+        let result =
+            if i < lowBound then
+                Both (leftArray[i], rightArray[i])
+                |> op
+                |> getValueOreZero
+
+            elif isLeftLess then
+                Left leftArray[i]
+                |> op
+                |> getValueOreZero
+            else
+                Right rightArray[i]
+                |> op
+                |> getValueOreZero
+
+        expectedArray[i] <- result
+
+    match actual with
+    | VectorCOO actual ->
+        let actualArray = Array.create actual.Values.Length zero
+
+        for i in 0 .. actual.Indices.Length - 1 do
+            if isEqual actual.Values[i] zero then
+                failwith "Resulting zeroes should be filtered."
+
+            actualArray[actual.Indices[i]] <- actual.Values[i]
+
+        "arrays must have the same values"
+        |> compareArrays isEqual actualArray expectedArray
+    | _ -> failwith "Vector format must be the COO"
+
+let correctnessGenericTest
+    firstIsEqual
+    secondIsEqual
+    thirdIsEqual
+    (firstZero: 'a)
+    (secondZero: 'b)
+    (thirdZero: 'c)
+    (op: AtLeastOne<'a, 'b> -> 'c option)
+    (addFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'b> -> ClVector<'c>) //TODO()
+    (toCoo: MailboxProcessor<_> -> ClVector<'c> -> ClVector<'c>)
     case
-    (leftVector: 'a [])
-    (rightVector: 'a [])
+    (leftArray: 'a [])
+    (rightArray: 'b [])
     =
 
-    if leftVector.Length > 0 && rightVector.Length > 0 then
+    if leftArray.Length > 0 && rightArray.Length > 0 then
 
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
         let firstVector =
-            createVectorFromArray case.FormatCase leftVector isZero
+            createVectorFromArray case.FormatCase leftArray (firstIsEqual firstZero)
 
         let secondVector =
-            createVectorFromArray secondVectorFormat rightVector isZero
+            createVectorFromArray case.FormatCase rightArray (secondIsEqual secondZero)
 
         let v1 = firstVector.ToDevice context
         let v2 = secondVector.ToDevice context
@@ -57,35 +100,38 @@ let makeTest
         v1.Dispose q
         v2.Dispose q
 
+        let cooRes = toCoo q res
+        res.Dispose q
 
+        let actual = cooRes.ToHost q
 
+        checkResult thirdIsEqual thirdZero op actual leftArray rightArray
 
+let testFixtures (case: OperationCase<VectorFormat>) =
+    let config = defaultConfig
 
+    let getCorrectnessTestName fstType sndType thrType =
+        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.FormatCase}"
 
+    let wgSize = 32
+    let context = case.ClContext.ClContext
 
+    let opIntSum = function
+        | Both (_, x: int)
+        | Left x
+        | Right x ->
+            Some x
 
-//
-//
-// let testFixtures (case: OperationCase<VectorFormat>) =
-//     let config = defaultConfig
-//
-//     let getCorrectnessTestName datatype =
-//          sprintf "Correctness on %s, %A" datatype case.FormatCase
-//
-//     let wgSize = 32
-//     let context = case.ClContext.ClContext
-//
-//     [ let intFill = Vector.fillSubVector context wgSize
-//       let isZero item = item = 0
-//
-//       case
-//       |> makeTest (=) isZero isZero intFill
-//       |> testPropertyWithConfig config (getCorrectnessTestName "int")
-//
-//        ]
-//
-// let tests =
-//      testCases
-//     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
-//     |> List.collect testFixtures
-//     |> testList "Backend.Vector.copy tests"
+    [ let addFun = Vector.elementWiseAddAtLeastOne context <@ opIntSum @>  wgSize
+
+      let toCoo = Vector.toCoo clContext wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (opIntSum) addFun toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int") ]
+
+let tests =
+     testCases<VectorFormat>
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.collect testFixtures
+    |> testList "Backend.Vector.copy tests"

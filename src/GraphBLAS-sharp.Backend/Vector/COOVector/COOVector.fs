@@ -138,7 +138,7 @@ module COOVector =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -146,7 +146,7 @@ module COOVector =
                 clContext.CreateClArray<'a>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -154,7 +154,7 @@ module COOVector =
                 clContext.CreateClArray<'b>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -162,7 +162,7 @@ module COOVector =
                 clContext.CreateClArray<int>(
                     sumOfSides,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -240,7 +240,7 @@ module COOVector =
                 clContext.CreateClArray(
                     length,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -248,7 +248,7 @@ module COOVector =
                 clContext.CreateClArray(
                     length,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -320,7 +320,7 @@ module COOVector =
                 clContext.CreateClArray<'a>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
@@ -328,7 +328,7 @@ module COOVector =
                 clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 

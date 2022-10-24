@@ -30,8 +30,9 @@ let allTests =
         //Backend.Vector.ZeroCreate.tests
         //Backend.Vector.OfList.tests
         //Backend.Vector.Copy.tests
-        Backend.Vector.Convert.tests
+        //Backend.Vector.Convert.tests
         //Backend.Vector.FillSubVector.tests
+        Backend.Vector.ElementWiseAddAtLeastOne.tests
 
           ]
     |> testSequenced
