@@ -30,6 +30,7 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
     | _, _ -> failwith "Copy format must be the same"
 
 let correctnessGenericTest<'a when 'a: struct>
+    filter
     isEqual
     (isZero: 'a -> bool)
     (copy: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'a>)
@@ -37,6 +38,8 @@ let correctnessGenericTest<'a when 'a: struct>
     (array: 'a [])
     =
     if array.Length > 0 then
+        let array = filter array
+
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
@@ -53,6 +56,9 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual actual expected
 
 let testFixtures (case: OperationCase<VectorFormat>) =
+    let filterFloats =
+        Array.filter (System.Double.IsNaN >> not)
+
     let config = defaultConfig
 
     let getCorrectnessTestName datatype =
@@ -65,28 +71,28 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let isZero item = item = 0
 
       case
-      |> correctnessGenericTest<int> (=) isZero intCopy
+      |> correctnessGenericTest<int> id (=) isZero intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0.0
 
       case
-      |> correctnessGenericTest<float> (=) isZero floatCopy
+      |> correctnessGenericTest<float> filterFloats (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolCopy = Vector.copy context wgSize
       let isZero item = item = true
 
       case
-      |> correctnessGenericTest<bool> (=) isZero boolCopy
+      |> correctnessGenericTest<bool> id (=) isZero boolCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0uy
 
       case
-      |> correctnessGenericTest<byte> (=) isZero floatCopy
+      |> correctnessGenericTest<byte> id (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =

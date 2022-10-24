@@ -28,7 +28,8 @@ let allTests =
         //Backend.Vector.ZeroCreate.tests //TODO()
         //Backend.Reduce.tests
         //Backend.Vector.ZeroCreate.tests
-        Backend.Vector.OfList.tests
+        //Backend.Vector.OfList.tests
+        Backend.Vector.Copy.tests
 
           ]
     |> testSequenced
