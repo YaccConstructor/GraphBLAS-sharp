@@ -4,8 +4,15 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/) implementation i
 
 ### Features
 - ```Option<'t>``` to solve [explicit/implicit zeroes problem](https://github.com/GraphBLAS/LAGraph/issues/28#issuecomment-542952115). If graph has labels of type ```'t``` then adjacency matrix is ```Matrix<Option<'t>>```. Sparse storage contains only values for ```Some<'t>``` cells. 
-- Elementwise operations have type ```AtLeastOne<'t> -> Option<'t>``` to be shure that ```None op None``` is ```None```. Also developer explicitly controls what should be ```None```. So, type of matrix-matrix elementwise oertion is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
-- No semirings. Just functions. Ofcourse one can implement semirings on the top of implemented API.
+- Elementwise operations have type ```AtLeastOne<'t1,'t2> -> Option<'t3>``` to be shure that ```None op None``` is ```None```. Also developer explicitly controls what should be ```None```. ```AtLeastOne``` defined as fallows:
+  ```fsharp
+  type AtLeastOne<'t1, 't2> =
+     | Both of 't1*'t2
+     | Left of 't1
+     | Right of 't2
+  ```
+  So, type of matrix-matrix elementwise oertion is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
+- No semirings. Just functions. Ofcourse one can implement semirings on the top of provided API.
 
 ---
 
