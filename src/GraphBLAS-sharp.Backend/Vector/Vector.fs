@@ -123,12 +123,12 @@ module Vector =
                 ClVectorDense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
         let cooFillVector =
-            COOVector.fillSubVector clContext workGroupSize
+            COOVector.fillSubVector clContext workGroupSize zero
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext workGroupSize
+            DenseVector.fillSubVector clContext workGroupSize zero
 
         let toCooVector =
             DenseVector.toCoo clContext workGroupSize
@@ -139,13 +139,15 @@ module Vector =
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) -> //TODO()
             match vector, maskVector with
             | ClVectorCOO vector, ClVectorCOO mask ->
-                let res = cooFillVector processor vector mask value
+                let res =
+                    cooFillVector processor vector mask value
 
                 ClVectorCOO res
             | ClVectorCOO vector, ClVectorDense mask ->
                 let mask = toCooMask processor mask
 
-                let res = cooFillVector processor vector mask value //TODO()
+                let res =
+                    cooFillVector processor vector mask value //TODO()
 
                 ClVectorCOO res
             | ClVectorDense vector, ClVectorCOO mask ->
@@ -156,7 +158,7 @@ module Vector =
 
                 ClVectorCOO res
             | ClVectorDense vector, ClVectorDense mask ->
-                let res = denseFillVector processor vector mask value //TODO()
+                let res = denseFillVector processor vector mask value //TODO() remove zero ?
 
                 ClVectorDense res
 
@@ -174,12 +176,12 @@ module Vector =
             | ClVectorDense vector ->
                 ClVectorDense <| denseComplemented processor vector
 
-    let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) (zero: 'a) =
         let cooReduce =
-            COOVector.reduce clContext workGroupSize opAdd
+            COOVector.reduce clContext workGroupSize opAdd zero
 
         let denseReduce =
-            DenseVector.reduce clContext workGroupSize opAdd
+            DenseVector.reduce clContext workGroupSize opAdd zero
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with

@@ -107,8 +107,8 @@ module DenseVector =
                 clContext.CreateClArray(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.AllocAndCopyHostPtr
                 )
 
             let ndRange =
@@ -133,9 +133,9 @@ module DenseVector =
 
             resultVector
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
 
-        let opAdd = VectorOperations.fillSubAddAtLeastOne None
+        let opAdd = VectorOperations.fillSubAddAtLeastOne zero //TODO()
 
         let eWiseAdd = elementWiseAddAtLeasOne clContext opAdd workGroupSize
 
@@ -156,7 +156,7 @@ module DenseVector =
 
         let complemented =
             <@
-                fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (resultArray: ClArray<'a option>) ->
+                fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (defaultValue: ClCell<'a>) (resultArray: ClArray<'a option>) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -165,7 +165,7 @@ module DenseVector =
                         | Some _ ->
                             resultArray[gid] <- None
                         | None ->
-                            resultArray[gid] <- Some Unchecked.defaultof<'a>
+                            resultArray[gid] <- Some defaultValue.Value
             @>
 
 
@@ -183,6 +183,9 @@ module DenseVector =
                     allocationMode = AllocationMode.Default
                 )
 
+            let defaultValue =
+                clContext.CreateClCell Unchecked.defaultof<'a>
+
             let ndRange = Range1D.CreateValid(length, workGroupSize)
 
             let kernel = kernel.GetKernel()
@@ -194,8 +197,11 @@ module DenseVector =
                             ndRange
                             length
                             vector
+                            defaultValue
                             resultArray)
                 )
+
+            processor.Post(Msg.CreateFreeMsg(defaultValue))
 
             resultArray
 
@@ -351,12 +357,13 @@ module DenseVector =
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
+        zero
         =
 
         let unzip = getValuesAndIndices clContext workGroupSize
 
         let reduce =
-            Reduce.run clContext workGroupSize opAdd Unchecked.defaultof<'a>
+            Reduce.run clContext workGroupSize opAdd zero
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

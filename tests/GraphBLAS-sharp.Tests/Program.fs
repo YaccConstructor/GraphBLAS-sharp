@@ -34,7 +34,9 @@ let allTests =
         //Backend.Vector.FillSubVector.tests
         // Backend.Vector.ElementWiseAddAtLeastOne.addTests
         // Backend.Vector.ElementWiseAddAtLeastOne.mulTests
-        Backend.Vector.FillSubVector.tests
+        //Backend.Vector.FillSubVector.tests
+        //Backend.Vector.Complemented.tests
+          Backend.Vector.Reduce.tests
           ]
     |> testSequenced
 

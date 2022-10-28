@@ -409,7 +409,7 @@ module COOVector =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a)=
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
 
         let create = ClArray.create clContext workGroupSize
 
@@ -419,8 +419,6 @@ module COOVector =
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (maskVector: ClCooVector<'b>) (scalar: 'a) ->
 
-            let maskSize = maskVector.Size //TODO()
-
             let maskValues = create processor maskVector.Size scalar
 
             let maskIndices = maskVector.Indices
@@ -429,7 +427,7 @@ module COOVector =
                 { ClCooVector.Context = clContext
                   Indices = maskIndices
                   Values = maskValues
-                  Size = maskSize }
+                  Size = maskVector.Size } //TODO()
 
             eWiseAdd processor leftVector rightVector
 
@@ -479,7 +477,7 @@ module COOVector =
             preparePositionsComplemented clContext workGroupSize
 
         let init =
-            ClArray.init <@ id @> clContext workGroupSize
+            ClArray.init <@ fun x -> x @> clContext workGroupSize //TODO remove lambda ?
 
         let create =
             ClArray.zeroCreate clContext workGroupSize
@@ -512,9 +510,10 @@ module COOVector =
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
+        zero
         =
 
-        let reduce = Reduce.run clContext workGroupSize
+        let reduce = Reduce.run clContext workGroupSize opAdd zero
 
         fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
-            reduce opAdd Unchecked.defaultof<'a> processor vector.Values
+            reduce processor vector.Values

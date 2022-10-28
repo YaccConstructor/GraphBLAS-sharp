@@ -47,7 +47,6 @@ let checkResult
 
         expectedArray[i] <- item
 
-
     match actual with
     | VectorCOO actual ->
         let actualArray = Array.create expectedArrayLength resultZero

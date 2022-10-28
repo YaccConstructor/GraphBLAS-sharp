@@ -10,11 +10,11 @@ module VectorOperations =
 
                 match value with
                 | Both (_, right) ->
-                    res <- Some right
+                    res <- right
                 | Left left ->
-                    res <- Some left
+                    res <- left
                 | Right right ->
-                    res <- Some right
+                    res <- right
 
                 if res = zero then None else Some res
         @>
