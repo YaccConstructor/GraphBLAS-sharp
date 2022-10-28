@@ -25,7 +25,7 @@ module DenseVector =
 
         let kernel = clContext.Compile(fillVector)
 
-        fun (processor: MailboxProcessor<_>) (maskVector: ClArray<'a option>) (scalar: 'b) ->
+        fun (processor: MailboxProcessor<_>) (maskVector: ClArray<'a option>) (scalar: 'b) -> //TODO() scalar to clCell<'b>
 
             let resultArray =
                 clContext.CreateClArray(
@@ -71,7 +71,7 @@ module DenseVector =
 
         let eWiseAdd =
             <@
-               fun (ndRange: Range1D) leftVectorLength rightVectorLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
+               fun (ndRange: Range1D) leftVectorLength rightVectorLength resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
                  let gid = ndRange.GlobalID0
 
@@ -84,32 +84,35 @@ module DenseVector =
                  if gid < rightVectorLength then
                     rightItem <- rightVector[gid]
 
-                 match leftItem, rightItem with
-                 | Some left, Some right ->
-                    resultVector[gid] <- (%opAdd) (Both (left, right))
-                 | Some left, None ->
-                    resultVector[gid] <- (%opAdd) (Left left)
-                 | None, Some right ->
-                    resultVector[gid] <- (%opAdd) (Right right)
-                 | None, None ->
-                    resultVector[gid] <- None
+                 if gid < resultLength then
+                     match leftItem, rightItem with
+                     | Some left, Some right ->
+                        resultVector[gid] <- (%opAdd) (Both (left, right))
+                     | Some left, None ->
+                        resultVector[gid] <- (%opAdd) (Left left)
+                     | None, Some right ->
+                        resultVector[gid] <- (%opAdd) (Right right)
+                     | None, None ->
+                        resultVector[gid] <- None
             @>
 
         let kernel = clContext.Compile(eWiseAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
+            let resultLength =
+                max leftVector.Length rightVector.Length
+
             let resultVector =
                 clContext.CreateClArray(
-                    leftVector.Length,
+                    resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.WriteOnly,
                     allocationMode = AllocationMode.Default
                 )
 
-            let resultLength = max leftVector.Length rightVector.Length
-
-            let ndRange = Range1D.CreateValid (resultLength, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(resultLength, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -120,6 +123,7 @@ module DenseVector =
                             ndRange
                             leftVector.Length
                             rightVector.Length
+                            resultLength
                             leftVector
                             rightVector
                             resultVector)
@@ -240,7 +244,7 @@ module DenseVector =
 
             positions
 
-    let unzip<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let unzip =
             <@
@@ -261,11 +265,14 @@ module DenseVector =
 
         let kernel = clContext.Compile(unzip)
 
-        let getBitmap = getSomeBitmap clContext workGroupSize
+        let getBitmap =
+            getSomeBitmap clContext workGroupSize
 
-        let copy = ClArray.copy clContext workGroupSize
+        let copy =
+            ClArray.copy clContext workGroupSize
 
-        let prefixSum = ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let prefixSum =
+            ClArray.prefixSumExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
@@ -292,14 +299,16 @@ module DenseVector =
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default)
+                    allocationMode = AllocationMode.Default
+                    )
 
             let resultIndices =
                 clContext.CreateClArray(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default)
+                    allocationMode = AllocationMode.Default
+                    )
 
             let ndRange = Range1D.CreateValid(vector.Length, workGroupSize)
 
@@ -327,7 +336,7 @@ module DenseVector =
 
     let toCoo (clContext: ClContext) (workGroupSize: int) =
 
-        let unzip = unzip clContext workGroupSize
+        let unzip = getValuesAndIndices clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
@@ -338,16 +347,16 @@ module DenseVector =
               Values = values
               Size = vector.Length }
 
-
     let reduce
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
         =
 
-        let unzip = unzip clContext workGroupSize
+        let unzip = getValuesAndIndices clContext workGroupSize
 
-        let reduce = Reduce.run clContext workGroupSize opAdd Unchecked.defaultof<'a> //TODO()
+        let reduce =
+            Reduce.run clContext workGroupSize opAdd Unchecked.defaultof<'a>
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

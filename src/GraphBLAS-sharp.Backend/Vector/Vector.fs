@@ -109,11 +109,11 @@ module Vector =
         workGroupSize
         =
 
-        let addDense =
-            DenseVector.elementWiseAddAtLeasOne clContext opAdd workGroupSize
-
         let addCoo =
             COOVector.elementWiseAddAtLeastOne clContext opAdd workGroupSize
+
+        let addDense =
+            DenseVector.elementWiseAddAtLeasOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -121,7 +121,7 @@ module Vector =
                 ClVectorCOO <| addCoo processor left right
             | ClVectorDense left, ClVectorDense right ->
                 ClVectorDense <| addDense processor left right
-            | _ -> failwith "Vector formats are not matching"
+            | _ -> failwith "Vector formats are not matching."
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =
         let cooFillVector =

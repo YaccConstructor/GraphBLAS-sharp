@@ -32,8 +32,9 @@ let allTests =
         //Backend.Vector.Copy.tests
         //Backend.Vector.Convert.tests
         //Backend.Vector.FillSubVector.tests
-        Backend.Vector.ElementWiseAddAtLeastOne.tests
-
+        // Backend.Vector.ElementWiseAddAtLeastOne.addTests
+        // Backend.Vector.ElementWiseAddAtLeastOne.mulTests
+        Backend.Vector.FillSubVector.tests
           ]
     |> testSequenced
 

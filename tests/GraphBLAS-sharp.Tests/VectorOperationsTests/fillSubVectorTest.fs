@@ -9,72 +9,84 @@ let logger = Log.create "Vector.zeroCreate.Tests"
 
 let clContext = defaultContext.ClContext
 
-let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
-
-    Expect.equal actual.Size expected.Size "The size should be the same"
-
-    match actual, expected with
-    | VectorDense actual, VectorDense expected ->
-        let isEqual left right =
-            match left, right with
-            | Some left, Some right ->
-                isEqual left right
-            | None, None -> true
-            | _, _ -> false
-
-        compareArrays isEqual actual expected "The values array must contain the default value"
-    | VectorCOO actual, VectorCOO expected ->
-        compareArrays isEqual actual.Values expected.Values  "The values array must contain the same values"
-        compareArrays (=) actual.Indices expected.Indices "The index array must contain the same indices"
-    | _, _ -> failwith "Copy format must be the same"
-
-let makeTest<'a, 'b when 'a: struct and 'b: struct>
-    isEqual
-    (isVectorItemZero: 'a -> bool)
-    (isMaskItemZero: 'b -> bool)
-    (fillVector: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
-    case
-    (array: 'a [])
+let checkResult
+    (resultIsEqual: 'a -> 'a -> bool)
+    (maskIsEqual: 'b -> 'b -> bool)
+    vectorZero
+    maskZero
+    (actual: Vector<'a>)
+    (leftVector: 'a [])
     (mask: 'b [])
     (value: 'a)
     =
 
-    if array.Length > 0 then
+    let expectedArrayLength = leftVector.Length
 
+    let expectedArray =
+        Array.create expectedArrayLength vectorZero
+
+    for i in 0 .. expectedArrayLength - 1 do
+        let resultItem =
+            if maskIsEqual maskZero mask[i] then
+                leftVector[i]
+            else
+                value
+
+        expectedArray[i] <- resultItem
+
+    match actual with
+    | VectorCOO actual ->
+        let actualArray = Array.create expectedArrayLength vectorZero
+
+        for i in 0 .. actual.Indices.Length - 1 do
+            actualArray[actual.Indices[i]] <- actual.Values[i]
+
+        $"arrays must have the same values and length"
+        |> compareArrays resultIsEqual actualArray expectedArray
+    | _ -> failwith "Vector format must be COO."
+
+let makeTest<'a, 'b when 'a: struct and 'b: struct>
+    resultIsEqual
+    maskIsEqual
+    (vectorZero: 'a )
+    (maskZero: 'b)
+    (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
+    (fillVector: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
+    (maskFormat: VectorFormat)
+    case
+    (leftArray: 'a [])
+    (maskArray: 'b [])
+    (value: 'a)
+    =
+
+    if leftArray.Length > 0 then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
-        let sourceVector =
-            createVectorFromArray case.FormatCase array isVectorItemZero
+        let leftVector =
+            createVectorFromArray case.FormatCase leftArray (resultIsEqual vectorZero)
 
         let clSourceVector =
-            sourceVector.ToDevice context
+            leftVector.ToDevice context
 
         let maskVector =
-            createVectorFromArray case.FormatCase mask isMaskItemZero
+            createVectorFromArray maskFormat maskArray (maskIsEqual maskZero)
 
         let clMaskVector =
             maskVector.ToDevice context
 
-        let expected =
-            let expected = array
-
-            for i in 0 .. mask.Length do
-                if i < array.Length && not (isMaskItemZero mask[i]) then
-                    expected[i] <- value
-
-            createVectorFromArray case.FormatCase expected isVectorItemZero
-
         let clActual =
             fillVector q clSourceVector clMaskVector value
 
-        let actual = clActual.ToHost q
+        let cooClActual = toCoo q clActual
+
+        let actual = cooClActual.ToHost q
 
         clSourceVector.Dispose q
         clMaskVector.Dispose q
         clActual.Dispose q
 
-        checkResult isEqual actual expected
+        checkResult resultIsEqual maskIsEqual vectorZero maskZero actual leftArray maskArray value
 
 
 let testFixtures (case: OperationCase<VectorFormat>) =
@@ -87,16 +99,17 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let context = case.ClContext.ClContext
 
     [ let intFill = Vector.fillSubVector context wgSize
-      let isZero item = item = 0
+
+      let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) isZero isZero intFill
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.COO
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
        ]
 
 let tests =
-     testCases
+     testCases<VectorFormat>
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
-    |> testList "Backend.Vector.copy tests"
+    |> testList "Backend.Vector.fillSubVector tests"

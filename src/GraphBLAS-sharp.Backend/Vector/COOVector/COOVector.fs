@@ -128,6 +128,7 @@ module COOVector =
         let kernel = clContext.Compile(merge)
 
         fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
+
             let firstSide = firstIndices.Length
 
             let secondSide = secondIndices.Length
@@ -207,12 +208,12 @@ module COOVector =
                     if gid < length - 1 && allIndices[gid] = allIndices[gid + 1] then
                         positions[gid] <- 0
 
-                        match (%opAdd) (Both (leftValues[gid + 1], rightValues[gid])) with
+                        match (%opAdd) (Both (leftValues[gid], rightValues[gid + 1])) with
                         | Some value ->
                             allValues[gid + 1] <- value
                             positions[gid + 1] <- 1
                         | None ->
-                            positions[gid + 1] <- 1
+                            positions[gid + 1] <- 0
                     elif (gid < length && gid > 0 && allIndices[gid - 1] <> allIndices[gid]) || gid = 0 then
                         if isLeft[gid] = 1 then
                             match (%opAdd) (Left leftValues[gid]) with
@@ -273,7 +274,6 @@ module COOVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allValues, positions
-
 
     let setPositions (clContext: ClContext) (workGroupSize: int) =
 
@@ -353,7 +353,9 @@ module COOVector =
 
             resultValues, resultIndices
 
-    //TODO comment
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let elementWiseAddAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
@@ -386,6 +388,7 @@ module COOVector =
 
             processor.Post(Msg.CreateFreeMsg<_>(leftValues))
             processor.Post(Msg.CreateFreeMsg<_>(rightValues))
+            processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
             let resultValues, resultIndices =
                 setPositions
@@ -394,8 +397,8 @@ module COOVector =
                     allIndices
                     positions
 
-            processor.Post(Msg.CreateFreeMsg<_>(allValues))
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+            processor.Post(Msg.CreateFreeMsg<_>(allValues))
             processor.Post(Msg.CreateFreeMsg<_>(positions))
 
             { ClCooVector.Context = clContext
@@ -403,11 +406,14 @@ module COOVector =
               Indices = resultIndices
               Size = leftVector.Size }
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a)=
 
         let create = ClArray.create clContext workGroupSize
 
-        let opAdd = VectorOperations.fillSubAddAtLeastOne None
+        let opAdd = VectorOperations.fillSubAddAtLeastOne zero
 
         let eWiseAdd = elementWiseAddAtLeastOne clContext opAdd workGroupSize
 
