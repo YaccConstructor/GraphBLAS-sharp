@@ -413,7 +413,7 @@ module COOVector =
 
         let create = ClArray.create clContext workGroupSize
 
-        let opAdd = VectorOperations.fillSubAddAtLeastOne zero
+        let opAdd = StandardOperations.maks zero
 
         let eWiseAdd = elementWiseAddAtLeastOne clContext opAdd workGroupSize
 

@@ -94,3 +94,19 @@ module StandardOperations =
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
+
+    let maks zero =
+        <@
+            fun (value: AtLeastOne<'a, 'a>) ->
+                let mutable res = zero
+
+                match value with
+                | Both (_, right) ->
+                    res <- right
+                | Left left ->
+                    res <- left
+                | Right right ->
+                    res <- right
+
+                if res = zero then None else Some res
+        @>

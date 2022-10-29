@@ -135,7 +135,7 @@ module DenseVector =
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
 
-        let opAdd = VectorOperations.fillSubAddAtLeastOne zero //TODO()
+        let opAdd = StandardOperations.maks zero
 
         let eWiseAdd = elementWiseAddAtLeasOne clContext opAdd workGroupSize
 
