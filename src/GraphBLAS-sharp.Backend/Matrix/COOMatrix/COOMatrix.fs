@@ -11,16 +11,15 @@ module COOMatrix =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
 
                 let i = ndRange.GlobalID0
+                let index = prefixSumArrayBuffer.[i]
 
-                if i = prefixSumArrayLength - 1
-                   || i < prefixSumArrayLength
-                      && prefixSumArrayBuffer.[i]
-                         <> prefixSumArrayBuffer.[i + 1] then
-                    let index = prefixSumArrayBuffer.[i]
-
+                if (i < prefixSumArrayLength - 1
+                    && index <> prefixSumArrayBuffer.[i + 1])
+                   || (i = prefixSumArrayLength - 1
+                       && index < resultLength) then
                     resultRowsBuffer.[index] <- allRowsBuffer.[i]
                     resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
                     resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
@@ -82,6 +81,7 @@ module COOMatrix =
                         kernel.KernelFunc
                             ndRange
                             prefixSumArrayLength
+                            resultLength
                             allRows
                             allColumns
                             allValues

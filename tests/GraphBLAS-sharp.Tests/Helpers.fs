@@ -440,7 +440,7 @@ module Utils =
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
         |> List.ofArray
 
-    let avaliableContexts (platformRegex: string) =
+    let availableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
 
         Cl.GetPlatformIDs &e
@@ -520,7 +520,7 @@ module Utils =
           MatrixCase: MatrixFormat }
 
     let testCases =
-        [ avaliableContexts "" |> Seq.map box
+        [ availableContexts "" |> Seq.map box
           listOfUnionCases<MatrixFormat> |> Seq.map box ]
         |> List.map List.ofSeq
         |> cartesian
