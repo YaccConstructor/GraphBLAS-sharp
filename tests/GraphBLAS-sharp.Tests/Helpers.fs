@@ -536,9 +536,12 @@ module Utils =
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
-        | Backend.VectorFormat.COO ->
-            Backend.VectorCOO
-            <| Backend.COOVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Sparse ->
+            Backend.VectorSparse
+            <| Backend.SparseVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Dense ->
+            Backend.VectorDense
+            <| Backend.ArraysExtensions.FromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

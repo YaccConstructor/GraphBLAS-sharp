@@ -18,14 +18,14 @@ module ArraysExtensions =
     type 'a ``[]`` with
         member this.Size = this.Length
 
-        member this.ToString() =
-            [ sprintf "Dense Vector\n"
-              sprintf "Size:    %i \n" this.Length
-              sprintf "Values:  %A \n" this ]
-            |> String.concat ""
-
         member this.ToDevice(context: ClContext) = context.CreateClArray this
 
-    let FromArray (array: 'a [], isZero: 'a -> bool) =
+    let DenseVectorToString (array: 'a []) =
+        [ sprintf "Dense Vector\n"
+          sprintf "Size:    %i \n" array.Length
+          sprintf "Values:  %A \n" array ]
+        |> String.concat ""
+
+    let DenseVectorFromArray (array: 'a [], isZero: 'a -> bool) =
         array
         |> Array.map (fun v -> if isZero v then None else Some v)
