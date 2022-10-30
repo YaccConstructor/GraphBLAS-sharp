@@ -30,15 +30,15 @@ let checkResult
         Array.create expectedArrayLength 1
 
     for i in 0 .. expectedArrayLength - 1 do
-        if not <| isEqual vector[i] zero then
-            expectedArray[i] <- 0
+        if not <| isEqual vector.[i] zero then
+            expectedArray.[i] <- 0
 
     match actual with
     | VectorCOO actual ->
         let actualArray = Array.create expectedArrayLength 0
 
         for i in 0 .. actual.Indices.Length - 1 do
-            actualArray[actual.Indices[i]] <- 1
+            actualArray.[actual.Indices.[i]] <- 1
 
         $"arrays must have the same values and length, actual = %A{actualArray}, expected = %A{expectedArray}"
         |> compareArrays (=) actualArray expectedArray

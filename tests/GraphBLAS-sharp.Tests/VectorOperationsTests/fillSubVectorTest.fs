@@ -38,17 +38,17 @@ let checkResult
         Array.create expectedArrayLength vectorZero
 
     for i in 0 .. expectedArrayLength - 1 do
-        if i < mask.Length && not <| maskIsEqual mask[i] maskZero then
-            expectedArray[i] <- value
+        if i < mask.Length && not <| maskIsEqual mask.[i] maskZero then
+            expectedArray.[i] <- value
         elif i < vector.Length then
-            expectedArray[i] <- vector[i]
+            expectedArray.[i] <- vector.[i]
 
     match actual with
     | VectorCOO actual ->
         let actualArray = Array.create expectedArrayLength vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do
-            actualArray[actual.Indices[i]] <- actual.Values[i]
+            actualArray.[actual.Indices.[i]] <- actual.Values.[i]
 
         "arrays must have the same values and length"
         |> compareArrays resultIsEqual actualArray expectedArray

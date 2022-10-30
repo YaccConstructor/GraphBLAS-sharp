@@ -62,7 +62,7 @@ let correctnessGenericTest
 
             q.Post(Msg.CreateFreeMsg<_>(resultCell))
 
-            res[0]
+            res.[0]
 
         checkResult zero op result array
 

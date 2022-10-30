@@ -45,23 +45,23 @@ let checkResult
     for i in 0 .. expectedArrayLength - 1 do
         let item =
             if i < lowBound then
-               op leftArray[i] rightArray[i]
+               op leftArray.[i] rightArray.[i]
             elif isLeftLess then
-                op leftZero rightArray[i]
+                op leftZero rightArray.[i]
             else
-                op leftArray[i] rightZero
+                op leftArray.[i] rightZero
 
-        expectedArray[i] <- item
+        expectedArray.[i] <- item
 
     match actual with
     | VectorCOO actual ->
         let actualArray = Array.create expectedArrayLength resultZero
 
         for i in 0 .. actual.Indices.Length - 1 do
-            if isEqual actual.Values[i] resultZero then
+            if isEqual actual.Values.[i] resultZero then
                 failwith "Resulting zeroes should be filtered."
 
-            actualArray[actual.Indices[i]] <- actual.Values[i]
+            actualArray.[actual.Indices.[i]] <- actual.Values.[i]
 
         $"arrays must have the same values, expected values = %A{expectedArray}, actual values = %A{actualArray}"
         |> compareArrays isEqual actualArray expectedArray

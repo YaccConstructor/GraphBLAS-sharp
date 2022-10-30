@@ -461,9 +461,9 @@ module ClArray =
                     let gid = ndRange.GlobalID0
 
                     if gid < length then
-                        let resultIndex = indices[gid]
+                        let resultIndex = indices.[gid]
 
-                        outputArray[resultIndex] <- Some(values.[gid])
+                        outputArray.[resultIndex] <- Some values.[gid]
             @>
 
         let kernel = clContext.Compile(toOption)
@@ -502,7 +502,7 @@ module ClArray =
                     let gid = ndRange.GlobalID0
 
                     if  gid < inputArrayLength && gid < resultLength then
-                        resultArray[gid] <- inputArray[gid]
+                        resultArray.[gid] <- inputArray.[gid]
             @>
 
         let kernel = clContext.Compile(copy)

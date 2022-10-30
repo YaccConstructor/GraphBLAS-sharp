@@ -18,11 +18,11 @@ module DenseVector =
                 let gid = ndRange.GlobalID0
 
                 if gid < length then
-                    match maskArray[gid] with
+                    match maskArray.[gid] with
                         | Some _ ->
-                            resultArray[gid] <- Some scalar.Value
+                            resultArray.[gid] <- Some scalar.Value
                         | None ->
-                            resultArray[gid] <- None
+                            resultArray.[gid] <- None
             @>
 
         let kernel = clContext.Compile(fillVector)
@@ -72,21 +72,21 @@ module DenseVector =
                  let mutable rightItem = None
 
                  if gid < leftVectorLength then
-                    leftItem <- leftVector[gid]
+                    leftItem <- leftVector.[gid]
 
                  if gid < rightVectorLength then
-                    rightItem <- rightVector[gid]
+                    rightItem <- rightVector.[gid]
 
                  if gid < resultLength then
                      match leftItem, rightItem with
                      | Some left, Some right ->
-                        resultVector[gid] <- (%opAdd) (Both (left, right))
+                        resultVector.[gid] <- (%opAdd) (Both (left, right))
                      | Some left, None ->
-                        resultVector[gid] <- (%opAdd) (Left left)
+                        resultVector.[gid] <- (%opAdd) (Left left)
                      | None, Some right ->
-                        resultVector[gid] <- (%opAdd) (Right right)
+                        resultVector.[gid] <- (%opAdd) (Right right)
                      | None, None ->
-                        resultVector[gid] <- None
+                        resultVector.[gid] <- None
             @>
 
         let kernel = clContext.Compile(eWiseAdd)
@@ -157,9 +157,9 @@ module DenseVector =
                     let gid = ndRange.GlobalID0
 
                     if gid < length then
-                        match inputArray[gid] with
+                        match inputArray.[gid] with
                         | None ->
-                            resultArray[gid] <- Some defaultValue.Value
+                            resultArray.[gid] <- Some defaultValue.Value
                         | _ -> ()
             @>
 
@@ -207,11 +207,11 @@ module DenseVector =
                     let gid = ndRange.GlobalID0
 
                     if gid < length then
-                        match vector[gid] with
+                        match vector.[gid] with
                         | Some _ ->
-                            positions[gid] <- 1
+                            positions.[gid] <- 1
                         | None ->
-                            positions[gid] <- 0
+                            positions.[gid] <- 0
             @>
 
         let kernel = clContext.Compile(getPositions)
@@ -251,13 +251,13 @@ module DenseVector =
 
                     let gid = ndRange.GlobalID0
 
-                    if gid = length - 1 || gid < length && positions[gid] <> positions[gid + 1] then
-                        let index = positions[gid]
+                    if gid = length - 1 || gid < length && positions.[gid] <> positions.[gid + 1] then
+                        let index = positions.[gid]
 
-                        match denseVector[gid] with
+                        match denseVector.[gid] with
                         | Some value ->
-                            resultValues[index] <- value
-                            resultIndices[index] <- gid
+                            resultValues.[index] <- value
+                            resultIndices.[index] <- gid
                         | None -> ()
             @>
 
@@ -286,10 +286,10 @@ module DenseVector =
 
                 processor.Post(Msg.CreateFreeMsg<_>(r))
 
-                res[0]
+                res.[0]
 
             let resultValues =
-                clContext.CreateClArray(
+                clContext.CreateClArray<'a>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -297,7 +297,7 @@ module DenseVector =
                 )
 
             let resultIndices =
-                clContext.CreateClArray(
+                clContext.CreateClArray<int>(
                     resultLength,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,

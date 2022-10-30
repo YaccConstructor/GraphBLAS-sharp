@@ -26,9 +26,9 @@ module Reduce =
                     if i + workGroupSize < length then
                         localValues.[lid] <- (%opAdd) inputArray.[i] inputArray.[i + workGroupSize]
                     elif i < length then
-                        localValues[lid] <- inputArray[i]
+                        localValues.[lid] <- inputArray.[i]
                     else
-                        localValues[lid] <- zero
+                        localValues.[lid] <- zero
 
                     barrierLocal ()
 
@@ -36,16 +36,16 @@ module Reduce =
 
                     while step <= workGroupSize do
                         if lid < workGroupSize / step then
-                            let firstValue = localValues[lid]
-                            let secondValue = localValues[lid + workGroupSize / step]
+                            let firstValue = localValues.[lid]
+                            let secondValue = localValues.[lid + workGroupSize / step]
 
-                            localValues[lid] <- ((%opAdd) firstValue secondValue)
+                            localValues.[lid] <- ((%opAdd) firstValue secondValue)
 
                         step <- step <<< 1
 
                         barrierLocal ()
 
-                    resultArray[gid / workGroupSize] <- localValues[0]
+                    resultArray.[gid / workGroupSize] <- localValues.[0]
             @>
 
         let kernel = clContext.Compile(scan)
@@ -89,11 +89,11 @@ module Reduce =
                     let i = (gid - lid) * 2 + lid
 
                     if i + workGroupSize < length then
-                        localValues[lid] <- (%opAdd) inputArray.[i] inputArray.[i + workGroupSize]
+                        localValues.[lid] <- (%opAdd) inputArray.[i] inputArray.[i + workGroupSize]
                     elif i < length then
-                        localValues[lid] <- inputArray[i]
+                        localValues.[lid] <- inputArray.[i]
                     else
-                        localValues[lid] <- zero
+                        localValues.[lid] <- zero
 
                     barrierLocal ()
 
@@ -101,16 +101,16 @@ module Reduce =
 
                     while step <= workGroupSize do
                         if lid < workGroupSize / step then
-                            let firstValue = localValues[lid]
-                            let secondValue = localValues[lid + workGroupSize / step]
+                            let firstValue = localValues.[lid]
+                            let secondValue = localValues.[lid + workGroupSize / step]
 
-                            localValues[lid] <- (%opAdd) firstValue secondValue
+                            localValues.[lid] <- (%opAdd) firstValue secondValue
 
                         step <- step <<< 1
 
                         barrierLocal ()
 
-                    resultCell.Value <- localValues[0]
+                    resultCell.Value <- localValues.[0]
             @>
 
         let kernel = clContext.Compile(scan)
@@ -215,9 +215,9 @@ module Reduce =
                     let localValues = localArray<'a> workGroupSize
 
                     if gid < length then
-                        localValues[lid] <- inputArray[gid]
+                        localValues.[lid] <- inputArray.[gid]
                     else
-                        localValues[lid] <- zero
+                        localValues.[lid] <- zero
 
                     barrierLocal ()
 
@@ -225,10 +225,10 @@ module Reduce =
 
                     while step <= workGroupSize do
                         if lid < workGroupSize / step then
-                            let firstValue = localValues[lid]
-                            let secondValue = localValues[lid + workGroupSize / step]
+                            let firstValue = localValues.[lid]
+                            let secondValue = localValues.[lid + workGroupSize / step]
 
-                            localValues[lid] <- (%opAdd) firstValue secondValue
+                            localValues.[lid] <- (%opAdd) firstValue secondValue
 
                         step <- step <<< 1
 
