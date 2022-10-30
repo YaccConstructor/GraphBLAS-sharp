@@ -32,7 +32,7 @@
     <Compile Include="VectorOperationsTests\OfListTests.fs" />
     <Compile Include="VectorOperationsTests\CopyTests.fs" />
     <Compile Include="VectorOperationsTests\FillSubVectorTest.fs" />
-    <Compile Include="VectorOperationsTests\ElementWiseAddAtLeastOne.fs" />
+    <Compile Include="VectorOperationsTests\ElementWiseAtLeastOne.fs" />
     <Compile Include="VectorOperationsTests\ConvertTest.fs" />
     <Compile Include="VectorOperationsTests\ComplementedTests.fs" />
     <Compile Include="VectorOperationsTests\ReduceTests.fs" />

@@ -4,9 +4,10 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Tests.Utils
-
 open GraphBLAS.FSharp.Backend
-let logger = Log.create "Convert.Tests"
+open OpenCL.Net
+
+let logger = Log.create "Backend.Vector.Convert.Tests"
 
 let config = defaultConfig
 let wgSize = 32
@@ -72,6 +73,17 @@ let testFixtures case =
 
 let tests =
     testCases<VectorFormat>
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
-    |> testList "Convert tests"
+    |> testList "Backend.Vector.Convert tests"

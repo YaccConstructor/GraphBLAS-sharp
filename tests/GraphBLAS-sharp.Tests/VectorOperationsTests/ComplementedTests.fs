@@ -4,14 +4,18 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend.Common
-open StandardOperations
-let logger = Log.create "Vector.Complemented.Tests"
+open OpenCL.Net
 
-let testArrayFilter array isZero =
-    Array.filter
-    <| (fun item -> not <| isZero item)
-    <| array
+let logger = Log.create "Vector.fillSubVector.Tests"
+
+let NNZCountCount array isZero =
+    Array.filter (fun item -> not <| isZero item) array
+    |> Array.length
+
+let fFilter =
+    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    >> not
+    |> Array.filter
 
 let checkResult
     isEqual
@@ -26,7 +30,7 @@ let checkResult
         Array.create expectedArrayLength 1
 
     for i in 0 .. expectedArrayLength - 1 do
-        if isEqual vector[i] zero then
+        if not <| isEqual vector[i] zero then
             expectedArray[i] <- 0
 
     match actual with
@@ -36,7 +40,7 @@ let checkResult
         for i in 0 .. actual.Indices.Length - 1 do
             actualArray[actual.Indices[i]] <- 1
 
-        $"arrays must have the same values and length"
+        $"arrays must have the same values and length, actual = %A{actualArray}, expected = %A{expectedArray}"
         |> compareArrays (=) actualArray expectedArray
     | _ -> failwith "Vector format must be COO."
 
@@ -45,13 +49,16 @@ let correctnessGenericTest
     zero
     (complemented: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
+    filter
     case
     (maskArray: 'a [])
     =
 
-    let rightFilteredArray = testArrayFilter maskArray (isEqual zero)
+    let maskArray = filter maskArray
 
-    if rightFilteredArray.Length > 0 then
+    let maskNNZ = NNZCountCount maskArray (isEqual zero)
+
+    if maskNNZ > 0 && maskNNZ < maskArray.Length - 1 then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
@@ -74,7 +81,7 @@ let correctnessGenericTest
 
         checkResult isEqual zero actual maskArray
 
-let addTestFixtures (case: OperationCase<VectorFormat>) =
+let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName dataType =
@@ -88,7 +95,7 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let intComplemented = Vector.complemented context wgSize
 
       case
-      |> correctnessGenericTest (=) 0 intComplemented intToCoo
+      |> correctnessGenericTest (=) 0 intComplemented intToCoo id
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let byteToCoo = Vector.toCoo context wgSize
@@ -96,7 +103,7 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let byteComplemented = Vector.complemented context wgSize
 
       case
-      |> correctnessGenericTest (=) 0uy byteComplemented byteToCoo
+      |> correctnessGenericTest (=) 0uy byteComplemented byteToCoo id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let floatToCoo = Vector.toCoo context wgSize
@@ -104,7 +111,7 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let floatComplemented = Vector.complemented context wgSize
 
       case
-      |> correctnessGenericTest (=) 0.0 floatComplemented floatToCoo
+      |> correctnessGenericTest (=) 0.0 floatComplemented floatToCoo fFilter
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolToCoo = Vector.toCoo context wgSize
@@ -112,11 +119,22 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let boolComplemented = Vector.complemented context wgSize
 
       case
-      |> correctnessGenericTest (=) false boolComplemented boolToCoo
+      |> correctnessGenericTest (=) false boolComplemented boolToCoo id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testCases<VectorFormat>
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
-    |> List.collect addTestFixtures
-    |> testList "Backend.Vector.Complemented tests"
+    |> List.collect testFixtures
+    |> testList "Backend.Vector.fillSubVector tests"

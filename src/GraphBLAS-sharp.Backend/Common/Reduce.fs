@@ -5,7 +5,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module Reduce =
-    let private scan
+    let private scan<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
@@ -32,17 +32,9 @@ module Reduce =
 
                     barrierLocal ()
 
-                    // if gid < length then
-                    //     localValues[lid] <- inputArray[gid]
-                    // else
-                    //     localValues[lid] <- zero
-                    //
-                    // barrierLocal ()
-
                     let mutable step = 2
 
                     while step <= workGroupSize do
-
                         if lid < workGroupSize / step then
                             let firstValue = localValues[lid]
                             let secondValue = localValues[lid + workGroupSize / step]
@@ -78,7 +70,7 @@ module Reduce =
 
             ()
 
-    let private scanToCell
+    let private scanToCell<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
@@ -108,7 +100,6 @@ module Reduce =
                     let mutable step = 2
 
                     while step <= workGroupSize do
-
                         if lid < workGroupSize / step then
                             let firstValue = localValues[lid]
                             let secondValue = localValues[lid + workGroupSize / step]
@@ -146,15 +137,18 @@ module Reduce =
 
             resultCell
 
-    let run
+    let run<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
         (zero: 'a)
         =
 
-        let scan = scan clContext workGroupSize opAdd zero
-        let scanToCell = scanToCell clContext workGroupSize opAdd zero
+        let scan =
+            scan clContext workGroupSize opAdd zero
+
+        let scanToCell =
+            scanToCell clContext workGroupSize opAdd zero
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -168,7 +162,7 @@ module Reduce =
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
-                    )
+                )
 
             let secondLength = (firstLength - 1) / workGroupSize + 1
 
@@ -178,7 +172,7 @@ module Reduce =
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
-                    )
+                )
 
             let mutable verticesArrays = firstVerticesArray, secondVerticesArray
             let swap (a, b) = (b, a)
@@ -204,7 +198,7 @@ module Reduce =
 
             result
 
-    let atomicRun
+    let atomicRun<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)

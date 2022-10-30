@@ -275,7 +275,7 @@ module COOVector =
 
             allValues, positions
 
-    let setPositions (clContext: ClContext) (workGroupSize: int) =
+    let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let setPositions =
             <@
@@ -404,32 +404,37 @@ module COOVector =
             { ClCooVector.Context = clContext
               Values = resultValues
               Indices = resultIndices
-              Size = leftVector.Size }
+              Size = max leftVector.Size rightVector.Size }
 
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) = // zero
 
         let create = ClArray.create clContext workGroupSize
 
-        let opAdd = StandardOperations.maks zero
+        let eWiseAdd =
+            elementWiseAddAtLeastOne clContext StandardOperations.mask workGroupSize
 
-        let eWiseAdd = elementWiseAddAtLeastOne clContext opAdd workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (maskVector: ClCooVector<'b>) (scalar: 'a) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (rightVector: ClCooVector<'b>) (scalar: 'a) ->
 
-            let maskValues = create processor maskVector.Size scalar
-
-            let maskIndices = maskVector.Indices
+            let maskValues = create processor rightVector.Size scalar
+            let maskIndices = copy processor rightVector.Indices
 
             let rightVector =
                 { ClCooVector.Context = clContext
-                  Indices = maskIndices
+                  Indices = copy processor rightVector.Indices
                   Values = maskValues
-                  Size = maskVector.Size } //TODO()
+                  Size = rightVector.Size }
 
-            eWiseAdd processor leftVector rightVector
+            let res = eWiseAdd processor leftVector rightVector
+
+            processor.Post(Msg.CreateFreeMsg(maskValues))
+            processor.Post(Msg.CreateFreeMsg(maskIndices))
+
+            res
 
     let preparePositionsComplemented (clContext: ClContext) (workGroupSize: int) =
 
@@ -443,7 +448,7 @@ module COOVector =
                         let index = inputIndices[gid]
 
                         positions[index] <- 0
-            @> //TODO
+            @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -471,42 +476,101 @@ module COOVector =
 
             positions
 
+    let setPositionsComplemented (clContext: ClContext) (workGroupSize: int) =
+
+        let setPositions =
+            <@
+                fun (ndRange: Range1D) length (positions: ClArray<int>) (resultIndices: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid = length - 1
+                       || gid < length
+                          && positions[gid]
+                             <> positions[gid + 1] then
+                        let index = positions[gid]
+
+                        resultIndices[index] <- gid
+            @>
+
+        let kernel = clContext.Compile(setPositions)
+
+        let sum = ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate 1
+
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) ->
+
+            let prefixArrayLenght = positions.Length
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r = sum processor positions resultLengthGpu
+
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+                processor.Post(Msg.CreateFreeMsg<_>(r))
+
+                res[0]
+
+            let resultIndices =
+                clContext.CreateClArray(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange = Range1D.CreateValid(prefixArrayLenght, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments(
+                    fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            prefixArrayLenght
+                            positions
+                            resultIndices)
+                )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultIndices
+
     let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let preparePositions =
             preparePositionsComplemented clContext workGroupSize
 
-        let init =
-            ClArray.init <@ fun x -> x @> clContext workGroupSize //TODO remove lambda ?
-
         let create =
             ClArray.zeroCreate clContext workGroupSize
 
         let setPositions =
-            setPositions clContext workGroupSize
+            setPositionsComplemented clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
 
             let positions =
                 preparePositions processor vector.Indices vector.Size
 
-            let allIndices =
-                init processor vector.Size
+            let resultIndices = setPositions processor positions
 
-            let (values: ClArray<'a>) = create processor vector.Size //TODO()
+            let resultLenght = resultIndices.Length
 
-            let resultValues, resultIndices =
-                setPositions processor values allIndices positions
+            let (ResultValues: ClArray<'a>) = create processor resultLenght
 
             processor.Post(Msg.CreateFreeMsg<_>(positions))
-            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
 
             { ClCooVector.Context = clContext
               Indices = resultIndices
-              Values = resultValues
+              Values = ResultValues
               Size = vector.Size }
 
-    let reduce
+    let reduce<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)

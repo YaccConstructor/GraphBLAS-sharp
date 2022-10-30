@@ -2,17 +2,15 @@ module Backend.Vector.ZeroCreate
 
 open Expecto
 open Expecto.Logging
-
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
+open OpenCL.Net
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
 let checkResult size (actual: Vector<'a>) =
-
     match actual with
     | VectorDense vector ->
-
         Expect.equal actual.Size size "The size should be the same"
 
         Array.iter
@@ -25,17 +23,15 @@ let checkResult size (actual: Vector<'a>) =
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
-    (wgSize: int)
+    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (vectorSize: int)
     =
 
     if vectorSize > 0 then
-        let context = case.ClContext.ClContext
         let q = case.ClContext.Queue
 
-        let clVector =
-            Vector.zeroCreate<'a> context wgSize q vectorSize case.FormatCase
+        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.FormatCase
 
         let hostVector = clVector.ToHost q
 
@@ -44,16 +40,56 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
         checkResult vectorSize hostVector
 
 let testFixtures (case: OperationCase<VectorFormat>) =
+    let config = defaultConfig
 
-    let config = { defaultConfig with maxTest = 1}
+    let getCorrectnessTestName dataType =
+        $"Correctness on %A{dataType}, %A{case.FormatCase}"
+
     let wgSize = 32
+    let context = case.ClContext.ClContext
 
-    case
-    |> correctnessGenericTest wgSize
-    |> testPropertyWithConfig config (sprintf "Correctness on %A" case)
+    let q = case.ClContext.Queue
+
+    q.Error.Add(fun e -> failwithf "%A" e)
+
+    [ let intZeroCreate = Vector.zeroCreate context wgSize
+
+      case
+      |> correctnessGenericTest intZeroCreate
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+
+      let byteZeroCreat = Vector.zeroCreate context wgSize
+
+      case
+      |> correctnessGenericTest byteZeroCreat
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+
+
+      let floatZeroCreate = Vector.zeroCreate context wgSize
+
+      case
+      |> correctnessGenericTest floatZeroCreate
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let boolZeroCreate = Vector.zeroCreate context wgSize
+
+      case
+      |> correctnessGenericTest boolZeroCreate
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
      testCases
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
-    |> List.map testFixtures
+    |> List.collect testFixtures
     |> testList "Backend.Vector.zeroCreate tests"

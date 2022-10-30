@@ -5,8 +5,9 @@ open Expecto.Logging
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
+open OpenCL.Net
 
-let logger = Log.create "Vector.zeroCreate.Tests"
+let logger = Log.create "Vector.ofList.Tests"
 
 let filter elements =
     List.filter
@@ -14,47 +15,25 @@ let filter elements =
     <| elements
     |> List.distinctBy fst
 
-
-
-let checkResultDense
-    (isEqual: 'a -> 'a -> bool)
-    (expectedValues: 'a option [])
-    (actual: 'a option [])
-    =
-
-    let actualSize = actual.Length
-    let expectedSize = expectedValues.Length
-
-    Expect.equal actualSize expectedSize "lengths must be the same"
-
-    let isEqual (left: 'a option) (right: 'a option) =
-        match left, right with
-        | Some left, Some right ->
-            isEqual left right
-        | None, None -> true
-        | _, _ -> false
-
-    compareArrays isEqual actual expectedValues "values must be the same"
-
-let checkResultCOO
+let checkResult
     (isEqual: 'a -> 'a -> bool)
     (expectedIndices: int [])
     (expectedValues: 'a [])
-    (actual: COOVector<'a>)
+    (actual: Vector<'a>)
     =
 
-    let actualSize = actual.Size
-    let expectedSize = expectedValues.Length
+    Expect.equal actual.Size (Array.max expectedIndices + 1) "lengths must be the same"
 
-    Expect.equal actualSize expectedSize "lengths must be the same"
-
-    compareArrays (=) actual.Indices expectedIndices "indices must be the same"
-
-    compareArrays isEqual actual.Values expectedValues "values must be the same"
+    match actual with
+    | VectorCOO actual ->
+        compareArrays (=) actual.Indices expectedIndices "indices must be the same"
+        compareArrays isEqual actual.Values expectedValues "values must be the same"
+    | _ -> failwith "Vector format must be COO."
 
 let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)
     (ofList: (int * 'a) list -> MailboxProcessor<Msg> -> VectorFormat -> ClVector<'a>)
+    (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (elements: (int * 'a) list)
     =
@@ -74,18 +53,14 @@ let correctnessGenericTest<'a when 'a: struct>
         let clActual =
             ofList elements q case.FormatCase
 
-        let actual = clActual.ToHost q
+        let clCooActual = toCoo q clActual
+
+        let actual = clCooActual.ToHost q
 
         clActual.Dispose q
+        clCooActual.Dispose q
 
-        match actual with
-        | VectorDense actual ->
-            let expected =
-                createOptionArray elements
-
-            checkResultDense isEqual expected actual
-        | VectorCOO actual ->
-            checkResultCOO isEqual indices values actual
+        checkResult isEqual indices values actual
 
 let testFixtures (case: OperationCase<VectorFormat>) =
     [ let config = defaultConfig
@@ -93,35 +68,59 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let wgSize = 32
 
       let context = case.ClContext.ClContext
+      let q = case.ClContext.Queue
+
+      q.Error.Add(fun e -> failwithf $"%A{e}")
 
       let getCorrectnessTestName datatype =
          sprintf "Correctness on %s, %A" datatype case.FormatCase
 
-      let boolOfList =
-        Vector.ofList context wgSize
+      let boolOfList = Vector.ofList context wgSize
+
+      let toCoo = Vector.toCoo context wgSize
 
       case
-      |> correctnessGenericTest<bool> (=) boolOfList
+      |> correctnessGenericTest<bool> (=) boolOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
+      let intOfList = Vector.ofList context wgSize
 
-      let intOfList =
-        Vector.ofList context wgSize
+      let toCoo = Vector.toCoo context wgSize
 
       case
-      |> correctnessGenericTest<int> (=) intOfList
+      |> correctnessGenericTest<int> (=) intOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
 
-      let byteOfList =
-        Vector.ofList context wgSize
+      let byteOfList = Vector.ofList context wgSize
+
+      let toCoo = Vector.toCoo context wgSize
 
       case
-      |> correctnessGenericTest<byte> (=) byteOfList
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")]
+      |> correctnessGenericTest<byte> (=) byteOfList toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+
+      let floatOfList = Vector.ofList context wgSize
+
+      let toCoo = Vector.toCoo context wgSize
+
+      case
+      |> correctnessGenericTest<byte> (=) floatOfList toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
 let tests =
     testCases
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
     |> testList "Backend.Vector.ofList tests"

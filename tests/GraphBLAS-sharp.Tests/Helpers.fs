@@ -550,19 +550,3 @@ module Utils =
                 <| actual.[i]
                 <| expected.[i]
                 |> failtestf "%s"
-
-    let createOptionArray elements =
-
-        let indices, values =
-            elements
-            |> Array.ofList
-            |> Array.unzip
-
-        let result = Array.zeroCreate <| (Array.max indices) + 1
-
-        for i in 0 .. indices.Length - 1 do
-            let index = indices[i]
-
-            result[index] <- Some values[i]
-
-        result

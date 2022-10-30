@@ -7,27 +7,22 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
 module Vector =
-    let zeroCreate<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let zeroCreate (clContext: ClContext) (workGroupSize: int) =
 
         let denseZeroCreate = ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
             match format with
             | COO ->
-                let indices = clContext.CreateClArray<int> [| 0 |]
-                let values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
-
                 let vector =
                     { ClCooVector.Context = clContext
-                      Indices = indices
-                      Values = values
+                      Indices = clContext.CreateClArray<int> [| 0 |]
+                      Values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
                       Size = 0 }
 
                 ClVectorCOO vector
             | Dense ->
-                let resultValues = denseZeroCreate processor size
-
-                ClVectorDense resultValues
+                ClVectorDense <| denseZeroCreate processor size
 
     let ofList (clContext: ClContext) (workGroupSize: int) (elements: (int * 'a) list) =
 
@@ -42,26 +37,21 @@ module Vector =
         let clIndices = clContext.CreateClArray indices
         let clValues = clContext.CreateClArray values
 
+        let resultLenght = (Array.max indices) + 1
+
         fun (processor: MailboxProcessor<_>) (format: VectorFormat) ->
             match format with
             | COO ->
-                let resultSize = elements.Length
-
                 let vector =
                   { ClCooVector.Context = clContext
                     Indices = clIndices
                     Values = clValues
-                    Size = resultSize }
+                    Size = resultLenght }
 
                 ClVectorCOO vector
-
             | Dense ->
-                let size = (Array.max indices) + 1
-
-                let array =
-                    toOptionArray processor clValues clIndices size
-
-                ClVectorDense array
+                ClVectorDense
+                <| toOptionArray processor clValues clIndices resultLenght
 
     let copy (clContext: ClContext) (workGroupSize: int) =
        let copy =
@@ -84,10 +74,7 @@ module Vector =
 
                ClVectorCOO vector
            | ClVectorDense vector ->
-               let array =
-                   copyOptionData processor vector
-
-               ClVectorDense array
+               ClVectorDense <| copyOptionData processor vector
 
     let mask = copy
 
@@ -123,12 +110,12 @@ module Vector =
                 ClVectorDense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) (zero: 'a) =
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) = //TODO() remove zero
         let cooFillVector =
-            COOVector.fillSubVector clContext workGroupSize zero
+            COOVector.fillSubVector clContext workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext workGroupSize zero
+            DenseVector.fillSubVector clContext workGroupSize
 
         let toCooVector =
             DenseVector.toCoo clContext workGroupSize
@@ -136,33 +123,22 @@ module Vector =
         let toCooMask =
             DenseVector.toCoo clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) -> //TODO()
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) ->
             match vector, maskVector with
             | ClVectorCOO vector, ClVectorCOO mask ->
-                let res =
-                    cooFillVector processor vector mask value
-
-                ClVectorCOO res
+                ClVectorCOO <| cooFillVector processor vector mask value
             | ClVectorCOO vector, ClVectorDense mask ->
                 let mask = toCooMask processor mask
 
-                let res =
-                    cooFillVector processor vector mask value //TODO()
-
-                ClVectorCOO res
+                ClVectorCOO <| cooFillVector processor vector mask value
             | ClVectorDense vector, ClVectorCOO mask ->
                 let vector = toCooVector processor vector
 
-                let res =
-                    cooFillVector processor vector mask value //TODO()
-
-                ClVectorCOO res
+                ClVectorCOO <| cooFillVector processor vector mask value
             | ClVectorDense vector, ClVectorDense mask ->
-                let res = denseFillVector processor vector mask value //TODO() remove zero ?
+                ClVectorDense <| denseFillVector processor vector mask value
 
-                ClVectorDense res
-
-    let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let complemented (clContext: ClContext) (workGroupSize: int) =
         let cooComplemented =
             COOVector.complemented clContext workGroupSize
 

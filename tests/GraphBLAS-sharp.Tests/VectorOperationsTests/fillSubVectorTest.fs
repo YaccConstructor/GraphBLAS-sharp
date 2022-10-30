@@ -2,17 +2,24 @@ module Backend.Vector.FillSubVector
 
 open Expecto
 open Expecto.Logging
+open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
+open Brahma.FSharp
+open OpenCL.Net
 
-let logger = Log.create "Vector.zeroCreate.Tests"
+let logger = Log.create "Vector.fillSubVector.Tests"
 
 let clContext = defaultContext.ClContext
 
-let vectorFilter vector isZero =
-    Array.filter
-    <| (fun item -> not <| isZero item)
-    <| vector
+let NNZCountCount array isZero =
+    Array.filter (fun item -> not <| isZero item) array
+    |> Array.length
+
+let fFilter =
+    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    >> not
+    |> Array.filter
 
 let checkResult
     (resultIsEqual: 'a -> 'a -> bool)
@@ -25,20 +32,13 @@ let checkResult
     (value: 'a)
     =
 
-    let expectedArrayLength =
-        max vector.Length mask.Length
-
-    let isVectorLess =
-        vector.Length < mask.Length
-
-    let lowBound =
-        if isVectorLess then vector.Length else mask.Length
+    let expectedArrayLength = max vector.Length mask.Length
 
     let expectedArray =
         Array.create expectedArrayLength vectorZero
 
     for i in 0 .. expectedArrayLength - 1 do
-        if i < mask.Length && not (maskIsEqual mask[i] maskZero) then
+        if i < mask.Length && not <| maskIsEqual mask[i] maskZero then
             expectedArray[i] <- value
         elif i < vector.Length then
             expectedArray[i] <- vector[i]
@@ -57,24 +57,35 @@ let checkResult
 let makeTest<'a, 'b when 'a: struct and 'b: struct>
     vectorIsZero
     maskIsEqual
-    (vectorZero: 'a )
-    (maskZero: 'b)
+    vectorZero
+    maskZero
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
+    (fillVector: MailboxProcessor<Msg> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
     (maskFormat: VectorFormat)
+    vectorFilter
+    maskFilter
     case
     (vector: 'a [])
     (mask: 'b [])
     (value: 'a)
     =
 
-    let filteredLeftVector =
-        vectorFilter vector (vectorIsZero vectorZero)
+    let vector = vectorFilter vector
 
-    let filteredMask =
-        vectorFilter mask (maskIsEqual maskZero)
+    let mask = maskFilter mask
 
-    if filteredLeftVector.Length > 0 && filteredMask.Length > 0 && not (vectorIsZero value vectorZero) then
+    let vectorNNZ =
+        NNZCountCount vector (vectorIsZero vectorZero)
+
+    let maskNNZ =
+        NNZCountCount mask (maskIsEqual maskZero)
+
+    let valueNNZCount =
+        Array.create 1 value
+        |> vectorFilter
+        |> Array.length
+
+    if vectorNNZ > 0 && maskNNZ > 0 && valueNNZCount > 0 then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
@@ -90,19 +101,23 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         let clMaskVector =
             maskVector.ToDevice context
 
-        let clActual =
-            fillVector q clLeftVector clMaskVector value
+        try
+            let clActual =
+                fillVector q clLeftVector clMaskVector value
 
-        let cooClActual = toCoo q clActual
+            let cooClActual = toCoo q clActual
 
-        let actual = cooClActual.ToHost q
+            let actual = cooClActual.ToHost q
 
-        clLeftVector.Dispose q
-        clMaskVector.Dispose q
-        clActual.Dispose q
-        cooClActual.Dispose q
+            clLeftVector.Dispose q
+            clMaskVector.Dispose q
+            clActual.Dispose q
+            cooClActual.Dispose q
 
-        checkResult vectorIsZero maskIsEqual vectorZero maskZero actual vector mask value
+            checkResult vectorIsZero maskIsEqual vectorZero maskZero actual vector mask value
+        with
+        | :? OpenCL.Net.Cl.Exception as ex ->
+            logger.debug ( eventX $"exception: {ex.Message}")
 
 let testFixtures case =
     let config = defaultConfig
@@ -114,74 +129,85 @@ let testFixtures case =
     let context = case.ClContext.ClContext
 
     let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute
+        abs (x - y) < Accuracy.medium.absolute || x = y
 
-    [ let intFill = Vector.fillSubVector context wgSize 0
+    [ let intFill = Vector.fillSubVector context wgSize
 
       let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.COO
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.COO id id
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "COO")
 
-      let floatFill = Vector.fillSubVector context wgSize 0.0
+      let floatFill = Vector.fillSubVector context wgSize
 
       let floatToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.COO
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "COO") //TODO filt floats
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.COO fFilter fFilter
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "COO")
 
-      let byteFill = Vector.fillSubVector context wgSize 0uy
+      let byteFill = Vector.fillSubVector context wgSize
 
       let byteToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.COO
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.COO id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "COO")
 
-      let boolFill = Vector.fillSubVector context wgSize false
+      let boolFill = Vector.fillSubVector context wgSize
 
       let boolToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.COO
+      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.COO id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "COO")
 
-      let intFill = Vector.fillSubVector context wgSize 0
+      let intFill = Vector.fillSubVector context wgSize
 
       let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense id id
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "Dense")
 
-      let floatFill = Vector.fillSubVector context wgSize 0.0
+      let floatFill = Vector.fillSubVector context wgSize
 
       let floatToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "Dense") //TODO filt floats
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense fFilter fFilter
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "Dense")
 
-      let byteFill = Vector.fillSubVector context wgSize 0uy
+      let byteFill = Vector.fillSubVector context wgSize
 
       let byteToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Dense")
 
-      let boolFill = Vector.fillSubVector context wgSize false
+      let boolFill = Vector.fillSubVector context wgSize
 
       let boolToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense
+      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
 let tests =
      testCases<VectorFormat>
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
     |> testList "Backend.Vector.fillSubVector tests"

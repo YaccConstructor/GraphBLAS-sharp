@@ -11,33 +11,29 @@ open GraphBLAS.FSharp.IO
 let allTests =
     testList
         "All tests"
-        [
-        // [ Backend.BitonicSort.tests //TODO()
-        //   Backend.PrefixSum.tests
-        //   Backend.Convert.tests
-        //   Backend.RemoveDuplicates.tests
-        //   Backend.Copy.tests
-        //   Backend.Replicate.tests
-        //   Backend.EwiseAdd.tests
-        //   Backend.EwiseAdd.tests2 //TODO()
-        //   //Backend.EwiseAdd.tests3
-        //   Backend.Transpose.tests //TODO()
-        //   //Matrix.GetTuples.tests
-        //   //Matrix.Mxv.tests
-        //   //Algo.Bfs.tests
-        //Backend.Vector.ZeroCreate.tests //TODO()
-        //Backend.Reduce.tests
-        //Backend.Vector.ZeroCreate.tests
-        //Backend.Vector.OfList.tests
-        //Backend.Vector.Copy.tests
-        //Backend.Vector.Convert.tests
-        //Backend.Vector.FillSubVector.tests
-        // Backend.Vector.ElementWiseAddAtLeastOne.addTests
-        // Backend.Vector.ElementWiseAddAtLeastOne.mulTests
-        //Backend.Vector.FillSubVector.tests
-        //Backend.Vector.Complemented.tests
-          Backend.Vector.Reduce.tests
-          ]
+        [ Backend.BitonicSort.tests
+          Backend.PrefixSum.tests
+          Backend.Convert.tests
+          Backend.RemoveDuplicates.tests
+          Backend.Copy.tests
+          Backend.Replicate.tests
+          Backend.EwiseAdd.tests
+          Backend.EwiseAdd.tests2
+          //Backend.EwiseAdd.tests3
+          Backend.Transpose.tests
+          //Matrix.GetTuples.tests
+          //Matrix.Mxv.tests
+          //Algo.Bfs.tests
+          Backend.Reduce.tests
+          Backend.Vector.ZeroCreate.tests
+          Backend.Vector.OfList.tests
+          Backend.Vector.Copy.tests
+          Backend.Vector.Convert.tests
+          Backend.Vector.ElementWiseAddAtLeastOne.addTests
+          Backend.Vector.ElementWiseAddAtLeastOne.mulTests
+          Backend.Vector.FillSubVector.tests
+          Backend.Vector.Complemented.tests
+          Backend.Vector.Reduce.tests ]
     |> testSequenced
 
 [<EntryPoint>]

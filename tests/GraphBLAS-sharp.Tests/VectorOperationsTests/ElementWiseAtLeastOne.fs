@@ -2,16 +2,22 @@ module Backend.Vector.ElementWiseAddAtLeastOne
 
 open Expecto
 open Expecto.Logging
+open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
+open OpenCL.Net
 let logger = Log.create "Vector.zeroCreate.Tests"
 
-let testArrayFilter array isZero =
-    Array.filter
-    <| (fun item -> not <| isZero item)
-    <| array
+let NNZCountCount array isZero =
+    Array.filter (fun item -> not <| isZero item) array
+    |> Array.length
+
+let fFilter =
+    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    >> not
+    |> Array.filter
 
 let checkResult
     (isEqual: 'c -> 'c -> bool)
@@ -57,7 +63,7 @@ let checkResult
 
             actualArray[actual.Indices[i]] <- actual.Values[i]
 
-        $"arrays must have the same values"
+        $"arrays must have the same values, expected values = %A{expectedArray}, actual values = %A{actualArray}"
         |> compareArrays isEqual actualArray expectedArray
     | _ -> failwith "Vector format must be COO."
 
@@ -65,22 +71,29 @@ let correctnessGenericTest
     leftIsEqual
     rightIsEqual
     resultIsEqual
-    (leftZero: 'a)
-    (rightZero: 'b)
-    (resultZero: 'c)
-    (op: 'a -> 'b -> 'c)
+    leftZero
+    rightZero
+    resultZero
+    op
     (addFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'b> -> ClVector<'c>)
     (toCoo: MailboxProcessor<_> -> ClVector<'c> -> ClVector<'c>)
+    leftFilter
+    rightFilter
     case
     (leftArray: 'a [])
     (rightArray: 'b [])
     =
 
-    let leftFilteredArray = testArrayFilter leftArray (leftIsEqual leftZero)
+    let leftArray = leftFilter leftArray
+    let rightArray = rightFilter rightArray
 
-    let rightFilteredArray = testArrayFilter rightArray (rightIsEqual rightZero)
+    let leftNNZCount =
+        NNZCountCount leftArray (leftIsEqual leftZero)
 
-    if leftFilteredArray.Length > 0 && rightFilteredArray.Length > 0 then
+    let rightNNZCount =
+        NNZCountCount rightArray (rightIsEqual rightZero)
+
+    if leftNNZCount > 0 && rightNNZCount > 0 then
 
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
@@ -94,19 +107,23 @@ let correctnessGenericTest
         let v1 = firstVector.ToDevice context
         let v2 = secondVector.ToDevice context
 
-        let res = addFun q v1 v2
+        try
+            let res = addFun q v1 v2
 
-        v1.Dispose q
-        v2.Dispose q
+            v1.Dispose q
+            v2.Dispose q
 
-        let cooRes = toCoo q res
-        res.Dispose q
+            let cooRes = toCoo q res
+            res.Dispose q
 
-        let actual = cooRes.ToHost q
+            let actual = cooRes.ToHost q
 
-        checkResult resultIsEqual leftZero rightZero resultZero op actual leftArray rightArray
+            checkResult resultIsEqual leftZero rightZero resultZero op actual leftArray rightArray
+        with
+        | :? OpenCL.Net.Cl.Exception as ex ->
+            logger.debug ( eventX $"exception: {ex.Message}")
 
-let addTestFixtures (case: OperationCase<VectorFormat>) =
+let addTestFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName fstType sndType thrType =
@@ -120,17 +137,17 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let intAddFun = Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let toFloatCoo = Vector.toCoo context wgSize
 
       let floatAddFun = Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
 
-      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute // infinity TODO()
+      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
-      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun toFloatCoo
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun toFloatCoo fFilter fFilter
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toCoo context wgSize
@@ -138,7 +155,7 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let boolAddFun = Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
+      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteToCoo = Vector.toCoo context wgSize
@@ -146,16 +163,27 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       let byteAddFun = Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
-     testCases<VectorFormat>
+    testCases<VectorFormat>
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect addTestFixtures
-    |> testList "Backend.Vector.atLeastOneAdd tests"
+    |> testList "Backend.Vector.ElementWiseAtLeasOneAdd tests"
 
-let mulTestFixtures (case: OperationCase<VectorFormat>) =
+let mulTestFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName fstType sndType thrType =
@@ -164,22 +192,23 @@ let mulTestFixtures (case: OperationCase<VectorFormat>) =
     let wgSize = 32
     let context = case.ClContext.ClContext
 
+
     [ let toCoo = Vector.toCoo context wgSize
 
       let intMulFun = Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let toFloatCoo = Vector.toCoo context wgSize
 
       let floatMulFun = Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
 
-      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute // infinity TODO()
+      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
-      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun toFloatCoo
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun toFloatCoo fFilter fFilter
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toCoo context wgSize
@@ -187,7 +216,7 @@ let mulTestFixtures (case: OperationCase<VectorFormat>) =
       let boolMulFun = Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
+      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteToCoo = Vector.toCoo context wgSize
@@ -195,11 +224,22 @@ let mulTestFixtures (case: OperationCase<VectorFormat>) =
       let byteMulFun = Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =
-     testCases<VectorFormat>
+    testCases<VectorFormat>
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect mulTestFixtures
-    |> testList "Backend.Vector.atLeastOneMul tests"
+    |> testList "Backend.Vector.ElementWiseAtLeasOneMul tests"

@@ -56,7 +56,6 @@ let testFixtures config wgSize q plus plusQ zero isEqual filter name =
     makeTest q reduce plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
-
 let tests =
     let config = defaultConfig
 

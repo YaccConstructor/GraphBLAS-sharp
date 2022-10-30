@@ -6,8 +6,9 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open FSharp.Quotations
+open OpenCL.Net
 
-let logger = Log.create "Vector.Complemented.Tests"
+let logger = Log.create "Vector.Reduce.Tests"
 
 let zeroFilter array isZero =
     Array.filter
@@ -65,7 +66,7 @@ let correctnessGenericTest
 
         checkResult zero op result array
 
-let addTestFixtures (case: OperationCase<VectorFormat>) =
+let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName dataType =
@@ -73,6 +74,9 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
 
     let wgSize = 32
     let context = case.ClContext.ClContext
+    let q = case.ClContext.Queue
+
+    q.Error.Add(fun e -> failwithf "%A" e)
 
     let filterFloats =
         Array.filter (System.Double.IsNaN >> not)
@@ -138,7 +142,18 @@ let addTestFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
 let tests =
-    testCases<VectorFormat>
+    testCases
+    |> List.filter
+        (fun case ->
+            let mutable e = ErrorCode.Unknown
+            let device = case.ClContext.ClContext.ClDevice.Device
+
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
-    |> List.collect addTestFixtures
-    |> testList "Backend.Vector.Reduce tests"
+    |> List.collect testFixtures
+    |> testList "Backend.Vector.reduce tests"

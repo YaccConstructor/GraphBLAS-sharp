@@ -88,25 +88,21 @@ module StandardOperations =
             | Both _ -> res <- true
             | _ -> ()
 
-            if res then None else (Some true) @>
+            if res then Some true else None @>
 
     let intMulAtLeastOne = mkNumericMulAtLeastOne 0
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let maks zero =
+    let mask<'a when 'a: struct> =
         <@
             fun (value: AtLeastOne<'a, 'a>) ->
-                let mutable res = zero
-
                 match value with
                 | Both (_, right) ->
-                    res <- right
+                    Some right
                 | Left left ->
-                    res <- left
+                    Some left
                 | Right right ->
-                    res <- right
-
-                if res = zero then None else Some res
+                    Some right
         @>
