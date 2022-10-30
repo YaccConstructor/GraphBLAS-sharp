@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
 open OpenCL.Net
+
 let logger = Log.create "Vector.zeroCreate.Tests"
 
 let NNZCountCount array isZero =
@@ -15,7 +16,9 @@ let NNZCountCount array isZero =
     |> Array.length
 
 let fFilter =
-    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    fun item ->
+        System.Double.IsNaN item
+        || System.Double.IsInfinity item
     >> not
     |> Array.filter
 
@@ -24,20 +27,21 @@ let checkResult
     leftZero
     rightZero
     resultZero
-    (op: 'a -> 'b -> 'c )
+    (op: 'a -> 'b -> 'c)
     (actual: Vector<'c>)
     (leftArray: 'a [])
     (rightArray: 'b [])
     =
 
-    let expectedArrayLength =
-        max leftArray.Length rightArray.Length
+    let expectedArrayLength = max leftArray.Length rightArray.Length
 
-    let isLeftLess =
-        leftArray.Length < rightArray.Length
+    let isLeftLess = leftArray.Length < rightArray.Length
 
     let lowBound =
-        if isLeftLess then leftArray.Length else rightArray.Length
+        if isLeftLess then
+            leftArray.Length
+        else
+            rightArray.Length
 
     let expectedArray =
         Array.create expectedArrayLength resultZero
@@ -45,7 +49,7 @@ let checkResult
     for i in 0 .. expectedArrayLength - 1 do
         let item =
             if i < lowBound then
-               op leftArray.[i] rightArray.[i]
+                op leftArray.[i] rightArray.[i]
             elif isLeftLess then
                 op leftZero rightArray.[i]
             else
@@ -55,7 +59,8 @@ let checkResult
 
     match actual with
     | VectorCOO actual ->
-        let actualArray = Array.create expectedArrayLength resultZero
+        let actualArray =
+            Array.create expectedArrayLength resultZero
 
         for i in 0 .. actual.Indices.Length - 1 do
             if isEqual actual.Values.[i] resultZero then
@@ -120,8 +125,7 @@ let correctnessGenericTest
 
             checkResult resultIsEqual leftZero rightZero resultZero op actual leftArray rightArray
         with
-        | :? OpenCL.Net.Cl.Exception as ex ->
-            logger.debug ( eventX $"exception: {ex.Message}")
+        | :? OpenCL.Net.Cl.Exception as ex -> logger.debug (eventX $"exception: {ex.Message}")
 
 let addTestFixtures case =
     let config = defaultConfig
@@ -134,7 +138,8 @@ let addTestFixtures case =
 
     [ let toCoo = Vector.toCoo context wgSize
 
-      let intAddFun = Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
+      let intAddFun =
+          Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo id id
@@ -142,9 +147,11 @@ let addTestFixtures case =
 
       let toFloatCoo = Vector.toCoo context wgSize
 
-      let floatAddFun = Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
+      let floatAddFun =
+          Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
 
-      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun toFloatCoo fFilter fFilter
@@ -152,7 +159,8 @@ let addTestFixtures case =
 
       let boolToCoo = Vector.toCoo context wgSize
 
-      let boolAddFun = Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
+      let boolAddFun =
+          Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo id id
@@ -160,7 +168,8 @@ let addTestFixtures case =
 
       let byteToCoo = Vector.toCoo context wgSize
 
-      let byteAddFun = Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
+      let byteAddFun =
+          Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo id id
@@ -195,7 +204,8 @@ let mulTestFixtures case =
 
     [ let toCoo = Vector.toCoo context wgSize
 
-      let intMulFun = Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
+      let intMulFun =
+          Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo id id
@@ -203,9 +213,11 @@ let mulTestFixtures case =
 
       let toFloatCoo = Vector.toCoo context wgSize
 
-      let floatMulFun = Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
+      let floatMulFun =
+          Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
 
-      let fIsEqual = fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun toFloatCoo fFilter fFilter
@@ -213,7 +225,8 @@ let mulTestFixtures case =
 
       let boolToCoo = Vector.toCoo context wgSize
 
-      let boolMulFun = Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
+      let boolMulFun =
+          Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo id id
@@ -221,7 +234,8 @@ let mulTestFixtures case =
 
       let byteToCoo = Vector.toCoo context wgSize
 
-      let byteMulFun = Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
+      let byteMulFun =
+          Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo id id

@@ -7,17 +7,13 @@ open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
 open OpenCL.Net
 
-let logger = Log.create "Backend.Vector.Convert.Tests"
+let logger =
+    Log.create "Backend.Vector.Convert.Tests"
 
 let config = defaultConfig
 let wgSize = 32
 
-let makeTestDense
-    isZero
-    context
-    q
-    (toCOO: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
-    (array: 'a []) =
+let makeTestDense isZero context q (toCOO: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>) (array: 'a []) =
     if array.Length > 0 then
         let vector =
             createVectorFromArray VectorFormat.Dense array isZero
@@ -35,7 +31,8 @@ let makeTestDense
             >> setField "actual" (sprintf "%A" actual)
         )
 
-        let expected = createVectorFromArray VectorFormat.COO array isZero
+        let expected =
+            createVectorFromArray VectorFormat.COO array isZero
 
         Expect.equal actual expected "Vectors must be the same"
 

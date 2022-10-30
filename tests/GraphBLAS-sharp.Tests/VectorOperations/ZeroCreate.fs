@@ -78,7 +78,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-     testCases
+    testCases
     |> List.filter
         (fun case ->
             let mutable e = ErrorCode.Unknown

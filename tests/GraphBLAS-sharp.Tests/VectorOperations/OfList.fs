@@ -15,12 +15,7 @@ let filter elements =
     <| elements
     |> List.distinctBy fst
 
-let checkResult
-    (isEqual: 'a -> 'a -> bool)
-    (expectedIndices: int [])
-    (expectedValues: 'a [])
-    (actual: Vector<'a>)
-    =
+let checkResult (isEqual: 'a -> 'a -> bool) (expectedIndices: int []) (expectedValues: 'a []) (actual: Vector<'a>) =
 
     Expect.equal actual.Size (Array.max expectedIndices + 1) "lengths must be the same"
 
@@ -50,8 +45,7 @@ let correctnessGenericTest<'a when 'a: struct>
             |> Array.sortBy fst
             |> Array.unzip
 
-        let clActual =
-            ofList elements q case.FormatCase
+        let clActual = ofList elements q case.FormatCase
 
         let clCooActual = toCoo q clActual
 
@@ -73,7 +67,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       q.Error.Add(fun e -> failwithf $"%A{e}")
 
       let getCorrectnessTestName datatype =
-         sprintf "Correctness on %s, %A" datatype case.FormatCase
+          sprintf "Correctness on %s, %A" datatype case.FormatCase
 
       let boolOfList = Vector.ofList context wgSize
 

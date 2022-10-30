@@ -17,7 +17,9 @@ let NNZCountCount array isZero =
     |> Array.length
 
 let fFilter =
-    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    fun item ->
+        System.Double.IsNaN item
+        || System.Double.IsInfinity item
     >> not
     |> Array.filter
 
@@ -38,14 +40,16 @@ let checkResult
         Array.create expectedArrayLength vectorZero
 
     for i in 0 .. expectedArrayLength - 1 do
-        if i < mask.Length && not <| maskIsEqual mask.[i] maskZero then
+        if i < mask.Length
+           && not <| maskIsEqual mask.[i] maskZero then
             expectedArray.[i] <- value
         elif i < vector.Length then
             expectedArray.[i] <- vector.[i]
 
     match actual with
     | VectorCOO actual ->
-        let actualArray = Array.create expectedArrayLength vectorZero
+        let actualArray =
+            Array.create expectedArrayLength vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do
             actualArray.[actual.Indices.[i]] <- actual.Values.[i]
@@ -95,11 +99,9 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         let maskVector =
             createVectorFromArray maskFormat mask (maskIsEqual maskZero)
 
-        let clLeftVector =
-            leftVector.ToDevice context
+        let clLeftVector = leftVector.ToDevice context
 
-        let clMaskVector =
-            maskVector.ToDevice context
+        let clMaskVector = maskVector.ToDevice context
 
         try
             let clActual =
@@ -116,14 +118,13 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
 
             checkResult vectorIsZero maskIsEqual vectorZero maskZero actual vector mask value
         with
-        | :? OpenCL.Net.Cl.Exception as ex ->
-            logger.debug ( eventX $"exception: {ex.Message}")
+        | :? OpenCL.Net.Cl.Exception as ex -> logger.debug (eventX $"exception: {ex.Message}")
 
 let testFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName datatype maskFormat =
-         $"Correctness on %s{datatype}, vector: %A{case.FormatCase}, mask: %s{maskFormat}"
+        $"Correctness on %s{datatype}, vector: %A{case.FormatCase}, mask: %s{maskFormat}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -196,7 +197,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
 let tests =
-     testCases<VectorFormat>
+    testCases<VectorFormat>
     |> List.filter
         (fun case ->
             let mutable e = ErrorCode.Unknown

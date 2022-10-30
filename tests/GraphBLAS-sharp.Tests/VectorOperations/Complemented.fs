@@ -13,21 +13,17 @@ let NNZCountCount array isZero =
     |> Array.length
 
 let fFilter =
-    fun item -> System.Double.IsNaN item || System.Double.IsInfinity item
+    fun item ->
+        System.Double.IsNaN item
+        || System.Double.IsInfinity item
     >> not
     |> Array.filter
 
-let checkResult
-    isEqual
-    zero
-    (actual: Vector<'a>)
-    (vector: 'a [])
-    =
+let checkResult isEqual zero (actual: Vector<'a>) (vector: 'a []) =
 
     let expectedArrayLength = vector.Length
 
-    let expectedArray =
-        Array.create expectedArrayLength 1
+    let expectedArray = Array.create expectedArrayLength 1
 
     for i in 0 .. expectedArrayLength - 1 do
         if not <| isEqual vector.[i] zero then

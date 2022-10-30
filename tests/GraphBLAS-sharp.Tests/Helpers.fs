@@ -514,18 +514,15 @@ module Utils =
         |> List.collect (fun x -> secondList |> List.map (fun y -> x, y))
 
     let testCases<'a> =
-        let avaliableCotextes =
-            avaliableContexts ""
-            |> List.ofSeq
+        let avaliableCotextes = avaliableContexts "" |> List.ofSeq
 
-        let listOfUnionCases =
-            listOfUnionCases<'a>
-            |> List.ofSeq
+        let listOfUnionCases = listOfUnionCases<'a> |> List.ofSeq
 
         cartesian avaliableCotextes listOfUnionCases
-        |> List.map (fun pair ->
-            { ClContext = fst pair
-              FormatCase = snd pair })
+        |> List.map
+            (fun pair ->
+                { ClContext = fst pair
+                  FormatCase = snd pair })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
@@ -535,7 +532,9 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
-        | VectorFormat.Dense -> VectorDense <| ArraysExtensions.FromArray(array, isZero)
+        | VectorFormat.Dense ->
+            VectorDense
+            <| ArraysExtensions.FromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

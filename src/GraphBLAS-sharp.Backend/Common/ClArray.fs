@@ -456,15 +456,13 @@ module ClArray =
     let toOptionArray (clContext: ClContext) (workGroupSize: int) =
 
         let toOption =
-            <@
-                fun (ndRange: Range1D) (length: int) (values: ClArray<'a>) (indices: ClArray<int>) (outputArray: ClArray<'a option>) ->
-                    let gid = ndRange.GlobalID0
+            <@ fun (ndRange: Range1D) (length: int) (values: ClArray<'a>) (indices: ClArray<int>) (outputArray: ClArray<'a option>) ->
+                let gid = ndRange.GlobalID0
 
-                    if gid < length then
-                        let resultIndex = indices.[gid]
+                if gid < length then
+                    let resultIndex = indices.[gid]
 
-                        outputArray.[resultIndex] <- Some values.[gid]
-            @>
+                    outputArray.[resultIndex] <- Some values.[gid] @>
 
         let kernel = clContext.Compile(toOption)
 
@@ -479,15 +477,8 @@ module ClArray =
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                    kernel.KernelFunc
-                        ndRange
-                        indices.Length
-                        values
-                        indices
-                        resultArray)
-                )
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange indices.Length values indices resultArray)
+            )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
@@ -496,35 +487,27 @@ module ClArray =
     let copyTo (clContext: ClContext) (workGroupSize: int) =
 
         let copy =
-            <@
-                fun (ndRange: Range1D) inputArrayLength resultLength (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) inputArrayLength resultLength (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
 
-                    let gid = ndRange.GlobalID0
+                let gid = ndRange.GlobalID0
 
-                    if  gid < inputArrayLength && gid < resultLength then
-                        resultArray.[gid] <- inputArray.[gid]
-            @>
+                if gid < inputArrayLength && gid < resultLength then
+                    resultArray.[gid] <- inputArray.[gid] @>
 
         let kernel = clContext.Compile(copy)
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
 
-            let ndRange = Range1D.CreateValid(resultArray.Length, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(resultArray.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(
-                    fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            inputArray.Length
-                            resultArray.Length
-                            inputArray
-                            resultArray)
-                )
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange inputArray.Length resultArray.Length inputArray resultArray)
+            )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             resultArray
-

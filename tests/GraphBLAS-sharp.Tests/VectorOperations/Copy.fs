@@ -18,14 +18,13 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
     | VectorDense actual, VectorDense expected ->
         let isEqual left right =
             match left, right with
-            | Some left, Some right ->
-                isEqual left right
+            | Some left, Some right -> isEqual left right
             | None, None -> true
             | _, _ -> false
 
         compareArrays isEqual actual expected "The values array must contain the default value"
     | VectorCOO actual, VectorCOO expected ->
-        compareArrays isEqual actual.Values expected.Values  "The values array must contain the default value"
+        compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
     | _, _ -> failwith "Copy format must be the same"
 
@@ -62,7 +61,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName datatype =
-         sprintf "Correctness on %s, %A" datatype case.FormatCase
+        sprintf "Correctness on %s, %A" datatype case.FormatCase
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -96,7 +95,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
-     testCases
+    testCases
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
     |> testList "Backend.Vector.copy tests"

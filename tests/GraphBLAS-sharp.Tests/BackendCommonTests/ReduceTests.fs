@@ -27,18 +27,18 @@ let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] ->
             let total = reduce clArray
 
             let actualSum = [| zero |]
+
             let sum =
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(total, actualSum, ch))
 
-            sum[0]
+            sum [ 0 ]
 
         logger.debug (
             eventX "Actual is {actual}\n"
             >> setField "actual" (sprintf "%A" actualSum)
         )
 
-        let expectedSum =
-            Array.fold plus zero array
+        let expectedSum = Array.fold plus zero array
 
         logger.debug (
             eventX "Expected is {expected}\n"
@@ -50,8 +50,7 @@ let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] ->
 
 
 let testFixtures config wgSize q plus plusQ zero isEqual filter name =
-    let reduce =
-        Reduce.run context wgSize plusQ
+    let reduce = Reduce.run context wgSize plusQ
 
     makeTest q reduce plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)

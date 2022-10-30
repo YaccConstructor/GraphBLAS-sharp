@@ -96,13 +96,8 @@ module StandardOperations =
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
     let mask<'a when 'a: struct> =
-        <@
-            fun (value: AtLeastOne<'a, 'a>) ->
-                match value with
-                | Both (_, right) ->
-                    Some right
-                | Left left ->
-                    Some left
-                | Right right ->
-                    Some right
-        @>
+        <@ fun (value: AtLeastOne<'a, 'a>) ->
+            match value with
+            | Both (_, right) -> Some right
+            | Left left -> Some left
+            | Right right -> Some right @>
