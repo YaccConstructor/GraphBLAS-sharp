@@ -463,7 +463,7 @@ module ClArray =
                     if gid < length then
                         let resultIndex = indices[gid]
 
-                        outputArray[resultIndex] <- Some values[gid]
+                        outputArray[resultIndex] <- Some(values.[gid])
             @>
 
         let kernel = clContext.Compile(toOption)

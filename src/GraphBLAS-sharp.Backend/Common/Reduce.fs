@@ -24,7 +24,7 @@ module Reduce =
                     let i = (gid - lid) * 2 + lid
 
                     if i + workGroupSize < length then
-                        localValues[lid] <- (%opAdd) inputArray[i] inputArray[i + workGroupSize]
+                        localValues[lid] <- ((%opAdd) inputArray[i] inputArray[i + workGroupSize])
                     elif i < length then
                         localValues[lid] <- inputArray[i]
                     else
@@ -39,7 +39,7 @@ module Reduce =
                             let firstValue = localValues[lid]
                             let secondValue = localValues[lid + workGroupSize / step]
 
-                            localValues[lid] <- (%opAdd) firstValue secondValue
+                            localValues[lid] <- ((%opAdd) firstValue secondValue)
 
                         step <- step <<< 1
 
@@ -89,7 +89,7 @@ module Reduce =
                     let i = (gid - lid) * 2 + lid
 
                     if i + workGroupSize < length then
-                        localValues[lid] <- (%opAdd) inputArray[i] inputArray[i + workGroupSize]
+                        localValues[lid] <- ((%opAdd) inputArray[i] inputArray[i + workGroupSize])
                     elif i < length then
                         localValues[lid] <- inputArray[i]
                     else
@@ -235,7 +235,7 @@ module Reduce =
                         barrierLocal ()
 
                     if lid = 0 then
-                       atomic (%opAdd) totalSum.Value localValues[0] |> ignore
+                       (atomic %opAdd totalSum.Value localValues[0]) |> ignore
             @>
 
         let kernel = clContext.Compile(reduce)

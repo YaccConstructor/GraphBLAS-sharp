@@ -208,7 +208,7 @@ module COOVector =
                     if gid < length - 1 && allIndices[gid] = allIndices[gid + 1] then
                         positions[gid] <- 0
 
-                        match (%opAdd) (Both (leftValues[gid], rightValues[gid + 1])) with
+                        match (%opAdd) (Both(leftValues[gid], rightValues[gid + 1])) with
                         | Some value ->
                             allValues[gid + 1] <- value
                             positions[gid + 1] <- 1
@@ -216,14 +216,14 @@ module COOVector =
                             positions[gid + 1] <- 0
                     elif (gid < length && gid > 0 && allIndices[gid - 1] <> allIndices[gid]) || gid = 0 then
                         if isLeft[gid] = 1 then
-                            match (%opAdd) (Left leftValues[gid]) with
+                            match (%opAdd) (Left(leftValues[gid])) with
                             | Some value ->
                                 allValues[gid] <- value
                                 positions[gid] <- 1
                             | None ->
                                 positions[gid] <- 0
                         else
-                            match (%opAdd) (Right rightValues[gid]) with
+                            match (%opAdd) (Right(rightValues[gid])) with
                             | Some value ->
                                 allValues[gid] <- value
                                 positions[gid] <- 1
