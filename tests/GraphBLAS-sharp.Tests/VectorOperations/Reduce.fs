@@ -15,15 +15,9 @@ let zeroFilter array isZero =
     <| (fun item -> not <| isZero item)
     <| array
 
-let checkResult
-    zero
-    op
-    (actual: 'a)
-    (vector: 'a [])
-    =
+let checkResult zero op (actual: 'a) (vector: 'a []) =
 
-    let expected =
-        Array.fold op zero vector
+    let expected = Array.fold op zero vector
 
     "Results should be the same"
     |> Expect.equal actual expected
@@ -33,7 +27,7 @@ let correctnessGenericTest
     zero
     op
     opQ
-    (reduce: Expr<'a -> 'a -> 'a> -> 'a ->  MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
+    (reduce: Expr<'a -> 'a -> 'a> -> 'a -> MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
     filter
     case
     (array: 'a [])
@@ -41,14 +35,14 @@ let correctnessGenericTest
 
     let array = filter array
 
-    let filteredArray =
-        zeroFilter array (isEqual zero)
+    let filteredArray = zeroFilter array (isEqual zero)
 
     if filteredArray.Length > 0 then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
-        let vector = createVectorFromArray case.FormatCase array (isEqual zero)
+        let vector =
+            createVectorFromArray case.FormatCase array (isEqual zero)
 
         let clVector = vector.ToDevice context
 
