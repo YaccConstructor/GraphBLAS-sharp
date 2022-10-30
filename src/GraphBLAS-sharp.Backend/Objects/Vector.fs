@@ -1,14 +1,14 @@
-﻿namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.ArraysExtensions
 
 type VectorFormat =
-    | COO
+    | Sparse
     | Dense
 
-type COOVector<'a> =
+type SparseVector<'a> =
     { Indices: int []
       Values: 'a []
       Size: int }
@@ -43,62 +43,9 @@ type COOVector<'a> =
             |> Array.ofSeq
             |> Array.unzip
 
-        COOVector.FromTuples(indices, vals, array.Length)
+        SparseVector.FromTuples(indices, vals, array.Length)
 
-and ClCooVector<'a> =
-    { Context: ClContext
-      Indices: ClArray<int>
-      Values: ClArray<'a>
-      Size: int }
-
-    member this.ToHost(q: MailboxProcessor<_>) =
-        let indices = Array.zeroCreate this.Indices.Length
-        let values = Array.zeroCreate this.Values.Length
-
-        let _ =
-            q.Post(Msg.CreateToHostMsg(this.Indices, indices))
-
-        let _ =
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this.Values, values, ch))
-
-        { Indices = indices
-          Values = values
-          Size = this.Size }
-
-    interface IDeviceMemObject with
-        member this.Dispose(q) =
-            q.Post(Msg.CreateFreeMsg<_>(this.Values))
-            q.Post(Msg.CreateFreeMsg<_>(this.Indices))
-            q.PostAndReply(Msg.MsgNotifyMe)
-
-    member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
-
-type TuplesVector<'a> =
-    { Indices: int []
-      Values: 'a []
-      Size: int }
-
-    override this.ToString() =
-        [ sprintf "Tuples Vector\n"
-          sprintf "Indices: %A \n" this.Indices
-          sprintf "Values:  %A \n" this.Values ]
-        |> String.concat ""
-
-    member this.ToDevice(context: ClContext) =
-        let indices = context.CreateClArray this.Indices
-        let values = context.CreateClArray this.Values
-
-        { Context = context
-          Indices = indices
-          Values = values
-          Size = this.Size }
-
-    static member FromTuples(indices: int [], values: 'a [], size: int) =
-        { Indices = indices
-          Values = values
-          Size = size }
-
-and ClTuplesVector<'a> =
+and ClSparseVector<'a> =
     { Context: ClContext
       Indices: ClArray<int>
       Values: ClArray<'a>
@@ -127,32 +74,37 @@ and ClTuplesVector<'a> =
     member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
 type Vector<'a when 'a: struct> =
-    | VectorCOO of COOVector<'a>
+    | VectorSparse of SparseVector<'a>
     | VectorDense of 'a option []
     member this.Size =
         match this with
-        | VectorCOO vector -> vector.Size
+        | VectorSparse vector -> vector.Size
         | VectorDense vector -> vector.Size
+
+    override this.ToString() =
+        match this with
+        | VectorSparse vector -> vector.ToString()
+        | VectorDense vector -> DenseVectorToString vector
 
     member this.ToDevice(context: ClContext) =
         match this with
-        | VectorCOO vector -> ClVectorCOO <| vector.ToDevice(context)
+        | VectorSparse vector -> ClVectorSparse <| vector.ToDevice(context)
         | VectorDense vector -> ClVectorDense <| vector.ToDevice(context)
 
 and ClVector<'a when 'a: struct> =
-    | ClVectorCOO of ClCooVector<'a>
+    | ClVectorSparse of ClSparseVector<'a>
     | ClVectorDense of ClArray<'a option>
     member this.Size =
         match this with
-        | ClVectorCOO vector -> vector.Size
+        | ClVectorSparse vector -> vector.Size
         | ClVectorDense vector -> vector.Size
 
     member this.ToHost(q: MailboxProcessor<_>) =
         match this with
-        | ClVectorCOO vector -> VectorCOO <| vector.ToHost(q)
+        | ClVectorSparse vector -> VectorSparse <| vector.ToHost(q)
         | ClVectorDense vector -> VectorDense <| vector.ToHost(q)
 
     member this.Dispose(q) =
         match this with
-        | ClVectorCOO vector -> vector.Dispose(q)
+        | ClVectorSparse vector -> vector.Dispose(q)
         | ClVectorDense vector -> vector.Dispose(q)
