@@ -31,7 +31,7 @@ let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] ->
             let sum =
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(total, actualSum, ch))
 
-            sum.[ 0 ]
+            sum.[0]
 
         logger.debug (
             eventX "Actual is {actual}\n"
