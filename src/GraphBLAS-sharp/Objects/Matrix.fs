@@ -208,7 +208,7 @@ and CSRMatrix<'a> =
           RowCount = rowsCount
           ColumnCount = columnsCount }
 
-    static member ToBackend (context:ClContext) matrix =
+    static member ToBackend (context: ClContext) matrix =
         let rowIndices2rowPointers (rowIndices: int []) rowCount =
             let nnzPerRow = Array.zeroCreate rowCount
             let rowPointers = Array.zeroCreate rowCount
@@ -224,24 +224,27 @@ and CSRMatrix<'a> =
         | MatrixCOO m ->
             let rowPointers =
                 context.CreateClArray(
-                    rowIndices2rowPointers m.Rows m.RowCount
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
+                    rowIndices2rowPointers m.Rows m.RowCount,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             let cols =
-                context.CreateClArray (
-                    m.Columns
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
+                context.CreateClArray(
+                    m.Columns,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             let vals =
-                context.CreateClArray (
-                    m.Values
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
+                context.CreateClArray(
+                    m.Values,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             { Backend.CSRMatrix.Context = context
               Backend.CSRMatrix.RowCount = m.RowCount
@@ -284,17 +287,32 @@ and COOMatrix<'a> =
 
         COOMatrix.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
 
-    static member ToBackend (context:ClContext) matrix =
+    static member ToBackend (context: ClContext) matrix =
         match matrix with
         | MatrixCOO m ->
             let rows =
-                context.CreateClArray (m.Rows, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+                context.CreateClArray(
+                    m.Rows,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             let cols =
-                context.CreateClArray (m.Columns, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+                context.CreateClArray(
+                    m.Columns,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             let vals =
-                context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+                context.CreateClArray(
+                    m.Values,
+                    hostAccessMode = HostAccessMode.ReadOnly,
+                    deviceAccessMode = DeviceAccessMode.ReadOnly,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
 
             { Backend.COOMatrix.Context = context
               Backend.COOMatrix.RowCount = m.RowCount
