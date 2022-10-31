@@ -483,31 +483,3 @@ module ClArray =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             resultArray
-
-    let copyTo (clContext: ClContext) (workGroupSize: int) =
-
-        let copy =
-            <@ fun (ndRange: Range1D) inputArrayLength resultLength (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < inputArrayLength && gid < resultLength then
-                    resultArray.[gid] <- inputArray.[gid] @>
-
-        let kernel = clContext.Compile(copy)
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
-
-            let ndRange =
-                Range1D.CreateValid(resultArray.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange inputArray.Length resultArray.Length inputArray resultArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultArray
