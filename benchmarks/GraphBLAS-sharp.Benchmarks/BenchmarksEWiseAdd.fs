@@ -223,7 +223,7 @@ type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        Utils.buildCooMatrix
+        COOMatrix<float32>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -235,7 +235,7 @@ type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        Utils.buildCooMatrix,
+        COOMatrix<float32>.ToBackend,
         M.resultToHostCOO
         )
 
@@ -249,7 +249,7 @@ type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
         (fun context wgSize -> Backend.COOMatrix.eWiseAdd context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
-        Utils.buildCooMatrix
+        COOMatrix<bool>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -262,7 +262,7 @@ type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        Utils.buildCsrMatrix
+        CSRMatrix<float32>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -275,7 +275,7 @@ type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
         (fun context wgSize -> Backend.CSRMatrix.eWiseAdd context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
-        Utils.buildCsrMatrix
+        CSRMatrix<bool>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -289,7 +289,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
         (fun context wgSize -> Backend.COOMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
-        Utils.buildCooMatrix
+        COOMatrix<bool>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -301,7 +301,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
         (fun context wgSize -> Backend.CSRMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
-        Utils.buildCsrMatrix
+        CSRMatrix<bool>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -313,7 +313,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
         (fun context wgSize -> Backend.COOMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        Utils.buildCooMatrix
+        COOMatrix<float32>.ToBackend
         )
 
     static member InputMatricesProvider =
@@ -325,7 +325,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
         (fun context wgSize -> Backend.CSRMatrix.eWiseAddAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        Utils.buildCsrMatrix
+        CSRMatrix<float32>.ToBackend
         )
 
     static member InputMatricesProvider =

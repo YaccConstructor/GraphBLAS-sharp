@@ -205,6 +205,11 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
 module Operations =
     let add = <@ fun x y -> Some (x + y) @>
 
+    let addWithFilter = <@ fun x y ->
+        let res = x + y
+        if abs res < 1e-8f then None else Some res
+    @>
+
     let mult = <@ fun x y -> Some (x * y) @>
 
     let logicalOr = <@ fun x y ->
@@ -231,7 +236,7 @@ type MxmBenchmarks4Float32MultiplicationOnly() =
         (Backend.Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (Utils.buildCsrMatrix context matrix))
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -243,7 +248,7 @@ type MxmBenchmarks4Float32WithTransposing() =
         (Backend.Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (Utils.buildCsrMatrix context matrix))
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -255,7 +260,7 @@ type MxmBenchmarks4BoolMultiplicationOnly() =
         (Backend.Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> Backend.MatrixCSR (Utils.buildCsrMatrix context matrix))
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -267,8 +272,32 @@ type MxmBenchmarks4BoolWithTransposing() =
         (Backend.Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> Backend.MatrixCSR (Utils.buildCsrMatrix context matrix))
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
+
+type MxmBenchmarks4Float32MultiplicationOnlyWithZerosFilter() =
+
+    inherit MxmBenchmarksMultiplicationOnly<float32>(
+        (Backend.Matrix.mxm Operations.addWithFilter Operations.mult),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        )
+
+    static member InputMatrixProvider =
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+
+type MxmBenchmarks4Float32WithTransposingWithZerosFilter() =
+
+    inherit MxmBenchmarksWithTransposing<float32>(
+        (Backend.Matrix.mxm Operations.addWithFilter Operations.mult),
+        float32,
+        (fun _ -> Utils.nextSingle (System.Random())),
+        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        )
+
+    static member InputMatrixProvider =
+        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"

@@ -208,6 +208,50 @@ and CSRMatrix<'a> =
           RowCount = rowsCount
           ColumnCount = columnsCount }
 
+    static member ToBackend (context:ClContext) matrix =
+        let rowIndices2rowPointers (rowIndices: int []) rowCount =
+            let nnzPerRow = Array.zeroCreate rowCount
+            let rowPointers = Array.zeroCreate rowCount
+
+            Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
+
+            for i in 1 .. rowCount - 1 do
+                rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
+
+            rowPointers
+
+        match matrix with
+        | MatrixCOO m ->
+            let rowPointers =
+                context.CreateClArray(
+                    rowIndices2rowPointers m.Rows m.RowCount
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (
+                    m.Columns
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (
+                    m.Values
+                    ,hostAccessMode = HostAccessMode.ReadOnly
+                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
+                    ,allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.CSRMatrix.Context = context
+              Backend.CSRMatrix.RowCount = m.RowCount
+              Backend.CSRMatrix.ColumnCount = m.ColumnCount
+              Backend.CSRMatrix.RowPointers = rowPointers
+              Backend.CSRMatrix.Columns = cols
+              Backend.CSRMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"
+
 and COOMatrix<'a> =
     { RowCount: int
       ColumnCount: int
@@ -239,6 +283,27 @@ and COOMatrix<'a> =
             |> Array.unzip3
 
         COOMatrix.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
+
+    static member ToBackend (context:ClContext) matrix =
+        match matrix with
+        | MatrixCOO m ->
+            let rows =
+                context.CreateClArray (m.Rows, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let cols =
+                context.CreateClArray (m.Columns, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            let vals =
+                context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
+
+            { Backend.COOMatrix.Context = context
+              Backend.COOMatrix.RowCount = m.RowCount
+              Backend.COOMatrix.ColumnCount = m.ColumnCount
+              Backend.COOMatrix.Rows = rows
+              Backend.COOMatrix.Columns = cols
+              Backend.COOMatrix.Values = vals }
+
+        | x -> failwith "Unsupported matrix format: %A"
 
 and CSCMatrix<'a> =
     { RowCount: int

@@ -229,79 +229,25 @@ module Utils =
         random.NextBytes buffer
         System.BitConverter.ToSingle(buffer, 0)
 
-    let rowPointers2rowIndices (rowPointers: int []) =
-        let rowIndices =
-            Array.zeroCreate rowPointers.[rowPointers.Length - 1]
+    // let rowPointers2rowIndices (rowPointers: int []) =
+    //     let rowIndices =
+    //         Array.zeroCreate rowPointers.[rowPointers.Length - 1]
 
-        [| 0 .. rowPointers.Length - 2 |]
-        |> Array.Parallel.iter
-            (fun i ->
-                [| rowPointers.[i] .. rowPointers.[i + 1] - 1 |]
-                |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i))
+    //     [| 0 .. rowPointers.Length - 2 |]
+    //     |> Array.Parallel.iter
+    //         (fun i ->
+    //             [| rowPointers.[i] .. rowPointers.[i + 1] - 1 |]
+    //             |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i))
 
-        rowIndices
+    //     rowIndices
 
-    let rowIndices2rowPointers (rowIndices: int []) rowCount =
-        let nnzPerRow = Array.zeroCreate rowCount
-        let rowPointers = Array.zeroCreate rowCount
+    // let rowIndices2rowPointers (rowIndices: int []) rowCount =
+    //     let nnzPerRow = Array.zeroCreate rowCount
+    //     let rowPointers = Array.zeroCreate rowCount
 
-        Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
+    //     Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
 
-        for i in 1 .. rowCount - 1 do
-            rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
+    //     for i in 1 .. rowCount - 1 do
+    //         rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
 
-        rowPointers
-
-    let inline buildCooMatrix (context:ClContext) matrix =
-        match matrix with
-        | MatrixCOO m ->
-            let rows =
-                context.CreateClArray (m.Rows, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
-
-            let cols =
-                context.CreateClArray (m.Columns, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
-
-            let vals =
-                context.CreateClArray (m.Values, hostAccessMode = HostAccessMode.ReadOnly, deviceAccessMode = DeviceAccessMode.ReadOnly, allocationMode = AllocationMode.CopyHostPtr)
-
-            { Backend.COOMatrix.Context = context
-              Backend.COOMatrix.RowCount = m.RowCount
-              Backend.COOMatrix.ColumnCount = m.ColumnCount
-              Backend.COOMatrix.Rows = rows
-              Backend.COOMatrix.Columns = cols
-              Backend.COOMatrix.Values = vals }
-
-        | x -> failwith "Unsupported matrix format: %A"
-
-    let inline buildCsrMatrix (context:ClContext) matrix =
-        match matrix with
-        | MatrixCOO m ->
-            let rowPointers =
-                context.CreateClArray(
-                    Utils.rowIndices2rowPointers m.Rows m.RowCount
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
-
-            let cols =
-                context.CreateClArray (
-                    m.Columns
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
-
-            let vals =
-                context.CreateClArray (
-                    m.Values
-                    ,hostAccessMode = HostAccessMode.ReadOnly
-                    ,deviceAccessMode = DeviceAccessMode.ReadOnly
-                    ,allocationMode = AllocationMode.CopyHostPtr)
-
-            { Backend.CSRMatrix.Context = context
-              Backend.CSRMatrix.RowCount = m.RowCount
-              Backend.CSRMatrix.ColumnCount = m.ColumnCount
-              Backend.CSRMatrix.RowPointers = rowPointers
-              Backend.CSRMatrix.Columns = cols
-              Backend.CSRMatrix.Values = vals }
-
-        | x -> failwith "Unsupported matrix format: %A"
+    //     rowPointers
