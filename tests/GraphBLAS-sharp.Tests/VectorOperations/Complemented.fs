@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
 open OpenCL.Net
 
-let logger = Log.create "Vector.fillSubVector.Tests"
+let logger = Log.create "Vector.complemented.Tests"
 
 let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
@@ -30,15 +30,15 @@ let checkResult isEqual zero (actual: Vector<'a>) (vector: 'a []) =
             expectedArray.[i] <- 0
 
     match actual with
-    | VectorCOO actual ->
+    | VectorSparse actual ->
         let actualArray = Array.create expectedArrayLength 0
 
         for i in 0 .. actual.Indices.Length - 1 do
             actualArray.[actual.Indices.[i]] <- 1
 
-        $"arrays must have the same values and length, actual = %A{actualArray}, expected = %A{expectedArray}"
+        $"arrays must have the same values and length"
         |> compareArrays (=) actualArray expectedArray
-    | _ -> failwith "Vector format must be COO."
+    | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest
     isEqual
@@ -133,4 +133,4 @@ let tests =
             deviceType = DeviceType.Gpu)
     |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixtures
-    |> testList "Backend.Vector.fillSubVector tests"
+    |> testList "Backend.Vector.complemented tests"

@@ -110,7 +110,7 @@ module DenseVector =
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) = //zero
 
         let eWiseAdd =
-            elementWiseAddAtLeasOne clContext StandardOperations.mask workGroupSize
+            elementWiseAddAtLeasOne clContext StandardOperations.maskAtLeastOne workGroupSize
 
         let copyWithValue = maskWithValue clContext workGroupSize
 

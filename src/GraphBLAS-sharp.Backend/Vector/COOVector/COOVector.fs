@@ -391,7 +391,7 @@ module COOVector =
         let create = ClArray.create clContext workGroupSize
 
         let eWiseAdd =
-            elementWiseAddAtLeastOne clContext StandardOperations.mask workGroupSize
+            elementWiseAddAtLeastOne clContext StandardOperations.maskAtLeastOne workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 

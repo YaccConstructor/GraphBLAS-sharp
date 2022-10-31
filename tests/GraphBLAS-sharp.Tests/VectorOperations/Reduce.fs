@@ -8,7 +8,7 @@ open Brahma.FSharp
 open FSharp.Quotations
 open OpenCL.Net
 
-let logger = Log.create "Vector.Reduce.Tests"
+let logger = Log.create "Vector.reduce.Tests"
 
 let zeroFilter array isZero =
     Array.filter

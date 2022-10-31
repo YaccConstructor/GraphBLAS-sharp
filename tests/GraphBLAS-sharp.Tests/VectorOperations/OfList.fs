@@ -20,10 +20,10 @@ let checkResult (isEqual: 'a -> 'a -> bool) (expectedIndices: int []) (expectedV
     Expect.equal actual.Size (Array.max expectedIndices + 1) "lengths must be the same"
 
     match actual with
-    | VectorCOO actual ->
+    | VectorSparse actual ->
         compareArrays (=) actual.Indices expectedIndices "indices must be the same"
         compareArrays isEqual actual.Values expectedValues "values must be the same"
-    | _ -> failwith "Vector format must be COO."
+    | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)

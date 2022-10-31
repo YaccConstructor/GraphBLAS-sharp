@@ -47,7 +47,7 @@ let checkResult
             expectedArray.[i] <- vector.[i]
 
     match actual with
-    | VectorCOO actual ->
+    | VectorSparse actual ->
         let actualArray =
             Array.create expectedArrayLength vectorZero
 
@@ -56,7 +56,7 @@ let checkResult
 
         "arrays must have the same values and length"
         |> compareArrays resultIsEqual actualArray expectedArray
-    | _ -> failwith "Vector format must be COO."
+    | _ -> failwith "Vector format must be Sparse."
 
 let makeTest<'a, 'b when 'a: struct and 'b: struct>
     vectorIsZero
@@ -137,32 +137,32 @@ let testFixtures case =
       let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.COO id id
-      |> testPropertyWithConfig config (getCorrectnessTestName "int" "COO")
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Sparse id id
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "Sparse")
 
       let floatFill = Vector.fillSubVector context wgSize
 
       let floatToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.COO fFilter fFilter
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "COO")
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Sparse fFilter fFilter
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "Sparse")
 
       let byteFill = Vector.fillSubVector context wgSize
 
       let byteToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.COO id id
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "COO")
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Sparse id id
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Sparse")
 
       let boolFill = Vector.fillSubVector context wgSize
 
       let boolToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.COO id id
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "COO")
+      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Sparse id id
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Sparse")
 
       let intFill = Vector.fillSubVector context wgSize
 

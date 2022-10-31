@@ -275,7 +275,7 @@ let elementwiseAddAtLeastOneToCOOTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
     |> List.collect testFixturesEWiseAddAtLeastOneToCOO
     |> testList "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
 

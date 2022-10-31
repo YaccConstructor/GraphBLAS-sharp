@@ -16,7 +16,7 @@ let checkResult size (actual: Vector<'a>) =
         Array.iter
         <| (fun item -> Expect.equal item None "values must be None")
         <| vector
-    | VectorCOO vector ->
+    | VectorSparse vector ->
         Expect.equal actual.Size 0 "The size should be the 0"
 
         Expect.equal vector.Values [| Unchecked.defaultof<'a> |] "The values array must contain the default value"

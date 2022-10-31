@@ -6,7 +6,7 @@ open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests.Utils
 
-let logger = Log.create "Vector.zeroCreate.Tests"
+let logger = Log.create "Vector.copy.Tests"
 
 let clContext = defaultContext.ClContext
 
@@ -23,7 +23,7 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
             | _, _ -> false
 
         compareArrays isEqual actual expected "The values array must contain the default value"
-    | VectorCOO actual, VectorCOO expected ->
+    | VectorSparse actual, VectorSparse expected ->
         compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
     | _, _ -> failwith "Copy format must be the same"

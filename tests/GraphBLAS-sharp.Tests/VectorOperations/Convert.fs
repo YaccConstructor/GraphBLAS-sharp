@@ -32,7 +32,7 @@ let makeTestDense isZero context q (toCOO: MailboxProcessor<_> -> ClVector<'a> -
         )
 
         let expected =
-            createVectorFromArray VectorFormat.COO array isZero
+            createVectorFromArray VectorFormat.Sparse array isZero
 
         Expect.equal actual expected "Vectors must be the same"
 

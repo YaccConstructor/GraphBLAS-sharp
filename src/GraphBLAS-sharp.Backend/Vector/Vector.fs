@@ -14,14 +14,14 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
             match format with
-            | COO ->
+            | Sparse ->
                 let vector =
-                    { ClCooVector.Context = clContext
+                    { Context = clContext
                       Indices = clContext.CreateClArray<int> [| 0 |]
                       Values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
                       Size = 0 }
 
-                ClVectorCOO vector
+                ClVectorSparse vector
             | Dense -> ClVectorDense <| denseZeroCreate processor size
 
     let ofList (clContext: ClContext) (workGroupSize: int) (elements: (int * 'a) list) =
@@ -42,14 +42,14 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (format: VectorFormat) ->
             match format with
-            | COO ->
+            | Sparse ->
                 let vector =
-                    { ClCooVector.Context = clContext
+                    { Context = clContext
                       Indices = clIndices
                       Values = clValues
                       Size = resultLenght }
 
-                ClVectorCOO vector
+                ClVectorSparse vector
             | Dense ->
                 ClVectorDense
                 <| toOptionArray processor clValues clIndices resultLenght
@@ -63,14 +63,14 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorCOO vector ->
+            | ClVectorSparse vector ->
                 let vector =
-                    { ClCooVector.Context = clContext
+                    { Context = clContext
                       Indices = copy processor vector.Indices
                       Values = copyData processor vector.Values
                       Size = vector.Size }
 
-                ClVectorCOO vector
+                ClVectorSparse vector
             | ClVectorDense vector -> ClVectorDense <| copyOptionData processor vector
 
     let mask = copy
@@ -83,8 +83,8 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorDense vector -> ClVectorCOO <| toCoo processor vector
-            | ClVectorCOO _ -> copy processor vector
+            | ClVectorDense vector -> ClVectorSparse <| toCoo processor vector
+            | ClVectorSparse _ -> copy processor vector
 
     let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
@@ -96,7 +96,7 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
-            | ClVectorCOO left, ClVectorCOO right -> ClVectorCOO <| addCoo processor left right
+            | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addCoo processor left right
             | ClVectorDense left, ClVectorDense right -> ClVectorDense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
@@ -115,18 +115,18 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) ->
             match vector, maskVector with
-            | ClVectorCOO vector, ClVectorCOO mask ->
-                ClVectorCOO
+            | ClVectorSparse vector, ClVectorSparse mask ->
+                ClVectorSparse
                 <| cooFillVector processor vector mask value
-            | ClVectorCOO vector, ClVectorDense mask ->
+            | ClVectorSparse vector, ClVectorDense mask ->
                 let mask = toCooMask processor mask
 
-                ClVectorCOO
+                ClVectorSparse
                 <| cooFillVector processor vector mask value
-            | ClVectorDense vector, ClVectorCOO mask ->
+            | ClVectorDense vector, ClVectorSparse mask ->
                 let vector = toCooVector processor vector
 
-                ClVectorCOO
+                ClVectorSparse
                 <| cooFillVector processor vector mask value
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
@@ -141,7 +141,7 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorCOO vector -> ClVectorCOO <| cooComplemented processor vector
+            | ClVectorSparse vector -> ClVectorSparse <| cooComplemented processor vector
             | ClVectorDense vector ->
                 ClVectorDense
                 <| denseComplemented processor vector
@@ -155,5 +155,5 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorCOO vector -> cooReduce processor vector
+            | ClVectorSparse vector -> cooReduce processor vector
             | ClVectorDense vector -> denseReduce processor vector

@@ -9,7 +9,8 @@ open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
 open OpenCL.Net
 
-let logger = Log.create "Vector.zeroCreate.Tests"
+let logger =
+    Log.create "Vector.ElementWiseAtLeasOneMul.Tests"
 
 let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
@@ -58,7 +59,7 @@ let checkResult
         expectedArray.[i] <- item
 
     match actual with
-    | VectorCOO actual ->
+    | VectorSparse actual ->
         let actualArray =
             Array.create expectedArrayLength resultZero
 
@@ -68,9 +69,9 @@ let checkResult
 
             actualArray.[actual.Indices.[i]] <- actual.Values.[i]
 
-        $"arrays must have the same values, expected values = %A{expectedArray}, actual values = %A{actualArray}"
+        "arrays must have the same values"
         |> compareArrays isEqual actualArray expectedArray
-    | _ -> failwith "Vector format must be COO."
+    | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest
     leftIsEqual
