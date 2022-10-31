@@ -440,7 +440,7 @@ module Utils =
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
         |> List.ofArray
 
-    let avaliableContexts (platformRegex: string) =
+    let availableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
 
         Cl.GetPlatformIDs &e
@@ -520,7 +520,7 @@ module Utils =
           MatrixCase: MatrixFormat }
 
     let testCases =
-        [ avaliableContexts "" |> Seq.map box
+        [ availableContexts "" |> Seq.map box
           listOfUnionCases<MatrixFormat> |> Seq.map box ]
         |> List.map List.ofSeq
         |> cartesian
@@ -536,7 +536,12 @@ module Utils =
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
-        | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Sparse ->
+            Backend.VectorSparse
+            <| Backend.SparseVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Dense ->
+            Backend.VectorDense
+            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

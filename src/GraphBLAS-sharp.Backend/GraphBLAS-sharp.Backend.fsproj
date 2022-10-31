@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -18,12 +18,17 @@
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/StandardOperations.fs" />
     <Compile Include="Predefined/PrefixSum.fs" />
-    <Compile Include="Matrices.fs" />
+    <Compile Include="Objects/Common.fs" />
+    <Compile Include="Objects/ArraysExtentions.fs" />
+    <Compile Include="Objects/Vector.fs" />
+    <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
+    <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
     <Compile Include="Matrix/Matrix.fs" />
+    <Folder Include="Vector" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->
