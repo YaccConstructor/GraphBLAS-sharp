@@ -43,7 +43,7 @@ let correctnessGenericTest<'a when 'a: struct>
         let context = case.ClContext.ClContext
 
         let expected =
-            createVectorFromArray case.FormatCase array isZero
+            createVectorFromArray case.Format array isZero
 
         let clVector = expected.ToDevice context
         let clVectorCopy = copy q clVector
@@ -61,7 +61,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.FormatCase
+        sprintf "Correctness on %s, %A" datatype case.Format
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -96,6 +96,6 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
 let tests =
     testCases
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.copy tests"

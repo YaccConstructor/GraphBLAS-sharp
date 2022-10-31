@@ -105,10 +105,10 @@ let correctnessGenericTest
         let context = case.ClContext.ClContext
 
         let firstVector =
-            createVectorFromArray case.FormatCase leftArray (leftIsEqual leftZero)
+            createVectorFromArray case.Format leftArray (leftIsEqual leftZero)
 
         let secondVector =
-            createVectorFromArray case.FormatCase rightArray (rightIsEqual rightZero)
+            createVectorFromArray case.Format rightArray (rightIsEqual rightZero)
 
         let v1 = firstVector.ToDevice context
         let v2 = secondVector.ToDevice context
@@ -132,7 +132,7 @@ let addTestFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName fstType sndType thrType =
-        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.FormatCase}"
+        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -189,7 +189,7 @@ let addTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect addTestFixtures
     |> testList "Backend.Vector.ElementWiseAtLeasOneAdd tests"
 
@@ -197,7 +197,7 @@ let mulTestFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName fstType sndType thrType =
-        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.FormatCase}"
+        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -255,6 +255,6 @@ let mulTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect mulTestFixtures
     |> testList "Backend.Vector.ElementWiseAtLeasOneMul tests"

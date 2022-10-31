@@ -378,7 +378,7 @@ module COOVector =
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
             processor.Post(Msg.CreateFreeMsg<_>(positions))
 
-            { ClSparseVector.Context = clContext
+            { Context = clContext
               Values = resultValues
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
@@ -386,7 +386,7 @@ module COOVector =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) = // zero
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let create = ClArray.create clContext workGroupSize
 

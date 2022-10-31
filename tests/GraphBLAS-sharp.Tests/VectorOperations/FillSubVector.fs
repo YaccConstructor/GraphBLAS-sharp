@@ -94,7 +94,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         let context = case.ClContext.ClContext
 
         let leftVector =
-            createVectorFromArray case.FormatCase vector (vectorIsZero vectorZero)
+            createVectorFromArray case.Format vector (vectorIsZero vectorZero)
 
         let maskVector =
             createVectorFromArray maskFormat mask (maskIsEqual maskZero)
@@ -124,7 +124,7 @@ let testFixtures case =
     let config = defaultConfig
 
     let getCorrectnessTestName datatype maskFormat =
-        $"Correctness on %s{datatype}, vector: %A{case.FormatCase}, mask: %s{maskFormat}"
+        $"Correctness on %s{datatype}, vector: %A{case.Format}, mask: %s{maskFormat}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -209,6 +209,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.fillSubVector tests"

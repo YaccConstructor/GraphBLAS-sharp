@@ -45,7 +45,7 @@ let correctnessGenericTest<'a when 'a: struct>
             |> Array.sortBy fst
             |> Array.unzip
 
-        let clActual = ofList elements q case.FormatCase
+        let clActual = ofList elements q case.Format
 
         let clCooActual = toCoo q clActual
 
@@ -67,7 +67,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       q.Error.Add(fun e -> failwithf $"%A{e}")
 
       let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case.FormatCase
+          sprintf "Correctness on %s, %A" datatype case.Format
 
       let boolOfList = Vector.ofList context wgSize
 
@@ -115,6 +115,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.ofList tests"

@@ -19,7 +19,7 @@ module Vector =
                     { Context = clContext
                       Indices = clContext.CreateClArray<int> [| 0 |]
                       Values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
-                      Size = 0 }
+                      Size = size }
 
                 ClVectorSparse vector
             | Dense -> ClVectorDense <| denseZeroCreate processor size

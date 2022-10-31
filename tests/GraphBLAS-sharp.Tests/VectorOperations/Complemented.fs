@@ -59,7 +59,7 @@ let correctnessGenericTest
         let context = case.ClContext.ClContext
 
         let secondVector =
-            createVectorFromArray case.FormatCase maskArray (isEqual zero)
+            createVectorFromArray case.Format maskArray (isEqual zero)
 
         let clVector = secondVector.ToDevice context
 
@@ -81,7 +81,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName dataType =
-        $"Correctness on %A{dataType}, %A{case.FormatCase}"
+        $"Correctness on %A{dataType}, %A{case.Format}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -131,6 +131,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.complemented tests"

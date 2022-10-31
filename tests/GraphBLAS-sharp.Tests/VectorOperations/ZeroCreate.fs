@@ -9,16 +9,14 @@ open OpenCL.Net
 let logger = Log.create "Vector.zeroCreate.Tests"
 
 let checkResult size (actual: Vector<'a>) =
+    Expect.equal actual.Size size "The size should be the same"
+
     match actual with
     | VectorDense vector ->
-        Expect.equal actual.Size size "The size should be the same"
-
         Array.iter
         <| (fun item -> Expect.equal item None "values must be None")
         <| vector
     | VectorSparse vector ->
-        Expect.equal actual.Size 0 "The size should be the 0"
-
         Expect.equal vector.Values [| Unchecked.defaultof<'a> |] "The values array must contain the default value"
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
@@ -31,7 +29,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     if vectorSize > 0 then
         let q = case.ClContext.Queue
 
-        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.FormatCase
+        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.Format
 
         let hostVector = clVector.ToHost q
 
@@ -43,7 +41,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let config = defaultConfig
 
     let getCorrectnessTestName dataType =
-        $"Correctness on %A{dataType}, %A{case.FormatCase}"
+        $"Correctness on %A{dataType}, %A{case.Format}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -90,6 +88,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.zeroCreate tests"

@@ -61,7 +61,7 @@ let makeTestCOO context q toCSR isZero (array: 'a [,]) =
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.FormatCase
+        sprintf "Correctness on %s, %A" datatype case.Format
 
     let filterFloat x =
         System.Double.IsNaN x
@@ -71,7 +71,7 @@ let testFixtures case =
     let q = case.ClContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    match case.FormatCase with
+    match case.Format with
     | COO ->
         [ let toCSR = Matrix.toCSR context wgSize
 
@@ -126,6 +126,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Convert tests"

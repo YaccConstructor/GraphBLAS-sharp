@@ -6,9 +6,9 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
-    let private maskWithValue<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private fillMask<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
-        let fillVector =
+        let fillMask =
             <@ fun (ndRange: Range1D) length (maskArray: ClArray<'a option>) (scalar: ClCell<'b>) (resultArray: ClArray<'b option>) ->
 
                 let gid = ndRange.GlobalID0
@@ -18,7 +18,7 @@ module DenseVector =
                     | Some _ -> resultArray.[gid] <- Some scalar.Value
                     | None -> resultArray.[gid] <- None @>
 
-        let kernel = clContext.Compile(fillVector)
+        let kernel = clContext.Compile(fillMask)
 
         fun (processor: MailboxProcessor<_>) (maskVector: ClArray<'a option>) (scalarCell: ClCell<'b>) ->
 
@@ -112,7 +112,7 @@ module DenseVector =
         let eWiseAdd =
             elementWiseAddAtLeasOne clContext StandardOperations.maskAtLeastOne workGroupSize
 
-        let copyWithValue = maskWithValue clContext workGroupSize
+        let copyWithValue = fillMask clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (scalar: 'a) ->
 
@@ -208,7 +208,7 @@ module DenseVector =
 
     let getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
-        let unzip =
+        let getValuesAndIndices =
             <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (positions: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
@@ -225,7 +225,7 @@ module DenseVector =
                     | None -> () @>
 
 
-        let kernel = clContext.Compile(unzip)
+        let kernel = clContext.Compile(getValuesAndIndices)
 
         let getPositions = getBitmap clContext workGroupSize
 
@@ -292,7 +292,7 @@ module DenseVector =
 
             let values, indices = getValuesAndIndices processor vector
 
-            { ClSparseVector.Context = clContext
+            { Context = clContext
               Indices = indices
               Values = values
               Size = vector.Length }
@@ -309,6 +309,9 @@ module DenseVector =
 
             let values, indices = getValuesAndIndices processor vector
 
-            processor.Post(Msg.CreateFreeMsg<_>(indices))
+            let result = reduce processor values
 
-            reduce processor values
+            processor.Post(Msg.CreateFreeMsg<_>(indices))
+            processor.Post(Msg.CreateFreeMsg<_>(values))
+
+            result

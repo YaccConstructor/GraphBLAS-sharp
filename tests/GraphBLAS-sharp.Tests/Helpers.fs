@@ -5,7 +5,6 @@ open Brahma.FSharp.OpenCL.Translator
 open FsCheck
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
-open MathNet.Numerics.LinearAlgebra.Complex32
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
 open Brahma.FSharp.ClContextExtensions
@@ -505,9 +504,7 @@ module Utils =
 
         { ClContext = context; Queue = queue }
 
-    type OperationCase<'a> =
-        { ClContext: TestContext
-          FormatCase: 'a }
+    type OperationCase<'a> = { ClContext: TestContext; Format: 'a }
 
     let cartesian firstList secondList =
         firstList
@@ -523,7 +520,7 @@ module Utils =
         |> List.map
             (fun pair ->
                 { ClContext = fst pair
-                  FormatCase = snd pair })
+                  Format = snd pair })
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with

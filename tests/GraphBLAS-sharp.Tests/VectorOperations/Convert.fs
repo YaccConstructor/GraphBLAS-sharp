@@ -38,7 +38,7 @@ let makeTestDense isZero context q (toCOO: MailboxProcessor<_> -> ClVector<'a> -
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.FormatCase
+        sprintf "Correctness on %s, %A" datatype case.Format
 
     let filterFloat x =
         System.Double.IsNaN x
@@ -81,6 +81,6 @@ let tests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixtures
     |> testList "Backend.Vector.Convert tests"

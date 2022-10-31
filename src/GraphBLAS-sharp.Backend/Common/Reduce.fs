@@ -61,8 +61,6 @@ module Reduce =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            ()
-
     let private scanToCell<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
@@ -178,61 +176,3 @@ module Reduce =
             processor.Post(Msg.CreateFreeMsg(secondVerticesArray))
 
             result
-
-    let atomicRun<'a when 'a: struct>
-        (clContext: ClContext)
-        (workGroupSize: int)
-        (opAdd: Expr<'a -> 'a -> 'a>)
-        (zero: 'a)
-        =
-
-        let reduce =
-            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) ->
-
-                let gid = ndRange.GlobalID0
-                let lid = ndRange.LocalID0
-
-                let localValues = localArray<'a> workGroupSize
-
-                if gid < length then
-                    localValues.[lid] <- inputArray.[gid]
-                else
-                    localValues.[lid] <- zero
-
-                barrierLocal ()
-
-                let mutable step = 2
-
-                while step <= workGroupSize do
-                    if lid < workGroupSize / step then
-                        let firstValue = localValues.[lid]
-                        let secondValue = localValues.[lid + workGroupSize / step]
-
-                        localValues.[lid] <- (%opAdd) firstValue secondValue
-
-                    step <- step <<< 1
-
-                    barrierLocal ()
-
-                if lid = 0 then
-                    atomic %opAdd totalSum.Value localValues.[0]
-                    |> ignore @>
-
-        let kernel = clContext.Compile(reduce)
-
-        fun (processor: MailboxProcessor<_>) (valuesArray: ClArray<'a>) ->
-
-            let ndRange =
-                Range1D.CreateValid(valuesArray.Length, workGroupSize)
-
-            let totalSum = clContext.CreateClCell(zero)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange valuesArray.Length valuesArray totalSum)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            totalSum

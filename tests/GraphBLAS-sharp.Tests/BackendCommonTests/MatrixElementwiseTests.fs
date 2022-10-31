@@ -57,10 +57,10 @@ let correctnessGenericTest
     =
 
     let mtx1 =
-        createMatrixFromArray2D case.FormatCase leftMatrix (isEqual zero)
+        createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
 
     let mtx2 =
-        createMatrixFromArray2D case.FormatCase rightMatrix (isEqual zero)
+        createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
         try
@@ -147,7 +147,7 @@ let elementwiseAddTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixturesEWiseAdd
     |> testList "Backend.Matrix.EWiseAdd tests"
 
@@ -211,7 +211,7 @@ let elementwiseAddAtLeastOneTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixturesEWiseAddAtLeastOne
     |> testList "Backend.Matrix.EWiseAddAtLeastOne tests"
 
@@ -275,7 +275,7 @@ let elementwiseAddAtLeastOneToCOOTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixturesEWiseAddAtLeastOneToCOO
     |> testList "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
 
@@ -339,6 +339,6 @@ let elementwiseMulAtLeastOneTests =
                     .CastTo<DeviceType>()
 
             deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.FormatCase)
+    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
     |> List.collect testFixturesEWiseMulAtLeastOne
     |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"
