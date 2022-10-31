@@ -430,7 +430,7 @@ module Utils =
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
         |> List.ofArray
 
-    let avaliableContexts (platformRegex: string) =
+    let availableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
 
         Cl.GetPlatformIDs &e
@@ -514,11 +514,12 @@ module Utils =
         |> List.collect (fun x -> secondList |> List.map (fun y -> x, y))
 
     let testCases<'a> =
-        let avaliableCotextes = avaliableContexts "" |> List.ofSeq
+        let availableContexts = availableContexts "" |> List.ofSeq
 
         let listOfUnionCases = listOfUnionCases<'a> |> List.ofSeq
 
-        cartesian avaliableCotextes listOfUnionCases
+        cartesian availableContexts listOfUnionCases
+
         |> List.map
             (fun pair ->
                 { ClContext = fst pair
@@ -531,10 +532,12 @@ module Utils =
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
-        | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
-        | VectorFormat.Dense ->
-            VectorDense
-            <| ArraysExtensions.FromArray(array, isZero)
+        | Backend.VectorFormat.Sparse ->
+            Backend.VectorSparse
+            <| Backend.SparseVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Dense ->
+            Backend.VectorDense
+            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

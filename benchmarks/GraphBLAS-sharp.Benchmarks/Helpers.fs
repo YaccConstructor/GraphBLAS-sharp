@@ -239,11 +239,11 @@ module Utils =
 
     let rowIndices2rowPointers (rowIndices: int []) rowCount =
         let nnzPerRow = Array.zeroCreate rowCount
-        let rowPointers = Array.zeroCreate rowCount
+        let rowPointers = Array.zeroCreate (rowCount + 1)
 
         Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
 
-        for i in 1 .. rowCount - 1 do
+        for i in 1 .. rowCount do
             rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
 
         rowPointers

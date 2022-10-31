@@ -359,7 +359,7 @@ module COOVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (rightVector: ClCooVector<'b>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
                 merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
@@ -378,7 +378,7 @@ module COOVector =
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
             processor.Post(Msg.CreateFreeMsg<_>(positions))
 
-            { ClCooVector.Context = clContext
+            { ClSparseVector.Context = clContext
               Values = resultValues
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
@@ -395,13 +395,13 @@ module COOVector =
 
         let copy = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClCooVector<'a>) (rightVector: ClCooVector<'b>) (scalar: 'a) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) (scalar: 'a) ->
 
             let maskValues = create processor rightVector.Size scalar
             let maskIndices = copy processor rightVector.Indices
 
             let rightVector =
-                { ClCooVector.Context = clContext
+                { Context = clContext
                   Indices = copy processor rightVector.Indices
                   Values = maskValues
                   Size = rightVector.Size }
@@ -516,7 +516,7 @@ module COOVector =
         let setPositions =
             setPositionsComplemented clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) ->
 
             let positions =
                 preparePositions processor vector.Indices vector.Size
@@ -529,7 +529,7 @@ module COOVector =
 
             processor.Post(Msg.CreateFreeMsg<_>(positions))
 
-            { ClCooVector.Context = clContext
+            { Context = clContext
               Indices = resultIndices
               Values = ResultValues
               Size = vector.Size }
@@ -539,4 +539,4 @@ module COOVector =
         let reduce =
             Reduce.run clContext workGroupSize opAdd zero
 
-        fun (processor: MailboxProcessor<_>) (vector: ClCooVector<'a>) -> reduce processor vector.Values
+        fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) -> reduce processor vector.Values

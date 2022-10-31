@@ -292,7 +292,7 @@ module DenseVector =
 
             let values, indices = getValuesAndIndices processor vector
 
-            { ClCooVector.Context = clContext
+            { ClSparseVector.Context = clContext
               Indices = indices
               Values = values
               Size = vector.Length }

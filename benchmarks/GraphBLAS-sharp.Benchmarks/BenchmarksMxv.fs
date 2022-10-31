@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
