@@ -8,15 +8,15 @@ open BenchmarkDotNet.Columns
 open System.IO
 open GraphBLAS.FSharp.IO
 
-// [<Config(typeof<CommonConfig>)>]
-// type MxvBenchmarks() =
-//     let rand = System.Random()
-//
-//     let mutable matrix = Unchecked.defaultof<Matrix<float>>
-//     let mutable vector = Unchecked.defaultof<Vector<float>>
-//     let semiring = Predefined.AddMult.float
-//
-//     //TODO fix me
+[<Config(typeof<CommonConfig>)>]
+type MxvBenchmarks() =
+    let rand = System.Random()
+
+    let mutable matrix = Unchecked.defaultof<Matrix<float>>
+    let mutable vector = Unchecked.defaultof<Vector<float>>
+    let semiring = Predefined.AddMult.float
+
+    //TODO fix me
     (*[<ParamsSource("AvaliableContextsProvider")>]
     member val OclContext = Unchecked.defaultof<ClContext> with get, set
     member this.Context =
