@@ -19,10 +19,10 @@ let allTests =
           Backend.RemoveDuplicates.tests
           Backend.Copy.tests
           Backend.Replicate.tests
-          Backend.Elementwise.elementwiseAddTests
-          Backend.Elementwise.elementwiseAddAtLeastOneTests
-          Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
-          Backend.Elementwise.elementwiseMulAtLeastOneTests
+          //Backend.Elementwise.elementwiseAddTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
+          //Backend.Elementwise.elementwiseMulAtLeastOneTests
           Backend.Transpose.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests

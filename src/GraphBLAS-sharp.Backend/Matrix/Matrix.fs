@@ -285,13 +285,13 @@ module Matrix =
         let CSRElementwise =
             CSRMatrix.elementwiseToCOO clContext opAdd workGroupSize
 
-        let toCSRInplace =
-            toCSRInplace clContext workGroupSize
+        let transposeCOOInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
             | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
             | MatrixCSC m1, MatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
@@ -310,15 +310,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSRElementwise processor csrT1 csrT2
-                let resCSRT = toCSRInplace procesor resT
-
-                { Context = resCSRT.Context
-                  RowCount = resCSRT.ColumnCount
-                  ColumnCount = resCSRT.RowCount
-                  Rows = resCSRT.Columns
-                  ColumnPointers = resCSRT.RowPointers
-                  Values = resCSRT.Values }
-                |> MatrixCSC
+                MatrixCOO <| transposeCOOInplace processor resT
             | _ -> failwith "Matrix formats are not matching"
 
     let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
@@ -367,10 +359,13 @@ module Matrix =
         let CSRElementwise =
             CSRMatrix.elementwiseAtLeastOneToCOO clContext opAdd workGroupSize
 
+        let transposeCOOInplace =
+            COOMatrix.transposeInplace clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
             | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
+            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
             | MatrixCSC m1, MatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
@@ -389,15 +384,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSRElementwise processor csrT1 csrT2
-                let resCSRT = toCSRInplace procesor resT
-
-                { Context = resCSRT.Context
-                  RowCount = resCSRT.ColumnCount
-                  ColumnCount = resCSRT.RowCount
-                  Rows = resCSRT.Columns
-                  ColumnPointers = resCSRT.RowPointers
-                  Values = resCSRT.Values }
-                |> MatrixCSC
+                MatrixCOO <| transposeCOOInplace processor resT
             | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>

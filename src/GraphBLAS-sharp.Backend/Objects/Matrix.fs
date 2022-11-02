@@ -2,14 +2,7 @@ namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
 
-<<<<<<< HEAD:src/GraphBLAS-sharp.Backend/Matrices.fs
-type IDeviceMemObject =
-    abstract Dispose : MailboxProcessor<Msg> -> unit
-
 type MatrixFormat =
-=======
-type MatrixFromat =
->>>>>>> 835e7bfee1507ee5c31f5613e175368e7daf00d7:src/GraphBLAS-sharp.Backend/Objects/Matrix.fs
     | CSR
     | COO
     | CSC
