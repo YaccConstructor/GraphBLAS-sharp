@@ -54,12 +54,10 @@ module StandardOperations =
             let mutable res = false
 
             match x, y with
-            | Some f, Some s -> res <- f || s
-            | Some f, None -> res <- f
-            | None, Some s -> res <- s
-            | _ -> ()
+            | None, None -> ()
+            | _ -> res <- true
 
-            if res then Some res else None @>
+            if res then Some true else None @>
 
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
