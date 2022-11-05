@@ -68,4 +68,5 @@ let testFixtures case =
       makeTestDense ((=) false) context q toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
-let tests = getTestFromFixtures testFixtures "Backend.Vector.Convert tests"
+let tests =
+    getTestFromFixtures<VectorFormat> testFixtures "Backend.Vector.Convert tests"

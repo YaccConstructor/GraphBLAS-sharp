@@ -558,8 +558,8 @@ module Utils =
                 <| expected.[i]
                 |> failtestf "%s"
 
-    let getTestFromFixtures testFixtures name =
-        testCases
+    let getTestFromFixtures<'a when 'a : equality> testFixtures name =
+        testCases<'a>
         |> List.filter
             (fun case ->
                 let mutable e = ErrorCode.Unknown
