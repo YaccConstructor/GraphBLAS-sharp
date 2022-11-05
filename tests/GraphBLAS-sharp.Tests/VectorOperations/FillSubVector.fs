@@ -196,4 +196,5 @@ let testFixtures case =
       |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
-let tests = getTestFromFixtures testFixtures "Backend.Vector.fillSubVector tests"
+let tests =
+    getTestFromFixtures testFixtures "Backend.Vector.fillSubVector tests"

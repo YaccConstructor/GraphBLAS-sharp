@@ -5,11 +5,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
 module Reduce =
-    let private scan<'a when 'a: struct>
-        (clContext: ClContext)
-        (workGroupSize: int)
-        (opAdd: Expr<'a -> 'a -> 'a>)
-        =
+    let private scan<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let scan =
             <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
@@ -27,7 +23,7 @@ module Reduce =
                 //     localValues.[lid] <- inputArray.[i]
 
                 if gid < length then
-                    localValues[lid] <- inputArray[gid]
+                    localValues.[lid] <- inputArray.[gid]
 
                 barrierLocal ()
 
@@ -35,7 +31,8 @@ module Reduce =
 
                 if gid < length then
                     while step <= workGroupSize do
-                        if (gid + workGroupSize / step) < length && lid < workGroupSize / step then
+                        if (gid + workGroupSize / step) < length
+                           && lid < workGroupSize / step then
                             let firstValue = localValues.[lid]
                             let secondValue = localValues.[lid + workGroupSize / step]
 

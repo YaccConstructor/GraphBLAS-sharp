@@ -102,4 +102,5 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<byte> (=) floatOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
-let tests = getTestFromFixtures testFixtures "Backend.Vector.ofList tests"
+let tests =
+    getTestFromFixtures testFixtures "Backend.Vector.ofList tests"

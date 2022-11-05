@@ -118,4 +118,5 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest (=) false boolComplemented boolToCoo id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
-let tests = getTestFromFixtures testFixtures "Backend.Vector.complemented tests"
+let tests =
+    getTestFromFixtures testFixtures "Backend.Vector.complemented tests"

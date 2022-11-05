@@ -36,14 +36,15 @@ module Vector =
 
             match format with
             | Sparse ->
-                SparseVector.FromTuples(indices, values, resultLenght)
+                SparseVector
+                    .FromTuples(indices, values, resultLenght)
                     .ToDevice clContext
                 |> ClVectorSparse
             | Dense ->
                 let res = Array.zeroCreate resultLenght
 
                 for i in 0 .. indices.Length - 1 do
-                    res[indices[i]] <- Some values[i]
+                    res.[indices.[i]] <- Some(values.[i])
 
                 ClVectorDense <| clContext.CreateClArray res
 

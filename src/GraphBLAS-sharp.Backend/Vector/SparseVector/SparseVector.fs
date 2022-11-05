@@ -273,12 +273,12 @@ module SparseVector =
             <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
-                let index = prefixSumBuffer[i]
+                let index = prefixSumBuffer.[i]
 
                 if i < prefixSumArrayLength - 1
-                      && index <> prefixSumBuffer.[i + 1]
-                      || (i = prefixSumArrayLength - 1
-                        && index < resultLength) then
+                   && index <> prefixSumBuffer.[i + 1]
+                   || (i = prefixSumArrayLength - 1
+                       && index < resultLength) then
 
                     resultValues.[index] <- allValues.[i]
                     resultIndices.[index] <- allIndices.[i] @>
@@ -518,7 +518,6 @@ module SparseVector =
 
     let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 
-        let reduce =
-            Reduce.run clContext workGroupSize opAdd
+        let reduce = Reduce.run clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) -> reduce processor vector.Values

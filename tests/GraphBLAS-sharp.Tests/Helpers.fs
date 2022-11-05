@@ -689,7 +689,7 @@ module Utils =
                 <| expected.[i]
                 |> failtestf "%s"
 
-    let getTestFromFixtures<'a when 'a : equality> testFixtures name =
+    let getTestFromFixtures<'a when 'a: equality> testFixtures name =
         testCases<'a>
         |> List.filter
             (fun case ->

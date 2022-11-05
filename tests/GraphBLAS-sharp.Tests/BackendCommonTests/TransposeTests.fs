@@ -172,4 +172,5 @@ let testFixtures case =
       |> makeTestTwiceTranspose context q transposeFun (=) false
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
-let tests = getTestFromFixtures testFixtures "Transpose tests"
+let tests =
+    getTestFromFixtures testFixtures "Transpose tests"

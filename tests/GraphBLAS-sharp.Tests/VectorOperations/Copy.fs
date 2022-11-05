@@ -94,4 +94,5 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<byte> id (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let tests = getTestFromFixtures testFixtures "Backend.Vector.copy tests"
+let tests =
+    getTestFromFixtures testFixtures "Backend.Vector.copy tests"

@@ -176,7 +176,8 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
-let addTests = getTestFromFixtures addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
+let addTests =
+    getTestFromFixtures addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
 
 let mulTestFixtures case =
     let config = defaultConfig
@@ -227,4 +228,5 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo id id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
-let mulTests = getTestFromFixtures mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
+let mulTests =
+    getTestFromFixtures mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"

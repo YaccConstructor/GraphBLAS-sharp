@@ -134,7 +134,8 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseAddTests = getTestFromFixtures testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
+let elementwiseAddTests =
+    getTestFromFixtures testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
