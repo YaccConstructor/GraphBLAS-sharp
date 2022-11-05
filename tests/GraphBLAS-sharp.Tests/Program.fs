@@ -22,6 +22,7 @@ let allTests =
           Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
           Backend.Elementwise.elementwiseMulAtLeastOneTests
           Backend.Transpose.tests
+          Backend.SpMV.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
           //Algo.Bfs.tests
