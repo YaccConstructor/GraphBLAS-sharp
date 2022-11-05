@@ -50,7 +50,16 @@ module StandardOperations =
             if res = zero then None else Some res @>
 
     let boolSum =
-        <@ fun (_: bool option) (_: bool option) -> Some true @>
+        <@ fun (x: bool option) (y: bool option) ->
+            let mutable res = false
+
+            match x, y with
+            | Some f, Some s -> res <- f || s
+            | Some f, None -> res <- f
+            | None, Some s -> res <- s
+            | _ -> ()
+
+            if res then Some res else None @>
 
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
