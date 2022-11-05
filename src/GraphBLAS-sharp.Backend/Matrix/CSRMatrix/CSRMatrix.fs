@@ -7,9 +7,9 @@ open GraphBLAS.FSharp.Backend.Elementwise
 open Microsoft.FSharp.Quotations
 
 module CSRMatrix =
-    let private prepareRows (clContext: ClContext) workGroupSize =
+    let private expandRowPointers (clContext: ClContext) workGroupSize =
 
-        let prepareRows =
+        let expandRowPointers =
             <@ fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
@@ -20,7 +20,7 @@ module CSRMatrix =
                     if rowPointer <> rowPointers.[i + 1] then
                         rows.[rowPointer] <- i @>
 
-        let program = clContext.Compile(prepareRows)
+        let program = clContext.Compile(expandRowPointers)
 
         let create = ClArray.create clContext workGroupSize
 
@@ -46,7 +46,9 @@ module CSRMatrix =
             rows
 
     let toCOO (clContext: ClContext) workGroupSize =
-        let prepare = prepareRows clContext workGroupSize
+        let prepare =
+            expandRowPointers clContext workGroupSize
+
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
@@ -65,7 +67,8 @@ module CSRMatrix =
               Values = vals }
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
-        let prepare = prepareRows clContext workGroupSize
+        let prepare =
+            expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) ->
             let rows =
@@ -83,7 +86,8 @@ module CSRMatrix =
     ///<remarks>Old version</remarks>
     let elementwiseWithCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
-        let prepareRows = prepareRows clContext workGroupSize
+        let prepareRows =
+            expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.elementwise clContext opAdd workGroupSize
@@ -122,7 +126,8 @@ module CSRMatrix =
         workGroupSize
         =
 
-        let prepareRows = prepareRows clContext workGroupSize
+        let prepareRows =
+            expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
             COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
@@ -320,3 +325,17 @@ module CSRMatrix =
                 elementwiseAtLeastOneToCOO queue matrixLeft matrixRight
 
             toCSRInplace queue cooRes
+
+    let spgemmCSC
+        (clContext: ClContext)
+        workGroupSize
+        (opAdd: Expr<'c -> 'c -> 'c option>)
+        (opMul: Expr<'a -> 'b -> 'c option>)
+        =
+
+        let run =
+            SpGEMM.run clContext workGroupSize opAdd opMul
+
+        fun (queue: MailboxProcessor<_>) (matrixLeft: CSRMatrix<'a>) (matrixRight: CSCMatrix<'b>) (mask: Mask2D) ->
+
+            run queue matrixLeft matrixRight mask
