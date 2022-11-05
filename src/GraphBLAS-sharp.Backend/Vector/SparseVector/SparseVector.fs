@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
-module COOVector =
+module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let merge =
@@ -270,14 +270,15 @@ module COOVector =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
+                let index = prefixSumBuffer[i]
 
-                if i = prefixSumArrayLength - 1
-                   || i < prefixSumArrayLength
-                      && prefixSumBuffer.[i] <> prefixSumBuffer.[i + 1] then
-                    let index = prefixSumBuffer.[i]
+                if i < prefixSumArrayLength - 1
+                      && index <> prefixSumBuffer.[i + 1]
+                      || (i = prefixSumArrayLength - 1
+                        && index < resultLength) then
 
                     resultValues.[index] <- allValues.[i]
                     resultIndices.[index] <- allIndices.[i] @>
@@ -332,6 +333,7 @@ module COOVector =
                         kernel.KernelFunc
                             ndRange
                             prefixSumArrayLength
+                            resultLength
                             allValues
                             allIndices
                             positions
@@ -346,7 +348,7 @@ module COOVector =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let elementWiseAddAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let elementWiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         (workGroupSize: int)
@@ -386,33 +388,13 @@ module COOVector =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let create = ClArray.create clContext workGroupSize
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) (scalar: 'a) =
 
         let eWiseAdd =
-            elementWiseAddAtLeastOne clContext StandardOperations.maskAtLeastOne workGroupSize
+            elementWiseAtLeastOne clContext (StandardOperations.maskAtLeastOne scalar) workGroupSize
 
-        let copy = ClArray.copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) (scalar: 'a) ->
-
-            let maskValues = create processor rightVector.Size scalar
-            let maskIndices = copy processor rightVector.Indices
-
-            let rightVector =
-                { Context = clContext
-                  Indices = copy processor rightVector.Indices
-                  Values = maskValues
-                  Size = rightVector.Size }
-
-            let res =
-                eWiseAdd processor leftVector rightVector
-
-            processor.Post(Msg.CreateFreeMsg(maskValues))
-            processor.Post(Msg.CreateFreeMsg(maskIndices))
-
-            res
+        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) ->
+            eWiseAdd processor leftVector rightVector
 
     let preparePositionsComplemented (clContext: ClContext) (workGroupSize: int) =
 
@@ -534,9 +516,9 @@ module COOVector =
               Values = ResultValues
               Size = vector.Size }
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let reduce =
-            Reduce.run clContext workGroupSize opAdd zero
+            Reduce.run clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) -> reduce processor vector.Values

@@ -17,7 +17,7 @@
     <Compile Include="Common/PrefixSum.fs" />
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/StandardOperations.fs" />
-    <Compile Include="Common\Reduce.fs" />
+    <Compile Include="Common/Reduce.fs" />
     <Compile Include="Predefined/PrefixSum.fs" />
     <Compile Include="Objects/Common.fs" />
     <Compile Include="Objects/ArraysExtentions.fs" />
@@ -29,10 +29,9 @@
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
     <Compile Include="Matrix/Matrix.fs" />
-    <Compile Include="Vector\COOVector\COOVector.fs" />
-    <Compile Include="Vector\DenseVector\DenseVector.fs" />
-    <Compile Include="Vector\Vector.fs" />
-    <Folder Include="Vector" />
+    <Compile Include="Vector/SparseVector/SparseVector.fs" />
+    <Compile Include="Vector/DenseVector/DenseVector.fs" />
+    <Compile Include="Vector/Vector.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

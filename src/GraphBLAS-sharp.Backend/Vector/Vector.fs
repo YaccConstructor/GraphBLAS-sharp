@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Common
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
 
-        let denseZeroCreate =
+        let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
@@ -17,42 +17,35 @@ module Vector =
             | Sparse ->
                 let vector =
                     { Context = clContext
-                      Indices = clContext.CreateClArray<int> [| 0 |]
-                      Values = clContext.CreateClArray<'a> [| Unchecked.defaultof<'a> |]
+                      Indices = clContext.CreateClArray [| 0 |]
+                      Values = clContext.CreateClArray [| Unchecked.defaultof<'a> |]
                       Size = size }
 
                 ClVectorSparse vector
-            | Dense -> ClVectorDense <| denseZeroCreate processor size
+            | Dense -> ClVectorDense <| zeroCreate processor size
 
-    let ofList (clContext: ClContext) (workGroupSize: int) (elements: (int * 'a) list) =
+    let ofList (clContext: ClContext) =
+        fun (format: VectorFormat) (elements: (int * 'a) list) ->
+            let indices, values =
+                elements
+                |> Array.ofList
+                |> Array.sortBy fst
+                |> Array.unzip
 
-        let toOptionArray =
-            ClArray.toOptionArray clContext workGroupSize
+            let resultLenght = (Array.max indices) + 1
 
-        let indices, values =
-            elements
-            |> Array.ofList
-            |> Array.sortBy fst
-            |> Array.unzip
-
-        let clIndices = clContext.CreateClArray indices
-        let clValues = clContext.CreateClArray values
-
-        let resultLenght = (Array.max indices) + 1
-
-        fun (processor: MailboxProcessor<_>) (format: VectorFormat) ->
             match format with
             | Sparse ->
-                let vector =
-                    { Context = clContext
-                      Indices = clIndices
-                      Values = clValues
-                      Size = resultLenght }
-
-                ClVectorSparse vector
+                SparseVector.FromTuples(indices, values, resultLenght)
+                    .ToDevice clContext
+                |> ClVectorSparse
             | Dense ->
-                ClVectorDense
-                <| toOptionArray processor clValues clIndices resultLenght
+                let res = Array.zeroCreate resultLenght
+
+                for i in 0 .. indices.Length - 1 do
+                    res[indices[i]] <- Some values[i]
+
+                ClVectorDense <| clContext.CreateClArray res
 
     let copy (clContext: ClContext) (workGroupSize: int) =
         let copy = ClArray.copy clContext workGroupSize
@@ -89,10 +82,10 @@ module Vector =
     let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
         let addCoo =
-            COOVector.elementWiseAddAtLeastOne clContext opAdd workGroupSize
+            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
         let addDense =
-            DenseVector.elementWiseAddAtLeasOne clContext opAdd workGroupSize
+            DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -100,9 +93,9 @@ module Vector =
             | ClVectorDense left, ClVectorDense right -> ClVectorDense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) = //TODO() remove zero
+    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
         let cooFillVector =
-            COOVector.fillSubVector clContext workGroupSize
+            SparseVector.fillSubVector clContext workGroupSize
 
         let denseFillVector =
             DenseVector.fillSubVector clContext workGroupSize
@@ -117,24 +110,24 @@ module Vector =
             match vector, maskVector with
             | ClVectorSparse vector, ClVectorSparse mask ->
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| cooFillVector value processor vector mask
             | ClVectorSparse vector, ClVectorDense mask ->
                 let mask = toCooMask processor mask
 
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| cooFillVector value processor vector mask
             | ClVectorDense vector, ClVectorSparse mask ->
                 let vector = toCooVector processor vector
 
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| cooFillVector value processor vector mask
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
-                <| denseFillVector processor vector mask value
+                <| denseFillVector value processor vector mask
 
     let complemented (clContext: ClContext) (workGroupSize: int) =
         let cooComplemented =
-            COOVector.complemented clContext workGroupSize
+            SparseVector.complemented clContext workGroupSize
 
         let denseComplemented =
             DenseVector.complemented clContext workGroupSize
@@ -146,12 +139,12 @@ module Vector =
                 ClVectorDense
                 <| denseComplemented processor vector
 
-    let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) (zero: 'a) =
+    let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let cooReduce =
-            COOVector.reduce clContext workGroupSize opAdd zero
+            SparseVector.reduce clContext workGroupSize opAdd
 
         let denseReduce =
-            DenseVector.reduce clContext workGroupSize opAdd zero
+            DenseVector.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with

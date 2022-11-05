@@ -424,6 +424,18 @@ module Utils =
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys> ] }
 
+    let rec cartesian listOfLists =
+        match listOfLists with
+        | [ x ] -> List.fold (fun acc elem -> [ elem ] :: acc) [] x
+        | h :: t ->
+            List.fold
+                (fun cacc celem ->
+                    (List.fold (fun acc elem -> (elem :: celem) :: acc) [] h)
+                    @ cacc)
+                []
+                (cartesian t)
+        | _ -> []
+
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
@@ -506,17 +518,13 @@ module Utils =
 
     type OperationCase<'a> = { ClContext: TestContext; Format: 'a }
 
-    let cartesian firstList secondList =
-        firstList
-        |> List.collect (fun x -> secondList |> List.map (fun y -> x, y))
-
     let testCases<'a> =
         let availableContexts = availableContexts "" |> List.ofSeq
 
         let listOfUnionCases = listOfUnionCases<'a> |> List.ofSeq
 
-        cartesian availableContexts listOfUnionCases
-
+        availableContexts
+        |> List.collect (fun x -> listOfUnionCases |> List.map (fun y -> x, y))
         |> List.map
             (fun pair ->
                 { ClContext = fst pair

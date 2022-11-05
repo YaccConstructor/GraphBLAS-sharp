@@ -27,7 +27,7 @@ let correctnessGenericTest
     zero
     op
     opQ
-    (reduce: Expr<'a -> 'a -> 'a> -> 'a -> MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
+    (reduce: Expr<'a -> 'a -> 'a> -> MailboxProcessor<_> -> ClVector<'a> -> ClArray<'a>)
     filter
     case
     (array: 'a [])
@@ -35,9 +35,9 @@ let correctnessGenericTest
 
     let array = filter array
 
-    let filteredArray = zeroFilter array (isEqual zero)
+    let arrayWithoutZeros = zeroFilter array (isEqual zero)
 
-    if filteredArray.Length > 0 then
+    if arrayWithoutZeros.Length > 0 then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
@@ -46,7 +46,7 @@ let correctnessGenericTest
 
         let clVector = vector.ToDevice context
 
-        let resultCell = reduce opQ zero q clVector
+        let resultCell = reduce opQ q clVector
 
         let result = Array.zeroCreate 1
 
@@ -90,19 +90,19 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let intMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) 0 max <@ max @> intMaxReduce id
+      |> correctnessGenericTest (=) System.Int32.MinValue max <@ max @> intMaxReduce id
       |> testPropertyWithConfig config (getCorrectnessTestName "int max")
 
       let floatMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) 0.0 max <@ max @> floatMaxReduce filterFloats
+      |> correctnessGenericTest (=) System.Double.MinValue max <@ max @> floatMaxReduce filterFloats
       |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
       let byteMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) 0uy max <@ max @> byteMaxReduce id
+      |> correctnessGenericTest (=) System.Byte.MinValue max <@ max @> byteMaxReduce id
       |> testPropertyWithConfig config (getCorrectnessTestName "byte max")
 
       let intMinReduce = Vector.reduce context wgSize

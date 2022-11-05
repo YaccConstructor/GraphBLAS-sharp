@@ -6,45 +6,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
-    let private fillMask<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let fillMask =
-            <@ fun (ndRange: Range1D) length (maskArray: ClArray<'a option>) (scalar: ClCell<'b>) (resultArray: ClArray<'b option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length then
-                    match maskArray.[gid] with
-                    | Some _ -> resultArray.[gid] <- Some scalar.Value
-                    | None -> resultArray.[gid] <- None @>
-
-        let kernel = clContext.Compile(fillMask)
-
-        fun (processor: MailboxProcessor<_>) (maskVector: ClArray<'a option>) (scalarCell: ClCell<'b>) ->
-
-            let resultArray =
-                clContext.CreateClArray(
-                    maskVector.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let ndRange =
-                Range1D.CreateValid(maskVector.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange maskVector.Length maskVector scalarCell resultArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultArray
-
-    let elementWiseAddAtLeasOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let elementWiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         (workGroupSize: int)
@@ -107,19 +69,14 @@ module DenseVector =
 
             resultVector
 
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) = //zero
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) (scalar: 'a) =
 
         let eWiseAdd =
-            elementWiseAddAtLeasOne clContext StandardOperations.maskAtLeastOne workGroupSize
+            elementWiseAtLeastOne clContext (StandardOperations.maskAtLeastOne scalar) workGroupSize
 
-        let copyWithValue = fillMask clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (scalar: 'a) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) ->
 
             let clScalar = clContext.CreateClCell scalar
-
-            let maskVector =
-                copyWithValue processor maskVector clScalar
 
             let resultVector = eWiseAdd processor leftVector maskVector
 
@@ -206,7 +163,7 @@ module DenseVector =
 
             positions
 
-    let getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let getValuesAndIndices =
             <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (positions: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
@@ -297,13 +254,13 @@ module DenseVector =
               Values = values
               Size = vector.Length }
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let getValuesAndIndices =
             getValuesAndIndices clContext workGroupSize
 
         let reduce =
-            Reduce.run clContext workGroupSize opAdd zero
+            Reduce.run clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

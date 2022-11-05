@@ -11,11 +11,19 @@ let logger = Log.create "Reduce.Tests"
 
 let context = defaultContext.ClContext
 
-let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) = // TODO remove isEqual
-    if array.Length > 0 then
-        let array = filter array
+let makeTest
+    (q: MailboxProcessor<_>)
+    (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClArray<'a>)
+    plus
+    zero
+    (filter: 'a [] -> 'a [])
+    (array: 'a [])
+    =
 
-        let reduce = reduce zero q
+    let array = filter array
+
+    if array.Length > 0 then
+        let reduce = reduce q
 
         logger.debug (
             eventX "Filtered array is {array}\n"
@@ -49,10 +57,10 @@ let makeTest (q: MailboxProcessor<_>) reduce plus zero isEqual (filter: 'a [] ->
         |> Expect.equal actualSum expectedSum
 
 
-let testFixtures config wgSize q plus plusQ zero isEqual filter name =
+let testFixtures config wgSize q plus plusQ zero filter name =
     let reduce = Reduce.run context wgSize plusQ
 
-    makeTest q reduce plus zero isEqual filter
+    makeTest q reduce plus zero filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
@@ -65,14 +73,14 @@ let tests =
     let filterFloats =
         Array.filter (System.Double.IsNaN >> not)
 
-    [ testFixtures config wgSize q (+) <@ (+) @> 0 (=) id "int add"
-      testFixtures config wgSize q (+) <@ (+) @> 0uy (=) id "byte add"
-      testFixtures config wgSize q max <@ max @> 0 (=) id "int max"
-      testFixtures config wgSize q max <@ max @> 0.0 (=) filterFloats "float max"
-      testFixtures config wgSize q max <@ max @> 0uy (=) id "byte max"
-      testFixtures config wgSize q min <@ min @> System.Int32.MaxValue (=) id "int min"
-      testFixtures config wgSize q min <@ min @> System.Double.MaxValue (=) filterFloats "float min"
-      testFixtures config wgSize q min <@ min @> System.Byte.MaxValue (=) id "byte min"
-      testFixtures config wgSize q (||) <@ (||) @> false (=) id "bool logic-or"
-      testFixtures config wgSize q (&&) <@ (&&) @> true (=) id "bool logic-and" ]
+    [ testFixtures config wgSize q (+) <@ (+) @> 0 id "int add"
+      testFixtures config wgSize q (+) <@ (+) @> 0uy id "byte add"
+      testFixtures config wgSize q max <@ max @> System.Int32.MinValue id "int max"
+      testFixtures config wgSize q max <@ max @> System.Double.MinValue filterFloats "float max"
+      testFixtures config wgSize q max <@ max @> System.Byte.MinValue id "byte max"
+      testFixtures config wgSize q min <@ min @> System.Int32.MaxValue id "int min"
+      testFixtures config wgSize q min <@ min @> System.Double.MaxValue filterFloats "float min"
+      testFixtures config wgSize q min <@ min @> System.Byte.MaxValue id "byte min"
+      testFixtures config wgSize q (||) <@ (||) @> false id "bool logic-or"
+      testFixtures config wgSize q (&&) <@ (&&) @> true id "bool logic-and" ]
     |> testList "Backend.Common.Reduce tests"
