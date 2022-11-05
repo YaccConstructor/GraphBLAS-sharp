@@ -135,19 +135,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest (=) true (&&) <@ (&&) @> boolAndReduce id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
-let tests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixtures
-    |> testList "Backend.Vector.reduce tests"
+let tests = getTestFromFixtures testFixtures "Backend.Vector.reduce tests"

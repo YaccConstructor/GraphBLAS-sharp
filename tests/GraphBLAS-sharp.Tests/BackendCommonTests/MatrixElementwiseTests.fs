@@ -134,22 +134,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseAddTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixturesEWiseAdd
-    |> testList "Backend.Matrix.EWiseAdd tests"
+let elementwiseAddTests = getTestFromFixtures testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -199,21 +184,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixturesEWiseAddAtLeastOne
-    |> testList "Backend.Matrix.EWiseAddAtLeastOne tests"
+    getTestFromFixtures testFixturesEWiseAddAtLeastOne "Backend.Matrix.EWiseAddAtLeastOne tests"
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
     [ let config = defaultConfig
@@ -263,21 +234,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneToCOOTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixturesEWiseAddAtLeastOneToCOO
-    |> testList "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
+    getTestFromFixtures testFixturesEWiseAddAtLeastOneToCOO "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
 
 let testFixturesEWiseMulAtLeastOne case =
     [ let config = defaultConfig
@@ -327,18 +284,4 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseMulAtLeastOneTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixturesEWiseMulAtLeastOne
-    |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"
+    getTestFromFixtures testFixturesEWiseMulAtLeastOne "Backend.Matrix.eWiseMulAtLeastOne tests"

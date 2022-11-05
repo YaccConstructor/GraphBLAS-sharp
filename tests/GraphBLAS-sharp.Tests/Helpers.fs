@@ -557,3 +557,20 @@ module Utils =
                 <| actual.[i]
                 <| expected.[i]
                 |> failtestf "%s"
+
+    let getTestFromFixtures testFixtures name =
+        testCases
+        |> List.filter
+            (fun case ->
+                let mutable e = ErrorCode.Unknown
+                let device = case.ClContext.ClContext.ClDevice.Device
+
+                let deviceType =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                        .CastTo<DeviceType>()
+
+                deviceType = DeviceType.Gpu)
+        |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
+        |> List.collect testFixtures
+        |> testList name

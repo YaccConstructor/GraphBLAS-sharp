@@ -94,8 +94,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<byte> id (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let tests =
-    testCases
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixtures
-    |> testList "Backend.Vector.copy tests"
+let tests = getTestFromFixtures testFixtures "Backend.Vector.copy tests"

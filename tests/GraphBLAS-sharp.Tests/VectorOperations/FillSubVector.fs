@@ -196,19 +196,4 @@ let testFixtures case =
       |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense id id
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
-let tests =
-    testCases<VectorFormat>
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixtures
-    |> testList "Backend.Vector.fillSubVector tests"
+let tests = getTestFromFixtures testFixtures "Backend.Vector.fillSubVector tests"

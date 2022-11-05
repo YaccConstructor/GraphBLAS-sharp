@@ -154,19 +154,4 @@ let testFixtures case =
       |> makeTestTwiceTranspose context q transposeFun (=) false
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
-let tests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
-    |> List.collect testFixtures
-    |> testList "Transpose tests"
+let tests = getTestFromFixtures testFixtures "Transpose tests"
