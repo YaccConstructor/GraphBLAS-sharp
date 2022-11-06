@@ -9,12 +9,6 @@ open OpenCL.Net
 
 let logger = Log.create "Vector.ofList.Tests"
 
-let filter elements =
-    List.filter
-    <| (fun item -> fst item >= 0)
-    <| elements
-    |> List.distinctBy fst
-
 let checkResult (isEqual: 'a -> 'a -> bool) (expectedIndices: int []) (expectedValues: 'a []) (actual: Vector<'a>) =
 
     Expect.equal actual.Size (Array.max expectedIndices + 1) "lengths must be the same"
@@ -30,10 +24,13 @@ let correctnessGenericTest<'a when 'a: struct>
     (ofList: VectorFormat -> (int * 'a) list -> ClVector<'a>)
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
-    (elements: (int * 'a) list)
+    (elements: (int * 'a) [])
     =
 
-    let elements = filter elements
+    let elements =
+        elements
+        |> Array.distinctBy fst
+        |> List.ofArray
 
     if elements.Length > 0 then
 

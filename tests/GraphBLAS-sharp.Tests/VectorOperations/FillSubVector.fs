@@ -16,13 +16,6 @@ let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
 
-let fFilter =
-    fun item ->
-        System.Double.IsNaN item
-        || System.Double.IsInfinity item
-    >> not
-    |> Array.filter
-
 let checkResult
     (resultIsEqual: 'a -> 'a -> bool)
     (maskIsEqual: 'b -> 'b -> bool)
@@ -66,17 +59,11 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (fillVector: MailboxProcessor<Msg> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
     (maskFormat: VectorFormat)
-    vectorFilter
-    maskFilter
+    (isValueValid: 'a -> bool)
     case
-    (vector: 'a [])
-    (mask: 'b [])
+    (vector: 'a [], mask: 'b [])
     (value: 'a)
     =
-
-    let vector = vectorFilter vector
-
-    let mask = maskFilter mask
 
     let vectorNNZ =
         NNZCountCount vector (vectorIsZero vectorZero)
@@ -84,12 +71,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     let maskNNZ =
         NNZCountCount mask (maskIsEqual maskZero)
 
-    let valueNNZCount =
-        Array.create 1 value
-        |> vectorFilter
-        |> Array.length
-
-    if vectorNNZ > 0 && maskNNZ > 0 && valueNNZCount > 0 then
+    if vectorNNZ > 0 && maskNNZ > 0 && isValueValid value then
         let q = case.ClContext.Queue
         let context = case.ClContext.ClContext
 
@@ -118,7 +100,8 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
 
             checkResult vectorIsZero maskIsEqual vectorZero maskZero actual vector mask value
         with
-        | :? OpenCL.Net.Cl.Exception as ex -> logger.debug (eventX $"exception: {ex.Message}")
+        | ex when ex.Message = "InvalidBufferSize" -> ()
+        | ex -> raise ex
 
 let testFixtures case =
     let config = defaultConfig
@@ -137,7 +120,7 @@ let testFixtures case =
       let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Sparse id id
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Sparse (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "Sparse")
 
       let floatFill = Vector.fillSubVector context wgSize
@@ -145,7 +128,7 @@ let testFixtures case =
       let floatToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Sparse fFilter fFilter
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Sparse System.Double.IsNormal
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "Sparse")
 
       let byteFill = Vector.fillSubVector context wgSize
@@ -153,7 +136,7 @@ let testFixtures case =
       let byteToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Sparse id id
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Sparse (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Sparse")
 
       let boolFill = Vector.fillSubVector context wgSize
@@ -161,7 +144,7 @@ let testFixtures case =
       let boolToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Sparse id id
+      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Sparse (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Sparse")
 
       let intFill = Vector.fillSubVector context wgSize
@@ -169,7 +152,7 @@ let testFixtures case =
       let intToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense id id
+      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "Dense")
 
       let floatFill = Vector.fillSubVector context wgSize
@@ -177,7 +160,7 @@ let testFixtures case =
       let floatToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense fFilter fFilter
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense System.Double.IsNormal
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "Dense")
 
       let byteFill = Vector.fillSubVector context wgSize
@@ -185,7 +168,7 @@ let testFixtures case =
       let byteToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense id id
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Dense")
 
       let boolFill = Vector.fillSubVector context wgSize
@@ -193,7 +176,7 @@ let testFixtures case =
       let boolToCoo = Vector.toCoo context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense id id
+      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
 let tests =

@@ -83,15 +83,9 @@ let correctnessGenericTest
     op
     (addFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'b> -> ClVector<'c>)
     (toCoo: MailboxProcessor<_> -> ClVector<'c> -> ClVector<'c>)
-    leftFilter
-    rightFilter
     case
-    (leftArray: 'a [])
-    (rightArray: 'b [])
+    (leftArray: 'a [], rightArray: 'b [])
     =
-
-    let leftArray = leftFilter leftArray
-    let rightArray = rightFilter rightArray
 
     let leftNNZCount =
         NNZCountCount leftArray (leftIsEqual leftZero)
@@ -126,7 +120,8 @@ let correctnessGenericTest
 
             checkResult resultIsEqual leftZero rightZero resultZero op actual leftArray rightArray
         with
-        | :? OpenCL.Net.Cl.Exception as ex -> logger.debug (eventX $"exception: {ex.Message}")
+        | ex when ex.Message = "InvalidBufferSize" -> ()
+        | ex -> raise ex
 
 let addTestFixtures case =
     let config = defaultConfig
@@ -143,10 +138,10 @@ let addTestFixtures case =
           Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo id id
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let toFloatCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toCoo context wgSize
 
       let floatAddFun =
           Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
@@ -155,7 +150,7 @@ let addTestFixtures case =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
-      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun toFloatCoo fFilter fFilter
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toCoo context wgSize
@@ -164,7 +159,7 @@ let addTestFixtures case =
           Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo id id
+      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteToCoo = Vector.toCoo context wgSize
@@ -173,7 +168,7 @@ let addTestFixtures case =
           Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo id id
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
@@ -195,10 +190,10 @@ let mulTestFixtures case =
           Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo id id
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let toFloatCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toCoo context wgSize
 
       let floatMulFun =
           Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
@@ -207,7 +202,7 @@ let mulTestFixtures case =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
       case
-      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun toFloatCoo fFilter fFilter
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toCoo context wgSize
@@ -216,7 +211,7 @@ let mulTestFixtures case =
           Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo id id
+      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteToCoo = Vector.toCoo context wgSize
@@ -225,7 +220,7 @@ let mulTestFixtures case =
           Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
 
       case
-      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo id id
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =

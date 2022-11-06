@@ -13,42 +13,31 @@ module DenseVector =
         =
 
         let eWiseAdd =
-            <@ fun (ndRange: Range1D) leftVectorLength rightVectorLength resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
                 let gid = ndRange.GlobalID0
 
-                let mutable leftItem = None
-                let mutable rightItem = None
-
-                if gid < leftVectorLength then
-                    leftItem <- leftVector.[gid]
-
-                if gid < rightVectorLength then
-                    rightItem <- rightVector.[gid]
-
                 if gid < resultLength then
-                    match leftItem, rightItem with
+                    match leftVector[gid], rightVector[gid] with
                     | Some left, Some right -> resultVector.[gid] <- (%opAdd) (Both(left, right))
                     | Some left, None -> resultVector.[gid] <- (%opAdd) (Left left)
                     | None, Some right -> resultVector.[gid] <- (%opAdd) (Right right)
-                    | None, None -> resultVector.[gid] <- None @>
+                    | _ -> resultVector.[gid] <- None @>
 
         let kernel = clContext.Compile(eWiseAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
-            let resultLength = max leftVector.Length rightVector.Length
-
             let resultVector =
                 clContext.CreateClArray(
-                    resultLength,
+                    leftVector.Length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     allocationMode = AllocationMode.Default
                 )
 
             let ndRange =
-                Range1D.CreateValid(resultLength, workGroupSize)
+                Range1D.CreateValid(leftVector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -58,8 +47,6 @@ module DenseVector =
                         kernel.KernelFunc
                             ndRange
                             leftVector.Length
-                            rightVector.Length
-                            resultLength
                             leftVector
                             rightVector
                             resultVector)
