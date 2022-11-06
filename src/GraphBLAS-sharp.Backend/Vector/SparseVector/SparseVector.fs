@@ -269,30 +269,16 @@ module SparseVector =
 
     let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
-        let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allValues: ClArray<'a>) (allIndices: ClArray<int>) (prefixSumBuffer: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-                let index = prefixSumBuffer.[i]
-
-                if i < prefixSumArrayLength - 1
-                   && index <> prefixSumBuffer.[i + 1]
-                   || (i = prefixSumArrayLength - 1
-                       && index < resultLength) then
-
-                    resultValues.[index] <- allValues.[i]
-                    resultIndices.[index] <- allIndices.[i] @>
-
-        let kernel = clContext.Compile(setPositions)
-
         let sum =
             ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let valuesScatter = Scatter.runInplace clContext workGroupSize
+
+        let indicesScatter = Scatter.runInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
         fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
-
-            let prefixSumArrayLength = positions.Length
 
             let resultLengthGpu = clContext.CreateClCell 0
 
@@ -322,26 +308,9 @@ module SparseVector =
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange =
-                Range1D.CreateValid(prefixSumArrayLength, workGroupSize)
+            valuesScatter processor positions allValues resultValues
 
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            prefixSumArrayLength
-                            resultLength
-                            allValues
-                            allIndices
-                            positions
-                            resultValues
-                            resultIndices)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            indicesScatter processor positions allIndices resultIndices
 
             resultValues, resultIndices
 
