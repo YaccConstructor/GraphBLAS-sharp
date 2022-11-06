@@ -18,7 +18,7 @@ module DenseVector =
                 let gid = ndRange.GlobalID0
 
                 if gid < resultLength then
-                    match leftVector[gid], rightVector[gid] with
+                    match leftVector.[gid], rightVector.[gid] with
                     | Some left, Some right -> resultVector.[gid] <- (%opAdd) (Both(left, right))
                     | Some left, None -> resultVector.[gid] <- (%opAdd) (Left left)
                     | None, Some right -> resultVector.[gid] <- (%opAdd) (Right right)
@@ -43,13 +43,7 @@ module DenseVector =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            leftVector.Length
-                            leftVector
-                            rightVector
-                            resultVector)
+                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector resultVector)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

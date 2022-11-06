@@ -272,9 +272,11 @@ module SparseVector =
         let sum =
             ClArray.prefixSumExcludeInplace clContext workGroupSize
 
-        let valuesScatter = Scatter.runInplace clContext workGroupSize
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
 
-        let indicesScatter = Scatter.runInplace clContext workGroupSize
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 

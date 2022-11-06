@@ -558,38 +558,31 @@ module Generators =
             |> Arb.fromGen
 
         static member SByteType() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<sbyte>
+            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
             |> Arb.fromGen
 
         static member ByteType() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<byte>
+            pairOfVectorsOfEqualSize <| Arb.generate<byte>
             |> Arb.fromGen
 
         static member Int16Type() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<int16>
+            pairOfVectorsOfEqualSize <| Arb.generate<int16>
             |> Arb.fromGen
 
         static member UInt16Type() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<uint16>
+            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
             |> Arb.fromGen
 
         static member Int32Type() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<int32>
+            pairOfVectorsOfEqualSize <| Arb.generate<int32>
             |> Arb.fromGen
 
         static member UInt32Type() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<uint32>
+            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
             |> Arb.fromGen
 
         static member BoolType() =
-            pairOfVectorsOfEqualSize
-            <| Arb.generate<bool>
+            pairOfVectorsOfEqualSize <| Arb.generate<bool>
             |> Arb.fromGen
 
 module Utils =

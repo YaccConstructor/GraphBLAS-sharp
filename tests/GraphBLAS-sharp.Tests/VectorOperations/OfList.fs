@@ -28,9 +28,7 @@ let correctnessGenericTest<'a when 'a: struct>
     =
 
     let elements =
-        elements
-        |> Array.distinctBy fst
-        |> List.ofArray
+        elements |> Array.distinctBy fst |> List.ofArray
 
     if elements.Length > 0 then
 
