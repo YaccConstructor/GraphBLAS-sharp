@@ -10,21 +10,9 @@ module COOMatrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+        let indicesScatter = Scatter.runInplace clContext workGroupSize
 
-                let i = ndRange.GlobalID0
-                let index = prefixSumArrayBuffer.[i]
-
-                if (i < prefixSumArrayLength - 1
-                    && index <> prefixSumArrayBuffer.[i + 1])
-                   || (i = prefixSumArrayLength - 1
-                       && index < resultLength) then
-                    resultRowsBuffer.[index] <- allRowsBuffer.[i]
-                    resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
-                    resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
-
-        let kernel = clContext.Compile(setPositions)
+        let valuesScatter = Scatter.runInplace clContext workGroupSize
 
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
@@ -32,8 +20,6 @@ module COOMatrix =
         let resultLength = Array.zeroCreate 1
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-            let prefixSumArrayLength = positions.Length
-
             let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
@@ -70,28 +56,11 @@ module COOMatrix =
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange =
-                Range1D.CreateValid(positions.Length, workGroupSize)
+            indicesScatter processor positions allRows resultRows
 
-            let kernel = kernel.GetKernel()
+            indicesScatter processor positions allColumns resultColumns
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            prefixSumArrayLength
-                            resultLength
-                            allRows
-                            allColumns
-                            allValues
-                            positions
-                            resultRows
-                            resultColumns
-                            resultValues)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, resultLength
 
@@ -109,30 +78,20 @@ module COOMatrix =
                 if (i < length - 1
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
-                    rawPositionsBuffer.[i] <- 0
 
-                    match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
-                    | Some v ->
-                        allValuesBuffer.[i + 1] <- v
-                        rawPositionsBuffer.[i + 1] <- 1
-                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                    let result = (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i])
+
+                    (%PreparePositions.both) i result rawPositionsBuffer allValuesBuffer
                 elif (i > 0
                       && i < length
                       && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
                           || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
                      || i = 0 then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
-                    else
-                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0 @>
+
+                    let leftResult = (%opAdd) (Some leftValuesBuffer.[i]) None
+                    let rightResult = (%opAdd) None (Some rightValuesBuffer.[i])
+
+                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValuesBuffer rawPositionsBuffer @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -548,23 +507,20 @@ module COOMatrix =
                         allValuesBuffer.[i + 1] <- v
                         rawPositionsBuffer.[i + 1] <- 1
                     | None -> rawPositionsBuffer.[i + 1] <- 0
+
+                    let result = (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i]))
+
+                    (%PreparePositions.both) i result rawPositionsBuffer allValuesBuffer
                 elif (i > 0
                       && i < length
                       && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
                           || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
                      || i = 0 then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Left leftValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
-                    else
-                        match (%opAdd) (Right rightValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0 @>
+
+                    let leftResult = (%opAdd) (Left leftValuesBuffer.[i])
+                    let rightResult = (%opAdd) (Right rightValuesBuffer.[i])
+
+                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValuesBuffer rawPositionsBuffer @>
 
         let kernel = clContext.Compile(preparePositions)
 

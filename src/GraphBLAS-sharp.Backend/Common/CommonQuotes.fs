@@ -1,0 +1,72 @@
+namespace GraphBLAS.FSharp.Backend
+
+open Brahma.FSharp
+
+module SubSum =
+    let private treeAccess<'a> opAdd =
+        <@
+           fun step lid wgSize (localBuffer: 'a []) ->
+                let i = step * (lid + 1) - 1
+
+                let buff =
+                    (%opAdd) localBuffer.[i - (step >>> 1)] localBuffer.[i]
+
+                localBuffer.[i] <- buff
+        @>
+
+    let private sequentialAccess<'a> opAdd =
+        <@
+            fun step lid wgSize (localBuffer: 'a []) ->
+                let firstValue = localBuffer.[lid]
+                let secondValue = localBuffer.[lid + wgSize / step]
+
+                localBuffer.[lid] <- (%opAdd) firstValue secondValue
+        @>
+
+    let sumGeneral<'a> memoryAccess =
+        <@
+            fun wgSize lid (localBuffer: 'a []) ->
+                let mutable step = 2
+
+                while step <= wgSize do
+                    if lid < wgSize / step then
+                        (%memoryAccess) step lid wgSize localBuffer
+
+                    step <- step <<< 1
+
+                    barrierLocal ()
+        @>
+
+    let sequentialSum<'a> opAdd = sumGeneral<'a> <| sequentialAccess<'a> opAdd
+
+    let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess opAdd
+
+module PreparePositions =
+    let both<'c> =
+        <@
+            fun index (result: 'c option) (rawPositionsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'c>) ->
+                rawPositionsBuffer.[index] <- 0
+
+                match result with
+                | Some v ->
+                    allValuesBuffer.[index + 1] <- v
+                    rawPositionsBuffer.[index + 1] <- 1
+                | None -> rawPositionsBuffer.[index + 1] <- 0
+        @>
+
+    let leftRight<'c> =
+        <@
+            fun index (leftResult: 'c option) (rightResult: 'c option) (isLeftBitmap: ClArray<int>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) ->
+                if isLeftBitmap.[index] = 1 then
+                    match leftResult with
+                    | Some v ->
+                        allValuesBuffer.[index] <- v
+                        rawPositionsBuffer.[index] <- 1
+                    | None -> rawPositionsBuffer.[index] <- 0
+                else
+                    match rightResult with
+                    | Some v ->
+                        allValuesBuffer.[index] <- v
+                        rawPositionsBuffer.[index] <- 1
+                    | None -> rawPositionsBuffer.[index] <- 0
+        @>

@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Common/CommonQuotes.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Sum.fs" />

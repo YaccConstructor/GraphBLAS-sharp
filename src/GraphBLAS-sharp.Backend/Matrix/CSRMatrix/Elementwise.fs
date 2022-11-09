@@ -15,36 +15,26 @@ module internal Elementwise =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rowPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
                 if (i < length - 1
                     && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0) then
-                    rowPositions.[i] <- 0
 
-                    match (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i]) with
-                    | Some v ->
-                        allValues.[i + 1] <- v
-                        rowPositions.[i + 1] <- 1
-                    | None -> rowPositions.[i + 1] <- 0
+                    let result = (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i])
+
+                    (%PreparePositions.both) i result rawPositions allValues
                 elif i = 0
                      || (i < length
                          && (allColumns.[i] <> allColumns.[i - 1]
                              || isEndOfRowBitmap.[i - 1] = 1)) then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Some leftValues.[i]) None with
-                        | Some v ->
-                            allValues.[i] <- v
-                            rowPositions.[i] <- 1
-                        | None -> rowPositions.[i] <- 0
-                    else
-                        match (%opAdd) None (Some rightValues.[i]) with
-                        | Some v ->
-                            allValues.[i] <- v
-                            rowPositions.[i] <- 1
-                        | None -> rowPositions.[i] <- 0 @>
+
+                    let leftResult = (%opAdd) (Some leftValues.[i]) None
+                    let rightResult = (%opAdd) None (Some rightValues.[i])
+
+                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValues rawPositions @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -97,36 +87,26 @@ module internal Elementwise =
         =
 
         let preparePositions =
-            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rowPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (allValues: ClArray<'c>) (rawPositions: ClArray<int>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let i = ndRange.GlobalID0
 
                 if (i < length - 1
                     && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0) then
-                    rowPositions.[i] <- 0
 
-                    match (%opAdd) (Both(leftValues.[i + 1], rightValues.[i])) with
-                    | Some v ->
-                        allValues.[i + 1] <- v
-                        rowPositions.[i + 1] <- 1
-                    | None -> rowPositions.[i + 1] <- 0
+                    let result = (%opAdd) (Both(leftValues.[i + 1], rightValues.[i]))
+
+                    (%PreparePositions.both) i result rawPositions allValues
                 elif i = 0
                      || (i < length
                          && (allColumns.[i] <> allColumns.[i - 1]
                              || isEndOfRowBitmap.[i - 1] = 1)) then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Left leftValues.[i]) with
-                        | Some v ->
-                            allValues.[i] <- v
-                            rowPositions.[i] <- 1
-                        | None -> rowPositions.[i] <- 0
-                    else
-                        match (%opAdd) (Right rightValues.[i]) with
-                        | Some v ->
-                            allValues.[i] <- v
-                            rowPositions.[i] <- 1
-                        | None -> rowPositions.[i] <- 0 @>
+
+                    let leftResult = (%opAdd) (Left leftValues.[i])
+                    let rightResult = (%opAdd) (Right rightValues.[i])
+
+                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValues rawPositions @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -174,24 +154,12 @@ module internal Elementwise =
 
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (prefixSumArray: ClArray<int>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'a>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i = prefixSumArrayLength - 1
-                   || i < prefixSumArrayLength
-                      && prefixSumArray.[i] <> prefixSumArray.[i + 1] then
-                    let index = prefixSumArray.[i]
-
-                    resultRows.[index] <- allRows.[i]
-                    resultColumns.[index] <- allColumns.[i]
-                    resultValues.[index] <- allValues.[i] @>
-
-        let kernel = clContext.Compile(setPositions)
-
         let sum =
             GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
+
+        let indicesScatter = Scatter.runInplace clContext workGroupSize
+
+        let valuesScatter = Scatter.runInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
@@ -230,27 +198,11 @@ module internal Elementwise =
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange =
-                Range1D.CreateValid(positions.Length, workGroupSize)
+            indicesScatter processor positions allRows resultRows
 
-            let kernel = kernel.GetKernel()
+            indicesScatter processor positions allColumns resultColumns
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            prefixSumArrayLength
-                            allRows
-                            allColumns
-                            allValues
-                            positions
-                            resultRows
-                            resultColumns
-                            resultValues)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, positions, resultLength
 
