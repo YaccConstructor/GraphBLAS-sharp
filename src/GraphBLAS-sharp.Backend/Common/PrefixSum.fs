@@ -39,7 +39,6 @@ module internal PrefixSum =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
             processor.Post(Msg.CreateFreeMsg(mirror))
 
-
     let private scanGeneral
         beforeLocalSumClear
         writeData

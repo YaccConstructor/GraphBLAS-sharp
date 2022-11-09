@@ -5,7 +5,6 @@ open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
 module internal Sum =
-
     let private scan
         (clContext: ClContext)
         (workGroupSize: int)

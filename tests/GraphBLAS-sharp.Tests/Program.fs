@@ -27,7 +27,7 @@ let allTests =
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
           //Algo.Bfs.tests
-          ]
+          Backend.Sum.tests ]
     |> testSequenced
 
 [<EntryPoint>]

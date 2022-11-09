@@ -407,7 +407,6 @@ module COOMatrix =
 
             let resultValues = copyData processor matrix.Values
 
-
             { Context = clContext
               RowIndices = resultRows
               ColumnIndices = resultColumns
@@ -500,13 +499,6 @@ module COOMatrix =
                 if (i < length - 1
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
-                    rawPositionsBuffer.[i] <- 0
-
-                    match (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i])) with
-                    | Some v ->
-                        allValuesBuffer.[i + 1] <- v
-                        rawPositionsBuffer.[i + 1] <- 1
-                    | None -> rawPositionsBuffer.[i + 1] <- 0
 
                     let result = (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i]))
 
