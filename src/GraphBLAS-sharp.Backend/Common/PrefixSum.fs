@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 
 module internal PrefixSum =
@@ -47,6 +48,8 @@ module internal PrefixSum =
         workGroupSize
         =
 
+        let subSum = SubSum.treeSum opAdd
+
         let scan =
             <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<'a>) (verticesBuffer: ClArray<'a>) (totalSumBuffer: ClCell<'a>) (zero: ClCell<'a>) (mirror: ClCell<bool>) ->
 
@@ -68,22 +71,9 @@ module internal PrefixSum =
                 else
                     resultLocalBuffer.[localID] <- zero
 
-                let mutable step = 2
-
-                while step <= workGroupSize do
-                    barrierLocal ()
-
-                    if localID < workGroupSize / step then
-                        let i = step * (localID + 1) - 1
-
-                        let buff =
-                            (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
-
-                        resultLocalBuffer.[i] <- buff
-
-                    step <- step <<< 1
-
                 barrierLocal ()
+
+                (%subSum) workGroupSize localID resultLocalBuffer
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = gid then
@@ -93,7 +83,7 @@ module internal PrefixSum =
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength gid i
                     resultLocalBuffer.[localID] <- zero
 
-                step <- workGroupSize
+                let mutable step = workGroupSize
 
                 while step > 1 do
                     barrierLocal ()

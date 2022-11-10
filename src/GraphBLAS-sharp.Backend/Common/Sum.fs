@@ -54,8 +54,6 @@ module internal Sum =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            ()
-
     let private scanToCell
         (clContext: ClContext)
         (workGroupSize: int)

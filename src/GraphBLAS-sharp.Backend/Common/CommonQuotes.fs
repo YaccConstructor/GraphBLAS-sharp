@@ -8,10 +8,10 @@ module SubSum =
            fun step lid wgSize (localBuffer: 'a []) ->
                 let i = step * (lid + 1) - 1
 
-                let buff =
-                    (%opAdd) localBuffer.[i - (step >>> 1)] localBuffer.[i]
+                let firstValue = localBuffer.[i - (step >>> 1)]
+                let secondValue = localBuffer.[i]
 
-                localBuffer.[i] <- buff
+                localBuffer.[i] <- (%opAdd) firstValue secondValue
         @>
 
     let private sequentialAccess<'a> opAdd =
@@ -23,7 +23,7 @@ module SubSum =
                 localBuffer.[lid] <- (%opAdd) firstValue secondValue
         @>
 
-    let sumGeneral<'a> memoryAccess =
+    let private sumGeneral<'a> memoryAccess =
         <@
             fun wgSize lid (localBuffer: 'a []) ->
                 let mutable step = 2
@@ -39,7 +39,7 @@ module SubSum =
 
     let sequentialSum<'a> opAdd = sumGeneral<'a> <| sequentialAccess<'a> opAdd
 
-    let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess opAdd
+    let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess<'a> opAdd
 
 module PreparePositions =
     let both<'c> =
