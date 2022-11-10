@@ -4,10 +4,10 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Backend
 
-let logger = Log.create "PrefixSum.Tests"
+let logger = Log.create "ClArray.PrefixSum.Tests"
 
 let context = defaultContext.ClContext
 
@@ -61,7 +61,7 @@ let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> '
 
 let testFixtures config wgSize q plus plusQ zero isEqual filter name =
     let scan =
-        PrefixSum.runIncludeInplace plusQ context wgSize
+        ClArray.prefixSumIncludeInplace plusQ context wgSize
 
     makeTest q scan plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)

@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 
 module COOMatrix =
@@ -14,8 +15,7 @@ module COOMatrix =
 
         let valuesScatter = Scatter.runInplace clContext workGroupSize
 
-        let sum =
-            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let sum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
@@ -430,7 +430,7 @@ module COOMatrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
+            ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
 

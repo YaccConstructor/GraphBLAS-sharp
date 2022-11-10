@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Elementwise
 open Microsoft.FSharp.Quotations
 
@@ -25,7 +25,7 @@ module CSRMatrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
+            ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (rowPointers: ClArray<int>) nnz rowCount ->
 

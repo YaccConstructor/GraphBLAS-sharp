@@ -5,6 +5,7 @@ open System.Diagnostics.CodeAnalysis
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 
 module internal Elementwise =
@@ -154,8 +155,7 @@ module internal Elementwise =
 
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let sum =
-            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
+        let sum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let indicesScatter = Scatter.runInplace clContext workGroupSize
 

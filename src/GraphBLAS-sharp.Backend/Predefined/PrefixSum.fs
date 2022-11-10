@@ -1,13 +1,13 @@
 namespace GraphBLAS.FSharp.Backend.Predefined
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 
 module internal PrefixSum =
     let standardExcludeInplace (clContext: ClContext) workGroupSize =
 
         let scan =
-            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
@@ -16,7 +16,7 @@ module internal PrefixSum =
     let standardIncludeInplace (clContext: ClContext) workGroupSize =
 
         let scan =
-            PrefixSum.runIncludeInplace <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumIncludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
@@ -25,7 +25,7 @@ module internal PrefixSum =
     let standardInclude (clContext: ClContext) workGroupSize =
 
         let scan =
-            PrefixSum.runInclude <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumInclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
@@ -34,7 +34,7 @@ module internal PrefixSum =
     let standardExclude (clContext: ClContext) workGroupSize =
 
         let scan =
-            PrefixSum.runExclude <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumExclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
