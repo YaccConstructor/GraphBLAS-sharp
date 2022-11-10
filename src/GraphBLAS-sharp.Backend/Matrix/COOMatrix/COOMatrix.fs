@@ -11,11 +11,14 @@ module COOMatrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let indicesScatter = Scatter.runInplace clContext workGroupSize
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
 
-        let valuesScatter = Scatter.runInplace clContext workGroupSize
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
 
-        let sum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let sum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
@@ -79,7 +82,8 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
 
-                    let result = (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i])
+                    let result =
+                        (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i])
 
                     (%PreparePositions.both) i result rawPositionsBuffer allValuesBuffer
                 elif (i > 0
@@ -88,10 +92,19 @@ module COOMatrix =
                           || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
                      || i = 0 then
 
-                    let leftResult = (%opAdd) (Some leftValuesBuffer.[i]) None
-                    let rightResult = (%opAdd) None (Some rightValuesBuffer.[i])
+                    let leftResult =
+                        (%opAdd) (Some leftValuesBuffer.[i]) None
 
-                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValuesBuffer rawPositionsBuffer @>
+                    let rightResult =
+                        (%opAdd) None (Some rightValuesBuffer.[i])
+
+                    (%PreparePositions.leftRight)
+                        i
+                        leftResult
+                        rightResult
+                        isLeftBitmap
+                        allValuesBuffer
+                        rawPositionsBuffer @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -500,7 +513,8 @@ module COOMatrix =
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
 
-                    let result = (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i]))
+                    let result =
+                        (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i]))
 
                     (%PreparePositions.both) i result rawPositionsBuffer allValuesBuffer
                 elif (i > 0
@@ -512,7 +526,13 @@ module COOMatrix =
                     let leftResult = (%opAdd) (Left leftValuesBuffer.[i])
                     let rightResult = (%opAdd) (Right rightValuesBuffer.[i])
 
-                    (%PreparePositions.leftRight) i leftResult rightResult isLeftBitmap allValuesBuffer rawPositionsBuffer @>
+                    (%PreparePositions.leftRight)
+                        i
+                        leftResult
+                        rightResult
+                        isLeftBitmap
+                        allValuesBuffer
+                        rawPositionsBuffer @>
 
         let kernel = clContext.Compile(preparePositions)
 

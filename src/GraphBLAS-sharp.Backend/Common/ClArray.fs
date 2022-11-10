@@ -486,7 +486,9 @@ module ClArray =
 
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
-        let prefixSumExclude = prefixSumExclude <@ (+) @> clContext workGroupSize
+
+        let prefixSumExclude =
+            prefixSumExclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -500,7 +502,9 @@ module ClArray =
             let resultLength =
                 let a = [| 0 |]
 
-                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch)) |> ignore
+                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch))
+                |> ignore
+
                 processor.Post(Msg.CreateFreeMsg<_>(sum))
 
                 a.[0]

@@ -24,7 +24,8 @@ module internal Elementwise =
                     && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0) then
 
-                    let result = (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i])
+                    let result =
+                        (%opAdd) (Some leftValues.[i + 1]) (Some rightValues.[i])
 
                     (%PreparePositions.both) i result rawPositions allValues
                 elif i = 0
@@ -96,7 +97,8 @@ module internal Elementwise =
                     && allColumns.[i] = allColumns.[i + 1]
                     && isEndOfRowBitmap.[i] = 0) then
 
-                    let result = (%opAdd) (Both(leftValues.[i + 1], rightValues.[i]))
+                    let result =
+                        (%opAdd) (Both(leftValues.[i + 1], rightValues.[i]))
 
                     (%PreparePositions.both) i result rawPositions allValues
                 elif i = 0
@@ -155,11 +157,14 @@ module internal Elementwise =
 
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let sum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let sum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let indicesScatter = Scatter.runInplace clContext workGroupSize
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
 
-        let valuesScatter = Scatter.runInplace clContext workGroupSize
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 

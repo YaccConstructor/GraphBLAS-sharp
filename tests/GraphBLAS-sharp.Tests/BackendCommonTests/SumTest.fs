@@ -33,9 +33,7 @@ let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a
             >> setField "actual" (sprintf "%A" actualSum)
         )
 
-        let expectedSum =
-            array
-            |> Array.fold plus zero
+        let expectedSum = array |> Array.fold plus zero
 
         logger.debug (
             eventX "Expected is {expected}\n"
@@ -46,8 +44,7 @@ let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a
         |> Expect.equal actualSum expectedSum
 
 let testFixtures config wgSize q plus (plusQ: Expr<'a -> 'a -> 'a>) zero isEqual filter name =
-    let sum =
-        Sum.run context wgSize plusQ zero
+    let sum = Sum.run context wgSize plusQ zero
 
     makeTest q sum plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
@@ -73,4 +70,3 @@ let tests =
       testFixtures config wgSize q (||) <@ (||) @> false (=) id "bool logic-or"
       testFixtures config wgSize q (&&) <@ (&&) @> true (=) id "bool logic-and" ]
     |> testList "Backend.Common.Sum tests"
-
