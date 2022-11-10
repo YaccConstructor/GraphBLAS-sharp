@@ -107,3 +107,10 @@ module StandardOperations =
             match value with
             | Left left -> Some left
             | _ -> Some res @>
+
+    let complementedMask<'a, 'b when 'a: struct and 'b: struct> res =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match left, right with
+            | Some left, Some _-> Some left
+            | None, Some _ -> None
+            | _ -> Some res @>

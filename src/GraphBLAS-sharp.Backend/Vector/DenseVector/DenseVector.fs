@@ -6,6 +6,46 @@ open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
 module DenseVector =
+    let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (workGroupSize: int)
+        =
+
+        let eWiseAdd =
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < resultLength then
+                     resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
+
+        let kernel = clContext.Compile(eWiseAdd)
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
+
+            let resultVector =
+                clContext.CreateClArray(
+                    leftVector.Length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange =
+                Range1D.CreateValid(leftVector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector resultVector)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultVector
+
     let elementWiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
