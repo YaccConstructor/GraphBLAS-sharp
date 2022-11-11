@@ -16,7 +16,6 @@ let zeroFilter array isZero =
     <| array
 
 let checkResult zero op (actual: 'a) (vector: 'a []) =
-
     let expected = Array.fold op zero vector
 
     "Results should be the same"
@@ -136,4 +135,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
 let tests =
-    getTestFromFixtures testFixtures "Backend.Vector.reduce tests"
+    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.reduce tests"

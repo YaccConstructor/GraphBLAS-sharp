@@ -261,7 +261,7 @@ module DenseVector =
 
             resultValues, resultIndices
 
-    let toCoo<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let toSparse<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let getValuesAndIndices =
             getValuesAndIndices clContext workGroupSize

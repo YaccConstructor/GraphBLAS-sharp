@@ -367,125 +367,38 @@ module SparseVector =
         fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) ->
             eWiseAdd processor leftVector rightVector
 
-    let preparePositionsComplemented (clContext: ClContext) (workGroupSize: int) =
+    let toDense (clContext: ClContext) (workGroupSize: int) =
 
-        let preparePositions =
-            <@ fun (ndRange: Range1D) indicesArrayLength (inputIndices: ClArray<int>) (positions: ClArray<int>) ->
-
+        let toDense =
+            <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (indices: ClArray<int>) (resultArray: ClArray<'a option>) ->
                 let gid = ndRange.GlobalID0
 
-                if gid < indicesArrayLength then
-                    let index = inputIndices.[gid]
+                if gid < length then
+                    let index = indices.[gid]
 
-                    positions.[index] <- 0 @>
+                    resultArray.[index] <- Some values.[gid] @>
 
-        let kernel = clContext.Compile(preparePositions)
+        let kernel = clContext.Compile(toDense)
 
-        let creat = ClArray.create clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (inputIndices: ClArray<int>) (vectorSize: int) ->
-
-            let positions = creat processor vectorSize 1
-
-            let ndRange =
-                Range1D.CreateValid(inputIndices.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputIndices.Length inputIndices positions)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            positions
-
-    let setPositionsComplemented (clContext: ClContext) (workGroupSize: int) =
-
-        let setPositions =
-            <@ fun (ndRange: Range1D) length (positions: ClArray<int>) (resultIndices: ClArray<int>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid = length - 1
-                   || gid < length
-                      && positions.[gid] <> positions.[gid + 1] then
-                    let index = positions.[gid]
-
-                    resultIndices.[index] <- gid @>
-
-        let kernel = clContext.Compile(setPositions)
-
-        let sum =
-            ClArray.prefixSumExcludeInplace clContext workGroupSize
-
-        let resultLength = Array.zeroCreate 1
-
-        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) ->
-
-            let prefixArrayLenght = positions.Length
-
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r = sum processor positions resultLengthGpu
-
-            let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
-
-            let resultIndices =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let ndRange =
-                Range1D.CreateValid(prefixArrayLenght, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange prefixArrayLenght positions resultIndices)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultIndices
-
-    let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let preparePositions =
-            preparePositionsComplemented clContext workGroupSize
-
-        let create =
-            ClArray.zeroCreate clContext workGroupSize
-
-        let setPositions =
-            setPositionsComplemented clContext workGroupSize
+        let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) ->
 
-            let positions =
-                preparePositions processor vector.Indices vector.Size
+            let resultArray = zeroCreate processor vector.Size
 
-            let resultIndices = setPositions processor positions
+            let ndRange = Range1D.CreateValid(vector.Indices.Length, workGroupSize)
 
-            let resultLenght = resultIndices.Length
+            let kernel = kernel.GetKernel()
 
-            let (ResultValues: ClArray<'a>) = create processor resultLenght
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc ndRange vector.Indices.Length vector.Values vector.Indices resultArray)
+            )
 
-            processor.Post(Msg.CreateFreeMsg<_>(positions))
+            processor.Post(Msg.CreateRunMsg(kernel))
 
-            { Context = clContext
-              Indices = resultIndices
-              Values = ResultValues
-              Size = vector.Size }
+            resultArray
 
     let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 

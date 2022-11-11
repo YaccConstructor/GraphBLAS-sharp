@@ -66,7 +66,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let boolOfList = Vector.ofList context
 
-      let toCoo = Vector.toCoo context wgSize
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<bool> (=) boolOfList toCoo
@@ -74,7 +74,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let intOfList = Vector.ofList context
 
-      let toCoo = Vector.toCoo context wgSize
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<int> (=) intOfList toCoo
@@ -83,7 +83,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let byteOfList = Vector.ofList context
 
-      let toCoo = Vector.toCoo context wgSize
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<byte> (=) byteOfList toCoo
@@ -91,11 +91,11 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let floatOfList = Vector.ofList context
 
-      let toCoo = Vector.toCoo context wgSize
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<byte> (=) floatOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
 let tests =
-    getTestFromFixtures testFixtures "Backend.Vector.ofList tests"
+    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.ofList tests"

@@ -76,4 +76,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    getTestFromFixtures testFixtures "Backend.Vector.zeroCreate tests"
+    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.zeroCreate tests"

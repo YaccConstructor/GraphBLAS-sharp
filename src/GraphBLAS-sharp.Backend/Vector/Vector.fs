@@ -8,7 +8,6 @@ open GraphBLAS.FSharp.Backend.Common
 
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
-
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
@@ -69,19 +68,31 @@ module Vector =
 
     let mask = copy
 
-    let toCoo (clContext: ClContext) (workGroupSize: int) =
-        let toCoo =
-            DenseVector.toCoo clContext workGroupSize
+    let toSparse (clContext: ClContext) (workGroupSize: int) =
+        let toSparse =
+            DenseVector.toSparse clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorDense vector -> ClVectorSparse <| toCoo processor vector
+            | ClVectorDense vector -> ClVectorSparse <| toSparse processor vector
             | ClVectorSparse _ -> copy processor vector
 
-    let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let toDense (clContext: ClContext) (workGroupSize: int) =
+        let toDense =
+            SparseVector.toDense clContext workGroupSize
 
+        let copy = ClArray.copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
+            match vector with
+            | ClVectorDense vector ->
+                ClVectorDense <| copy processor vector
+            | ClVectorSparse vector ->
+                ClVectorDense <| toDense processor vector
+
+    let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addCoo =
             SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
@@ -102,10 +113,10 @@ module Vector =
             DenseVector.fillSubVector clContext workGroupSize
 
         let toCooVector =
-            DenseVector.toCoo clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize
 
         let toCooMask =
-            DenseVector.toCoo clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) ->
             match vector, maskVector with
@@ -125,20 +136,6 @@ module Vector =
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
                 <| denseFillVector value processor vector mask
-
-    let complemented (clContext: ClContext) (workGroupSize: int) =
-        let cooComplemented =
-            SparseVector.complemented clContext workGroupSize
-
-        let denseComplemented =
-            DenseVector.complemented clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
-            match vector with
-            | ClVectorSparse vector -> ClVectorSparse <| cooComplemented processor vector
-            | ClVectorDense vector ->
-                ClVectorDense
-                <| denseComplemented processor vector
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let cooReduce =

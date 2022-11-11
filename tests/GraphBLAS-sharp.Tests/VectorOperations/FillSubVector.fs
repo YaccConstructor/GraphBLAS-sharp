@@ -117,7 +117,7 @@ let testFixtures case =
 
     [ let intFill = Vector.fillSubVector context wgSize
 
-      let intToCoo = Vector.toCoo context wgSize
+      let intToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Sparse (fun item -> true)
@@ -125,7 +125,7 @@ let testFixtures case =
 
       let floatFill = Vector.fillSubVector context wgSize
 
-      let floatToCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Sparse System.Double.IsNormal
@@ -133,7 +133,7 @@ let testFixtures case =
 
       let byteFill = Vector.fillSubVector context wgSize
 
-      let byteToCoo = Vector.toCoo context wgSize
+      let byteToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Sparse (fun item -> true)
@@ -141,7 +141,7 @@ let testFixtures case =
 
       let boolFill = Vector.fillSubVector context wgSize
 
-      let boolToCoo = Vector.toCoo context wgSize
+      let boolToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Sparse (fun item -> true)
@@ -149,7 +149,7 @@ let testFixtures case =
 
       let intFill = Vector.fillSubVector context wgSize
 
-      let intToCoo = Vector.toCoo context wgSize
+      let intToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense (fun item -> true)
@@ -157,7 +157,7 @@ let testFixtures case =
 
       let floatFill = Vector.fillSubVector context wgSize
 
-      let floatToCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense System.Double.IsNormal
@@ -165,7 +165,7 @@ let testFixtures case =
 
       let byteFill = Vector.fillSubVector context wgSize
 
-      let byteToCoo = Vector.toCoo context wgSize
+      let byteToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense (fun item -> true)
@@ -173,11 +173,11 @@ let testFixtures case =
 
       let boolFill = Vector.fillSubVector context wgSize
 
-      let boolToCoo = Vector.toCoo context wgSize
+      let boolToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense (fun item -> true)
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
 let tests =
-    getTestFromFixtures testFixtures "Backend.Vector.fillSubVector tests"
+    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"

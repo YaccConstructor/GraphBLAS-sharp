@@ -173,4 +173,4 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
 let tests =
-    getTestFromFixtures testFixtures "Transpose tests"
+    testsWithFixtures testFixtures "Transpose tests"

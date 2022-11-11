@@ -135,7 +135,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddTests =
-    getTestFromFixtures testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
+    testsWithFixtures testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -185,7 +185,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneTests =
-    getTestFromFixtures testFixturesEWiseAddAtLeastOne "Backend.Matrix.EWiseAddAtLeastOne tests"
+    testsWithFixtures testFixturesEWiseAddAtLeastOne "Backend.Matrix.EWiseAddAtLeastOne tests"
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
     [ let config = defaultConfig
@@ -235,7 +235,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneToCOOTests =
-    getTestFromFixtures testFixturesEWiseAddAtLeastOneToCOO "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
+    testsWithFixtures testFixturesEWiseAddAtLeastOneToCOO "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
 
 let testFixturesEWiseMulAtLeastOne case =
     [ let config = defaultConfig
@@ -285,4 +285,4 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseMulAtLeastOneTests =
-    getTestFromFixtures testFixturesEWiseMulAtLeastOne "Backend.Matrix.eWiseMulAtLeastOne tests"
+    testsWithFixtures testFixturesEWiseMulAtLeastOne "Backend.Matrix.eWiseMulAtLeastOne tests"

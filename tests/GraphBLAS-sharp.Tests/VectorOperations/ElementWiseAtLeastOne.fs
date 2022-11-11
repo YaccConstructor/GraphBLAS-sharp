@@ -132,7 +132,7 @@ let addTestFixtures case =
     let wgSize = 32
     let context = case.ClContext.ClContext
 
-    [ let toCoo = Vector.toCoo context wgSize
+    [ let toCoo = Vector.toSparse context wgSize
 
       let intAddFun =
           Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
@@ -141,7 +141,7 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toSparse context wgSize
 
       let floatAddFun =
           Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
@@ -153,7 +153,7 @@ let addTestFixtures case =
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
-      let boolToCoo = Vector.toCoo context wgSize
+      let boolToCoo = Vector.toSparse context wgSize
 
       let boolAddFun =
           Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
@@ -162,7 +162,7 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
-      let byteToCoo = Vector.toCoo context wgSize
+      let byteToCoo = Vector.toSparse context wgSize
 
       let byteAddFun =
           Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
@@ -172,7 +172,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
-    getTestFromFixtures addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
+    testsWithFixtures<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
 
 let mulTestFixtures case =
     let config = defaultConfig
@@ -184,7 +184,7 @@ let mulTestFixtures case =
     let context = case.ClContext.ClContext
 
 
-    [ let toCoo = Vector.toCoo context wgSize
+    [ let toCoo = Vector.toSparse context wgSize
 
       let intMulFun =
           Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
@@ -193,7 +193,7 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toCoo context wgSize
+      let floatToCoo = Vector.toSparse context wgSize
 
       let floatMulFun =
           Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
@@ -205,7 +205,7 @@ let mulTestFixtures case =
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
-      let boolToCoo = Vector.toCoo context wgSize
+      let boolToCoo = Vector.toSparse context wgSize
 
       let boolMulFun =
           Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
@@ -214,7 +214,7 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
-      let byteToCoo = Vector.toCoo context wgSize
+      let byteToCoo = Vector.toSparse context wgSize
 
       let byteMulFun =
           Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
@@ -224,4 +224,4 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =
-    getTestFromFixtures mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
+    testsWithFixtures<VectorFormat> mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
