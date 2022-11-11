@@ -1,9 +1,9 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.DenseVector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 
-module ElementwiseQuotes =
+module ElementwiseConstructor =
     let private elementWiseGeneralKernel writeOp =
         <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 

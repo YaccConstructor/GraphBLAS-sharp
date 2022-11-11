@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.DenseVector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -12,7 +12,7 @@ module DenseVector =
         (workGroupSize: int)
         =
 
-        let kernel = clContext.Compile(ElementwiseQuotes.kernel opAdd)
+        let kernel = clContext.Compile(ElementwiseConstructor.kernel opAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
@@ -44,7 +44,7 @@ module DenseVector =
         (workGroupSize: int)
         =
 
-        let kernel = clContext.Compile(ElementwiseQuotes.atLeastOneKernel opAdd)
+        let kernel = clContext.Compile(ElementwiseConstructor.atLeastOneKernel opAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
@@ -75,7 +75,7 @@ module DenseVector =
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
         (workGroupSize: int)  =
 
-        let kernel = clContext.Compile(ElementwiseQuotes.fillSubVector maskOp)
+        let kernel = clContext.Compile(ElementwiseConstructor.fillSubVector maskOp)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultArray =

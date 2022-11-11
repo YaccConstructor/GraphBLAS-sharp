@@ -5,6 +5,7 @@ open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.DenseVector
 
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
@@ -70,7 +71,7 @@ module Vector =
 
     let toSparse (clContext: ClContext) (workGroupSize: int) =
         let toSparse =
-            DenseVector.toSparse clContext workGroupSize
+            DenseVector.DenseVector.toSparse clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
