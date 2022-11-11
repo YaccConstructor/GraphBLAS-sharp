@@ -95,4 +95,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
-    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.copy tests"
+    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.copy tests"

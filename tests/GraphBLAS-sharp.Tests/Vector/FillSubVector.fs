@@ -180,4 +180,4 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
 
 let tests =
-    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"
+    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"

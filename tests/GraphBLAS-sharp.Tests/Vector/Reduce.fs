@@ -135,4 +135,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
 let tests =
-    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.reduce tests"
+    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.reduce tests"

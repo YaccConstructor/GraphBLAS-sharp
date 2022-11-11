@@ -88,4 +88,4 @@ let testFixtures case =
         |> List.concat
 
 let tests =
-    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.Convert tests"
+    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.Convert tests"

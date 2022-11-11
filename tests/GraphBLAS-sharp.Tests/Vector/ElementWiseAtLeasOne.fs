@@ -1,4 +1,4 @@
-module Backend.Vector.ElementWiseAddAtLeastOne
+module Backend.Vector.ElementWiseAtLeastOne
 
 open Expecto
 open Expecto.Logging
@@ -16,17 +16,8 @@ let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
 
-let fFilter =
-    fun item ->
-        System.Double.IsNaN item
-        || System.Double.IsInfinity item
-    >> not
-    |> Array.filter
-
 let checkResult
     (isEqual: 'c -> 'c -> bool)
-    leftZero
-    rightZero
     resultZero
     (op: 'a -> 'b -> 'c)
     (actual: Vector<'c>)
@@ -34,29 +25,13 @@ let checkResult
     (rightArray: 'b [])
     =
 
-    let expectedArrayLength = max leftArray.Length rightArray.Length
-
-    let isLeftLess = leftArray.Length < rightArray.Length
-
-    let lowBound =
-        if isLeftLess then
-            leftArray.Length
-        else
-            rightArray.Length
+    let expectedArrayLength = leftArray.Length
 
     let expectedArray =
         Array.create expectedArrayLength resultZero
 
     for i in 0 .. expectedArrayLength - 1 do
-        let item =
-            if i < lowBound then
-                op leftArray.[i] rightArray.[i]
-            elif isLeftLess then
-                op leftZero rightArray.[i]
-            else
-                op leftArray.[i] rightZero
-
-        expectedArray.[i] <- item
+        expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
     match actual with
     | VectorSparse actual ->
@@ -118,7 +93,7 @@ let correctnessGenericTest
 
             let actual = cooRes.ToHost q
 
-            checkResult resultIsEqual leftZero rightZero resultZero op actual leftArray rightArray
+            checkResult resultIsEqual resultZero op actual leftArray rightArray
         with
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
@@ -135,7 +110,7 @@ let addTestFixtures case =
     [ let toCoo = Vector.toSparse context wgSize
 
       let intAddFun =
-          Vector.elementWiseAddAtLeastOne context intSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context intSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
@@ -144,7 +119,7 @@ let addTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatAddFun =
-          Vector.elementWiseAddAtLeastOne context floatSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context floatSumAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -156,7 +131,7 @@ let addTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolAddFun =
-          Vector.elementWiseAddAtLeastOne context boolSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context boolSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
@@ -165,14 +140,14 @@ let addTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteAddFun =
-          Vector.elementWiseAddAtLeastOne context byteSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context byteSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
-    testsWithFixtures<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
+    testsWithOperationCase<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
 
 let mulTestFixtures case =
     let config = defaultConfig
@@ -187,7 +162,7 @@ let mulTestFixtures case =
     [ let toCoo = Vector.toSparse context wgSize
 
       let intMulFun =
-          Vector.elementWiseAddAtLeastOne context intMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context intMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
@@ -196,7 +171,7 @@ let mulTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatMulFun =
-          Vector.elementWiseAddAtLeastOne context floatMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context floatMulAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -208,7 +183,7 @@ let mulTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolMulFun =
-          Vector.elementWiseAddAtLeastOne context boolMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context boolMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
@@ -217,11 +192,12 @@ let mulTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteMulFun =
-          Vector.elementWiseAddAtLeastOne context byteMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context byteMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =
-    testsWithFixtures<VectorFormat> mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
+    testsWithOperationCase<VectorFormat> mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
+

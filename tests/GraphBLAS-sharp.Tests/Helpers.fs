@@ -740,7 +740,7 @@ module Utils =
                 <| expected.[i]
                 |> failtestf "%s"
 
-    let testsWithFixtures<'a when 'a: equality> testFixtures name =
+    let testsWithOperationCase<'a when 'a: equality> testFixtures name =
         testCases<'a>
         |> List.filter
             (fun case ->

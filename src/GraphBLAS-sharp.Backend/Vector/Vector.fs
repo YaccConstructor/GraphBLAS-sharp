@@ -92,7 +92,7 @@ module Vector =
             | ClVectorSparse vector ->
                 ClVectorDense <| toDense processor vector
 
-    let elementWiseAddAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addCoo =
             SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
@@ -103,6 +103,14 @@ module Vector =
             match leftVector, rightVector with
             | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addCoo processor left right
             | ClVectorDense left, ClVectorDense right -> ClVectorDense <| addDense processor left right
+            | _ -> failwith "Vector formats are not matching."
+
+    let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) (workGroupSize: int) =
+        let addDense = DenseVector.elementWise clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVectorDense leftVector, ClVectorDense rightVector -> addDense processor leftVector rightVector
             | _ -> failwith "Vector formats are not matching."
 
     let fillSubVector (clContext: ClContext) (workGroupSize: int) =

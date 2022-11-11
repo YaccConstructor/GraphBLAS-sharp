@@ -98,4 +98,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
 let tests =
-    testsWithFixtures<VectorFormat> testFixtures "Backend.Vector.ofList tests"
+    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.ofList tests"
