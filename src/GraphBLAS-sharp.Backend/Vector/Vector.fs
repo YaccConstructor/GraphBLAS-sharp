@@ -6,6 +6,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.DenseVector
+open GraphBLAS.FSharp.Backend.SparseVector
 
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
@@ -95,7 +96,7 @@ module Vector =
 
     let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addCoo =
-            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
+            SparseVector.elementWiseAtLeasOne clContext opAdd workGroupSize //TODO()
 
         let addDense =
             DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
@@ -114,12 +115,12 @@ module Vector =
             | ClVectorDense leftVector, ClVectorDense rightVector -> addDense processor leftVector rightVector
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) (workGroupSize: int) =
+    let fillSubVector (clContext: ClContext) mask (workGroupSize: int) =
         let cooFillVector =
-            SparseVector.fillSubVector clContext workGroupSize
+            SparseVector.fillSubVector clContext mask workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext StandardOperations.mask workGroupSize
+            DenseVector.fillSubVector clContext mask workGroupSize
 
         let toCooVector =
             DenseVector.toSparse clContext workGroupSize
@@ -131,17 +132,17 @@ module Vector =
             match vector, maskVector with
             | ClVectorSparse vector, ClVectorSparse mask ->
                 ClVectorSparse
-                <| cooFillVector value processor vector mask
+                <| cooFillVector processor vector mask value
             | ClVectorSparse vector, ClVectorDense mask ->
                 let mask = toCooMask processor mask
 
                 ClVectorSparse
-                <| cooFillVector value processor vector mask
+                <| cooFillVector processor vector mask value
             | ClVectorDense vector, ClVectorSparse mask ->
                 let vector = toCooVector processor vector
 
                 ClVectorSparse
-                <| cooFillVector value processor vector mask
+                <| cooFillVector processor vector mask value
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
                 <| denseFillVector processor vector mask value

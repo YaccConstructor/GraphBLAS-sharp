@@ -211,7 +211,7 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeasOne (clContext: ClContext) opAdd (workGroupSize: int) =
+    let elementWiseAtLeasOne (clContext: ClContext) (opAdd:  Expr<(AtLeastOne<'a,'b> -> 'c option)>) (workGroupSize: int) =
         elementWiseGeneral clContext (ElementwiseConstructor.preparePositionsAtLeastOne opAdd) workGroupSize
 
     let elementWise (clContext: ClContext) opAdd (workGroupSize: int) =
@@ -301,7 +301,10 @@ module SparseVector =
               Size = max leftVector.Size rightVector.Size }
 
     let fillSubVectorAtLeasOne (clContext: ClContext) opAdd (workGroupSize: int) =
-        fillSubVectorGeneral clContext (ElementwiseConstructor.preparePositionsFillSubVectorAtLeasOne opAdd) workGroupSize
+        fillSubVectorGeneral clContext (ElementwiseConstructor.prepareFillVectorAtLeastOne opAdd) workGroupSize
+
+    let fillSubVector (clContext: ClContext) opAdd (workGroupSize: int) =
+        fillSubVectorGeneral clContext (ElementwiseConstructor.prepareFillVector opAdd) workGroupSize
 
     let toDense (clContext: ClContext) (workGroupSize: int) =
 
