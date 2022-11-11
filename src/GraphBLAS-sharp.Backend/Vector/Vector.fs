@@ -118,7 +118,7 @@ module Vector =
             SparseVector.fillSubVector clContext workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext workGroupSize
+            DenseVector.fillSubVector clContext StandardOperations.mask workGroupSize
 
         let toCooVector =
             DenseVector.toSparse clContext workGroupSize
@@ -126,7 +126,7 @@ module Vector =
         let toCooMask =
             DenseVector.toSparse clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: 'a) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
             match vector, maskVector with
             | ClVectorSparse vector, ClVectorSparse mask ->
                 ClVectorSparse
@@ -143,7 +143,7 @@ module Vector =
                 <| cooFillVector value processor vector mask
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
-                <| denseFillVector value processor vector mask
+                <| denseFillVector processor vector mask value
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let cooReduce =

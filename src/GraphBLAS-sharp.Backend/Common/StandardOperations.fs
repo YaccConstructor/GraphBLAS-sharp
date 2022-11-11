@@ -102,15 +102,20 @@ module StandardOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let maskAtLeastOne<'a, 'b when 'a: struct and 'b: struct> res =
-        <@ fun (value: AtLeastOne<'a, 'b>) ->
-            match value with
-            | Left left -> Some left
-            | _ -> Some res @>
-
-    let complementedMask<'a, 'b when 'a: struct and 'b: struct> res =
-        <@ fun (left: 'a option) (right: 'b option) ->
+    let mask<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) value ->
             match left, right with
-            | Some left, Some _-> Some left
-            | None, Some _ -> None
-            | _ -> Some res @>
+            | _, None -> left
+            | _ -> Some value @>
+
+    let maskAtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (pair: AtLeastOne<'a, 'b>) value ->
+            match pair with
+            | Left left -> Some left
+            | _ -> Some value @>
+
+    let complementedMask<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) value ->
+            match left, right with
+            | _, Some _-> left
+            | _ -> Some value @>

@@ -12,15 +12,7 @@ module DenseVector =
         (workGroupSize: int)
         =
 
-        let eWiseAdd =
-            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < resultLength then
-                     resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
-
-        let kernel = clContext.Compile(eWiseAdd)
+        let kernel = clContext.Compile(ElementwiseQuotes.kernel opAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
@@ -52,19 +44,7 @@ module DenseVector =
         (workGroupSize: int)
         =
 
-        let eWiseAdd =
-            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < resultLength then
-                    match leftVector.[gid], rightVector.[gid] with
-                    | Some left, Some right -> resultVector.[gid] <- (%opAdd) (Both(left, right))
-                    | Some left, None -> resultVector.[gid] <- (%opAdd) (Left left)
-                    | None, Some right -> resultVector.[gid] <- (%opAdd) (Right right)
-                    | _ -> resultVector.[gid] <- None @>
-
-        let kernel = clContext.Compile(eWiseAdd)
+        let kernel = clContext.Compile(ElementwiseQuotes.atLeastOneKernel opAdd)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
@@ -90,66 +70,35 @@ module DenseVector =
 
             resultVector
 
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) (scalar: 'a) =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
+        (clContext: ClContext)
+        (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
+        (workGroupSize: int)  =
 
-        let eWiseAdd =
-            elementWiseAtLeastOne clContext (StandardOperations.maskAtLeastOne scalar) workGroupSize
+        let kernel = clContext.Compile(ElementwiseQuotes.fillSubVector maskOp)
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) ->
-
-            let clScalar = clContext.CreateClCell scalar
-
-            let resultVector = eWiseAdd processor leftVector maskVector
-
-            processor.Post(Msg.CreateFreeMsg<_>(maskVector))
-
-            processor.Post(Msg.CreateFreeMsg<_>(clScalar))
-
-            resultVector
-
-    let complemented<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let complemented =
-            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a option>) (defaultValue: ClCell<'a>) (resultArray: ClArray<'a option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length then
-                    match inputArray.[gid] with
-                    | None -> resultArray.[gid] <- Some defaultValue.Value
-                    | _ -> () @>
-
-
-        let kernel = clContext.Compile(complemented)
-
-        let create =
-            ClArray.zeroCreate clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
-
-            let length = vector.Length
-
-            let resultArray = create processor length
-
-            let defaultValue =
-                clContext.CreateClCell Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
+            let resultArray =
+                clContext.CreateClArray(
+                    leftVector.Length,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
 
             let ndRange =
-                Range1D.CreateValid(length, workGroupSize)
+                Range1D.CreateValid(leftVector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange length vector defaultValue resultArray)
+                Msg.MsgSetArguments(fun () ->
+                    kernel.KernelFunc ndRange leftVector.Length leftVector maskVector value resultArray)
             )
-
-            processor.Post(Msg.CreateRunMsg(kernel))
-
-            processor.Post(Msg.CreateFreeMsg(defaultValue))
 
             resultArray
 
-    let getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let getPositions =
             <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
@@ -201,7 +150,6 @@ module DenseVector =
                         resultValues.[index] <- value
                         resultIndices.[index] <- gid
                     | None -> () @>
-
 
         let kernel = clContext.Compile(getValuesAndIndices)
 
