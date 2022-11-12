@@ -6,6 +6,8 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.ArraysExtensions
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests.Context
+open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 open OpenCL.Net
@@ -83,7 +85,8 @@ let testFixturesSpMV (testContext: TestContext) =
     [ let config = defaultConfig
       let wgSize = 32
 
-      let getCorrectnessTestName datatype = sprintf "Correctness on %s" datatype
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype testContext.ClContext
 
       let context = testContext.ClContext
       let q = testContext.Queue
@@ -112,26 +115,9 @@ let testFixturesSpMV (testContext: TestContext) =
       let byteAdd =
           Vector.spMV context byteSum byteMul wgSize
 
-      let byteToCOO = Matrix.toCOO context wgSize
-
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
-    availableContexts ""
-    |> List.ofSeq
-    |> List.filter
-        (fun testContext ->
-            let mutable e = ErrorCode.Unknown
-            let device = testContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun testContext -> testContext.ClContext.ClDevice.DeviceType)
-    |> List.collect testFixturesSpMV
-    |> testList "Backend.Common.SpMV tests"
+    gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV
