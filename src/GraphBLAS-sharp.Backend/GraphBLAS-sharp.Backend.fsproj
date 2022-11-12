@@ -30,7 +30,6 @@
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
-    <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
     <Compile Include="Matrix/Matrix.fs" />
     <Compile Include="Vector/SpMV.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
