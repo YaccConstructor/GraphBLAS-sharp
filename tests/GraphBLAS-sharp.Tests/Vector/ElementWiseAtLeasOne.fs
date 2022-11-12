@@ -44,7 +44,7 @@ let checkResult
 
             actualArray.[actual.Indices.[i]] <- actual.Values.[i]
 
-        "arrays must have the same values"
+        $"arrays must have the same values actual = %A{actualArray}, expected = %A{expectedArray}"
         |> compareArrays isEqual actualArray expectedArray
     | _ -> failwith "Vector format must be Sparse."
 

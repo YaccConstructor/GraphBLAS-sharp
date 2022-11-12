@@ -96,7 +96,7 @@ module Vector =
 
     let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addSparse =
-            SparseVector.elementWiseAtLeasOne clContext opAdd workGroupSize
+            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
         let addDense =
             DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize

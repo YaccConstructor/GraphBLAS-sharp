@@ -20,24 +20,24 @@ let allTests =
         //   Backend.RemoveDuplicates.tests
         //   Backend.Copy.tests
         //   Backend.Replicate.tests
-        //   //Backend.Elementwise.elementwiseAddTests
-        //   //Backend.Elementwise.elementwiseAddAtLeastOneTests
-        //   //Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
-        //   //Backend.Elementwise.elementwiseMulAtLeastOneTests
-        //   Backend.Transpose.tests
-        //   //Matrix.GetTuples.tests
-        //   //Matrix.Mxv.tests
-        //   //Algo.Bfs.tests
-        //   Backend.Reduce.tests
-        //   Backend.Vector.ZeroCreate.tests
-        //   Backend.Vector.OfList.tests
-        //   Backend.Vector.Copy.tests
-        //   Backend.Vector.Convert.tests
-        //   Backend.Vector.ElementWiseAtLeastOne.addTests
-        //   Backend.Vector.ElementWiseAtLeastOne.mulTests
-          Backend.Vector.ElementWise.addTests
-          Backend.Vector.ElementWise.mulTests
-          // Backend.Vector.FillSubVector.tests
+          //Backend.Elementwise.elementwiseAddTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
+          //Backend.Elementwise.elementwiseMulAtLeastOneTests
+        //  Backend.Transpose.tests
+          //Matrix.GetTuples.tests
+          //Matrix.Mxv.tests
+          //Algo.Bfs.tests
+        //  Backend.Reduce.tests
+          // Backend.Vector.ZeroCreate.tests
+          // Backend.Vector.OfList.tests
+          // Backend.Vector.Copy.tests
+          // Backend.Vector.Convert.tests
+           Backend.Vector.ElementWiseAtLeastOne.addTests
+           Backend.Vector.ElementWiseAtLeastOne.mulTests
+           Backend.Vector.ElementWise.addTests
+           Backend.Vector.ElementWise.mulTests
+         // Backend.Vector.FillSubVector.tests
           // Backend.Vector.Reduce.tests ]
             ]
     |> testSequenced

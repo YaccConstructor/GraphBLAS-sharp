@@ -119,82 +119,6 @@ module ElementwiseConstructor =
                         firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                         isLeftBitMap.[i] <- 1 @>
 
-        module FillSubVectorRead =
-            let both (opAdd: Expr<'a option -> 'b option -> 'a -> 'a option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: 'a) ->
-                         (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1]) value
-                @>
-
-            let left (opAdd: Expr<'a option -> 'b option -> 'a -> 'a option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (value: 'a) ->
-                         (%opAdd) (Some leftValues.[gid]) None value
-                @>
-
-            let right (opAdd: Expr<'a option -> 'b option -> 'a -> 'a option>) =
-                <@
-                    fun gid (rightValues: ClArray<'b>) (value: 'a) ->
-                         (%opAdd) None (Some rightValues.[gid + 1]) value
-                @>
-
-        module FillSubVectorAtLeasOneRead =
-            let both (opAdd: Expr<AtLeastOne<'a,'b> -> 'a -> 'a option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: 'a) ->
-                         (%opAdd) (Both(leftValues.[gid], rightValues.[gid + 1])) value
-                @>
-
-            let left (opAdd: Expr<AtLeastOne<'a,'b> -> 'a -> 'a option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (value: 'a) ->
-                          (%opAdd) (Left(leftValues.[gid])) value
-                @>
-
-            let right (opAdd: Expr<AtLeastOne<'a,'b> -> 'a -> 'a option>) =
-                <@
-                    fun gid (rightValues: ClArray<'b>) (value: 'a) ->
-                         (%opAdd) (Right(rightValues.[gid])) value
-                @>
-
-        module ElementWiseRead =
-            let both (opAdd: Expr<'a option -> 'b option -> 'c option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) ->
-                         (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1])
-                @>
-
-            let left (opAdd: Expr<'a option -> 'b option -> 'c option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>)->
-                         (%opAdd) (Some leftValues.[gid]) None
-                @>
-
-            let right (opAdd: Expr<'a option -> 'b option -> 'c option>) =
-                <@
-                    fun gid (rightValues: ClArray<'b>) ->
-                         (%opAdd) None (Some rightValues.[gid + 1])
-                @>
-
-        module ElementWiseAtLeasOneRead =
-            let both (opAdd: Expr<AtLeastOne<'a,'b> -> 'c option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) ->
-                         (%opAdd) (Both(leftValues.[gid], rightValues.[gid + 1]))
-                @>
-
-            let left (opAdd: Expr<AtLeastOne<'a,'b> -> 'c option>) =
-                <@
-                    fun gid (leftValues: ClArray<'a>) ->
-                          (%opAdd) (Left(leftValues.[gid]))
-                @>
-
-            let right (opAdd: Expr<AtLeastOne<'a,'b> -> 'c option>) =
-                <@
-                    fun gid (rightValues: ClArray<'b>) ->
-                         (%opAdd) (Right(rightValues.[gid]))
-                @>
-
         let private both<'c> =
             <@ fun index (result: 'c option) (rawPositionsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'c>) ->
                 rawPositionsBuffer.[index] <- 0
@@ -220,32 +144,7 @@ module ElementwiseConstructor =
                         rawPositionsBuffer.[index] <- 1
                     | None -> rawPositionsBuffer.[index] <- 0 @>
 
-        let private preparePositionsGeneral
-            bothRead
-            leftRead
-            rightRead
-            =
-
-            <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length - 1
-                   && allIndices.[gid] = allIndices.[gid + 1] then
-                    let (result: 'c option) = (%bothRead) gid leftValues rightValues
-
-                    (%both) gid result positions allValues
-                elif (gid < length
-                      && gid > 0
-                      && allIndices.[gid - 1] <> allIndices.[gid])
-                     || gid = 0 then
-
-                    let leftResult = (%leftRead) gid leftValues
-                    let rightResult = (%rightRead) gid rightValues
-
-                    (%leftRight) gid leftResult rightResult isLeft allValues positions @>
-
-        let private prepareFillVectorGeneral bothRead leftRead rightRead =
+        let prepareFillVector opAdd =
             <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
@@ -254,26 +153,61 @@ module ElementwiseConstructor =
 
                 if gid < length - 1
                    && allIndices.[gid] = allIndices.[gid + 1] then
-                    let (result: 'a option) = (%bothRead) gid leftValues rightValues value
+                    let result = (%opAdd) (Some leftValues[gid]) (Some rightValues[gid + 1]) value
 
                     (%both) gid result positions allValues
                 elif (gid < length
                       && gid > 0
                       && allIndices.[gid - 1] <> allIndices.[gid])
                       || gid = 0 then
-                    let leftResult = (%leftRead) gid leftValues value
-                    let rightResult = (%rightRead) gid rightValues value
+                    let leftResult = (%opAdd) (Some leftValues.[gid]) None  value
+                    let rightResult = (%opAdd) None (Some rightValues.[gid]) value
 
                     (%leftRight) gid leftResult rightResult isLeft allValues positions @>
 
         let preparePositions opAdd =
-            preparePositionsGeneral (ElementWiseRead.both opAdd) (ElementWiseRead.left opAdd) (ElementWiseRead.right opAdd)
+            <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
 
-        let preparePositionsAtLeastOne opAdd =
-            preparePositionsGeneral (ElementWiseAtLeasOneRead.both opAdd) (ElementWiseAtLeasOneRead.left opAdd) (ElementWiseAtLeasOneRead.right opAdd)
+                let gid = ndRange.GlobalID0
 
-        let prepareFillVector opAdd =
-            prepareFillVectorGeneral (FillSubVectorRead.both opAdd) (FillSubVectorRead.left opAdd) (FillSubVectorRead.right opAdd)
+                if gid < length - 1
+                   && allIndices.[gid] = allIndices.[gid + 1] then
+                    let result = (%opAdd) (Some leftValues[gid]) (Some rightValues[gid + 1])
 
-        let prepareFillVectorAtLeastOne opAdd =
-            prepareFillVectorGeneral (FillSubVectorAtLeasOneRead.both opAdd) (FillSubVectorAtLeasOneRead.left opAdd) (FillSubVectorAtLeasOneRead.right opAdd)
+                    (%both) gid result positions allValues
+                elif (gid < length
+                      && gid > 0
+                      && allIndices.[gid - 1] <> allIndices.[gid])
+                      || gid = 0 then
+                    let leftResult = (%opAdd) (Some leftValues.[gid]) None
+                    let rightResult = (%opAdd) None (Some rightValues.[gid])
+
+                    (%leftRight) gid leftResult rightResult isLeft allValues positions @>
+
+        let atLeastOneToNormalForm (op: Expr<AtLeastOne<'a, 'b> -> 'c option>) =
+            <@
+                fun (leftItem: 'a option) (rightItem: 'b option) ->
+                    match leftItem, rightItem with
+                    | Some left, Some right ->
+                        (%op) (Both(left, right))
+                    | None, Some right ->
+                        (%op) (Right right)
+                    | Some left, None ->
+                        (%op) (Left left)
+                    | None, None ->
+                        None
+            @>
+
+        let fillSubVectorAtLeastOneToNormalForm (op: Expr<AtLeastOne<'a, 'b> -> 'a -> 'a option>) =
+            <@
+                fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+                    match leftItem, rightItem with
+                    | Some left, Some right ->
+                        (%op) (Both(left, right)) value
+                    | None, Some right ->
+                        (%op) (Right right) value
+                    | Some left, None ->
+                        (%op) (Left left) value
+                    | None, None ->
+                        None
+            @>

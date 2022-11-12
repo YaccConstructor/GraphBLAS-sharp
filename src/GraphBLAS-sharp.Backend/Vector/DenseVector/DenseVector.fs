@@ -38,44 +38,15 @@ module DenseVector =
 
             resultVector
 
-    let elementWiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        (workGroupSize: int)
-        =
-
-        let kernel = clContext.Compile(ElementwiseConstructor.atLeastOneKernel opAdd)
-
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
-
-            let resultVector =
-                clContext.CreateClArray(
-                    leftVector.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let ndRange =
-                Range1D.CreateValid(leftVector.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector resultVector)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            resultVector
+    let elementWiseAtLeastOne clContext op workGroupSize =
+        elementWise clContext (ElementwiseConstructor.atLeastOneToNormalForm op) workGroupSize
 
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
         (workGroupSize: int)  =
 
-        let kernel = clContext.Compile(ElementwiseConstructor.fillSubVector maskOp)
+        let kernel = clContext.Compile(ElementwiseConstructor.fillSubVectorKernel maskOp)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultArray =
@@ -97,6 +68,9 @@ module DenseVector =
             )
 
             resultArray
+
+    let fillSubVectorAtLeasOne clContext opAdd workGroupSize =
+        fillSubVector clContext (ElementwiseConstructor.fillSubVectorAtLeastOneToNormalForm opAdd) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 

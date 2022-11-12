@@ -20,28 +20,26 @@ let checkResult
     (maskIsEqual: 'b -> 'b -> bool)
     vectorZero
     maskZero
+    isComplemented
     (actual: Vector<'a>)
     (vector: 'a [])
     (mask: 'b [])
     (value: 'a)
     =
 
-    let expectedArrayLength = max vector.Length mask.Length
-
     let expectedArray =
-        Array.create expectedArrayLength vectorZero
+        Array.create vector.Length vectorZero
 
-    for i in 0 .. expectedArrayLength - 1 do
-        if i < mask.Length
-           && not <| maskIsEqual mask.[i] maskZero then
+    for i in 0 .. vector.Length - 1 do
+        if not <| maskIsEqual mask.[i] maskZero && not isComplemented then
             expectedArray.[i] <- value
-        elif i < vector.Length then
+        else
             expectedArray.[i] <- vector.[i]
 
     match actual with
     | VectorSparse actual ->
         let actualArray =
-            Array.create expectedArrayLength vectorZero
+            Array.create vector.Length vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do
             actualArray.[actual.Indices.[i]] <- actual.Values.[i]
@@ -58,6 +56,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (fillVector: MailboxProcessor<Msg> -> ClVector<'a> -> ClVector<'b> -> ClCell<'a> -> ClVector<'a>)
     (isValueValid: 'a -> bool)
+    isComplemented
     case
     (vector: 'a [], mask: 'b [])
     (value: 'a)
@@ -100,7 +99,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
             clActual.Dispose q
             cooClActual.Dispose q
 
-            checkResult vectorIsEqual maskIsEqual vectorZero maskZero actual vector mask value
+            checkResult vectorIsEqual maskIsEqual vectorZero maskZero isComplemented actual vector mask value
         with
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
@@ -117,12 +116,14 @@ let testFixtures case =
     let floatIsEqual x y =
         abs (x - y) < Accuracy.medium.absolute || x = y
 
+    let isComplemented = false
+
     [ let intFill = Vector.fillSubVector context StandardOperations.mask wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true)
+      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill = Vector.fillSubVector context StandardOperations.mask wgSize
@@ -130,7 +131,7 @@ let testFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill = Vector.fillSubVector context StandardOperations.mask wgSize
@@ -138,7 +139,7 @@ let testFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true)
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill = Vector.fillSubVector context StandardOperations.mask wgSize
@@ -146,8 +147,55 @@ let testFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true)
+      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"
+
+
+let testFixturesComplemented case =
+    let config = defaultConfig
+
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, vector: %A{case.Format}"
+
+    let wgSize = 32
+    let context = case.ClContext.ClContext
+
+    let floatIsEqual x y =
+        abs (x - y) < Accuracy.medium.absolute || x = y
+
+    let isComplemented = true
+
+    [ let intFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+
+      let intToCoo = Vector.toSparse context wgSize
+
+      case
+      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+
+      let floatFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+
+      let floatToCoo = Vector.toSparse context wgSize
+
+      case
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let byteFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+
+      let byteToCoo = Vector.toSparse context wgSize
+
+      case
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+
+      let boolFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+
+      let boolToCoo = Vector.toSparse context wgSize
+
+      case
+      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
