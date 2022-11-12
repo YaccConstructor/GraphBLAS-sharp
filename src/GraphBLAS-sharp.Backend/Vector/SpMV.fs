@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -14,27 +14,18 @@ module Vector =
         workGroupSize
         =
         //Until LocalMemSize added to ClDevice as member
-        let error = ref Unchecked.defaultof<ClErrorCode>
+        let localMemorySize = Utils.getLocalMemorySize clContext
 
-        let localMemorySize =
-            Cl
-                .GetDeviceInfo(clContext.ClDevice.Device, OpenCL.Net.DeviceInfo.LocalMemSize, error)
-                .CastTo<int>()
-
-        let localArraySize1 = workGroupSize + 1
+        let localPointersArraySize = workGroupSize + 1
 
         let localMemoryLeft =
-            localMemorySize - localArraySize1 * sizeof<int>
+            localMemorySize
+            - localPointersArraySize * sizeof<int>
 
-        let optionTypeClSizeInBytes =
-            4 + sizeof<'c>
-            |> Utils.ceilToMultiple (max sizeof<'c> sizeof<int>)
+        let localValuesArraySize =
+            Utils.getClArrayOfOptionTypeSize localMemoryLeft
 
-        let localArraySize2 =
-            localMemoryLeft / optionTypeClSizeInBytes
-            |> Utils.floorToMultiple workGroupSize
-
-        let kernel1 =
+        let multiplyValues =
             <@ fun (ndRange: Range1D) matrixLength (matrixColumns: ClArray<int>) (matrixValues: ClArray<'a>) (vectorValues: ClArray<'b option>) (intermediateArray: ClArray<'c option>) ->
 
                 let i = ndRange.GlobalID0
@@ -44,7 +35,7 @@ module Vector =
                 if i < matrixLength then
                     intermediateArray.[i] <- (%mul) (Some value) vectorValues.[column] @>
 
-        let kernel2 =
+        let reduceValuesByRows =
             <@ fun (ndRange: Range1D) (numberOfRows: int) (intermediateArray: ClArray<'c option>) (matrixPtr: ClArray<int>) (outputVector: ClArray<'c option>) ->
 
                 let gid = ndRange.GlobalID0
@@ -54,7 +45,7 @@ module Vector =
                     let threadsPerBlock =
                         min (numberOfRows - gid + lid) workGroupSize //If number of rows left is lesser than number of threads in a block
 
-                    let localPtr = localArray<int> localArraySize1
+                    let localPtr = localArray<int> localPointersArraySize
                     localPtr.[lid] <- matrixPtr.[gid]
 
                     if lid = 0 then
@@ -62,10 +53,12 @@ module Vector =
 
                     barrierLocal ()
 
-                    let localValues = localArray<'c option> localArraySize2
+                    let localValues =
+                        localArray<'c option> localValuesArraySize
+
                     let workEnd = localPtr.[threadsPerBlock]
                     let mutable blockLowerBound = localPtr.[0]
-                    let numberOfBlocksFitting = localArraySize2 / threadsPerBlock
+                    let numberOfBlocksFitting = localValuesArraySize / threadsPerBlock
                     let workPerIteration = threadsPerBlock * numberOfBlocksFitting
 
                     let mutable sum: 'c option = None
@@ -90,18 +83,17 @@ module Vector =
                             let rowEnd =
                                 min (localPtr.[lid + 1] - blockLowerBound) workPerIteration
 
-                            for jj in rowStart .. rowEnd - 1 do
-                                match (%add) sum localValues.[jj] with
-                                | Some v -> sum <- Some v
-                                | None -> sum <- None
+                            for j in rowStart .. rowEnd - 1 do
+                                let newSum = (%add) sum localValues.[j] //For some reason sum <- (%add) ... causes Brahma exception
+                                sum <- newSum
 
                         blockLowerBound <- blockLowerBound + workPerIteration
 
                     if gid < numberOfRows then
                         outputVector.[gid] <- sum @>
 
-        let kernel1 = clContext.Compile kernel1
-        let kernel2 = clContext.Compile kernel2
+        let multiplyValues = clContext.Compile multiplyValues
+        let reduceValuesByRows = clContext.Compile reduceValuesByRows
 
         fun (queue: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) (vector: ClArray<'b option>) ->
 
@@ -121,15 +113,21 @@ module Vector =
                     allocationMode = AllocationMode.Default
                 )
 
-            let kernel1 = kernel1.GetKernel()
+            let multiplyValues = multiplyValues.GetKernel()
 
             queue.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel1.KernelFunc ndRange1 matrixLength matrix.Columns matrix.Values vector intermediateArray)
+                        multiplyValues.KernelFunc
+                            ndRange1
+                            matrixLength
+                            matrix.Columns
+                            matrix.Values
+                            vector
+                            intermediateArray)
             )
 
-            queue.Post(Msg.CreateRunMsg<_, _>(kernel1))
+            queue.Post(Msg.CreateRunMsg<_, _>(multiplyValues))
 
             let outputArray =
                 clContext.CreateClArray<'c option>(
@@ -139,15 +137,20 @@ module Vector =
                     allocationMode = AllocationMode.Default
                 )
 
-            let kernel2 = kernel2.GetKernel()
+            let reduceValuesByRows = reduceValuesByRows.GetKernel()
 
             queue.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel2.KernelFunc ndRange2 matrix.RowCount intermediateArray matrix.RowPointers outputArray)
+                        reduceValuesByRows.KernelFunc
+                            ndRange2
+                            matrix.RowCount
+                            intermediateArray
+                            matrix.RowPointers
+                            outputArray)
             )
 
-            queue.Post(Msg.CreateRunMsg<_, _>(kernel2))
+            queue.Post(Msg.CreateRunMsg<_, _>(reduceValuesByRows))
 
             queue.Post(Msg.CreateFreeMsg intermediateArray)
 
