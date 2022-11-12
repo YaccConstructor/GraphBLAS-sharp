@@ -92,7 +92,7 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArray<'a>(
+                clContext.CreateClArray<'c>(
                     length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -183,7 +183,7 @@ module SparseVector =
         let merge = merge clContext workGroupSize
 
         let prepare =
-            preparePositions clContext preparePositionsKernel workGroupSize
+            preparePositions<'a, 'b , 'c> clContext preparePositionsKernel workGroupSize
 
         let setPositions = setPositions clContext workGroupSize
 
@@ -211,10 +211,10 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeasOne (clContext: ClContext) (opAdd:  Expr<(AtLeastOne<'a,'b> -> 'c option)>) (workGroupSize: int) =
+    let elementWiseAtLeasOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a,'b> -> 'c option>) (workGroupSize: int) =
         elementWiseGeneral clContext (ElementwiseConstructor.preparePositionsAtLeastOne opAdd) workGroupSize
 
-    let elementWise (clContext: ClContext) opAdd (workGroupSize: int) =
+    let elementWise (clContext: ClContext) (opAdd: Expr<'a option ->'b option -> 'c option>) (workGroupSize: int) =
         elementWiseGeneral clContext (ElementwiseConstructor.preparePositions opAdd) workGroupSize
 
     let private preparePositionsFillSubVector<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>

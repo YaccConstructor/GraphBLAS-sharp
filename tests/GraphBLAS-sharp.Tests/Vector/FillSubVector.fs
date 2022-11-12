@@ -2,11 +2,10 @@ module Backend.Vector.FillSubVector
 
 open Expecto
 open Expecto.Logging
-open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
-open OpenCL.Net
 
 let logger = Log.create "Vector.fillSubVector.Tests"
 
@@ -52,13 +51,12 @@ let checkResult
     | _ -> failwith "Vector format must be Sparse."
 
 let makeTest<'a, 'b when 'a: struct and 'b: struct>
-    vectorIsZero
+    vectorIsEqual
     maskIsEqual
     vectorZero
     maskZero
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<Msg> -> ClVector<'a> -> ClVector<'b> -> 'a -> ClVector<'a>)
-    (maskFormat: VectorFormat)
+    (fillVector: MailboxProcessor<Msg> -> ClVector<'a> -> ClVector<'b> -> ClCell<'a> -> ClVector<'a>)
     (isValueValid: 'a -> bool)
     case
     (vector: 'a [], mask: 'b [])
@@ -66,7 +64,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     =
 
     let vectorNNZ =
-        NNZCountCount vector (vectorIsZero vectorZero)
+        NNZCountCount vector (vectorIsEqual vectorZero)
 
     let maskNNZ =
         NNZCountCount mask (maskIsEqual maskZero)
@@ -76,18 +74,22 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         let context = case.ClContext.ClContext
 
         let leftVector =
-            createVectorFromArray case.Format vector (vectorIsZero vectorZero)
+            createVectorFromArray case.Format vector (vectorIsEqual vectorZero)
 
         let maskVector =
-            createVectorFromArray maskFormat mask (maskIsEqual maskZero)
+            createVectorFromArray case.Format mask (maskIsEqual maskZero)
 
         let clLeftVector = leftVector.ToDevice context
 
         let clMaskVector = maskVector.ToDevice context
 
         try
+            let clValue = context.CreateClCell value
+
             let clActual =
-                fillVector q clLeftVector clMaskVector value
+                fillVector q clLeftVector clMaskVector clValue
+
+            clValue.Dispose ()
 
             let cooClActual = toCoo q clActual
 
@@ -98,7 +100,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
             clActual.Dispose q
             cooClActual.Dispose q
 
-            checkResult vectorIsZero maskIsEqual vectorZero maskZero actual vector mask value
+            checkResult vectorIsEqual maskIsEqual vectorZero maskZero actual vector mask value
         with
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
@@ -106,8 +108,8 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
 let testFixtures case =
     let config = defaultConfig
 
-    let getCorrectnessTestName datatype maskFormat =
-        $"Correctness on %s{datatype}, vector: %A{case.Format}, mask: %s{maskFormat}"
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, vector: %A{case.Format}"
 
     let wgSize = 32
     let context = case.ClContext.ClContext
@@ -115,69 +117,37 @@ let testFixtures case =
     let floatIsEqual x y =
         abs (x - y) < Accuracy.medium.absolute || x = y
 
-    [ let intFill = Vector.fillSubVector context wgSize
+    [ let intFill = Vector.fillSubVector context StandardOperations.mask wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Sparse (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "int" "Sparse")
+      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true)
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatFill = Vector.fillSubVector context wgSize
-
-      let floatToCoo = Vector.toSparse context wgSize
-
-      case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Sparse System.Double.IsNormal
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "Sparse")
-
-      let byteFill = Vector.fillSubVector context wgSize
-
-      let byteToCoo = Vector.toSparse context wgSize
-
-      case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Sparse (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Sparse")
-
-      let boolFill = Vector.fillSubVector context wgSize
-
-      let boolToCoo = Vector.toSparse context wgSize
-
-      case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Sparse (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Sparse")
-
-      let intFill = Vector.fillSubVector context wgSize
-
-      let intToCoo = Vector.toSparse context wgSize
-
-      case
-      |> makeTest (=) (=) 0 0 intToCoo intFill VectorFormat.Dense (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "int" "Dense")
-
-      let floatFill = Vector.fillSubVector context wgSize
+      let floatFill = Vector.fillSubVector context StandardOperations.mask wgSize
 
       let floatToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill VectorFormat.Dense System.Double.IsNormal
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "Dense")
+      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteFill = Vector.fillSubVector context wgSize
+      let byteFill = Vector.fillSubVector context StandardOperations.mask wgSize
 
       let byteToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill VectorFormat.Dense (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "Dense")
+      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true)
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let boolFill = Vector.fillSubVector context wgSize
+      let boolFill = Vector.fillSubVector context StandardOperations.mask wgSize
 
       let boolToCoo = Vector.toSparse context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill VectorFormat.Dense (fun item -> true)
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "Dense") ]
+      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true)
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"

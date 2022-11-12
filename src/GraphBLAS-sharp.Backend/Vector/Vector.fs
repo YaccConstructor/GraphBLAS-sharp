@@ -95,60 +95,63 @@ module Vector =
                 ClVectorDense <| toDense processor vector
 
     let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
-        let addCoo =
-            SparseVector.elementWiseAtLeasOne clContext opAdd workGroupSize //TODO()
+        let addSparse =
+            SparseVector.elementWiseAtLeasOne clContext opAdd workGroupSize
 
         let addDense =
             DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
-            | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addCoo processor left right
+            | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addSparse processor left right
             | ClVectorDense left, ClVectorDense right -> ClVectorDense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
     let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) (workGroupSize: int) =
         let addDense = DenseVector.elementWise clContext opAdd workGroupSize
 
+        let addSparse = SparseVector.elementWise clContext opAdd workGroupSize
+
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
-            | ClVectorDense leftVector, ClVectorDense rightVector -> addDense processor leftVector rightVector
+            | ClVectorDense leftVector, ClVectorDense rightVector -> ClVectorDense <| addDense processor leftVector rightVector
+            | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addSparse processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) mask (workGroupSize: int) =
-        let cooFillVector =
-            SparseVector.fillSubVector clContext mask workGroupSize
+    let fillSubVector (clContext: ClContext) maskOp (workGroupSize: int) =
+        let sparseFillVector =
+            SparseVector.fillSubVector clContext maskOp workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext mask workGroupSize
+            DenseVector.fillSubVector clContext maskOp workGroupSize
 
-        let toCooVector =
+        let toSparseVector =
             DenseVector.toSparse clContext workGroupSize
 
-        let toCooMask =
+        let toSparseMask =
             DenseVector.toSparse clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
             match vector, maskVector with
             | ClVectorSparse vector, ClVectorSparse mask ->
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| sparseFillVector processor vector mask value
             | ClVectorSparse vector, ClVectorDense mask ->
-                let mask = toCooMask processor mask
+                let mask = toSparseMask processor mask
 
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| sparseFillVector processor vector mask value
             | ClVectorDense vector, ClVectorSparse mask ->
-                let vector = toCooVector processor vector
+                let vector = toSparseVector processor vector
 
                 ClVectorSparse
-                <| cooFillVector processor vector mask value
+                <| sparseFillVector processor vector mask value
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
                 <| denseFillVector processor vector mask value
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
-        let cooReduce =
+        let sparseReduce =
             SparseVector.reduce clContext workGroupSize opAdd
 
         let denseReduce =
@@ -156,5 +159,5 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorSparse vector -> cooReduce processor vector
+            | ClVectorSparse vector -> sparseReduce processor vector
             | ClVectorDense vector -> denseReduce processor vector
