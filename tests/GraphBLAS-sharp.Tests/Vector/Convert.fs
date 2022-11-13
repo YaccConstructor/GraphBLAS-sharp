@@ -13,8 +13,12 @@ let logger =
 let config = defaultConfig
 let wgSize = 32
 
+let NNZCount array isZero =
+    Array.filter (fun item -> not <| isZero item) array
+    |> Array.length
+
 let makeTest formatFrom (convertFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>) isZero case (array: 'a []) =
-    if array.Length > 0 then
+    if array.Length > 0 && NNZCount array isZero > 0 then
         let context = case.ClContext.ClContext
         let q = case.ClContext.Queue
 

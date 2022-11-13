@@ -26,23 +26,21 @@ module Vector =
             | Dense -> ClVectorDense <| zeroCreate processor size
 
     let ofList (clContext: ClContext) =
-        fun (format: VectorFormat) (elements: (int * 'a) list) ->
+        fun (format: VectorFormat) size (elements: (int * 'a) list) ->
             let indices, values =
                 elements
                 |> Array.ofList
                 |> Array.sortBy fst
                 |> Array.unzip
 
-            let resultLenght = (Array.max indices) + 1
-
             match format with
             | Sparse ->
                 SparseVector
-                    .FromTuples(indices, values, resultLenght)
+                    .FromTuples(indices, values, size)
                     .ToDevice clContext
                 |> ClVectorSparse
             | Dense ->
-                let res = Array.zeroCreate resultLenght
+                let res = Array.zeroCreate size
 
                 for i in 0 .. indices.Length - 1 do
                     res.[indices.[i]] <- Some(values.[i])
@@ -72,7 +70,7 @@ module Vector =
 
     let toSparse (clContext: ClContext) (workGroupSize: int) =
         let toSparse =
-            DenseVector.DenseVector.toSparse clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
@@ -89,10 +87,8 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
-            | ClVectorDense vector ->
-                ClVectorDense <| copy processor vector
-            | ClVectorSparse vector ->
-                ClVectorDense <| toDense processor vector
+            | ClVectorDense vector -> ClVectorDense <| copy processor vector
+            | ClVectorSparse vector -> ClVectorDense <| toDense processor vector
 
     let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addSparse =
@@ -108,13 +104,17 @@ module Vector =
             | _ -> failwith "Vector formats are not matching."
 
     let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) (workGroupSize: int) =
-        let addDense = DenseVector.elementWise clContext opAdd workGroupSize
+        let addDense =
+            DenseVector.elementWise clContext opAdd workGroupSize
 
-        let addSparse = SparseVector.elementWise clContext opAdd workGroupSize
+        let addSparse =
+            SparseVector.elementWise clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
-            | ClVectorDense leftVector, ClVectorDense rightVector -> ClVectorDense <| addDense processor leftVector rightVector
+            | ClVectorDense leftVector, ClVectorDense rightVector ->
+                ClVectorDense
+                <| addDense processor leftVector rightVector
             | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addSparse processor left right
             | _ -> failwith "Vector formats are not matching."
 
@@ -146,6 +146,38 @@ module Vector =
 
                 ClVectorSparse
                 <| sparseFillVector processor vector mask value
+            | ClVectorDense vector, ClVectorDense mask ->
+                ClVectorDense
+                <| denseFillVector processor vector mask value
+
+    let fillSubVectorComplemented (clContext: ClContext) maskOp (workGroupSize: int) =
+        let denseFillVector =
+            DenseVector.fillSubVector clContext maskOp workGroupSize
+
+        let vectorToDense =
+            SparseVector.toDense clContext workGroupSize
+
+        let maskToDense =
+            SparseVector.toDense clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
+            match leftVector, maskVector with
+            | ClVectorSparse vector, ClVectorSparse mask ->
+                let denseVector = vectorToDense processor vector
+                let denseMask = maskToDense processor mask
+
+                ClVectorDense
+                <| denseFillVector processor denseVector denseMask value
+            | ClVectorDense vector, ClVectorSparse mask ->
+                let denseMask = maskToDense processor mask
+
+                ClVectorDense
+                <| denseFillVector processor vector denseMask value
+            | ClVectorSparse vector, ClVectorDense mask ->
+                let denseVector = vectorToDense processor vector
+
+                ClVectorDense
+                <| denseFillVector processor denseVector mask value
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
                 <| denseFillVector processor vector mask value

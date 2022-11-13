@@ -7,8 +7,7 @@ open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
 
-let logger =
-    Log.create "Vector.ElementWise.Tests"
+let logger = Log.create "Vector.ElementWise.Tests"
 
 let config = defaultConfig
 
@@ -16,14 +15,7 @@ let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
 
-let checkResult
-    isEqual
-    resultZero
-    (op: 'a -> 'b -> 'c)
-    (actual: Vector<'c>)
-    (leftArray: 'a [])
-    (rightArray: 'b [])
-    =
+let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (leftArray: 'a []) (rightArray: 'b []) =
 
     let expectedArrayLength = leftArray.Length
 
@@ -33,7 +25,8 @@ let checkResult
     for i in 0 .. expectedArrayLength - 1 do
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
-    let (VectorDense expected) = createVectorFromArray Dense expectedArray (isEqual resultZero)
+    let (VectorDense expected) =
+        createVectorFromArray Dense expectedArray (isEqual resultZero)
 
     match actual with
     | VectorDense actual ->
@@ -102,8 +95,7 @@ let addTestFixtures case =
 
     let context = case.ClContext.ClContext
 
-    [ let intAddFun =
-          Vector.elementWise context intSum wgSize
+    [ let intAddFun = Vector.elementWise context intSum wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -141,7 +133,8 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
-let addTests = testsWithOperationCase addTestFixtures "Backend.Vector.ElementWiseAdd tests"
+let addTests =
+    testsWithOperationCase addTestFixtures "Backend.Vector.ElementWiseAdd tests"
 
 let mulTestFixtures case =
     let getCorrectnessTestName fstType sndType thrType =
@@ -151,8 +144,7 @@ let mulTestFixtures case =
 
     let context = case.ClContext.ClContext
 
-    [ let intMulFun =
-          Vector.elementWise context intMul wgSize
+    [ let intMulFun = Vector.elementWise context intMul wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -190,4 +182,5 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
-let mulTests = testsWithOperationCase<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseMul tests"
+let mulTests =
+    testsWithOperationCase<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseMul tests"

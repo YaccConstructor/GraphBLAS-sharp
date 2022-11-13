@@ -9,9 +9,15 @@ open OpenCL.Net
 
 let logger = Log.create "Vector.ofList.Tests"
 
-let checkResult (isEqual: 'a -> 'a -> bool) (expectedIndices: int []) (expectedValues: 'a []) (actual: Vector<'a>) =
+let checkResult
+    (isEqual: 'a -> 'a -> bool)
+    (expectedIndices: int [])
+    (expectedValues: 'a [])
+    (actual: Vector<'a>)
+    actualSize
+    =
 
-    Expect.equal actual.Size (Array.max expectedIndices + 1) "lengths must be the same"
+    Expect.equal actual.Size actualSize "lengths must be the same"
 
     match actual with
     | VectorSparse actual ->
@@ -21,10 +27,11 @@ let checkResult (isEqual: 'a -> 'a -> bool) (expectedIndices: int []) (expectedV
 
 let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)
-    (ofList: VectorFormat -> (int * 'a) list -> ClVector<'a>)
+    (ofList: VectorFormat -> int -> (int * 'a) list -> ClVector<'a>)
     (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (elements: (int * 'a) [])
+    (sizeDelta: int)
     =
 
     let elements =
@@ -40,7 +47,9 @@ let correctnessGenericTest<'a when 'a: struct>
             |> Array.sortBy fst
             |> Array.unzip
 
-        let clActual = ofList case.Format elements
+        let actualSize = (Array.max indices) + abs sizeDelta + 1
+
+        let clActual = ofList case.Format actualSize elements
 
         let clCooActual = toCoo q clActual
 
@@ -49,7 +58,7 @@ let correctnessGenericTest<'a when 'a: struct>
         clActual.Dispose q
         clCooActual.Dispose q
 
-        checkResult isEqual indices values actual
+        checkResult isEqual indices values actual actualSize
 
 let testFixtures (case: OperationCase<VectorFormat>) =
     [ let config = defaultConfig

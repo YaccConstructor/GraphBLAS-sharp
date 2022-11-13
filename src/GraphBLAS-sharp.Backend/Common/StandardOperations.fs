@@ -117,5 +117,21 @@ module StandardOperations =
     let complementedMask<'a, 'b when 'a: struct and 'b: struct> =
         <@ fun (left: 'a option) (right: 'b option) value ->
             match left, right with
-            | _, Some _-> left
+            | _, Some _ -> left
             | _ -> Some value @>
+
+    let atLeastOneToNormalForm op =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) ->
+            match leftItem, rightItem with
+            | Some left, Some right -> (%op) (Both(left, right))
+            | None, Some right -> (%op) (Right right)
+            | Some left, None -> (%op) (Left left)
+            | None, None -> None @>
+
+    let fillSubVectorAtLeastOneToNormalForm op =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match leftItem, rightItem with
+            | Some left, Some right -> (%op) (Both(left, right)) value
+            | None, Some right -> (%op) (Right right) value
+            | Some left, None -> (%op) (Left left) value
+            | None, None -> None @>

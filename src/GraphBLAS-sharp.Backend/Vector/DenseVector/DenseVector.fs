@@ -12,10 +12,17 @@ module DenseVector =
         (workGroupSize: int)
         =
 
-        let kernel = clContext.Compile(ElementwiseConstructor.kernel opAdd)
+        let elementWise =
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < resultLength then
+                    resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
+
+        let kernel = clContext.Compile(elementWise)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
-
             let resultVector =
                 clContext.CreateClArray(
                     leftVector.Length,
@@ -39,18 +46,27 @@ module DenseVector =
             resultVector
 
     let elementWiseAtLeastOne clContext op workGroupSize =
-        elementWise clContext (ElementwiseConstructor.atLeastOneToNormalForm op) workGroupSize
+        elementWise clContext (StandardOperations.atLeastOneToNormalForm op) workGroupSize
 
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
-        (workGroupSize: int)  =
+        (workGroupSize: int)
+        =
 
-        let kernel = clContext.Compile(ElementwiseConstructor.fillSubVectorKernel maskOp)
+        let fillSubVectorKernel =
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) (resultVector: ClArray<'a option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < resultLength then
+                    resultVector.[gid] <- (%maskOp) leftVector.[gid] maskVector.[gid] value.Value @>
+
+        let kernel = clContext.Compile(fillSubVectorKernel)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
-            let resultArray =
-                clContext.CreateClArray(
+            let resultVector =
+                clContext.CreateClArray<'a option>(
                     leftVector.Length,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -63,14 +79,16 @@ module DenseVector =
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(fun () ->
-                    kernel.KernelFunc ndRange leftVector.Length leftVector maskVector value resultArray)
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector maskVector value resultVector)
             )
 
-            resultArray
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultVector
 
     let fillSubVectorAtLeasOne clContext opAdd workGroupSize =
-        fillSubVector clContext (ElementwiseConstructor.fillSubVectorAtLeastOneToNormalForm opAdd) workGroupSize
+        fillSubVector clContext (StandardOperations.fillSubVectorAtLeastOneToNormalForm opAdd) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
@@ -87,7 +105,6 @@ module DenseVector =
         let kernel = clContext.Compile(getPositions)
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
-
             let positions =
                 clContext.CreateClArray(
                     vector.Length,

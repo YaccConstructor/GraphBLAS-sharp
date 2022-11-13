@@ -11,9 +11,15 @@ let logger = Log.create "Vector.fillSubVector.Tests"
 
 let clContext = defaultContext.ClContext
 
-let NNZCountCount array isZero =
+let NNZCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
+
+let complemented isComplemented value =
+    if isComplemented then
+        not value
+    else
+        value
 
 let checkResult
     (resultIsEqual: 'a -> 'a -> bool)
@@ -27,19 +33,19 @@ let checkResult
     (value: 'a)
     =
 
-    let expectedArray =
-        Array.create vector.Length vectorZero
+    let expectedArray = Array.create vector.Length vectorZero
+
+    let complemented = complemented isComplemented
 
     for i in 0 .. vector.Length - 1 do
-        if not <| maskIsEqual mask.[i] maskZero && not isComplemented then
+        if complemented (not <| maskIsEqual mask.[i] maskZero) then
             expectedArray.[i] <- value
         else
             expectedArray.[i] <- vector.[i]
 
     match actual with
     | VectorSparse actual ->
-        let actualArray =
-            Array.create vector.Length vectorZero
+        let actualArray = Array.create vector.Length vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do
             actualArray.[actual.Indices.[i]] <- actual.Values.[i]
@@ -63,10 +69,9 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     =
 
     let vectorNNZ =
-        NNZCountCount vector (vectorIsEqual vectorZero)
+        NNZCount vector (vectorIsEqual vectorZero)
 
-    let maskNNZ =
-        NNZCountCount mask (maskIsEqual maskZero)
+    let maskNNZ = NNZCount mask (maskIsEqual maskZero)
 
     if vectorNNZ > 0 && maskNNZ > 0 && isValueValid value then
         let q = case.ClContext.Queue
@@ -83,12 +88,10 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
         let clMaskVector = maskVector.ToDevice context
 
         try
-            let clValue = context.CreateClCell value
+            let clValue = context.CreateClCell<'a> value
 
             let clActual =
                 fillVector q clLeftVector clMaskVector clValue
-
-            clValue.Dispose ()
 
             let cooClActual = toCoo q clActual
 
@@ -118,7 +121,8 @@ let testFixtures case =
 
     let isComplemented = false
 
-    [ let intFill = Vector.fillSubVector context StandardOperations.mask wgSize
+    [ let intFill =
+          Vector.fillSubVector context StandardOperations.mask wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
@@ -126,7 +130,8 @@ let testFixtures case =
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatFill = Vector.fillSubVector context StandardOperations.mask wgSize
+      let floatFill =
+          Vector.fillSubVector context StandardOperations.mask wgSize
 
       let floatToCoo = Vector.toSparse context wgSize
 
@@ -134,7 +139,8 @@ let testFixtures case =
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteFill = Vector.fillSubVector context StandardOperations.mask wgSize
+      let byteFill =
+          Vector.fillSubVector context StandardOperations.mask wgSize
 
       let byteToCoo = Vector.toSparse context wgSize
 
@@ -142,7 +148,8 @@ let testFixtures case =
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let boolFill = Vector.fillSubVector context StandardOperations.mask wgSize
+      let boolFill =
+          Vector.fillSubVector context StandardOperations.mask wgSize
 
       let boolToCoo = Vector.toSparse context wgSize
 
@@ -152,7 +159,6 @@ let testFixtures case =
 
 let tests =
     testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"
-
 
 let testFixturesComplemented case =
     let config = defaultConfig
@@ -168,7 +174,8 @@ let testFixturesComplemented case =
 
     let isComplemented = true
 
-    [ let intFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+    [ let intFill =
+          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
@@ -176,7 +183,8 @@ let testFixturesComplemented case =
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+      let floatFill =
+          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
 
       let floatToCoo = Vector.toSparse context wgSize
 
@@ -184,7 +192,8 @@ let testFixturesComplemented case =
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+      let byteFill =
+          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
 
       let byteToCoo = Vector.toSparse context wgSize
 
@@ -192,10 +201,14 @@ let testFixturesComplemented case =
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let boolFill = Vector.fillSubVector context StandardOperations.complementedMask wgSize
+      let boolFill =
+          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
 
       let boolToCoo = Vector.toSparse context wgSize
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+
+let complementedTests =
+    testsWithOperationCase<VectorFormat> testFixturesComplemented "Backend.Vector.fillSubVectorComplemented tests"
