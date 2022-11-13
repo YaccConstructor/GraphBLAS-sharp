@@ -15,13 +15,6 @@ module Reduce =
 
                 let localValues = localArray<'a> workGroupSize
 
-                // let i = (gid - lid) * 2 + lid
-
-                // if i + workGroupSize < length then
-                //     localValues.[lid] <- (%opAdd) inputArray.[i] inputArray.[i + workGroupSize]
-                // elif i < length then
-                //     localValues.[lid] <- inputArray.[i]
-
                 if gid < length then
                     localValues.[lid] <- inputArray.[gid]
 

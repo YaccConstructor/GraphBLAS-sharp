@@ -27,14 +27,14 @@
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
         <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
-        <Compile Include="Vector\ZeroCreate.fs" />
-        <Compile Include="Vector\OfList.fs" />
-        <Compile Include="Vector\Copy.fs" />
-        <Compile Include="Vector\FillSubVector.fs" />
-        <Compile Include="Vector\ElementWiseAtLeasOne.fs" />
-        <Compile Include="Vector\Convert.fs" />
-        <Compile Include="Vector\Reduce.fs" />
-        <Compile Include="Vector\ElementWise.fs" />
+        <Compile Include="Vector/ZeroCreate.fs" />
+        <Compile Include="Vector/OfList.fs" />
+        <Compile Include="Vector/Copy.fs" />
+        <Compile Include="Vector/FillSubVector.fs" />
+        <Compile Include="Vector/ElementWiseAtLeasOne.fs" />
+        <Compile Include="Vector/Convert.fs" />
+        <Compile Include="Vector/Reduce.fs" />
+        <Compile Include="Vector/ElementWise.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
