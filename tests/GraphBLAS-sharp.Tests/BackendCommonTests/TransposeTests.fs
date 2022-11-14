@@ -6,6 +6,7 @@ open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests.TestCases
 open OpenCL.Net
 
 let logger = Log.create "Transpose.Tests"
@@ -121,7 +122,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.MatrixCase
+        sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.ClContext
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -173,18 +174,4 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
 let tests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
-    |> List.collect testFixtures
-    |> testList "Transpose tests"
+    matrixOperationGPUTests "Transpose tests" testFixtures

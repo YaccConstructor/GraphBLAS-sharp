@@ -8,7 +8,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Tests.Utils
 open Microsoft.FSharp.Collections
 open OpenCL.Net
@@ -52,7 +52,7 @@ let correctnessGenericTest
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q
-    (case: OperationCase)
+    (case: MatrixOperationCase)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
 
@@ -135,21 +135,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
-    |> List.collect testFixturesEWiseAdd
-    |> testList "Backend.Matrix.EWiseAdd tests"
+    matrixOperationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -199,21 +185,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
-    |> List.collect testFixturesEWiseAddAtLeastOne
-    |> testList "Backend.Matrix.EWiseAddAtLeastOne tests"
+    matrixOperationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
     [ let config = defaultConfig
@@ -263,21 +235,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneToCOOTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
-    |> List.collect testFixturesEWiseAddAtLeastOneToCOO
-    |> testList "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
+    matrixOperationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
 let testFixturesEWiseMulAtLeastOne case =
     [ let config = defaultConfig
@@ -327,18 +285,4 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseMulAtLeastOneTests =
-    testCases
-    |> List.filter
-        (fun case ->
-            let mutable e = ErrorCode.Unknown
-            let device = case.ClContext.ClContext.ClDevice.Device
-
-            let deviceType =
-                Cl
-                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                    .CastTo<DeviceType>()
-
-            deviceType = DeviceType.Gpu)
-    |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.MatrixCase)
-    |> List.collect testFixturesEWiseMulAtLeastOne
-    |> testList "Backend.Matrix.eWiseMulAtLeastOne tests"
+    matrixOperationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne
