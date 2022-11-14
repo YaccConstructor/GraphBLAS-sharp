@@ -102,7 +102,7 @@ module StandardOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let atLeastOneToNormalForm op =
+    let atLeastOneToOption op =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) ->
             match leftItem, rightItem with
             | Some left, Some right -> (%op) (Both(left, right))

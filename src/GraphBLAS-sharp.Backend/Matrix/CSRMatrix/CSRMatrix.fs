@@ -126,7 +126,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwiseWithCOO clContext (StandardOperations.atLeastOneToNormalForm opAdd) workGroupSize
+        elementwiseWithCOO clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
@@ -232,7 +232,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwiseToCOO clContext (StandardOperations.atLeastOneToNormalForm opAdd) workGroupSize
+        elementwiseToCOO clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let elementwiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -240,7 +240,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwise clContext (StandardOperations.atLeastOneToNormalForm opAdd) workGroupSize
+        elementwise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let spgemmCSC
         (clContext: ClContext)

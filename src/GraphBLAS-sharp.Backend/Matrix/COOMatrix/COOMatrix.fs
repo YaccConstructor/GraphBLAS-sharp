@@ -507,7 +507,7 @@ module COOMatrix =
         workGroupSize
         =
 
-        elementwise clContext (StandardOperations.atLeastOneToNormalForm opAdd) workGroupSize
+        elementwise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
