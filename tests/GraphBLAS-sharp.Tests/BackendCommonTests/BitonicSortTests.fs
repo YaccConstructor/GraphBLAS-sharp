@@ -6,6 +6,7 @@ open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests.Context
 
 let logger = Log.create "BitonicSort.Tests"
 
