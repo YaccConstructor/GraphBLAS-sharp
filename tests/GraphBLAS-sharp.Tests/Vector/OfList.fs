@@ -2,11 +2,11 @@ module Backend.Vector.OfList
 
 open Expecto
 open Expecto.Logging
-open Brahma.FSharp
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
-open OpenCL.Net
-
+open Context
+open TestCases
 let logger = Log.create "Vector.ofList.Tests"
 
 let checkResult
@@ -107,4 +107,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.ofList tests"
+    operationGPUTests "Backend.Vector.ofList tests" testFixtures

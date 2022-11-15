@@ -2,12 +2,12 @@ module Backend.Vector.ElementWiseAtLeastOne
 
 open Expecto
 open Expecto.Logging
-open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
-open OpenCL.Net
+open TestCases
 
 let logger =
     Log.create "Vector.ElementWiseAtLeasOneMul.Tests"
@@ -147,7 +147,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
-    testsWithOperationCase<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseAtLeasOneAdd tests"
+    operationGPUTests "Backend.Vector.ElementWiseAtLeasOneAdd tests" addTestFixtures
 
 let mulTestFixtures case =
     let config = defaultConfig
@@ -199,5 +199,5 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =
-    testsWithOperationCase<VectorFormat> mulTestFixtures "Backend.Vector.ElementWiseAtLeasOneMul tests"
+    operationGPUTests "Backend.Vector.ElementWiseAtLeasOneMul tests" mulTestFixtures
 

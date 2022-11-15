@@ -3,9 +3,11 @@ module Backend.Vector.ElementWise
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend.Common
 open StandardOperations
+open TestCases
 
 let logger = Log.create "Vector.ElementWise.Tests"
 
@@ -134,7 +136,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addTests =
-    testsWithOperationCase addTestFixtures "Backend.Vector.ElementWiseAdd tests"
+    operationGPUTests "Backend.Vector.ElementWiseAdd tests" addTestFixtures
 
 let mulTestFixtures case =
     let getCorrectnessTestName fstType sndType thrType =
@@ -183,4 +185,4 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulTests =
-    testsWithOperationCase<VectorFormat> addTestFixtures "Backend.Vector.ElementWiseMul tests"
+    operationGPUTests "Backend.Vector.ElementWiseMul tests" addTestFixtures

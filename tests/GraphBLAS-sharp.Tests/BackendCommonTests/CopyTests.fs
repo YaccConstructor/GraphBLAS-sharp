@@ -9,10 +9,10 @@ open GraphBLAS.FSharp.Tests
 
 let logger = Log.create "Copy.Tests"
 
-let context = Utils.defaultContext.ClContext
+let context = Context.defaultContext.ClContext
 
 let testCases =
-    let q = Utils.defaultContext.Queue
+    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let getCopyFun copy =

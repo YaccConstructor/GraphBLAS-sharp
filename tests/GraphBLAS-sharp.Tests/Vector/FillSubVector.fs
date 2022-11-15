@@ -4,12 +4,14 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
+open TestCases
 
 let logger = Log.create "Vector.fillSubVector.Tests"
 
-let clContext = defaultContext.ClContext
+let clContext = Context.defaultContext.ClContext
 
 let NNZCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
@@ -158,7 +160,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.fillSubVector tests"
+    operationGPUTests "Backend.Vector.fillSubVector tests" testFixtures
 
 let testFixturesComplemented case =
     let config = defaultConfig
@@ -211,4 +213,4 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =
-    testsWithOperationCase<VectorFormat> testFixturesComplemented "Backend.Vector.fillSubVectorComplemented tests"
+    operationGPUTests "Backend.Vector.fillSubVectorComplemented tests" testFixturesComplemented

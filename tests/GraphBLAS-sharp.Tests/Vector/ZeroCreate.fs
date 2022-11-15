@@ -3,8 +3,10 @@ module Backend.Vector.ZeroCreate
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open OpenCL.Net
+open Context
+open TestCases
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
@@ -76,4 +78,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.zeroCreate tests"
+    operationGPUTests "Backend.Vector.zeroCreate tests" testFixtures

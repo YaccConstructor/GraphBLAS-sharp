@@ -5,11 +5,12 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "Reduce.Tests"
 
-let context = defaultContext.ClContext
+let context = Context.defaultContext.ClContext
 
 let makeTest
     (q: MailboxProcessor<_>)
@@ -67,7 +68,7 @@ let tests =
     let config = defaultConfig
 
     let wgSize = 32
-    let q = defaultContext.Queue
+    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let filterFloats =

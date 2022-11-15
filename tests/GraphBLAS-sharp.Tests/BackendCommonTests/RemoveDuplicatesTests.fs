@@ -9,13 +9,13 @@ open GraphBLAS.FSharp.Tests
 
 let logger = Log.create "RemoveDuplicates.Tests"
 
-let context = Utils.defaultContext.ClContext
+let context = Context.defaultContext.ClContext
 
 let testCases =
     let removeDuplicates_wg_1 = ClArray.removeDuplications context 1
     let removeDuplicates_wg_2 = ClArray.removeDuplications context 2
     let removeDuplicates_wg_32 = ClArray.removeDuplications context 32
-    let q = Utils.defaultContext.Queue
+    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ testCase "Simple correctness test"

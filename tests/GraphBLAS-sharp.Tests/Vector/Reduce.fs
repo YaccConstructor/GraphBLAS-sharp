@@ -3,10 +3,11 @@ module Backend.Vector.Reduce
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open FSharp.Quotations
-open OpenCL.Net
+open TestCases
 
 let logger = Log.create "Vector.reduce.Tests"
 
@@ -135,4 +136,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.reduce tests"
+    operationGPUTests "Backend.Vector.reduce tests" testFixtures

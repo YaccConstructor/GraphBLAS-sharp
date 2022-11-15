@@ -1,18 +1,18 @@
 module Backend.Elementwise
 
-open System
-open Brahma.FSharp.OpenCL.Shared
+
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
-open OpenCL.Net
 open Backend.Common.StandardOperations
+open Context
+open TestCases
+open Utils
 
 let logger = Log.create "Elementwise.Tests"
 
@@ -135,7 +135,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddTests =
-    testsWithOperationCase testFixturesEWiseAdd "Backend.Matrix.EWiseAdd tests"
+    operationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -185,7 +185,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneTests =
-    testsWithOperationCase testFixturesEWiseAddAtLeastOne "Backend.Matrix.EWiseAddAtLeastOne tests"
+    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
     [ let config = defaultConfig
@@ -235,9 +235,9 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneToCOOTests =
-    testsWithOperationCase testFixturesEWiseAddAtLeastOneToCOO "Backend.Matrix.EWiseAddAtLeastOneToCOO tests"
+    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
-let testFixturesEWiseMulAtLeastOne case =
+let testFixturesEWiseMulAtLeastOne (case: OperationCase<MatrixFormat>) =
     [ let config = defaultConfig
       let wgSize = 32
 
@@ -285,4 +285,4 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseMulAtLeastOneTests =
-    testsWithOperationCase testFixturesEWiseMulAtLeastOne "Backend.Matrix.eWiseMulAtLeastOne tests"
+    operationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne

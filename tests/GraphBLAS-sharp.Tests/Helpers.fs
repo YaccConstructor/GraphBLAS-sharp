@@ -586,9 +586,6 @@ module Generators =
             |> Arb.fromGen
 
 module Utils =
-    type TestContext =
-        { ClContext: ClContext
-          Queue: MailboxProcessor<Msg> }
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
@@ -605,6 +602,40 @@ module Utils =
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
+    let createMatrixFromArray2D matrixCase array isZero =
+        match matrixCase with
+        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+        | CSC -> MatrixCSC <| CSCMatrix.FromArray2D(array, isZero)
+
+    let createVectorFromArray vectorCase array isZero =
+        match vectorCase with
+        | Backend.VectorFormat.Sparse ->
+            Backend.VectorSparse
+            <| Backend.SparseVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Dense ->
+            Backend.VectorDense
+            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
+
+    let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
+        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. actual.Length - 1 do
+            if not (areEqual actual.[i] expected.[i]) then
+                sprintf "%s. Arrays differ at position %A of %A. Actual value is %A, expected %A"
+                <| message
+                <| i
+                <| (actual.Length - 1)
+                <| actual.[i]
+                <| expected.[i]
+                |> failtestf "%s"
+
+    let listOfUnionCases<'a> =
+        FSharpType.GetUnionCases typeof<'a>
+        |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
+        |> List.ofArray
+
     let rec cartesian listOfLists =
         match listOfLists with
         | [ x ] -> List.fold (fun acc elem -> [ elem ] :: acc) [] x
@@ -617,10 +648,11 @@ module Utils =
                 (cartesian t)
         | _ -> []
 
-    let listOfUnionCases<'a> =
-        FSharpType.GetUnionCases typeof<'a>
-        |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
-        |> List.ofArray
+module Context =
+
+    type TestContext =
+        { ClContext: ClContext
+          Queue: MailboxProcessor<Msg> }
 
     let availableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
@@ -697,55 +729,11 @@ module Utils =
 
         { ClContext = context; Queue = queue }
 
-    type OperationCase<'a> = { ClContext: TestContext; Format: 'a }
-
-    let testCases<'a> =
-        let availableContexts = availableContexts "" |> List.ofSeq
-
-        let listOfUnionCases = listOfUnionCases<'a> |> List.ofSeq
-
-        availableContexts
-        |> List.collect (fun x -> listOfUnionCases |> List.map (fun y -> x, y))
-        |> List.map
-            (fun pair ->
-                { ClContext = fst pair
-                  Format = snd pair })
-
-    let createMatrixFromArray2D matrixCase array isZero =
-        match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-        | CSC -> MatrixCSC <| CSCMatrix.FromArray2D(array, isZero)
-
-    let createVectorFromArray vectorCase array isZero =
-        match vectorCase with
-        | Backend.VectorFormat.Sparse ->
-            Backend.VectorSparse
-            <| Backend.SparseVector.FromArray(array, isZero)
-        | Backend.VectorFormat.Dense ->
-            Backend.VectorDense
-            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
-
-    let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
-        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
-        |> Expect.equal actual.Length expected.Length
-
-        for i in 0 .. actual.Length - 1 do
-            if not (areEqual actual.[i] expected.[i]) then
-                sprintf "%s. Arrays differ at position %A of %A. Actual value is %A, expected %A"
-                <| message
-                <| i
-                <| (actual.Length - 1)
-                <| actual.[i]
-                <| expected.[i]
-                |> failtestf "%s"
-
-    let testsWithOperationCase<'a when 'a: equality> testFixtures name =
-        testCases<'a>
-        |> List.filter
-            (fun case ->
+    let gpuOnlyContextFilter =
+        Seq.filter
+            (fun (context: TestContext) ->
                 let mutable e = ErrorCode.Unknown
-                let device = case.ClContext.ClContext.ClDevice.Device
+                let device = context.ClContext.ClDevice.Device
 
                 let deviceType =
                     Cl
@@ -753,6 +741,42 @@ module Utils =
                         .CastTo<DeviceType>()
 
                 deviceType = DeviceType.Gpu)
-        |> List.distinctBy (fun case -> case.ClContext.ClContext.ClDevice.DeviceType, case.Format)
+
+module TestCases =
+
+    type OperationCase<'a> =
+        { ClContext: Context.TestContext
+          Format: 'a }
+
+    let defaultPlatformRegex = ""
+
+    let testCases contextFilter =
+        Context.availableContexts defaultPlatformRegex
+        |> contextFilter
+        |> List.ofSeq
+
+    let matrixTestCases<'a> contextFilter =
+        Context.availableContexts defaultPlatformRegex
+        |> contextFilter
+        |> List.ofSeq
+        |> List.collect
+            (fun x ->
+                Utils.listOfUnionCases<'a>
+                |> List.ofSeq
+                |> List.map (fun y -> x, y))
+        |> List.map
+            (fun pair ->
+                { ClContext = fst pair
+                  Format = snd pair })
+
+    let operationGPUTests name (testFixtures: OperationCase<'a> -> Test list) =
+        matrixTestCases<'a> Context.gpuOnlyContextFilter
+        |> List.distinctBy (fun case -> case.ClContext.ClContext, case.Format)
+        |> List.collect testFixtures
+        |> testList name
+
+    let gpuTests name testFixtures =
+        testCases Context.gpuOnlyContextFilter
+        |> List.distinctBy (fun testContext -> testContext.ClContext)
         |> List.collect testFixtures
         |> testList name

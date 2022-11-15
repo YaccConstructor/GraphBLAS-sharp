@@ -3,9 +3,10 @@ module Backend.Vector.Convert
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
-open OpenCL.Net
+open TestCases
 
 let logger =
     Log.create "Backend.Vector.Convert.Tests"
@@ -92,4 +93,4 @@ let testFixtures case =
         |> List.concat
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.Convert tests"
+    operationGPUTests "Backend.Vector.Convert tests" testFixtures

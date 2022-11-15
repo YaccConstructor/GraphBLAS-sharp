@@ -2,13 +2,14 @@ module Backend.Vector.Copy
 
 open Expecto
 open Expecto.Logging
-
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
+open TestCases
 
 let logger = Log.create "Vector.copy.Tests"
 
-let clContext = defaultContext.ClContext
+let clContext = Context.defaultContext.ClContext
 
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
 
@@ -95,4 +96,4 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
-    testsWithOperationCase<VectorFormat> testFixtures "Backend.Vector.copy tests"
+    operationGPUTests "Backend.Vector.copy tests" testFixtures

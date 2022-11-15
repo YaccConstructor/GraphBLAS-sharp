@@ -6,6 +6,7 @@ open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests.TestCases
 open OpenCL.Net
 
 let logger = Log.create "Transpose.Tests"
@@ -121,7 +122,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.Format
+        sprintf "Correctness on %s, %A, %A" datatype case.Format case.ClContext
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -173,4 +174,4 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
 let tests =
-    testsWithOperationCase testFixtures "Transpose tests"
+    operationGPUTests "Transpose tests" testFixtures
