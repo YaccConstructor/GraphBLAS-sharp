@@ -755,7 +755,7 @@ module TestCases =
         |> contextFilter
         |> List.ofSeq
 
-    let matrixTestCases<'a> contextFilter =
+    let getTestCases<'a> contextFilter =
         Context.availableContexts defaultPlatformRegex
         |> contextFilter
         |> List.ofSeq
@@ -770,7 +770,7 @@ module TestCases =
                   Format = snd pair })
 
     let operationGPUTests name (testFixtures: OperationCase<'a> -> Test list) =
-        matrixTestCases<'a> Context.gpuOnlyContextFilter
+        getTestCases<'a> Context.gpuOnlyContextFilter
         |> List.distinctBy (fun case -> case.ClContext.ClContext, case.Format)
         |> List.collect testFixtures
         |> testList name

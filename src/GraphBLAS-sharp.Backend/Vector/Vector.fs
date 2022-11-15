@@ -155,6 +155,7 @@ module Vector =
         (clContext: ClContext)
         (workGroupSize: int)
         =
+
         let denseFillVector =
             DenseVector.fillSubVector clContext (StandardOperations.fillSubComplementedToOption maskOp) workGroupSize
 
