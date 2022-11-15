@@ -1,9 +1,9 @@
-namespace GraphBLAS.FSharp.Backend.Common
+namespace GraphBLAS.FSharp.Backend
 
 open Brahma.FSharp
-open Microsoft.FSharp.Quotations
+open FSharp.Quotations
 
-module internal PrefixSum =
+module PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let update =
@@ -39,7 +39,6 @@ module internal PrefixSum =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
             processor.Post(Msg.CreateFreeMsg(mirror))
 
-
     let private scanGeneral
         beforeLocalSumClear
         writeData
@@ -47,6 +46,8 @@ module internal PrefixSum =
         (clContext: ClContext)
         workGroupSize
         =
+
+        let subSum = SubSum.treeSum opAdd
 
         let scan =
             <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<'a>) (verticesBuffer: ClArray<'a>) (totalSumBuffer: ClCell<'a>) (zero: ClCell<'a>) (mirror: ClCell<bool>) ->
@@ -69,22 +70,9 @@ module internal PrefixSum =
                 else
                     resultLocalBuffer.[localID] <- zero
 
-                let mutable step = 2
-
-                while step <= workGroupSize do
-                    barrierLocal ()
-
-                    if localID < workGroupSize / step then
-                        let i = step * (localID + 1) - 1
-
-                        let buff =
-                            (%opAdd) resultLocalBuffer.[i - (step >>> 1)] resultLocalBuffer.[i]
-
-                        resultLocalBuffer.[i] <- buff
-
-                    step <- step <<< 1
-
                 barrierLocal ()
+
+                (%subSum) workGroupSize localID resultLocalBuffer
 
                 if localID = workGroupSize - 1 then
                     if verticesLength <= 1 && localID = gid then
@@ -94,7 +82,7 @@ module internal PrefixSum =
                     (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength gid i
                     resultLocalBuffer.[localID] <- zero
 
-                step <- workGroupSize
+                let mutable step = workGroupSize
 
                 while step > 1 do
                     barrierLocal ()
@@ -222,79 +210,9 @@ module internal PrefixSum =
 
             inputArray, totalSum
 
-    /// <summary>
-    /// Exclude inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 0; 1; 2; 3 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
     let runExcludeInplace plus = runInplace false scanExclusive plus
 
-    /// <summary>
-    /// Include inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 1; 2; 3; 4 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
     let runIncludeInplace plus = runInplace false scanInclusive plus
-
-    let runExclude plus (clContext: ClContext) workGroupSize =
-
-        let runExcludeInplace =
-            runExcludeInplace plus clContext workGroupSize
-
-        let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
-
-            let outputArray = copy processor inputArray
-
-            runExcludeInplace processor outputArray totalSum zero
-
-    let runInclude plus (clContext: ClContext) workGroupSize =
-
-        let runIncludeInplace =
-            runIncludeInplace plus clContext workGroupSize
-
-        let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
-
-            let outputArray = copy processor inputArray
-
-            runIncludeInplace processor outputArray totalSum zero
 
     let runBackwardsExcludeInplace plus = runInplace true scanExclusive plus
 

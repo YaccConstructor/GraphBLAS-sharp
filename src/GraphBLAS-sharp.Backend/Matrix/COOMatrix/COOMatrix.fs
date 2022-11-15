@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 
 module COOMatrix =
@@ -10,30 +11,18 @@ module COOMatrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let setPositions =
-            <@ fun (ndRange: Range1D) prefixSumArrayLength resultLength (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'a>) (prefixSumArrayBuffer: ClArray<int>) (resultRowsBuffer: ClArray<int>) (resultColumnsBuffer: ClArray<int>) (resultValuesBuffer: ClArray<'a>) ->
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
 
-                let i = ndRange.GlobalID0
-                let index = prefixSumArrayBuffer.[i]
-
-                if (i < prefixSumArrayLength - 1
-                    && index <> prefixSumArrayBuffer.[i + 1])
-                   || (i = prefixSumArrayLength - 1
-                       && index < resultLength) then
-                    resultRowsBuffer.[index] <- allRowsBuffer.[i]
-                    resultColumnsBuffer.[index] <- allColumnsBuffer.[i]
-                    resultValuesBuffer.[index] <- allValuesBuffer.[i] @>
-
-        let kernel = clContext.Compile(setPositions)
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
 
         let sum =
-            GraphBLAS.FSharp.Backend.ClArray.prefixSumExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-            let prefixSumArrayLength = positions.Length
-
             let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
@@ -70,28 +59,11 @@ module COOMatrix =
                     allocationMode = AllocationMode.Default
                 )
 
-            let ndRange =
-                Range1D.CreateValid(positions.Length, workGroupSize)
+            indicesScatter processor positions allRows resultRows
 
-            let kernel = kernel.GetKernel()
+            indicesScatter processor positions allColumns resultColumns
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            prefixSumArrayLength
-                            resultLength
-                            allRows
-                            allColumns
-                            allValues
-                            positions
-                            resultRows
-                            resultColumns
-                            resultValues)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+            valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, resultLength
 
@@ -109,30 +81,30 @@ module COOMatrix =
                 if (i < length - 1
                     && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
                     && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
-                    rawPositionsBuffer.[i] <- 0
 
-                    match (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i]) with
-                    | Some v ->
-                        allValuesBuffer.[i + 1] <- v
-                        rawPositionsBuffer.[i + 1] <- 1
-                    | None -> rawPositionsBuffer.[i + 1] <- 0
+                    let result =
+                        (%opAdd) (Some leftValuesBuffer.[i + 1]) (Some rightValuesBuffer.[i])
+
+                    (%PreparePositions.both) i result rawPositionsBuffer allValuesBuffer
                 elif (i > 0
                       && i < length
                       && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
                           || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
                      || i = 0 then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Some leftValuesBuffer.[i]) None with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
-                    else
-                        match (%opAdd) None (Some rightValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0 @>
+
+                    let leftResult =
+                        (%opAdd) (Some leftValuesBuffer.[i]) None
+
+                    let rightResult =
+                        (%opAdd) None (Some rightValuesBuffer.[i])
+
+                    (%PreparePositions.leftRight)
+                        i
+                        leftResult
+                        rightResult
+                        isLeftBitmap
+                        allValuesBuffer
+                        rawPositionsBuffer @>
 
         let kernel = clContext.Compile(preparePositions)
 
@@ -448,7 +420,6 @@ module COOMatrix =
 
             let resultValues = copyData processor matrix.Values
 
-
             { Context = clContext
               RowIndices = resultRows
               ColumnIndices = resultColumns
@@ -472,7 +443,7 @@ module COOMatrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
+            ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
 
@@ -527,87 +498,6 @@ module COOMatrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
-    let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        workGroupSize
-        =
-
-        let preparePositions =
-            <@ fun (ndRange: Range1D) length (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (leftValuesBuffer: ClArray<'a>) (rightValuesBuffer: ClArray<'b>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if (i < length - 1
-                    && allRowsBuffer.[i] = allRowsBuffer.[i + 1]
-                    && allColumnsBuffer.[i] = allColumnsBuffer.[i + 1]) then
-                    rawPositionsBuffer.[i] <- 0
-
-                    match (%opAdd) (Both(leftValuesBuffer.[i + 1], rightValuesBuffer.[i])) with
-                    | Some v ->
-                        allValuesBuffer.[i + 1] <- v
-                        rawPositionsBuffer.[i + 1] <- 1
-                    | None -> rawPositionsBuffer.[i + 1] <- 0
-                elif (i > 0
-                      && i < length
-                      && (allRowsBuffer.[i] <> allRowsBuffer.[i - 1]
-                          || allColumnsBuffer.[i] <> allColumnsBuffer.[i - 1]))
-                     || i = 0 then
-                    if isLeftBitmap.[i] = 1 then
-                        match (%opAdd) (Left leftValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0
-                    else
-                        match (%opAdd) (Right rightValuesBuffer.[i]) with
-                        | Some v ->
-                            allValuesBuffer.[i] <- v
-                            rawPositionsBuffer.[i] <- 1
-                        | None -> rawPositionsBuffer.[i] <- 0 @>
-
-        let kernel = clContext.Compile(preparePositions)
-
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
-            let length = leftValues.Length
-
-            let ndRange =
-                Range1D.CreateValid(length, workGroupSize)
-
-            let rawPositionsGpu =
-                clContext.CreateClArray<int>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let allValues =
-                clContext.CreateClArray<'c>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            length
-                            allRows
-                            allColumns
-                            leftValues
-                            rightValues
-                            allValues
-                            rawPositionsGpu
-                            isLeft)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-            rawPositionsGpu, allValues
-
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
@@ -617,46 +507,7 @@ module COOMatrix =
         workGroupSize
         =
 
-        let merge = merge clContext workGroupSize
-
-        let preparePositions =
-            preparePositionsAtLeastOne clContext opAdd workGroupSize
-
-        let setPositions = setPositions<'c> clContext workGroupSize
-
-        fun (queue: MailboxProcessor<_>) (matrixLeft: COOMatrix<'a>) (matrixRight: COOMatrix<'b>) ->
-
-            let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
-                merge
-                    queue
-                    matrixLeft.Rows
-                    matrixLeft.Columns
-                    matrixLeft.Values
-                    matrixRight.Rows
-                    matrixRight.Columns
-                    matrixRight.Values
-
-            let rawPositions, allValues =
-                preparePositions queue allRows allColumns leftMergedValues rightMergedValues isLeft
-
-            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
-            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
-
-            let resultRows, resultColumns, resultValues, resultLength =
-                setPositions queue allRows allColumns allValues rawPositions
-
-            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
-            queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
-            queue.Post(Msg.CreateFreeMsg<_>(allRows))
-            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
-            queue.Post(Msg.CreateFreeMsg<_>(allValues))
-
-            { Context = clContext
-              RowCount = matrixLeft.RowCount
-              ColumnCount = matrixLeft.ColumnCount
-              Rows = resultRows
-              Columns = resultColumns
-              Values = resultValues }
+        elementwise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 

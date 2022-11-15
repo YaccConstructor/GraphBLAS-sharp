@@ -127,231 +127,83 @@ module ClArray =
 
             outputArray
 
-    let private update (clContext: ClContext) =
-
-        let update =
-            <@ fun (ndRange: Range1D) inputArrayLength bunchLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0 + bunchLength
-
-                if i < inputArrayLength then
-                    resultBuffer.[i] <-
-                        resultBuffer.[i]
-                        + verticesBuffer.[i / bunchLength] @>
-
-        let kernel = clContext.Compile(update)
-
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (bunchLength: int) ->
-            let ndRange =
-                Range1D.CreateValid(inputArrayLength - bunchLength, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange inputArrayLength bunchLength inputArray vertices)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-    let private scan (clContext: ClContext) workGroupSize =
-
-        let scan =
-            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<int>) (verticesBuffer: ClArray<int>) (totalSumBuffer: ClCell<int>) ->
-
-                let resultLocalBuffer = localArray<int> workGroupSize
-                let i = ndRange.GlobalID0
-                let localID = ndRange.LocalID0
-
-                if i < inputArrayLength then
-                    resultLocalBuffer.[localID] <- resultBuffer.[i]
-                else
-                    resultLocalBuffer.[localID] <- 0
-
-                let mutable step = 2
-
-                while step <= workGroupSize do
-                    barrierLocal ()
-
-                    if localID < workGroupSize / step then
-                        let i = step * (localID + 1) - 1
-
-                        resultLocalBuffer.[i] <-
-                            resultLocalBuffer.[i]
-                            + resultLocalBuffer.[i - (step >>> 1)]
-
-                    step <- step <<< 1
-
-                barrierLocal ()
-
-                if localID = workGroupSize - 1 then
-                    if verticesLength <= 1 && localID = i then
-                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
-
-                    verticesBuffer.[i / workGroupSize] <- resultLocalBuffer.[localID]
-                    resultLocalBuffer.[localID] <- 0
-
-                step <- workGroupSize
-
-                while step > 1 do
-                    barrierLocal ()
-
-                    if localID < workGroupSize / step then
-                        let i = step * (localID + 1) - 1
-                        let j = i - (step >>> 1)
-
-                        let tmp = resultLocalBuffer.[i]
-                        resultLocalBuffer.[i] <- resultLocalBuffer.[i] + resultLocalBuffer.[j]
-                        resultLocalBuffer.[j] <- tmp
-
-                    step <- step >>> 1
-
-                barrierLocal ()
-
-                if i < inputArrayLength then
-                    resultBuffer.[i] <- resultLocalBuffer.[localID] @>
-
-        let kernel = clContext.Compile(scan)
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (inputArrayLength: int) (vertices: ClArray<int>) (verticesLength: int) (totalSum: ClCell<int>) ->
-            let ndRange =
-                Range1D.CreateValid(inputArrayLength, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange inputArrayLength verticesLength inputArray vertices totalSum)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
     /// <summary>
     /// Exclude inplace prefix sum.
     /// </summary>
     /// <example>
     /// <code>
-    /// let arr = [| 1; 2; 3 |]
+    /// let arr = [| 1; 1; 1; 1 |]
     /// let sum = [| 0 |]
-    /// opencl { do! runExcludeInplace arr sum }
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
     /// ...
-    /// > val arr = [| 0; 1; 3 |]
-    /// > val sum = [| 6 |]
+    /// > val arr = [| 0; 1; 2; 3 |]
+    /// > val sum = [| 4 |]
     /// </code>
     /// </example>
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let prefixSumExcludeInplace (clContext: ClContext) workGroupSize =
+    ///<param name="processor">.</param>
+    ///<param name="inputArray">.</param>
+    ///<param name="totalSum">.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
+    let prefixSumExcludeInplace = PrefixSum.runExcludeInplace
 
-        let scan = scan clContext workGroupSize
-        let update = update clContext
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
-            let firstVertices =
-                clContext.CreateClArray<int>(
-                    (inputArray.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let secondVertices =
-                clContext.CreateClArray<int>(
-                    (firstVertices.Length - 1) / workGroupSize + 1,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let mutable verticesArrays = firstVertices, secondVertices
-            let swap (a, b) = (b, a)
-            let mutable verticesLength = firstVertices.Length
-            let mutable bunchLength = workGroupSize
-
-            scan processor inputArray inputArray.Length (fst verticesArrays) verticesLength totalSum
-
-            while verticesLength > 1 do
-                let fstVertices = fst verticesArrays
-                let sndVertices = snd verticesArrays
-
-                scan
-                    processor
-                    fstVertices
-                    verticesLength
-                    sndVertices
-                    ((verticesLength - 1) / workGroupSize + 1)
-                    totalSum
-
-                update processor workGroupSize inputArray inputArray.Length fstVertices bunchLength
-                bunchLength <- bunchLength * workGroupSize
-                verticesArrays <- swap verticesArrays
-                verticesLength <- (verticesLength - 1) / workGroupSize + 1
-
-            processor.Post(Msg.CreateFreeMsg(firstVertices))
-            processor.Post(Msg.CreateFreeMsg(secondVertices))
-
-            inputArray, totalSum
-
+    /// <summary>
+    /// Include inplace prefix sum.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 1; 2; 3; 4 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let prefixSumExclude (clContext: ClContext) workGroupSize =
+    ///<param name="processor">.</param>
+    ///<param name="inputArray">.</param>
+    ///<param name="totalSum">.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
+    let prefixSumIncludeInplace = PrefixSum.runIncludeInplace
+
+    let prefixSumExclude plus (clContext: ClContext) workGroupSize =
+
+        let runExcludeInplace =
+            prefixSumExcludeInplace plus clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
-        let prefixSumExcludeInplace =
-            prefixSumExcludeInplace clContext workGroupSize
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
-            let copiedArray = copy processor inputArray
+            let outputArray = copy processor inputArray
 
-            let totalSum = clContext.CreateClCell 0
-            prefixSumExcludeInplace processor copiedArray totalSum
+            runExcludeInplace processor outputArray totalSum zero
 
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let prefixSumInclude (clContext: ClContext) workGroupSize =
+    let prefixSumInclude plus (clContext: ClContext) workGroupSize =
 
-        let kernel =
-            <@ fun (range: Range1D) (inputArray: ClArray<int>) inputArrayLength (totalSum: ClCell<int>) (outputArray: ClArray<int>) ->
+        let runIncludeInplace =
+            prefixSumIncludeInplace plus clContext workGroupSize
 
-                let gid = range.GlobalID0
-
-                if gid = inputArrayLength - 1 then
-                    outputArray.[gid] <- totalSum.Value
-                elif gid < inputArrayLength - 1 then
-                    outputArray.[gid] <- inputArray.[gid + 1] @>
-
-        let kernel = clContext.Compile(kernel)
         let copy = copy clContext workGroupSize
 
-        let prefixSumExcludeInplace =
-            prefixSumExcludeInplace clContext workGroupSize
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
-            let copiedArray = copy processor inputArray
-            let inputArrayLength = inputArray.Length
-            let totalSum = clContext.CreateClCell 0
+            let outputArray = copy processor inputArray
 
-            let _, totalSum =
-                prefixSumExcludeInplace processor copiedArray totalSum
+            runIncludeInplace processor outputArray totalSum zero
 
-            let outputArray =
-                clContext.CreateClArray(inputArrayLength, allocationMode = AllocationMode.Default)
+    let prefixSumBackwardsExcludeInplace plus =
+        PrefixSum.runBackwardsExcludeInplace plus
 
-            let ndRange =
-                Range1D.CreateValid(inputArrayLength, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange copiedArray inputArrayLength totalSum outputArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            processor.Post(Msg.CreateFreeMsg(copiedArray))
-
-            outputArray, totalSum
-
+    let prefixSumBackwardsIncludeInplace plus =
+        PrefixSum.runBackwardsIncludeInplace plus
 
     let getUniqueBitmap (clContext: ClContext) =
 
@@ -390,7 +242,6 @@ module ClArray =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             bitmap
-
 
     let setPositions (clContext: ClContext) =
 
@@ -431,20 +282,26 @@ module ClArray =
 
         let setPositions = setPositions clContext
         let getUniqueBitmap = getUniqueBitmap clContext
-        let prefixSumExclude = prefixSumExclude clContext workGroupSize
+
+        let prefixSumExclude =
+            prefixSumExclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let bitmap =
                 getUniqueBitmap processor workGroupSize inputArray
 
-            let (positions, sum) = prefixSumExclude processor bitmap
+            let sum = clContext.CreateClCell 0
+
+            let positions, sum = prefixSumExclude processor bitmap sum 0
 
             let resultLength =
                 let a = [| 0 |]
 
-                let _ =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch))
+                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch))
+                |> ignore
+
+                processor.Post(Msg.CreateFreeMsg<_>(sum))
 
                 a.[0]
 
