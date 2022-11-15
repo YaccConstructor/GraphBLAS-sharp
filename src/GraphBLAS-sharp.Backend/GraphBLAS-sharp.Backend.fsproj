@@ -14,6 +14,7 @@
     <Compile Include="Common/CommonQuotes.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />
+    <Compile Include="Common/PrefixSum.fs" />
     <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/Scatter.fs" />
