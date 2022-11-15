@@ -23,6 +23,7 @@
         <Compile Include="BackendCommonTests/TransposeTests.fs" />
         <Compile Include="BackendCommonTests/MxmTests.fs" />
         <Compile Include="BackendCommonTests/SpMVTests.fs" />
+        <Compile Include="BackendCommonTests/SumTest.fs" />
         <Compile Include="BackendCommonTests/ReduceTests.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->

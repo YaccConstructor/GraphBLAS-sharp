@@ -29,6 +29,7 @@ let allTests =
           //Matrix.Mxv.tests
           //Algo.Bfs.tests
           Backend.Reduce.tests
+          Backend.Sum.tests
           Backend.Vector.ZeroCreate.tests
           Backend.Vector.OfList.tests
           Backend.Vector.Copy.tests

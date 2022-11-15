@@ -1,19 +1,20 @@
-module Backend.PrefixSum
+module Backend.Sum
 
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Tests.Context
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend
+open FSharp.Quotations
+open Context
 
-let logger = Log.create "ClArray.PrefixSum.Tests"
+let logger = Log.create "Sum.Test"
 
 let context = defaultContext.ClContext
 
-let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
+let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
     if array.Length > 0 then
         let array = filter array
 
@@ -22,50 +23,32 @@ let makeTest (q: MailboxProcessor<_>) scan plus zero isEqual (filter: 'a [] -> '
             >> setField "array" (sprintf "%A" array)
         )
 
-        let actual, actualSum =
+        let actualSum =
             use clArray = context.CreateClArray array
-            use total = context.CreateClCell()
-            scan q clArray total zero |> ignore
+            use total = sum q clArray
 
-            let actual = Array.zeroCreate<'a> clArray.Length
             let actualSum = [| zero |]
-            q.Post(Msg.CreateToHostMsg(total, actualSum))
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum.[0]
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(total, actualSum, ch)).[0]
 
         logger.debug (
             eventX "Actual is {actual}\n"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" (sprintf "%A" actualSum)
         )
 
-        let expected, expectedSum =
-            array
-            |> Array.mapFold
-                (fun s t ->
-                    let a = plus s t
-                    a, a)
-                zero
+        let expectedSum = array |> Array.fold plus zero
 
         logger.debug (
             eventX "Expected is {expected}\n"
-            >> setField "expected" (sprintf "%A" expected)
+            >> setField "expected" (sprintf "%A" expectedSum)
         )
-
-        "Lengths of arrays should be equal"
-        |> Expect.equal actual.Length expected.Length
 
         "Total sums should be equal"
         |> Expect.equal actualSum expectedSum
 
-        for i in 0 .. actual.Length - 1 do
-            Expect.isTrue
-                (isEqual actual.[i] expected.[i])
-                (sprintf "Arrays should be the same. Actual is \n%A, expected \n%A, input is \n%A" actual expected array)
+let testFixtures config wgSize q plus (plusQ: Expr<'a -> 'a -> 'a>) zero isEqual filter name =
+    let sum = Sum.run context wgSize plusQ zero
 
-let testFixtures config wgSize q plus plusQ zero isEqual filter name =
-    let scan =
-        ClArray.prefixSumIncludeInplace plusQ context wgSize
-
-    makeTest q scan plus zero isEqual filter
+    makeTest q sum plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
@@ -88,4 +71,4 @@ let tests =
       testFixtures config wgSize q min <@ min @> System.Byte.MaxValue (=) id "byte min"
       testFixtures config wgSize q (||) <@ (||) @> false (=) id "bool logic-or"
       testFixtures config wgSize q (&&) <@ (&&) @> true (=) id "bool logic-and" ]
-    |> testList "Backend.Common.PrefixSum tests"
+    |> testList "Backend.Common.Sum tests"

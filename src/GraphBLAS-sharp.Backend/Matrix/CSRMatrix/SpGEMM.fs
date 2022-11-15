@@ -2,9 +2,9 @@ namespace GraphBLAS.FSharp.Backend
 
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Predefined
 
 module internal SpGEMM =
     let private calculate
