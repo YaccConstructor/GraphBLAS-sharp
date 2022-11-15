@@ -5,6 +5,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Predefined
 
 module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -127,7 +128,7 @@ module SparseVector =
     let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let sum =
-            ClArray.prefixSumExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let valuesScatter =
             Scatter.runInplace clContext workGroupSize

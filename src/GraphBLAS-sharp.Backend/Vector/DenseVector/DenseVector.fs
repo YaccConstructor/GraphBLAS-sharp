@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Predefined
 
 module DenseVector =
     let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -144,7 +145,7 @@ module DenseVector =
         let getPositions = getBitmap clContext workGroupSize
 
         let prefixSum =
-            ClArray.prefixSumExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let resultLength = Array.zeroCreate 1
 
