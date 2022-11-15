@@ -124,7 +124,7 @@ let testFixtures case =
     let isComplemented = false
 
     [ let intFill =
-          Vector.fillSubVector context StandardOperations.mask wgSize
+          Vector.standardFillSubVector context wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
@@ -133,7 +133,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.fillSubVector context StandardOperations.mask wgSize
+          Vector.standardFillSubVector context wgSize
 
       let floatToCoo = Vector.toSparse context wgSize
 
@@ -142,7 +142,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.fillSubVector context StandardOperations.mask wgSize
+          Vector.standardFillSubVector context wgSize
 
       let byteToCoo = Vector.toSparse context wgSize
 
@@ -151,7 +151,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.fillSubVector context StandardOperations.mask wgSize
+          Vector.standardFillSubVector context wgSize
 
       let boolToCoo = Vector.toSparse context wgSize
 
@@ -177,7 +177,7 @@ let testFixturesComplemented case =
     let isComplemented = true
 
     [ let intFill =
-          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
+          Vector.standardFillSubVectorComplemented context wgSize
 
       let intToCoo = Vector.toSparse context wgSize
 
@@ -186,7 +186,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
+          Vector.standardFillSubVectorComplemented context wgSize
 
       let floatToCoo = Vector.toSparse context wgSize
 
@@ -195,7 +195,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
+          Vector.standardFillSubVectorComplemented context wgSize
 
       let byteToCoo = Vector.toSparse context wgSize
 
@@ -204,7 +204,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.fillSubVectorComplemented context StandardOperations.complementedMask wgSize
+          Vector.standardFillSubVectorComplemented context wgSize
 
       let boolToCoo = Vector.toSparse context wgSize
 

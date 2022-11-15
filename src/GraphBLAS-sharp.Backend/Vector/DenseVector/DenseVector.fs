@@ -46,7 +46,7 @@ module DenseVector =
             resultVector
 
     let elementWiseAtLeastOne clContext op workGroupSize =
-        elementWise clContext (StandardOperations.atLeastOneToNormalForm op) workGroupSize
+        elementWise clContext (StandardOperations.atLeastOneToOption op) workGroupSize
 
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -86,9 +86,6 @@ module DenseVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             resultVector
-
-    let fillSubVectorAtLeasOne clContext opAdd workGroupSize =
-        fillSubVector clContext (StandardOperations.fillSubVectorAtLeastOneToNormalForm opAdd) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 

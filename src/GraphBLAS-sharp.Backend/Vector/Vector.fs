@@ -118,12 +118,12 @@ module Vector =
             | ClVectorSparse left, ClVectorSparse right -> ClVectorSparse <| addSparse processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector (clContext: ClContext) maskOp (workGroupSize: int) =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) (workGroupSize: int) =
         let sparseFillVector =
-            SparseVector.fillSubVector clContext maskOp workGroupSize
+            SparseVector.fillSubVector clContext (StandardOperations.fillSubToOption maskOp) workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext maskOp workGroupSize
+            DenseVector.fillSubVector clContext (StandardOperations.fillSubToOption maskOp) workGroupSize
 
         let toSparseVector =
             DenseVector.toSparse clContext workGroupSize
@@ -150,9 +150,13 @@ module Vector =
                 ClVectorDense
                 <| denseFillVector processor vector mask value
 
-    let fillSubVectorComplemented (clContext: ClContext) maskOp (workGroupSize: int) =
+    let fillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct>
+        maskOp
+        (clContext: ClContext)
+        (workGroupSize: int)
+        =
         let denseFillVector =
-            DenseVector.fillSubVector clContext maskOp workGroupSize
+            DenseVector.fillSubVector clContext (StandardOperations.fillSubComplementedToOption maskOp) workGroupSize
 
         let vectorToDense =
             SparseVector.toDense clContext workGroupSize
@@ -181,6 +185,12 @@ module Vector =
             | ClVectorDense vector, ClVectorDense mask ->
                 ClVectorDense
                 <| denseFillVector processor vector mask value
+
+    let standardFillSubVector<'a, 'b when 'a: struct and 'b: struct> =
+        fillSubVector<'a, 'b> StandardOperations.mask<'a>
+
+    let standardFillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> =
+        fillSubVectorComplemented<'a, 'b> StandardOperations.mask<'a>
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =

@@ -218,7 +218,7 @@ module SparseVector =
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         (workGroupSize: int)
         =
-        elementWise clContext (StandardOperations.atLeastOneToNormalForm opAdd) workGroupSize
+        elementWise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -308,9 +308,6 @@ module SparseVector =
               Values = resultValues
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
-
-    let fillSubVectorAtLeastOne (clContext: ClContext) opAdd (workGroupSize: int) =
-        fillSubVector clContext (StandardOperations.fillSubVectorAtLeastOneToNormalForm opAdd) workGroupSize
 
     let toDense (clContext: ClContext) (workGroupSize: int) =
 

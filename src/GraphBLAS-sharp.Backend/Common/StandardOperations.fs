@@ -1,5 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Common
 
+open FSharp.Quotations
+
 type AtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
     | Both of 'a * 'b
     | Left of 'a
@@ -102,25 +104,7 @@ module StandardOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let mask<'a, 'b when 'a: struct and 'b: struct> =
-        <@ fun (left: 'a option) (right: 'b option) value ->
-            match left, right with
-            | _, None -> left
-            | _ -> Some value @>
-
-    let maskAtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
-        <@ fun (pair: AtLeastOne<'a, 'b>) value ->
-            match pair with
-            | Left left -> Some left
-            | _ -> Some value @>
-
-    let complementedMask<'a, 'b when 'a: struct and 'b: struct> =
-        <@ fun (left: 'a option) (right: 'b option) value ->
-            match left, right with
-            | _, Some _ -> left
-            | _ -> Some value @>
-
-    let atLeastOneToNormalForm op =
+    let atLeastOneToOption op =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) ->
             match leftItem, rightItem with
             | Some left, Some right -> (%op) (Both(left, right))
@@ -128,10 +112,20 @@ module StandardOperations =
             | Some left, None -> (%op) (Left left)
             | None, None -> None @>
 
-    let fillSubVectorAtLeastOneToNormalForm op =
+    let fillSubToOption (op: Expr<'a option -> 'a option -> 'a option>) =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
-            match leftItem, rightItem with
-            | Some left, Some right -> (%op) (Both(left, right)) value
-            | None, Some right -> (%op) (Right right) value
-            | Some left, None -> (%op) (Left left) value
-            | None, None -> None @>
+            match rightItem with
+            | Some _ -> (%op) leftItem (Some value)
+            | None -> (%op) leftItem None @>
+
+    let fillSubComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem None
+            | None -> (%op) leftItem (Some value) @>
+
+    let mask<'a when 'a: struct> =
+        <@ fun (left: 'a option) (right: 'a option) ->
+            match left, right with
+            | _, None -> left
+            | _ -> right @>
