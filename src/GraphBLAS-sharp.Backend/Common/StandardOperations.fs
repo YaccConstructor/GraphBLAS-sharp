@@ -124,8 +124,14 @@ module StandardOperations =
             | Some _ -> (%op) leftItem None
             | None -> (%op) leftItem (Some value) @>
 
-    let mask<'a when 'a: struct> =
+    let fillSubOp<'a when 'a: struct> =
         <@ fun (left: 'a option) (right: 'a option) ->
             match left, right with
             | _, None -> left
             | _ -> right @>
+
+    let maskOp<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match left, right with
+            | _, Some _ -> left
+            | _ -> None @>

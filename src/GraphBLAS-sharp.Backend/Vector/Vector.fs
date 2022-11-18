@@ -188,10 +188,10 @@ module Vector =
                 <| denseFillVector processor vector mask value
 
     let standardFillSubVector<'a, 'b when 'a: struct and 'b: struct> =
-        fillSubVector<'a, 'b> StandardOperations.mask<'a>
+        fillSubVector<'a, 'b> StandardOperations.fillSubOp<'a>
 
     let standardFillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> =
-        fillSubVectorComplemented<'a, 'b> StandardOperations.mask<'a>
+        fillSubVectorComplemented<'a, 'b> StandardOperations.fillSubOp<'a>
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =
