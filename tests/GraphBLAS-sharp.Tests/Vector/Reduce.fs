@@ -27,7 +27,7 @@ let correctnessGenericTest
     zero
     op
     opQ
-    (reduce: Expr<'a -> 'a -> 'a> -> MailboxProcessor<_> -> ClVector<'a> -> ClArray<'a>)
+    (reduce: Expr<'a -> 'a -> 'a> -> MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
     filter
     case
     (array: 'a [])

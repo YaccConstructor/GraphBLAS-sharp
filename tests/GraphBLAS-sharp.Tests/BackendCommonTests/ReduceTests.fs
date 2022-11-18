@@ -14,7 +14,7 @@ let context = Context.defaultContext.ClContext
 
 let makeTest
     (q: MailboxProcessor<_>)
-    (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClArray<'a>)
+    (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>)
     plus
     zero
     (filter: 'a [] -> 'a [])

@@ -36,6 +36,23 @@ module SubSum =
 
     let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess<'a> opAdd
 
+module SubReduce =
+    let run opAdd =
+        <@ fun length wgSize gid lid (localValues: 'a []) ->
+            let mutable step = 2
+
+            while step <= wgSize do
+                if (gid + wgSize / step) < length
+                   && lid < wgSize / step then
+                    let firstValue = localValues.[lid]
+                    let secondValue = localValues.[lid + wgSize / step]
+
+                    localValues.[lid] <- (%opAdd) firstValue secondValue
+
+                step <- step <<< 1
+
+                barrierLocal () @>
+
 module PreparePositions =
     let both<'c> =
         <@ fun index (result: 'c option) (rawPositionsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'c>) ->
