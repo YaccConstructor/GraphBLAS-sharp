@@ -72,8 +72,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats =
-        Array.filter (System.Double.IsNaN >> not)
+    let filterFloats = Array.filter System.Double.IsNormal
 
     [ let intReduce = Vector.reduce context wgSize
 

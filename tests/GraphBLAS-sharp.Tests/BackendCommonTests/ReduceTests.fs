@@ -71,8 +71,7 @@ let tests =
     let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats =
-        Array.filter (System.Double.IsNaN >> not)
+    let filterFloats = Array.filter System.Double.IsNormal
 
     [ testFixtures config wgSize q (+) <@ (+) @> 0 id "int add"
       testFixtures config wgSize q (+) <@ (+) @> 0uy id "byte add"
