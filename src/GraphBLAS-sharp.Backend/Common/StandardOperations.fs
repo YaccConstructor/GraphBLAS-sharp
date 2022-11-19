@@ -1,5 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Common
 
+open FSharp.Quotations
+
 type AtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
     | Both of 'a * 'b
     | Left of 'a
@@ -109,3 +111,33 @@ module StandardOperations =
             | None, Some right -> (%op) (Right right)
             | Some left, None -> (%op) (Left left)
             | None, None -> None @>
+
+    let fillSubToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem (Some value)
+            | None -> (%op) leftItem None @>
+
+    let fillSubComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem None
+            | None -> (%op) leftItem (Some value) @>
+
+    let fillSubOp<'a when 'a: struct> =
+        <@ fun (left: 'a option) (right: 'a option) ->
+            match left, right with
+            | _, None -> left
+            | _ -> right @>
+
+    let maskOp<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match right with
+            | Some _ -> left
+            | _ -> None @>
+
+    let complementedMaskOp<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match right with
+            | None -> left
+            | _ -> None @>

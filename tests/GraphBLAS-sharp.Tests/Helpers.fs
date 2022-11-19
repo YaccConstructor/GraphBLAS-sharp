@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Tests
 open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open FsCheck
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
@@ -533,6 +534,57 @@ module Generators =
             <| Arb.generate<bool>
             |> Arb.fromGen
 
+    type PairOfVectorsOfEqualSize() =
+        static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! leftArray = Gen.arrayOfLength length valuesGenerator
+
+                let! rightArray = Gen.arrayOfLength length valuesGenerator
+
+                return (leftArray, rightArray)
+            }
+
+        static member IntType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfVectorsOfEqualSize
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<bool>
+            |> Arb.fromGen
+
 module Utils =
 
     let defaultConfig =
@@ -547,7 +599,8 @@ module Utils =
                     typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys>
-                    typeof<Generators.ArrayOfAscendingKeys> ] }
+                    typeof<Generators.ArrayOfAscendingKeys>
+                    typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
@@ -691,9 +744,9 @@ module Context =
 
 module TestCases =
 
-    type MatrixOperationCase =
+    type OperationCase<'a> =
         { ClContext: Context.TestContext
-          MatrixCase: MatrixFormat }
+          Format: 'a }
 
     let defaultPlatformRegex = ""
 
@@ -702,22 +755,23 @@ module TestCases =
         |> contextFilter
         |> List.ofSeq
 
-    let matrixTestCases contextFilter =
-        [ Context.availableContexts defaultPlatformRegex
-          |> contextFilter
-          |> Seq.map box
-          Utils.listOfUnionCases<MatrixFormat>
-          |> Seq.map box ]
-        |> List.map List.ofSeq
-        |> Utils.cartesian
+    let getTestCases<'a> contextFilter =
+        Context.availableContexts defaultPlatformRegex
+        |> contextFilter
+        |> List.ofSeq
+        |> List.collect
+            (fun x ->
+                Utils.listOfUnionCases<'a>
+                |> List.ofSeq
+                |> List.map (fun y -> x, y))
         |> List.map
-            (fun list ->
-                { ClContext = unbox list.[0]
-                  MatrixCase = unbox list.[1] })
+            (fun pair ->
+                { ClContext = fst pair
+                  Format = snd pair })
 
-    let matrixOperationGPUTests name testFixtures =
-        matrixTestCases Context.gpuOnlyContextFilter
-        |> List.distinctBy (fun case -> case.ClContext.ClContext, case.MatrixCase)
+    let operationGPUTests name (testFixtures: OperationCase<'a> -> Test list) =
+        getTestCases<'a> Context.gpuOnlyContextFilter
+        |> List.distinctBy (fun case -> case.ClContext.ClContext, case.Format)
         |> List.collect testFixtures
         |> testList name
 

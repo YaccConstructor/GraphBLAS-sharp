@@ -6,8 +6,8 @@ open GraphBLAS.FSharp.Backend.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
-module Vector =
-    let spMV
+module SpMV =
+    let run
         (clContext: ClContext)
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)

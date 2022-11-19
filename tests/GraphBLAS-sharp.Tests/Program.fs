@@ -28,7 +28,19 @@ let allTests =
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
           //Algo.Bfs.tests
-          Backend.Sum.tests ]
+          Backend.Reduce.tests
+          Backend.Sum.tests
+          Backend.Vector.ZeroCreate.tests
+          Backend.Vector.OfList.tests
+          Backend.Vector.Copy.tests
+          Backend.Vector.Convert.tests
+          Backend.Vector.ElementWiseAtLeastOne.addTests
+          Backend.Vector.ElementWiseAtLeastOne.mulTests
+          Backend.Vector.ElementWise.addTests
+          Backend.Vector.ElementWise.mulTests
+          Backend.Vector.FillSubVector.tests
+          Backend.Vector.FillSubVector.complementedTests
+          Backend.Vector.Reduce.tests ]
     |> testSequenced
 
 [<EntryPoint>]

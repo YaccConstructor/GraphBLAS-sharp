@@ -73,7 +73,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
 let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+        createMatrixFromArray2D case.Format array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
@@ -100,7 +100,7 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
 let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
-        createMatrixFromArray2D case.MatrixCase array (areEqual zero)
+        createMatrixFromArray2D case.Format array (areEqual zero)
 
     if mtx.NNZCount > 0 then
         let actual =
@@ -122,7 +122,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A, %A" datatype case.MatrixCase case.ClContext
+        sprintf "Correctness on %s, %A, %A" datatype case.Format case.ClContext
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
@@ -174,4 +174,4 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
 
 let tests =
-    matrixOperationGPUTests "Transpose tests" testFixtures
+    operationGPUTests "Transpose tests" testFixtures

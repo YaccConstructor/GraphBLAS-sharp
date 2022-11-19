@@ -1,17 +1,16 @@
 ﻿module Backend.SpMV
 
-open Expecto
-open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.ArraysExtensions
+open Expecto
+open Brahma.FSharp
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open OpenCL.Net
-open Backend.Common.StandardOperations
+open GraphBLAS.FSharp.Backend.Common.StandardOperations
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
     let rows = Array2D.length1 baseMtx
@@ -92,28 +91,26 @@ let testFixturesSpMV (testContext: TestContext) =
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolSpMV =
-          Vector.spMV context boolSum boolMul wgSize
+      let boolSpMV = SpMV.run context boolSum boolMul wgSize
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intSpMV = Vector.spMV context intSum intMul wgSize
+      let intSpMV = SpMV.run context intSum intMul wgSize
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          Vector.spMV context floatSum floatMul wgSize
+          SpMV.run context floatSum floatMul wgSize
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd =
-          Vector.spMV context byteSum byteMul wgSize
+      let byteAdd = SpMV.run context byteSum byteMul wgSize
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

@@ -1,18 +1,18 @@
 module Backend.Elementwise
 
-open System
-open Brahma.FSharp.OpenCL.Shared
+
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
-open GraphBLAS.FSharp.Tests.Utils
 open Microsoft.FSharp.Collections
-open OpenCL.Net
 open Backend.Common.StandardOperations
+open Context
+open TestCases
+open Utils
 
 let logger = Log.create "Elementwise.Tests"
 
@@ -52,15 +52,15 @@ let correctnessGenericTest
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q
-    (case: MatrixOperationCase)
+    (case: OperationCase<MatrixFormat>)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
 
     let mtx1 =
-        createMatrixFromArray2D case.MatrixCase leftMatrix (isEqual zero)
+        createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
 
     let mtx2 =
-        createMatrixFromArray2D case.MatrixCase rightMatrix (isEqual zero)
+        createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
         try
@@ -135,7 +135,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddTests =
-    matrixOperationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
+    operationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
 
 let testFixturesEWiseAddAtLeastOne case =
     [ let config = defaultConfig
@@ -185,7 +185,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneTests =
-    matrixOperationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
+    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
     [ let config = defaultConfig
@@ -235,9 +235,9 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseAddAtLeastOneToCOOTests =
-    matrixOperationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
+    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
-let testFixturesEWiseMulAtLeastOne case =
+let testFixturesEWiseMulAtLeastOne (case: OperationCase<MatrixFormat>) =
     [ let config = defaultConfig
       let wgSize = 32
 
@@ -285,4 +285,4 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let elementwiseMulAtLeastOneTests =
-    matrixOperationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne
+    operationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne

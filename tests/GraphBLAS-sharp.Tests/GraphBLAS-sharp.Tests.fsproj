@@ -1,34 +1,43 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
-    <GenerateProgramFile>false</GenerateProgramFile>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
-    <ProjectReference Include="../../src/GraphBLAS-sharp.Backend/GraphBLAS-sharp.Backend.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Helpers.fs" />
-    <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
-    <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
-    <Compile Include="BackendCommonTests/CopyTests.fs" />
-    <Compile Include="BackendCommonTests/ReplicateTests.fs" />
-    <Compile Include="BackendCommonTests/PrefixSumTests.fs" />
-    <Compile Include="BackendCommonTests/ScatterTests.fs" />
-    <Compile Include="BackendCommonTests/MatrixElementwiseTests.fs" />
-    <Compile Include="BackendCommonTests/ConvertTests.fs" />
-    <Compile Include="BackendCommonTests/TransposeTests.fs" />
-    <Compile Include="BackendCommonTests/MxmTests.fs" />
-    <Compile Include="BackendCommonTests/SumTest.fs" />
-    <Compile Include="BackendCommonTests/SpMVTests.fs" />
-    <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
-    <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
-    <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
-    <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <GenerateProgramFile>false</GenerateProgramFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/GraphBLAS-sharp/GraphBLAS-sharp.fsproj" />
+        <ProjectReference Include="../../src/GraphBLAS-sharp.Backend/GraphBLAS-sharp.Backend.fsproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Helpers.fs" />
+        <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
+        <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
+        <Compile Include="BackendCommonTests/CopyTests.fs" />
+        <Compile Include="BackendCommonTests/ReplicateTests.fs" />
+        <Compile Include="BackendCommonTests/PrefixSumTests.fs" />
+        <Compile Include="BackendCommonTests/ScatterTests.fs" />
+        <Compile Include="BackendCommonTests/MatrixElementwiseTests.fs" />
+        <Compile Include="BackendCommonTests/ConvertTests.fs" />
+        <Compile Include="BackendCommonTests/TransposeTests.fs" />
+        <Compile Include="BackendCommonTests/MxmTests.fs" />
+        <Compile Include="BackendCommonTests/SpMVTests.fs" />
+        <Compile Include="BackendCommonTests/SumTest.fs" />
+        <Compile Include="BackendCommonTests/ReduceTests.fs" />
+        <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
+        <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
+        <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
+        <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
+        <Compile Include="Vector/ZeroCreate.fs" />
+        <Compile Include="Vector/OfList.fs" />
+        <Compile Include="Vector/Copy.fs" />
+        <Compile Include="Vector/FillSubVector.fs" />
+        <Compile Include="Vector/ElementWiseAtLeasOne.fs" />
+        <Compile Include="Vector/Convert.fs" />
+        <Compile Include="Vector/Reduce.fs" />
+        <Compile Include="Vector/ElementWise.fs" />
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
