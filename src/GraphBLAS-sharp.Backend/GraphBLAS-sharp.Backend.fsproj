@@ -38,6 +38,7 @@
     <Compile Include="Vector/DenseVector/DenseVector.fs" />
     <Compile Include="Vector/Vector.fs" />
     <Compile Include="Vector/SpMV.fs" />
+    <Compile Include="Algorithms/BFS.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

@@ -221,11 +221,15 @@ module DenseVector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
-            let values, indices = getValuesAndIndices processor vector
+            try
+                let values, indices = getValuesAndIndices processor vector
 
-            let result = reduce processor values
+                let result = reduce processor values
 
-            processor.Post(Msg.CreateFreeMsg<_>(indices))
-            processor.Post(Msg.CreateFreeMsg<_>(values))
+                processor.Post(Msg.CreateFreeMsg<_>(indices))
+                processor.Post(Msg.CreateFreeMsg<_>(values))
 
-            result
+                result
+            with
+            | ex when ex.Message = "InvalidBufferSize" -> clContext.CreateClCell Unchecked.defaultof<'a>
+            | ex -> raise ex
