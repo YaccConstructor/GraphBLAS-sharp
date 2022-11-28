@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -12,6 +12,9 @@
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Helpers.fs" />
+        <Compile Include="QuickGraph/CreateGraph.fs" />
+        <Compile Include="QuickGraph/Algorithms/ConnectedComponents.fs" />
+        <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="BackendCommonTests/BitonicSortTests.fs" />
         <Compile Include="BackendCommonTests/RemoveDuplicatesTests.fs" />
         <Compile Include="BackendCommonTests/CopyTests.fs" />
