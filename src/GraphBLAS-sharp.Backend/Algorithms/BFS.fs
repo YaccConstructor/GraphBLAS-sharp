@@ -15,9 +15,6 @@ module BFS =
         workGroupSize
         =
 
-        let transpose =
-            CSRMatrix.transpose clContext workGroupSize
-
         let spMV = SpMV.run clContext add mul workGroupSize
 
         let zeroCreate =
@@ -41,7 +38,6 @@ module BFS =
                 zeroCreate queue vertexCount |> ClVectorDense
 
             let mutable frontier = ofList vertexCount [ source, 1 ]
-            let transposedMatrix = transpose queue matrix
 
             let mutable level = 0
             let mutable stop = false
@@ -56,7 +52,7 @@ module BFS =
 
                 match frontier, newLevels with
                 | ClVectorDense f, ClVectorDense nl ->
-                    let newFrontierUnmasked = spMV queue transposedMatrix f
+                    let newFrontierUnmasked = spMV queue matrix f
 
                     let newFrontier =
                         maskComplemented queue newFrontierUnmasked nl
@@ -74,5 +70,6 @@ module BFS =
                     |> ignore
 
                     stop <- frontierSum.[0] = 0
+                | _ -> failwith "Not implemented"
 
             levels
