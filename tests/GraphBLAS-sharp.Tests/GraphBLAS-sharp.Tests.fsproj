@@ -37,6 +37,7 @@
         <Compile Include="Vector/Convert.fs" />
         <Compile Include="Vector/Reduce.fs" />
         <Compile Include="Vector/ElementWise.fs" />
+        <Compile Include="Vector/ContainsNonZero.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

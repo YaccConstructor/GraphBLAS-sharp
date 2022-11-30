@@ -7,6 +7,35 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 
 module DenseVector =
+    let containsNonZero<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+
+        let containsNonZero =
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (result: ClCell<bool>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    match vector.[gid] with
+                    | Some _ -> result.Value <- true
+                    | _ -> () @>
+
+        let kernel = clContext.Compile containsNonZero
+
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
+
+            let result = clContext.CreateClCell false
+
+            let ndRange =
+                Range1D.CreateValid(vector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result
+
     let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
