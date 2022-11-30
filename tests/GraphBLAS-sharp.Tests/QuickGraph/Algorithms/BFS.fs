@@ -1,8 +1,8 @@
 ﻿namespace GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
 
 open System.Collections.Generic
-open QuickGraph
-open QuickGraph.Algorithms.Search
+open QuikGraph
+open QuikGraph.Algorithms.Search
 
 module BFS =
     let runUndirected (graph: IUndirectedGraph<int, Edge<int>>) source =
@@ -31,7 +31,7 @@ module BFS =
                 let mutable source = x.Source
                 let mutable target = x.Target
 
-                if bfs.VertexColors.[target] = GraphColor.Gray then
+                if bfs.VerticesColors.[target] = GraphColor.Gray then
                     let temp = source
                     source <- target
                     target <- temp

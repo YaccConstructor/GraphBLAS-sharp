@@ -1,6 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Tests.QuickGraph
 
-open QuickGraph
+open QuikGraph
 
 module CreateGraph =
     let directedFromArray2D (matrix: 'a [,]) zero =

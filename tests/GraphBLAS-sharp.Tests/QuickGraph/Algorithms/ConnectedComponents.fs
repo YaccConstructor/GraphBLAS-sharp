@@ -1,9 +1,8 @@
 ﻿namespace GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
 
 open System.Collections.Generic
-open QuickGraph
-open QuickGraph.Algorithms.ConnectedComponents
-open QuickGraph.Algorithms.Search
+open QuikGraph
+open QuikGraph.Algorithms.ConnectedComponents
 
 module ConnectedComponents =
     let runUndirected (graph: IUndirectedGraph<int, Edge<int>>) =
