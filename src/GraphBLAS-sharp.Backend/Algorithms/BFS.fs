@@ -28,8 +28,8 @@ module BFS =
         let fillSubVector =
             Vector.standardFillSubVector<int, int> clContext workGroupSize
 
-        let reduce =
-            Vector.reduce clContext workGroupSize addNumeric
+        let containsNonZero =
+            DenseVector.DenseVector.containsNonZero clContext workGroupSize
 
         fun (queue: MailboxProcessor<Msg>) (matrix: CSRMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
@@ -60,16 +60,16 @@ module BFS =
                     newFrontierUnmasked.Dispose queue
                     frontier.Dispose queue
 
+                    let frontNotEmpty = Array.zeroCreate 1
+                    let sum = containsNonZero queue newFrontier
+
+                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, frontNotEmpty, ch))
+                    |> ignore
+
                     frontier <- newFrontier |> ClVectorDense
                     levels <- newLevels
 
-                    let frontierSum = Array.zeroCreate 1
-                    let sum = reduce queue frontier
-
-                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, frontierSum, ch))
-                    |> ignore
-
-                    stop <- frontierSum.[0] = 0
+                    stop <- not frontNotEmpty.[0]
                 | _ -> failwith "Not implemented"
 
             levels
