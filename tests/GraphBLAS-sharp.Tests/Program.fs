@@ -40,7 +40,8 @@ let allTests =
           Backend.Vector.ElementWise.mulTests
           Backend.Vector.FillSubVector.tests
           Backend.Vector.FillSubVector.complementedTests
-          Backend.Vector.Reduce.tests ]
+          Backend.Vector.Reduce.tests
+          Backend.Vector.ContainNonZero.tests ]
     |> testSequenced
 
 [<EntryPoint>]
