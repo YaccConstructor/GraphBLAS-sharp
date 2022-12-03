@@ -11,22 +11,22 @@ module BFS =
         (clContext: ClContext)
         (add: Expr<int option -> int option -> int option>)
         (mul: Expr<'a option -> 'b option -> int option>)
-        (addNumeric: Expr<int -> int -> int>)
         workGroupSize
         =
 
-        let spMV = SpMV.run clContext add mul workGroupSize
+        let spMVTo =
+            SpMV.runTo clContext add mul workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
         let ofList = Vector.ofList clContext Dense
 
-        let maskComplemented =
-            DenseVector.DenseVector.elementWise clContext StandardOperations.complementedMaskOp workGroupSize
+        let maskComplementedTo =
+            DenseVector.DenseVector.elementWiseTo clContext StandardOperations.complementedMaskOp workGroupSize
 
-        let fillSubVector =
-            Vector.standardFillSubVector<int, int> clContext workGroupSize
+        let fillSubVectorTo =
+            DenseVector.DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
 
         let containsNonZero =
             DenseVector.DenseVector.containsNonZero clContext workGroupSize
@@ -34,42 +34,39 @@ module BFS =
         fun (queue: MailboxProcessor<Msg>) (matrix: CSRMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let mutable levels: ClVector<int> =
-                zeroCreate queue vertexCount |> ClVectorDense
+            let levels = zeroCreate queue vertexCount
 
-            let mutable frontier = ofList vertexCount [ source, 1 ]
+            let frontier = ofList vertexCount [ source, 1 ]
 
-            let mutable level = 0
-            let mutable stop = false
+            match frontier with
+            | ClVectorDense front ->
 
-            while not stop do
-                level <- level + 1
+                let mutable level = 0
+                let mutable stop = false
 
-                let newLevels =
-                    fillSubVector queue levels frontier (clContext.CreateClCell level)
+                while not stop do
+                    level <- level + 1
 
-                levels.Dispose queue
+                    //Assigning new level values
+                    fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
+                    |> ignore
 
-                match frontier, newLevels with
-                | ClVectorDense f, ClVectorDense nl ->
-                    let newFrontierUnmasked = spMV queue matrix f
+                    //Getting new frontier
+                    spMVTo queue matrix front front |> ignore
 
-                    let newFrontier =
-                        maskComplemented queue newFrontierUnmasked nl
+                    maskComplementedTo queue front levels front
+                    |> ignore
 
-                    newFrontierUnmasked.Dispose queue
-                    frontier.Dispose queue
-
+                    //Checking if front is empty
                     let frontNotEmpty = Array.zeroCreate 1
-                    let sum = containsNonZero queue newFrontier
+                    let sum = containsNonZero queue front
 
                     queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, frontNotEmpty, ch))
                     |> ignore
 
-                    frontier <- newFrontier |> ClVectorDense
-                    levels <- newLevels
-
                     stop <- not frontNotEmpty.[0]
-                | _ -> failwith "Not implemented"
 
-            levels
+                front.Dispose queue
+
+                levels
+            | _ -> failwith "Not implemented"

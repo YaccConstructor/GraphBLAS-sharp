@@ -18,12 +18,7 @@ let testFixtures (testContext: TestContext) =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
-          Algorithms.BFS.singleSource
-              context
-              StandardOperations.intSum
-              StandardOperations.intMul
-              <@ (+) @>
-              workGroupSize
+          Algorithms.BFS.singleSource context StandardOperations.intSum StandardOperations.intMul workGroupSize
 
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
@@ -47,7 +42,7 @@ let testFixtures (testContext: TestContext) =
 
               match matrix with
               | MatrixCSR mtx ->
-                  let res = bfs queue mtx source
+                  let res = bfs queue mtx source |> ClVectorDense
 
                   let resHost = res.ToHost queue
 
