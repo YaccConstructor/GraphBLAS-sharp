@@ -27,10 +27,6 @@ module CreateGraph =
         let edgeList =
             edgeMatrix
             |> Seq.cast<Edge<'a> option>
-            |> Seq.choose
-                (fun x ->
-                    match x with
-                    | Some _ -> x
-                    | _ -> None)
+            |> Seq.choose id
 
         edgeList.ToUndirectedGraph()
