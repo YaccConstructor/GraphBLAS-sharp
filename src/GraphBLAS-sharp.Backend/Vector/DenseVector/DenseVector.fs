@@ -66,8 +66,6 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultVector
-
     let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
@@ -87,6 +85,8 @@ module DenseVector =
                 )
 
             elementWiseTo processor leftVector rightVector resultVector
+
+            resultVector
 
     let elementWiseAtLeastOne clContext op workGroupSize =
         elementWise clContext (StandardOperations.atLeastOneToOption op) workGroupSize
@@ -121,8 +121,6 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultVector
-
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
@@ -142,6 +140,8 @@ module DenseVector =
                 )
 
             fillSubVectorTo processor leftVector maskVector value resultVector
+
+            resultVector
 
     let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
         fillSubVectorTo<'a, 'b>

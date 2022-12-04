@@ -49,13 +49,11 @@ module BFS =
 
                     //Assigning new level values
                     fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
-                    |> ignore
 
                     //Getting new frontier
-                    spMVTo queue matrix front front |> ignore
+                    spMVTo queue matrix front front
 
                     maskComplementedTo queue front levels front
-                    |> ignore
 
                     //Checking if front is empty
                     let frontNotEmpty = Array.zeroCreate 1

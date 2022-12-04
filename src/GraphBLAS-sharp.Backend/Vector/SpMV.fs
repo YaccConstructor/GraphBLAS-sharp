@@ -146,8 +146,6 @@ module SpMV =
 
             queue.Post(Msg.CreateFreeMsg intermediateArray)
 
-            result
-
     let run
         (clContext: ClContext)
         (add: Expr<'c option -> 'c option -> 'c option>)
@@ -167,3 +165,5 @@ module SpMV =
                 )
 
             runTo queue matrix vector result
+
+            result
