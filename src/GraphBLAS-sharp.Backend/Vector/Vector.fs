@@ -46,7 +46,8 @@ module Vector =
                 for i in 0 .. indices.Length - 1 do
                     res.[indices.[i]] <- Some(values.[i])
 
-                ClVectorDense <| clContext.CreateClArrayWithGPUOnlyFlags res
+                ClVectorDense
+                <| clContext.CreateClArrayWithGPUOnlyFlags res
 
     let copy (clContext: ClContext) (workGroupSize: int) =
         let copy = ClArray.copy clContext workGroupSize
