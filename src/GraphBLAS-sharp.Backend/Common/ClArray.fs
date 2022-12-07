@@ -1,11 +1,27 @@
 namespace GraphBLAS.FSharp.Backend
 
-open Brahma.FSharp.OpenCL
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 
 module ClArray =
+    type ClContext with
+        member this.CreateClArrayWithGPUOnlyFlags(size: int) =
+            this.CreateClArray(
+                size,
+                deviceAccessMode = DeviceAccessMode.ReadWrite,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                allocationMode = AllocationMode.Default
+            )
+
+        member this.CreateClArrayWithGPUOnlyFlags(array: 'a []) =
+            this.CreateClArray(
+                array,
+                deviceAccessMode = DeviceAccessMode.ReadWrite,
+                hostAccessMode = HostAccessMode.NotAccessible,
+                allocationMode = AllocationMode.CopyHostPtr
+            )
+
     let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
 
         let init =
@@ -20,7 +36,8 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) (length: int) ->
             // TODO: Выставить нужные флаги
-            let outputArray = clContext.CreateClArray(length)
+            let outputArray =
+                clContext.CreateClArrayWithGPUOnlyFlags(length)
 
             let kernel = program.GetKernel()
 
@@ -47,7 +64,8 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (length: int) (value: 'a) ->
             let value = clContext.CreateClCell(value)
 
-            let outputArray = clContext.CreateClArray(length)
+            let outputArray =
+                clContext.CreateClArrayWithGPUOnlyFlags(length)
 
             let kernel = program.GetKernel()
 
@@ -83,7 +101,7 @@ module ClArray =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArray(inputArray.Length, allocationMode = AllocationMode.Default)
+                clContext.CreateClArrayWithGPUOnlyFlags inputArray.Length
 
             let kernel = program.GetKernel()
 
@@ -111,7 +129,7 @@ module ClArray =
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArray(outputArrayLength, allocationMode = AllocationMode.Default)
+                clContext.CreateClArrayWithGPUOnlyFlags outputArrayLength
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
@@ -228,12 +246,7 @@ module ClArray =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
             let bitmap =
-                clContext.CreateClArray(
-                    inputLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithGPUOnlyFlags inputLength
 
             let kernel = kernel.GetKernel()
 
@@ -261,7 +274,7 @@ module ClArray =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArray(outputArraySize, allocationMode = AllocationMode.Default)
+                clContext.CreateClArrayWithGPUOnlyFlags outputArraySize
 
             let kernel = kernel.GetKernel()
 

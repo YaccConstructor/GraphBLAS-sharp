@@ -7,6 +7,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.DenseVector
 open GraphBLAS.FSharp.Backend.SparseVector
+open GraphBLAS.FSharp.Backend.ClArray
 
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
@@ -18,8 +19,8 @@ module Vector =
             | Sparse ->
                 let vector =
                     { Context = clContext
-                      Indices = clContext.CreateClArray [| 0 |]
-                      Values = clContext.CreateClArray [| Unchecked.defaultof<'a> |]
+                      Indices = clContext.CreateClArrayWithGPUOnlyFlags [| 0 |]
+                      Values = clContext.CreateClArrayWithGPUOnlyFlags [| Unchecked.defaultof<'a> |]
                       Size = size }
 
                 ClVectorSparse vector
@@ -45,7 +46,7 @@ module Vector =
                 for i in 0 .. indices.Length - 1 do
                     res.[indices.[i]] <- Some(values.[i])
 
-                ClVectorDense <| clContext.CreateClArray res
+                ClVectorDense <| clContext.CreateClArrayWithGPUOnlyFlags res
 
     let copy (clContext: ClContext) (workGroupSize: int) =
         let copy = ClArray.copy clContext workGroupSize
