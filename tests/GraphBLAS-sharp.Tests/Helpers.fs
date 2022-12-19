@@ -124,6 +124,58 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
+    type SingleSymmetricalMatrix() =
+        static let matrixGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, _) = dimension2DGenerator
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, nrows)
+
+                for row in 1 .. nrows - 1 do
+                    for col in 0 .. row - 1 do
+                        matrix.[row, col] <- matrix.[col, row]
+
+                return matrix
+            }
+
+        static member IntType() =
+            matrixGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            matrixGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            matrixGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            matrixGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            matrixGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
     type PairOfSparseMatricesOfEqualSize() =
         static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
@@ -602,6 +654,13 @@ module Utils =
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
+    let undirectedAlgoConfig =
+        { FsCheckConfig.defaultConfig with
+              maxTest = 10
+              startSize = 1
+              endSize = 1000
+              arbitrary = [ typeof<Generators.SingleSymmetricalMatrix> ] }
+
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
         | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
@@ -616,6 +675,22 @@ module Utils =
         | Backend.VectorFormat.Dense ->
             Backend.VectorDense
             <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
+
+    let createArrayFromDictionary size zero (dictionary: System.Collections.Generic.Dictionary<int, 'a>) =
+        let array = Array.create size zero
+
+        for key in dictionary.Keys do
+            array.[key] <- dictionary.[key]
+
+        array
+
+    let unwrapOptionArray zero array =
+        Array.map
+            (fun x ->
+                match x with
+                | Some v -> v
+                | None -> zero)
+            array
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
         sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected

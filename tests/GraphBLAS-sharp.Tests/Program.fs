@@ -27,7 +27,7 @@ let allTests =
           Backend.SpMV.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
-          //Algo.Bfs.tests
+          Algo.BFS.tests
           Backend.Reduce.tests
           Backend.Sum.tests
           Backend.Vector.ZeroCreate.tests
