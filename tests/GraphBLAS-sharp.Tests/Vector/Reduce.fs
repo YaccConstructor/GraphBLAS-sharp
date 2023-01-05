@@ -8,6 +8,8 @@ open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
 
@@ -38,8 +40,8 @@ let correctnessGenericTest
     let arrayWithoutZeros = zeroFilter array (isEqual zero)
 
     if arrayWithoutZeros.Length > 0 then
-        let q = case.ClContext.Queue
-        let context = case.ClContext.ClContext
+        let q = case.TestContext.Queue
+        let context = case.TestContext.ClContext
 
         let vector =
             createVectorFromArray case.Format array (isEqual zero)
@@ -67,8 +69,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
         $"Correctness on %A{dataType}, %A{case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
-    let q = case.ClContext.Queue
+    let context = case.TestContext.ClContext
+    let q = case.TestContext.Queue
 
     q.Error.Add(fun e -> failwithf "%A" e)
 

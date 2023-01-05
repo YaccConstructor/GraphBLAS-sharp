@@ -34,7 +34,7 @@
         <Compile Include="Vector/ElementWiseAtLeasOne.fs" />
         <Compile Include="Vector/Convert.fs" />
         <Compile Include="Vector/Reduce.fs" />
-        <Compile Include="Vector/ElementWise.fs" />
+        <Compile Include="Vector\Elementwise.fs" />
         <Compile Include="Vector/ContainsNonZero.fs" />
         <Compile Include="Vector\SpMV.fs" />
         <Compile Include="Algorithms/BFS.fs" />

@@ -4,7 +4,6 @@ open BenchmarkDotNet.Columns
 open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
 open Brahma.FSharp
-open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
@@ -12,11 +11,6 @@ open System.IO
 open System.Text.RegularExpressions
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Jobs
-open GraphBLAS.FSharp
-
-open System.IO
-open GraphBLAS.FSharp
-open System
 
 type CommonConfig() =
     inherit ManualConfig()

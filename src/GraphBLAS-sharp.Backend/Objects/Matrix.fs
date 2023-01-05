@@ -8,27 +8,27 @@ type MatrixFormat =
     | CSC
 
 type ClMatrix<'a when 'a: struct> =
-    | MatrixCSR of ClCSRMatrix<'a>
-    | MatrixCOO of ClCOOMatrix<'a>
-    | MatrixCSC of ClCSCMatrix<'a>
+    | ClMatrixCSR of ClCSRMatrix<'a>
+    | ClMatrixCOO of ClCOOMatrix<'a>
+    | ClMatrixCSC of ClCSCMatrix<'a>
 
     member this.RowCount =
         match this with
-        | MatrixCSR matrix -> matrix.RowCount
-        | MatrixCOO matrix -> matrix.RowCount
-        | MatrixCSC matrix -> matrix.RowCount
+        | ClMatrixCSR matrix -> matrix.RowCount
+        | ClMatrixCOO matrix -> matrix.RowCount
+        | ClMatrixCSC matrix -> matrix.RowCount
 
     member this.ColumnCount =
         match this with
-        | MatrixCSR matrix -> matrix.ColumnCount
-        | MatrixCOO matrix -> matrix.ColumnCount
-        | MatrixCSC matrix -> matrix.ColumnCount
+        | ClMatrixCSR matrix -> matrix.ColumnCount
+        | ClMatrixCOO matrix -> matrix.ColumnCount
+        | ClMatrixCSC matrix -> matrix.ColumnCount
 
     member this.Dispose q =
         match this with
-        | MatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose q
-        | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose q
-        | MatrixCSC matrix -> (matrix :> IDeviceMemObject).Dispose q
+        | ClMatrixCSR matrix -> (matrix :> IDeviceMemObject).Dispose q
+        | ClMatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose q
+        | ClMatrixCSC matrix -> (matrix :> IDeviceMemObject).Dispose q
 
 and ClCSRMatrix<'elem when 'elem: struct> =
     { Context: ClContext

@@ -1,11 +1,11 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Objects
 
 module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -136,7 +136,7 @@ module SparseVector =
         let indicesScatter =
             Scatter.runInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate 1
+        let resultLength = Array.zeroCreate<int> 1
 
         fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 

@@ -2,7 +2,6 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Scatter
 
 open Expecto
 open Expecto.Logging
-open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context

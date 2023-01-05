@@ -5,6 +5,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Objects
 
 module DenseVector =
     let containsNonZero<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -208,7 +209,7 @@ module DenseVector =
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate 1
+        let resultLength = Array.zeroCreate<int> 1
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

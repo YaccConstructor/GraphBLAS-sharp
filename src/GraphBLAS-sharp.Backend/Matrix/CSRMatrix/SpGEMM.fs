@@ -5,6 +5,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects
 
 module internal SpGEMM =
     let private calculate

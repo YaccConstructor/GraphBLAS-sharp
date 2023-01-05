@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.TestCases
+open GraphBLAS.FSharp.Backend.Matrix
 
 let logger = Log.create "Transpose.Tests"
 
@@ -121,14 +122,14 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A, %A" datatype case.Format case.ClContext
+        sprintf "Correctness on %s, %A, %A" datatype case.Format case.TestContext
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
         || x = y
 
-    let context = case.ClContext.ClContext
-    let q = case.ClContext.Queue
+    let context = case.TestContext.ClContext
+    let q = case.TestContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let transposeFun = Matrix.transpose context wgSize

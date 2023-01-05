@@ -1,17 +1,12 @@
 ﻿namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
-open System.Text.RegularExpressions
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics
-open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Core
-open OpenCL.Net
 
 [<AbstractClass>]
 [<IterationCount(100)>]

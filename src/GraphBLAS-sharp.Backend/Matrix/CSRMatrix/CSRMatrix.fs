@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Matrix.CSR.Elementwise
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Matrix.COO
+open GraphBLAS.FSharp.Backend.Objects
 
 module CSRMatrix =
     let private expandRowPointers (clContext: ClContext) workGroupSize =

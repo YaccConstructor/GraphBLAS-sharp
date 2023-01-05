@@ -3,10 +3,7 @@ namespace GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
-open System.IO
-open GraphBLAS.FSharp.IO
+open GraphBLAS.FSharp.Backend.Objects
 
 [<Config(typeof<CommonConfig>)>]
 type MxvBenchmarks() =

@@ -1,13 +1,14 @@
-module GraphBLAS.FSharp.Tests.Backend.Vector.ElementWiseAtLeastOne
+module GraphBLAS.FSharp.Tests.Backend.Vector.ElementwiseAtLeastOne
 
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend.Common
-open StandardOperations
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Common.StandardOperations
 
 let logger =
     Log.create "Vector.ElementWiseAtLeasOneMul.Tests"
@@ -70,8 +71,8 @@ let correctnessGenericTest
 
     if leftNNZCount > 0 && rightNNZCount > 0 then
 
-        let q = case.ClContext.Queue
-        let context = case.ClContext.ClContext
+        let q = case.TestContext.Queue
+        let context = case.TestContext.ClContext
 
         let firstVector =
             createVectorFromArray case.Format leftArray (leftIsEqual leftZero)
@@ -105,7 +106,7 @@ let addTestFixtures case =
         $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     [ let toCoo = Vector.toSparse context wgSize
 
@@ -156,7 +157,7 @@ let mulTestFixtures case =
         $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
 
     [ let toCoo = Vector.toSparse context wgSize

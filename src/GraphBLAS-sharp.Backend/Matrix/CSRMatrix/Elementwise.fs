@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open System
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
@@ -94,7 +93,7 @@ module internal Elementwise =
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
-            let resultLength = Array.zeroCreate 1
+            let resultLength = Array.zeroCreate<int> 1
             let prefixSumArrayLength = positions.Length
 
             let resultLengthGpu = clContext.CreateClCell 0

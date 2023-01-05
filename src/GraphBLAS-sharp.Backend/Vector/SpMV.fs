@@ -1,9 +1,9 @@
 namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects
 
 module SpMV =
     let runTo

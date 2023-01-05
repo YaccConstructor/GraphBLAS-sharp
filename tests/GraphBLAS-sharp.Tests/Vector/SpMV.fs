@@ -1,16 +1,16 @@
 ﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 open GraphBLAS.FSharp.Backend.Common.StandardOperations
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
     let rows = Array2D.length1 baseMtx
@@ -46,7 +46,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> Backend.ClCSRMatrix<'a> -> ClArray<'b option> -> ClArray<'c option>)
+    (spMV: MailboxProcessor<_> -> ClCSRMatrix<'a> -> ClArray<'b option> -> ClArray<'c option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -64,12 +64,12 @@ let correctnessGenericTest
             let m = mtx.ToBackend testContext.ClContext
 
             match vtr, m with
-            | VectorDense vtr, Backend.MatrixCSR m ->
+            | VectorDense vtr, ClMatrixCSR m ->
                 let v = vtr.ToDevice testContext.ClContext
 
                 let res = spMV testContext.Queue m v
 
-                (Backend.MatrixCSR m).Dispose q
+                (ClMatrixCSR m).Dispose q
                 v.Dispose q
                 let hostRes = res.ToHost q
                 res.Dispose q

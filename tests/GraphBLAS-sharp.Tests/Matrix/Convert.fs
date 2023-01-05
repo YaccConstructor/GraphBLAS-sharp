@@ -7,6 +7,8 @@ open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
 
 let logger = Log.create "Convert.Tests"
 
@@ -20,7 +22,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     if mtx.NNZCount > 0 then
         let actual =
             let mBefore = mtx.ToBackend context
-            let mAfter: Backend.ClMatrix<'a> = convertFun q mBefore
+            let mAfter: ClMatrix<'a> = convertFun q mBefore
             let res = Matrix.FromBackend q mAfter
             mBefore.Dispose q
             mAfter.Dispose q

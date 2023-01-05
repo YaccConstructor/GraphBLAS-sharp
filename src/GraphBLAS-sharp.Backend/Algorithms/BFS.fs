@@ -3,10 +3,11 @@ namespace GraphBLAS.FSharp.Backend.Algorithms
 open GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module BFS =
     let singleSource

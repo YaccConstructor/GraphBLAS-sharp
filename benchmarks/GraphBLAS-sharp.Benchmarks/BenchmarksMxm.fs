@@ -5,6 +5,8 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Matrix
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -20,15 +22,15 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     let mutable funCSR2CSC = None
     let mutable funCSC2CSR = None
 
-    let mutable firstMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>>
-    let mutable secondMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>>
+    let mutable firstMatrix = Unchecked.defaultof<ClMatrix<'elem>>
+    let mutable secondMatrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable mask = Unchecked.defaultof<Backend.Mask2D>
 
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
     let mutable maskHost = Unchecked.defaultof<Mask2D>
 
-    member val ResultMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>> with get, set
+    member val ResultMatrix = Unchecked.defaultof<ClMatrix<'elem>> with get, set
 
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -71,7 +73,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSR2CSC =
         match funCSR2CSC with
         | None ->
-            let x = Backend.Matrix.toCSCInplace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize
             funCSR2CSC <- Some x
             x
         | Some x -> x
@@ -79,7 +81,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSC2CSR =
         match funCSC2CSR with
         | None ->
-            let x = Backend.Matrix.toCSRInplace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSRInplace this.OclContext this.WorkGroupSize
             funCSC2CSR <- Some x
             x
         | Some x -> x
@@ -233,10 +235,10 @@ module Operations =
 type MxmBenchmarks4Float32MultiplicationOnly() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        (Backend.Matrix.mxm Operations.add Operations.mult),
+        (Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -245,10 +247,10 @@ type MxmBenchmarks4Float32MultiplicationOnly() =
 type MxmBenchmarks4Float32WithTransposing() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        (Backend.Matrix.mxm Operations.add Operations.mult),
+        (Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -257,10 +259,10 @@ type MxmBenchmarks4Float32WithTransposing() =
 type MxmBenchmarks4BoolMultiplicationOnly() =
 
     inherit MxmBenchmarksMultiplicationOnly<bool>(
-        (Backend.Matrix.mxm Operations.logicalOr Operations.logicalAnd),
+        (Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -269,10 +271,10 @@ type MxmBenchmarks4BoolMultiplicationOnly() =
 type MxmBenchmarks4BoolWithTransposing() =
 
     inherit MxmBenchmarksWithTransposing<bool>(
-        (Backend.Matrix.mxm Operations.logicalOr Operations.logicalAnd),
+        (Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -281,10 +283,10 @@ type MxmBenchmarks4BoolWithTransposing() =
 type MxmBenchmarks4Float32MultiplicationOnlyWithZerosFilter() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        (Backend.Matrix.mxm Operations.addWithFilter Operations.mult),
+        (Matrix.mxm Operations.addWithFilter Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -293,10 +295,10 @@ type MxmBenchmarks4Float32MultiplicationOnlyWithZerosFilter() =
 type MxmBenchmarks4Float32WithTransposingWithZerosFilter() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        (Backend.Matrix.mxm Operations.addWithFilter Operations.mult),
+        (Matrix.mxm Operations.addWithFilter Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> Backend.MatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =

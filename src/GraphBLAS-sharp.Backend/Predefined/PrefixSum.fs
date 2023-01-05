@@ -1,8 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Predefined
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
-
+open GraphBLAS.FSharp.Backend.Common
 module internal PrefixSum =
     let standardExcludeInplace (clContext: ClContext) workGroupSize =
 

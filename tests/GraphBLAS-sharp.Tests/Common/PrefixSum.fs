@@ -7,7 +7,6 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 

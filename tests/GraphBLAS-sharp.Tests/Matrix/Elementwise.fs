@@ -9,8 +9,10 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Backend.Common.StandardOperations
-open Context
 open Utils
+open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Tests.Backend
 
 let logger = Log.create "Elementwise.Tests"
 
@@ -46,7 +48,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> Backend.ClMatrix<'a> -> Backend.ClMatrix<'b> -> Backend.ClMatrix<'c>)
+    (addFun: MailboxProcessor<_> -> ClMatrix<'a> -> ClMatrix<'b> -> ClMatrix<'c>)
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q
@@ -62,8 +64,11 @@ let correctnessGenericTest
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
         try
-            let m1 = mtx1.ToBackend case.ClContext.ClContext
-            let m2 = mtx2.ToBackend case.ClContext.ClContext
+            let m1 =
+                mtx1.ToBackend case.TestContext.ClContext
+
+            let m2 =
+                mtx2.ToBackend case.TestContext.ClContext
 
             let res = addFun q m1 m2
 
@@ -93,8 +98,8 @@ let testFixturesEWiseAdd case =
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
-      let context = case.ClContext.ClContext
-      let q = case.ClContext.Queue
+      let context = case.TestContext.ClContext
+      let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
@@ -142,8 +147,8 @@ let testFixturesEWiseAddAtLeastOne case =
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
-      let context = case.ClContext.ClContext
-      let q = case.ClContext.Queue
+      let context = case.TestContext.ClContext
+      let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
@@ -192,8 +197,8 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
-      let context = case.ClContext.ClContext
-      let q = case.ClContext.Queue
+      let context = case.TestContext.ClContext
+      let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
@@ -235,15 +240,15 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
 let elementwiseAddAtLeastOneToCOOTests =
     operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
-let testFixturesEWiseMulAtLeastOne (case: OperationCase<MatrixFormat>) =
+let testFixturesEWiseMulAtLeastOne case =
     [ let config = defaultConfig
       let wgSize = 32
 
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
-      let context = case.ClContext.ClContext
-      let q = case.ClContext.Queue
+      let context = case.TestContext.ClContext
+      let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolMul =

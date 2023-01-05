@@ -1,13 +1,14 @@
-module GraphBLAS.FSharp.Tests.Backend.Vector.ElementWise
+module GraphBLAS.FSharp.Tests.Backend.Vector.Elementwise
 
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend.Common
-open StandardOperations
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Common.StandardOperations
 
 let logger = Log.create "Vector.ElementWise.Tests"
 
@@ -58,8 +59,8 @@ let correctnessGenericTest
 
     if leftNNZCount > 0 && rightNNZCount > 0 then
 
-        let context = case.ClContext.ClContext
-        let q = case.ClContext.Queue
+        let context = case.TestContext.ClContext
+        let q = case.TestContext.Queue
 
         let firstVector =
             createVectorFromArray case.Format leftArray (leftIsEqual leftZero)
@@ -95,7 +96,7 @@ let addTestFixtures case =
 
     let wgSize = 32
 
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     [ let intAddFun = Vector.elementWise context intSum wgSize
 
@@ -144,7 +145,7 @@ let mulTestFixtures case =
 
     let wgSize = 32
 
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     [ let intMulFun = Vector.elementWise context intMul wgSize
 

@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Objects
 
 type MatrixFormat =
     | CSR
@@ -39,46 +39,46 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.ClCOOMatrix.Context = context
+                { ClCOOMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
                   Columns = columns
                   Values = values }
 
-            Backend.MatrixCOO result
+            ClMatrixCOO result
         | MatrixCSR m ->
             let rows = context.CreateClArray m.RowPointers
             let columns = context.CreateClArray m.ColumnIndices
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.ClCSRMatrix.Context = context
+                { ClCSRMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   RowPointers = rows
                   Columns = columns
                   Values = values }
 
-            Backend.MatrixCSR result
+            ClMatrixCSR result
         | MatrixCSC m ->
             let rows = context.CreateClArray m.RowIndices
             let columnPtrs = context.CreateClArray m.ColumnPointers
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.ClCSCMatrix.Context = context
+                { ClCSCMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
                   ColumnPointers = columnPtrs
                   Values = values }
 
-            Backend.MatrixCSC result
+            ClMatrixCSC result
 
     static member FromBackend (q: MailboxProcessor<_>) matrix =
         match matrix with
-        | Backend.MatrixCOO m ->
+        | ClMatrixCOO m ->
             let rows = Array.zeroCreate m.Rows.Length
             let columns = Array.zeroCreate m.Columns.Length
             let values = Array.zeroCreate m.Values.Length
@@ -100,7 +100,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             MatrixCOO result
-        | Backend.MatrixCSR m ->
+        | ClMatrixCSR m ->
             let rows = Array.zeroCreate m.RowPointers.Length
             let columns = Array.zeroCreate m.Columns.Length
             let values = Array.zeroCreate m.Values.Length
@@ -122,7 +122,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             MatrixCSR result
-        | Backend.MatrixCSC m ->
+        | ClMatrixCSC m ->
             let rows = Array.zeroCreate m.Rows.Length
             let columns = Array.zeroCreate m.ColumnPointers.Length
             let values = Array.zeroCreate m.Values.Length
@@ -246,12 +246,12 @@ and CSRMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { Backend.ClCSRMatrix.Context = context
-              Backend.ClCSRMatrix.RowCount = m.RowCount
-              Backend.ClCSRMatrix.ColumnCount = m.ColumnCount
-              Backend.ClCSRMatrix.RowPointers = rowPointers
-              Backend.ClCSRMatrix.Columns = cols
-              Backend.ClCSRMatrix.Values = vals }
+            { ClCSRMatrix.Context = context
+              RowCount = m.RowCount
+              ColumnCount = m.ColumnCount
+              RowPointers = rowPointers
+              Columns = cols
+              Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 
@@ -314,12 +314,12 @@ and COOMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { Backend.ClCOOMatrix.Context = context
-              Backend.ClCOOMatrix.RowCount = m.RowCount
-              Backend.ClCOOMatrix.ColumnCount = m.ColumnCount
-              Backend.ClCOOMatrix.Rows = rows
-              Backend.ClCOOMatrix.Columns = cols
-              Backend.ClCOOMatrix.Values = vals }
+            { ClCOOMatrix.Context = context
+              RowCount = m.RowCount
+              ColumnCount = m.ColumnCount
+              Rows = rows
+              Columns = cols
+              Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 

@@ -7,6 +7,8 @@ open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
 
 let logger = Log.create "Mxm.Tests"
 

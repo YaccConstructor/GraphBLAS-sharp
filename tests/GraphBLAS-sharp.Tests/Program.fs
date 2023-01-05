@@ -1,5 +1,4 @@
 open Expecto
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Backend
 
 [<Tests>]
@@ -13,7 +12,7 @@ let matrixTests =
           Matrix.Elementwise.elementwiseAddAtLeastOneToCOOTests
           Matrix.Mxm.tests
           Matrix.Transpose.tests ]
-        |> testSequenced
+    |> testSequenced
 
 [<Tests>]
 let commonTests =
@@ -27,7 +26,7 @@ let commonTests =
           Common.Replicate.tests
           Common.Reduce.tests
           Common.Sum.tests ]
-        |> testSequenced
+    |> testSequenced
 
 let vectorTests =
     testList
@@ -37,21 +36,19 @@ let vectorTests =
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
-          Vector.ElementWiseAtLeastOne.addTests
-          Vector.ElementWiseAtLeastOne.mulTests
-          Vector.ElementWise.addTests
-          Vector.ElementWise.mulTests
+          Vector.ElementwiseAtLeastOne.addTests
+          Vector.ElementwiseAtLeastOne.mulTests
+          Vector.Elementwise.addTests
+          Vector.Elementwise.mulTests
           Vector.FillSubVector.tests
           Vector.FillSubVector.complementedTests
           Vector.Reduce.tests
           Vector.ContainNonZero.tests ]
-        |> testSequenced
+    |> testSequenced
 
-let algoTests =
-    testList
-        "Algorithms tests"
-        [ Algorithms.BFS.tests ]
-        |> testSequenced
+let algorithmsTests =
+    testList "Algorithms tests" [ Algorithms.BFS.tests ]
+    |> testSequenced
 
 [<Tests>]
 let allTests =
@@ -60,7 +57,7 @@ let allTests =
         [ commonTests
           matrixTests
           vectorTests
-          algoTests ]
+          algorithmsTests ]
     |> testSequenced
 
 [<EntryPoint>]

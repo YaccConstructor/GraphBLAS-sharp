@@ -1,10 +1,10 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects
 
 module COOMatrix =
     ///<param name="clContext">.</param>
@@ -20,7 +20,7 @@ module COOMatrix =
         let sum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate 1
+        let resultLength = Array.zeroCreate<int> 1
 
         fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let resultLengthGpu = clContext.CreateClCell 0
@@ -406,11 +406,9 @@ module COOMatrix =
 
     let getTuples (clContext: ClContext) workGroupSize =
 
-        let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
 
-        let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
 

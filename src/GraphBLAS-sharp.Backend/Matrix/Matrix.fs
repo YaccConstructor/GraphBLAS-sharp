@@ -6,18 +6,17 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
+open GraphBLAS.FSharp.Backend.Objects
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
-        let copy =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+        let copy = ClArray.copy clContext workGroupSize
 
-        let copyData =
-            GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
+        let copyData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO m ->
+            | ClMatrixCOO m ->
                 let res =
                     { Context = clContext
                       RowCount = m.RowCount
@@ -26,8 +25,8 @@ module Matrix =
                       Columns = copy processor m.Columns
                       Values = copyData processor m.Values }
 
-                MatrixCOO res
-            | MatrixCSR m ->
+                ClMatrixCOO res
+            | ClMatrixCSR m ->
                 let res =
                     { Context = clContext
                       RowCount = m.RowCount
@@ -36,8 +35,8 @@ module Matrix =
                       Columns = copy processor m.Columns
                       Values = copyData processor m.Values }
 
-                MatrixCSR res
-            | MatrixCSC m ->
+                ClMatrixCSR res
+            | ClMatrixCSC m ->
                 let res =
                     { Context = clContext
                       RowCount = m.RowCount
@@ -46,7 +45,7 @@ module Matrix =
                       ColumnPointers = copy processor m.ColumnPointers
                       Values = copyData processor m.Values }
 
-                MatrixCSC res
+                ClMatrixCSC res
 
     /// <summary>
     /// Creates a new matrix, represented in CSR format, that is equal to the given one.
@@ -62,9 +61,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO m -> toCSR processor m |> MatrixCSR
-            | MatrixCSR _ -> copy processor matrix
-            | MatrixCSC m ->
+            | ClMatrixCOO m -> toCSR processor m |> ClMatrixCSR
+            | ClMatrixCSR _ -> copy processor matrix
+            | ClMatrixCSC m ->
                 let csrT =
                     { Context = m.Context
                       RowCount = m.ColumnCount
@@ -73,7 +72,7 @@ module Matrix =
                       Columns = m.Rows
                       Values = m.Values }
 
-                transpose processor csrT |> MatrixCSR
+                transpose processor csrT |> ClMatrixCSR
 
     /// <summary>
     /// Returns the matrix, represented in CSR format, that is equal to the given one.
@@ -90,9 +89,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO m -> toCSRInplace processor m |> MatrixCSR
-            | MatrixCSR _ -> matrix
-            | MatrixCSC m ->
+            | ClMatrixCOO m -> toCSRInplace processor m |> ClMatrixCSR
+            | ClMatrixCSR _ -> matrix
+            | ClMatrixCSC m ->
                 let csrT =
                     { Context = m.Context
                       RowCount = m.ColumnCount
@@ -101,7 +100,7 @@ module Matrix =
                       Columns = m.Rows
                       Values = m.Values }
 
-                transposeInplace processor csrT |> MatrixCSR
+                transposeInplace processor csrT |> ClMatrixCSR
 
     /// <summary>
     /// Creates a new matrix, represented in COO format, that is equal to the given one.
@@ -117,9 +116,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO _ -> copy processor matrix
-            | MatrixCSR m -> toCOO processor m |> MatrixCOO
-            | MatrixCSC m ->
+            | ClMatrixCOO _ -> copy processor matrix
+            | ClMatrixCSR m -> toCOO processor m |> ClMatrixCOO
+            | ClMatrixCSC m ->
                 let csrT =
                     { Context = m.Context
                       RowCount = m.ColumnCount
@@ -129,7 +128,7 @@ module Matrix =
                       Values = m.Values }
 
                 let cooT = toCOO processor csrT
-                transposeInplace processor cooT |> MatrixCOO
+                transposeInplace processor cooT |> ClMatrixCOO
 
     /// <summary>
     /// Returns the matrix, represented in COO format, that is equal to the given one.
@@ -146,9 +145,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCOO _ -> matrix
-            | MatrixCSR m -> toCOOInplace processor m |> MatrixCOO
-            | MatrixCSC m ->
+            | ClMatrixCOO _ -> matrix
+            | ClMatrixCSR m -> toCOOInplace processor m |> ClMatrixCOO
+            | ClMatrixCSC m ->
                 let csrT =
                     { Context = m.Context
                       RowCount = m.ColumnCount
@@ -158,7 +157,7 @@ module Matrix =
                       Values = m.Values }
 
                 let cooT = toCOOInplace processor csrT
-                transposeInplace processor cooT |> MatrixCOO
+                transposeInplace processor cooT |> ClMatrixCOO
 
     /// <summary>
     /// Creates a new matrix, represented in CSC format, that is equal to the given one.
@@ -177,8 +176,8 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCSC _ -> copy processor matrix
-            | MatrixCSR m ->
+            | ClMatrixCSC _ -> copy processor matrix
+            | ClMatrixCSR m ->
                 let csrT = transposeCSR processor m
 
                 { Context = csrT.Context
@@ -187,8 +186,8 @@ module Matrix =
                   Rows = csrT.Columns
                   ColumnPointers = csrT.RowPointers
                   Values = csrT.Values }
-                |> MatrixCSC
-            | MatrixCOO m ->
+                |> ClMatrixCSC
+            | ClMatrixCOO m ->
                 let cooT = transposeCOO processor m
                 let csrT = toCSR processor cooT
 
@@ -198,7 +197,7 @@ module Matrix =
                   Rows = csrT.Columns
                   ColumnPointers = csrT.RowPointers
                   Values = csrT.Values }
-                |> MatrixCSC
+                |> ClMatrixCSC
 
     /// <summary>
     /// Returns the matrix, represented in CSC format, that is equal to the given one.
@@ -218,8 +217,8 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
-            | MatrixCSC _ -> matrix
-            | MatrixCSR m ->
+            | ClMatrixCSC _ -> matrix
+            | ClMatrixCSR m ->
                 let csrT = transposeCSRInplace processor m
 
                 { Context = csrT.Context
@@ -228,8 +227,8 @@ module Matrix =
                   Rows = csrT.Columns
                   ColumnPointers = csrT.RowPointers
                   Values = csrT.Values }
-                |> MatrixCSC
-            | MatrixCOO m ->
+                |> ClMatrixCSC
+            | ClMatrixCOO m ->
                 let cooT = transposeCOOInplace processor m
                 let csrT = toCSRInplace processor cooT
 
@@ -239,7 +238,7 @@ module Matrix =
                   Rows = csrT.Columns
                   ColumnPointers = csrT.RowPointers
                   Values = csrT.Values }
-                |> MatrixCSC
+                |> ClMatrixCSC
 
     let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOElementwise =
@@ -250,9 +249,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
-            | MatrixCSC m1, MatrixCSC m2 ->
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSRElementwise processor m1 m2 |> ClMatrixCSR
+            | ClMatrixCSC m1, ClMatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
                       RowCount = m1.ColumnCount
@@ -277,7 +276,7 @@ module Matrix =
                   Rows = resT.Columns
                   ColumnPointers = resT.RowPointers
                   Values = resT.Values }
-                |> MatrixCSC
+                |> ClMatrixCSC
             | _ -> failwith "Matrix formats are not matching"
 
     let elementwiseToCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
@@ -292,9 +291,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSC m1, MatrixCSC m2 ->
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSRElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSC m1, ClMatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
                       RowCount = m1.ColumnCount
@@ -312,7 +311,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSRElementwise processor csrT1 csrT2
-                MatrixCOO <| transposeCOOInplace processor resT
+                ClMatrixCOO <| transposeCOOInplace processor resT
             | _ -> failwith "Matrix formats are not matching"
 
     let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
@@ -324,9 +323,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCSR
-            | MatrixCSC m1, MatrixCSC m2 ->
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSRElementwise processor m1 m2 |> ClMatrixCSR
+            | ClMatrixCSC m1, ClMatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
                       RowCount = m1.ColumnCount
@@ -351,7 +350,7 @@ module Matrix =
                   Rows = resT.Columns
                   ColumnPointers = resT.RowPointers
                   Values = resT.Values }
-                |> MatrixCSC
+                |> ClMatrixCSC
             | _ -> failwith "Matrix formats are not matching"
 
     let elementwiseAtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
@@ -366,9 +365,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix1 matrix2 ->
             match matrix1, matrix2 with
-            | MatrixCOO m1, MatrixCOO m2 -> COOElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSR m1, MatrixCSR m2 -> CSRElementwise processor m1 m2 |> MatrixCOO
-            | MatrixCSC m1, MatrixCSC m2 ->
+            | ClMatrixCOO m1, ClMatrixCOO m2 -> COOElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSR m2 -> CSRElementwise processor m1 m2 |> ClMatrixCOO
+            | ClMatrixCSC m1, ClMatrixCSC m2 ->
                 let csrT1 =
                     { Context = m1.Context
                       RowCount = m1.ColumnCount
@@ -386,7 +385,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT = CSRElementwise processor csrT1 csrT2
-                MatrixCOO <| transposeCOOInplace processor resT
+                ClMatrixCOO <| transposeCOOInplace processor resT
             | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>
@@ -408,23 +407,23 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
-            | MatrixCOO m -> COOtransposeInplace processor m |> MatrixCOO
-            | MatrixCSR m ->
+            | ClMatrixCOO m -> COOtransposeInplace processor m |> ClMatrixCOO
+            | ClMatrixCSR m ->
                 { Context = m.Context
                   RowCount = m.ColumnCount
                   ColumnCount = m.RowCount
                   Rows = m.Columns
                   ColumnPointers = m.RowPointers
                   Values = m.Values }
-                |> MatrixCSC
-            | MatrixCSC m ->
+                |> ClMatrixCSC
+            | ClMatrixCSC m ->
                 { Context = m.Context
                   RowCount = m.ColumnCount
                   ColumnCount = m.RowCount
                   RowPointers = m.ColumnPointers
                   Columns = m.Rows
                   Values = m.Values }
-                |> MatrixCSR
+                |> ClMatrixCSR
 
     /// <summary>
     /// Transposes the given matrix and returns result as a new matrix.
@@ -447,23 +446,23 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
-            | MatrixCOO m -> COOtranspose processor m |> MatrixCOO
-            | MatrixCSR m ->
+            | ClMatrixCOO m -> COOtranspose processor m |> ClMatrixCOO
+            | ClMatrixCSR m ->
                 { Context = m.Context
                   RowCount = m.ColumnCount
                   ColumnCount = m.RowCount
                   Rows = copy processor m.Columns
                   ColumnPointers = copy processor m.RowPointers
                   Values = copyData processor m.Values }
-                |> MatrixCSC
-            | MatrixCSC m ->
+                |> ClMatrixCSC
+            | ClMatrixCSC m ->
                 { Context = m.Context
                   RowCount = m.ColumnCount
                   ColumnCount = m.RowCount
                   RowPointers = copy processor m.ColumnPointers
                   Columns = copy processor m.Rows
                   Values = copyData processor m.Values }
-                |> MatrixCSR
+                |> ClMatrixCSR
 
     let mxm
         (opAdd: Expr<'c -> 'c -> 'c option>)
@@ -478,5 +477,5 @@ module Matrix =
         fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: Mask2D) ->
 
             match matrix1, matrix2, mask.IsComplemented with
-            | MatrixCSR m1, MatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> MatrixCOO
+            | ClMatrixCSR m1, ClMatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> ClMatrixCOO
             | _ -> failwith "Matrix formats are not matching"

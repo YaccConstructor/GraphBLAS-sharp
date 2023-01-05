@@ -6,6 +6,8 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.copy.Tests"
 
@@ -40,8 +42,8 @@ let correctnessGenericTest<'a when 'a: struct>
     if array.Length > 0 then
         let array = filter array
 
-        let q = case.ClContext.Queue
-        let context = case.ClContext.ClContext
+        let q = case.TestContext.Queue
+        let context = case.TestContext.ClContext
 
         let expected =
             createVectorFromArray case.Format array isZero
@@ -65,7 +67,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
         sprintf "Correctness on %s, %A" datatype case.Format
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     [ let intCopy = Vector.copy context wgSize
       let isZero item = item = 0

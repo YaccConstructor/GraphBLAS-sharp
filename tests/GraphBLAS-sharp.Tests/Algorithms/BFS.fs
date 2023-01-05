@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
 open GraphBLAS.FSharp.Tests.QuickGraph.CreateGraph
+open GraphBLAS.FSharp.Backend.Objects
 
 let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
@@ -36,12 +37,12 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D GraphBLAS.FSharp.CSR matrix (fun x -> x = 0)
+                  Utils.createMatrixFromArray2D CSR matrix (fun x -> x = 0)
 
               let matrix = matrixHost.ToBackend context
 
               match matrix with
-              | MatrixCSR mtx ->
+              | ClMatrixCSR mtx ->
                   let res = bfs queue mtx source |> ClVectorDense
 
                   let resHost = res.ToHost queue

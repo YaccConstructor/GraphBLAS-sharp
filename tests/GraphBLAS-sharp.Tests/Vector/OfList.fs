@@ -7,6 +7,9 @@ open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
 open Context
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+
 let logger = Log.create "Vector.ofList.Tests"
 
 let checkResult
@@ -39,7 +42,7 @@ let correctnessGenericTest<'a when 'a: struct>
 
     if elements.Length > 0 then
 
-        let q = case.ClContext.Queue
+        let q = case.TestContext.Queue
 
         let indices, values =
             elements
@@ -65,8 +68,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let wgSize = 32
 
-      let context = case.ClContext.ClContext
-      let q = case.ClContext.Queue
+      let context = case.TestContext.ClContext
+      let q = case.TestContext.Queue
 
       q.Error.Add(fun e -> failwithf $"%A{e}")
 
