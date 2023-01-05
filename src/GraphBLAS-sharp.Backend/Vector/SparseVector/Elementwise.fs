@@ -1,8 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.SparseVector
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open Microsoft.FSharp.Quotations
 
 module SparseElementwise =
     let merge workGroupSize =
