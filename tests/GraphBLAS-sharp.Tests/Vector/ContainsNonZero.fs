@@ -1,4 +1,4 @@
-module Backend.Vector.ContainNonZero
+module GraphBLAS.FSharp.Tests.Backend.Vector.ContainNonZero
 
 open Expecto
 open Expecto.Logging

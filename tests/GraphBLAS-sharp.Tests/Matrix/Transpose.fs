@@ -1,4 +1,4 @@
-module Backend.Transpose
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Transpose
 
 open Expecto
 open Expecto.Logging
@@ -7,7 +7,6 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.TestCases
-open OpenCL.Net
 
 let logger = Log.create "Transpose.Tests"
 

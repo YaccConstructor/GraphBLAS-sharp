@@ -1,4 +1,4 @@
-module Backend.Reduce
+module GraphBLAS.FSharp.Tests.Backend.Common.Reduce
 
 open Expecto
 open Expecto.Logging

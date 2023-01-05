@@ -1,4 +1,4 @@
-﻿module Backend.SpMV
+﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.ArraysExtensions

@@ -1,4 +1,4 @@
-module Backend.Vector.OfList
+module GraphBLAS.FSharp.Tests.Backend.Vector.OfList
 
 open Expecto
 open Expecto.Logging

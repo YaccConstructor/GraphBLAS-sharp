@@ -1,4 +1,4 @@
-module Backend.Scatter
+module GraphBLAS.FSharp.Tests.Backend.Common.Scatter
 
 open Expecto
 open Expecto.Logging

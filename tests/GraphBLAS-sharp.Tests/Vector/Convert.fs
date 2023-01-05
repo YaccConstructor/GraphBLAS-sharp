@@ -1,4 +1,4 @@
-module Backend.Vector.Convert
+module GraphBLAS.FSharp.Tests.Backend.Vector.Convert
 
 open Expecto
 open Expecto.Logging

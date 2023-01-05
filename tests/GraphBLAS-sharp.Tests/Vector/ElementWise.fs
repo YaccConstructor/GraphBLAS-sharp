@@ -1,4 +1,4 @@
-module Backend.Vector.ElementWise
+module GraphBLAS.FSharp.Tests.Backend.Vector.ElementWise
 
 open Expecto
 open Expecto.Logging

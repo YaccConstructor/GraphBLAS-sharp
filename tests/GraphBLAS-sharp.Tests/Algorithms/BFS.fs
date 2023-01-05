@@ -1,4 +1,4 @@
-module Algo.BFS
+module GraphBLAS.FSharp.Tests.Backend.Algo.BFS
 
 open Expecto
 open GraphBLAS.FSharp.Backend

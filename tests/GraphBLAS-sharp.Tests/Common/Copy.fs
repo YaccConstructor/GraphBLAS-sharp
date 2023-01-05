@@ -1,4 +1,4 @@
-module Backend.Copy
+module GraphBLAS.FSharp.Tests.Backend.Common.Copy
 
 open Expecto
 open Expecto.Logging

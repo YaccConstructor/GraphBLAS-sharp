@@ -1,4 +1,4 @@
-module Backend.Vector.FillSubVector
+module GraphBLAS.FSharp.Tests.Backend.Vector.FillSubVector
 
 open Expecto
 open Expecto.Logging

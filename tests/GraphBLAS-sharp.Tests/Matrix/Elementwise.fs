@@ -1,5 +1,4 @@
-module Backend.Elementwise
-
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Elementwise
 
 open Expecto
 open Expecto.Logging
@@ -11,7 +10,6 @@ open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Backend.Common.StandardOperations
 open Context
-open TestCases
 open Utils
 
 let logger = Log.create "Elementwise.Tests"

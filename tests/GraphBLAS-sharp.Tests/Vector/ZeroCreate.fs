@@ -1,4 +1,4 @@
-module Backend.Vector.ZeroCreate
+module GraphBLAS.FSharp.Tests.Backend.Vector.ZeroCreate
 
 open Expecto
 open Expecto.Logging

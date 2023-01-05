@@ -1,4 +1,4 @@
-module Backend.PrefixSum
+module GraphBLAS.FSharp.Tests.Backend.Common.PrefixSum
 
 open Expecto
 open Expecto.Logging
