@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Common\Quotes.fs" />
+    <Compile Include="Common/Quotes.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/PrefixSum.fs" />
@@ -26,7 +26,7 @@
     <Compile Include="Objects/Common.fs" />
     <Compile Include="Objects/ArraysExtentions.fs" />
     <Compile Include="Objects/Vector.fs" />
-    <Compile Include="Objects\Matrix.fs" />
+    <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
