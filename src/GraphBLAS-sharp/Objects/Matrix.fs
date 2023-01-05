@@ -39,7 +39,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.COOMatrix.Context = context
+                { Backend.ClCOOMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
@@ -53,7 +53,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.CSRMatrix.Context = context
+                { Backend.ClCSRMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   RowPointers = rows
@@ -67,7 +67,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { Backend.CSCMatrix.Context = context
+                { Backend.ClCSCMatrix.Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
@@ -246,12 +246,12 @@ and CSRMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { Backend.CSRMatrix.Context = context
-              Backend.CSRMatrix.RowCount = m.RowCount
-              Backend.CSRMatrix.ColumnCount = m.ColumnCount
-              Backend.CSRMatrix.RowPointers = rowPointers
-              Backend.CSRMatrix.Columns = cols
-              Backend.CSRMatrix.Values = vals }
+            { Backend.ClCSRMatrix.Context = context
+              Backend.ClCSRMatrix.RowCount = m.RowCount
+              Backend.ClCSRMatrix.ColumnCount = m.ColumnCount
+              Backend.ClCSRMatrix.RowPointers = rowPointers
+              Backend.ClCSRMatrix.Columns = cols
+              Backend.ClCSRMatrix.Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 
@@ -314,12 +314,12 @@ and COOMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { Backend.COOMatrix.Context = context
-              Backend.COOMatrix.RowCount = m.RowCount
-              Backend.COOMatrix.ColumnCount = m.ColumnCount
-              Backend.COOMatrix.Rows = rows
-              Backend.COOMatrix.Columns = cols
-              Backend.COOMatrix.Values = vals }
+            { Backend.ClCOOMatrix.Context = context
+              Backend.ClCOOMatrix.RowCount = m.RowCount
+              Backend.ClCOOMatrix.ColumnCount = m.ColumnCount
+              Backend.ClCOOMatrix.Rows = rows
+              Backend.ClCOOMatrix.Columns = cols
+              Backend.ClCOOMatrix.Values = vals }
 
         | x -> failwith "Unsupported matrix format: %A"
 

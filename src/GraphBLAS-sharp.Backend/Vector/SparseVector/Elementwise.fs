@@ -1,8 +1,8 @@
-namespace GraphBLAS.FSharp.Backend.SparseVector
+namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
 
-module SparseElementwise =
+module Elementwise =
     let merge workGroupSize =
         <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
 

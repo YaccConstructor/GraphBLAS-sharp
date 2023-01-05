@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.SparseVector
+namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -11,7 +11,7 @@ module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let kernel =
-            clContext.Compile(SparseElementwise.merge workGroupSize)
+            clContext.Compile(Elementwise.merge workGroupSize)
 
         fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
 
@@ -88,7 +88,7 @@ module SparseVector =
         =
 
         let kernel =
-            clContext.Compile(SparseElementwise.preparePositions op)
+            clContext.Compile(Elementwise.preparePositions op)
 
         fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
 
@@ -228,7 +228,7 @@ module SparseVector =
         =
 
         let kernel =
-            clContext.Compile(SparseElementwise.prepareFillVector op)
+            clContext.Compile(Elementwise.prepareFillVector op)
 
         fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) ->
 

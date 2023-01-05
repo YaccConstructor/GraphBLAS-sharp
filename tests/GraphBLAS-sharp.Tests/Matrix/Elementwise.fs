@@ -46,7 +46,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> Backend.Matrix<'a> -> Backend.Matrix<'b> -> Backend.Matrix<'c>)
+    (addFun: MailboxProcessor<_> -> Backend.ClMatrix<'a> -> Backend.ClMatrix<'b> -> Backend.ClMatrix<'c>)
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q

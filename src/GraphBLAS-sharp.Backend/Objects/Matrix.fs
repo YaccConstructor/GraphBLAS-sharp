@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Objects
 
 open Brahma.FSharp
 
@@ -7,10 +7,10 @@ type MatrixFormat =
     | COO
     | CSC
 
-type Matrix<'a when 'a: struct> =
-    | MatrixCSR of CSRMatrix<'a>
-    | MatrixCOO of COOMatrix<'a>
-    | MatrixCSC of CSCMatrix<'a>
+type ClMatrix<'a when 'a: struct> =
+    | MatrixCSR of ClCSRMatrix<'a>
+    | MatrixCOO of ClCOOMatrix<'a>
+    | MatrixCSC of ClCSCMatrix<'a>
 
     member this.RowCount =
         match this with
@@ -30,7 +30,7 @@ type Matrix<'a when 'a: struct> =
         | MatrixCOO matrix -> (matrix :> IDeviceMemObject).Dispose q
         | MatrixCSC matrix -> (matrix :> IDeviceMemObject).Dispose q
 
-and CSRMatrix<'elem when 'elem: struct> =
+and ClCSRMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowCount: int
       ColumnCount: int
@@ -45,7 +45,7 @@ and CSRMatrix<'elem when 'elem: struct> =
             q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
             q.PostAndReply(Msg.MsgNotifyMe)
 
-and COOMatrix<'elem when 'elem: struct> =
+and ClCOOMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowCount: int
       ColumnCount: int
@@ -60,7 +60,7 @@ and COOMatrix<'elem when 'elem: struct> =
             q.Post(Msg.CreateFreeMsg<_>(this.Rows))
             q.PostAndReply(Msg.MsgNotifyMe)
 
-and CSCMatrix<'elem when 'elem: struct> =
+and ClCSCMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowCount: int
       ColumnCount: int
@@ -75,7 +75,7 @@ and CSCMatrix<'elem when 'elem: struct> =
             q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
             q.PostAndReply(Msg.MsgNotifyMe)
 
-and TupleMatrix<'elem when 'elem: struct> =
+and ClTupleMatrix<'elem when 'elem: struct> =
     { Context: ClContext
       RowIndices: ClArray<int>
       ColumnIndices: ClArray<int>

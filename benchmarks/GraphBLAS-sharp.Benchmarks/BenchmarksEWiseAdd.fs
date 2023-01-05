@@ -195,7 +195,7 @@ type EWiseAddBenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> Backend
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
 module M =
-    let resultToHostCOO (resultMatrix:Backend.COOMatrix<'a>) (procesor:MailboxProcessor<_>) =
+    let resultToHostCOO (resultMatrix:Backend.ClCOOMatrix<'a>) (procesor:MailboxProcessor<_>) =
         let cols =
             let a = Array.zeroCreate resultMatrix.ColumnCount
             procesor.Post(Msg.CreateToHostMsg<_>(resultMatrix.Columns,a))
@@ -219,7 +219,7 @@ module M =
 
 type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.elementwise context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -231,7 +231,7 @@ type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithDataTransfer<Backend.ClCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.elementwise context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -245,7 +245,7 @@ type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
 type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCOOMatrix<bool>,bool>(
         (fun context wgSize -> Backend.COOMatrix.elementwise context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -258,7 +258,7 @@ type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCSRMatrix<float32>,float32>(
         (fun context wgSize -> Backend.CSRMatrix.elementwise context Backend.Common.StandardOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -271,7 +271,7 @@ type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
 type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCSRMatrix<bool>,bool>(
         (fun context wgSize -> Backend.CSRMatrix.elementwise context Backend.Common.StandardOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -285,7 +285,7 @@ type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCOOMatrix<bool>,bool>(
         (fun context wgSize -> Backend.COOMatrix.elementwiseAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -297,7 +297,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<bool>,bool>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCSRMatrix<bool>,bool>(
         (fun context wgSize -> Backend.CSRMatrix.elementwiseAtLeastOne context Backend.Common.StandardOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
@@ -309,7 +309,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.COOMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCOOMatrix<float32>,float32>(
         (fun context wgSize -> Backend.COOMatrix.elementwiseAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
@@ -321,7 +321,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
 type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
 
-    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.CSRMatrix<float32>,float32>(
+    inherit EWiseAddBenchmarksWithoutDataTransfer<Backend.ClCSRMatrix<float32>,float32>(
         (fun context wgSize -> Backend.CSRMatrix.elementwiseAtLeastOne context Backend.Common.StandardOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),

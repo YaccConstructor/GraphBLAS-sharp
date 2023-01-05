@@ -20,7 +20,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     if mtx.NNZCount > 0 then
         let actual =
             let mBefore = mtx.ToBackend context
-            let mAfter: Backend.Matrix<'a> = convertFun q mBefore
+            let mAfter: Backend.ClMatrix<'a> = convertFun q mBefore
             let res = Matrix.FromBackend q mAfter
             mBefore.Dispose q
             mAfter.Dispose q

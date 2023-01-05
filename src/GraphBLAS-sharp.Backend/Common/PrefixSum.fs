@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
 open FSharp.Quotations

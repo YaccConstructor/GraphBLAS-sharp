@@ -1,12 +1,12 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.DenseVector
-open GraphBLAS.FSharp.Backend.SparseVector
+open GraphBLAS.FSharp.Backend.Vector.Dense
+open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.ClArray
 
 module Vector =

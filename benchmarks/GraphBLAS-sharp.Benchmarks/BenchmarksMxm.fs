@@ -20,15 +20,15 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     let mutable funCSR2CSC = None
     let mutable funCSC2CSR = None
 
-    let mutable firstMatrix = Unchecked.defaultof<Backend.Matrix<'elem>>
-    let mutable secondMatrix = Unchecked.defaultof<Backend.Matrix<'elem>>
+    let mutable firstMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>>
+    let mutable secondMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>>
     let mutable mask = Unchecked.defaultof<Backend.Mask2D>
 
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
     let mutable maskHost = Unchecked.defaultof<Mask2D>
 
-    member val ResultMatrix = Unchecked.defaultof<Backend.Matrix<'elem>> with get, set
+    member val ResultMatrix = Unchecked.defaultof<Backend.ClMatrix<'elem>> with get, set
 
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set

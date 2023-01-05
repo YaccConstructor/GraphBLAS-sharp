@@ -5,6 +5,8 @@ open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Vector.Dense
 
 module BFS =
     let singleSource
@@ -23,15 +25,15 @@ module BFS =
         let ofList = Vector.ofList clContext Dense
 
         let maskComplementedTo =
-            DenseVector.DenseVector.elementWiseTo clContext StandardOperations.complementedMaskOp workGroupSize
+            DenseVector.elementWiseTo clContext StandardOperations.complementedMaskOp workGroupSize
 
         let fillSubVectorTo =
-            DenseVector.DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
+            DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
 
         let containsNonZero =
-            DenseVector.DenseVector.containsNonZero clContext workGroupSize
+            DenseVector.containsNonZero clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: CSRMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClCSRMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels = zeroCreate queue vertexCount

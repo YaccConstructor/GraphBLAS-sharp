@@ -1,56 +1,56 @@
 open Expecto
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Tests.
+open GraphBLAS.FSharp.Tests.Backend
 
 [<Tests>]
 let matrixTests =
     testList
         "Matrix tests"
-        [ Backend.Matrix.Convert.tests
-          Backend.Matrix.Elementwise.elementwiseAddTests
-          Backend.Matrix.Elementwise.elementwiseAddAtLeastOneTests
-          Backend.Matrix.Elementwise.elementwiseMulAtLeastOneTests
-          Backend.Matrix.Elementwise.elementwiseAddAtLeastOneToCOOTests
-          Backend.Matrix.Mxm.tests
-          Backend.Matrix.Transpose.tests ]
+        [ Matrix.Convert.tests
+          Matrix.Elementwise.elementwiseAddTests
+          Matrix.Elementwise.elementwiseAddAtLeastOneTests
+          Matrix.Elementwise.elementwiseMulAtLeastOneTests
+          Matrix.Elementwise.elementwiseAddAtLeastOneToCOOTests
+          Matrix.Mxm.tests
+          Matrix.Transpose.tests ]
         |> testSequenced
 
 [<Tests>]
 let commonTests =
     testList
         "Common tests"
-        [ Backend.Common.BitonicSort.tests
-          Backend.Common.PrefixSum.tests
-          Backend.Common.Scatter.tests
-          Backend.Common.RemoveDuplicates.tests
-          Backend.Common.Copy.tests
-          Backend.Common.Replicate.tests
-          Backend.Common.Reduce.tests
-          Backend.Common.Sum.tests ]
+        [ Common.BitonicSort.tests
+          Common.PrefixSum.tests
+          Common.Scatter.tests
+          Common.RemoveDuplicates.tests
+          Common.Copy.tests
+          Common.Replicate.tests
+          Common.Reduce.tests
+          Common.Sum.tests ]
         |> testSequenced
 
 let vectorTests =
     testList
         "Vector tests"
-        [ Backend.Vector.SpMV.tests
-          Backend.Vector.ZeroCreate.tests
-          Backend.Vector.OfList.tests
-          Backend.Vector.Copy.tests
-          Backend.Vector.Convert.tests
-          Backend.Vector.ElementWiseAtLeastOne.addTests
-          Backend.Vector.ElementWiseAtLeastOne.mulTests
-          Backend.Vector.ElementWise.addTests
-          Backend.Vector.ElementWise.mulTests
-          Backend.Vector.FillSubVector.tests
-          Backend.Vector.FillSubVector.complementedTests
-          Backend.Vector.Reduce.tests
-          Backend.Vector.ContainNonZero.tests ]
+        [ Vector.SpMV.tests
+          Vector.ZeroCreate.tests
+          Vector.OfList.tests
+          Vector.Copy.tests
+          Vector.Convert.tests
+          Vector.ElementWiseAtLeastOne.addTests
+          Vector.ElementWiseAtLeastOne.mulTests
+          Vector.ElementWise.addTests
+          Vector.ElementWise.mulTests
+          Vector.FillSubVector.tests
+          Vector.FillSubVector.complementedTests
+          Vector.Reduce.tests
+          Vector.ContainNonZero.tests ]
         |> testSequenced
 
 let algoTests =
     testList
         "Algorithms tests"
-        [ Backend.Algo.BFS.tests ]
+        [ Algorithms.BFS.tests ]
         |> testSequenced
 
 [<Tests>]

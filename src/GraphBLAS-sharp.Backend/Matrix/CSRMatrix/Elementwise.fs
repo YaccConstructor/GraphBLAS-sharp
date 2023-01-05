@@ -1,7 +1,6 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open System
-open System.Diagnostics.CodeAnalysis
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common

@@ -46,7 +46,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> Backend.CSRMatrix<'a> -> ClArray<'b option> -> ClArray<'c option>)
+    (spMV: MailboxProcessor<_> -> Backend.ClCSRMatrix<'a> -> ClArray<'b option> -> ClArray<'c option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.DenseVector
+namespace GraphBLAS.FSharp.Backend.Vector.Dense
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend

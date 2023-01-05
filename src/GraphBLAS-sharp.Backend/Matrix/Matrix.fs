@@ -1,9 +1,11 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Matrix
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Matrix.COO
+open GraphBLAS.FSharp.Backend.Matrix.CSR
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
@@ -13,7 +15,7 @@ module Matrix =
         let copyData =
             GraphBLAS.FSharp.Backend.ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCOO m ->
                 let res =
@@ -58,7 +60,7 @@ module Matrix =
         let transpose =
             CSRMatrix.transpose clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCOO m -> toCSR processor m |> MatrixCSR
             | MatrixCSR _ -> copy processor matrix
@@ -86,7 +88,7 @@ module Matrix =
         let transposeInplace =
             CSRMatrix.transposeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCOO m -> toCSRInplace processor m |> MatrixCSR
             | MatrixCSR _ -> matrix
@@ -113,7 +115,7 @@ module Matrix =
         let transposeInplace =
             COOMatrix.transposeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCOO _ -> copy processor matrix
             | MatrixCSR m -> toCOO processor m |> MatrixCOO
@@ -142,7 +144,7 @@ module Matrix =
         let transposeInplace =
             COOMatrix.transposeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCOO _ -> matrix
             | MatrixCSR m -> toCOOInplace processor m |> MatrixCOO
@@ -173,7 +175,7 @@ module Matrix =
         let transposeCOO =
             COOMatrix.transpose clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCSC _ -> copy processor matrix
             | MatrixCSR m ->
@@ -214,7 +216,7 @@ module Matrix =
         let transposeCOOInplace =
             COOMatrix.transposeInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: Matrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | MatrixCSC _ -> matrix
             | MatrixCSR m ->
@@ -473,7 +475,7 @@ module Matrix =
         let runCSRnCSC =
             CSRMatrix.spgemmCSC clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrix1: Matrix<'a>) (matrix2: Matrix<'b>) (mask: Mask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: Mask2D) ->
 
             match matrix1, matrix2, mask.IsComplemented with
             | MatrixCSR m1, MatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> MatrixCOO

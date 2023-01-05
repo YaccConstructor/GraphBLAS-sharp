@@ -1,8 +1,7 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 
@@ -95,7 +94,7 @@ module SpMV =
         let multiplyValues = clContext.Compile multiplyValues
         let reduceValuesByRows = clContext.Compile reduceValuesByRows
 
-        fun (queue: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) (vector: ClArray<'b option>) (result: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) (vector: ClArray<'b option>) (result: ClArray<'b option>) ->
 
             let matrixLength = matrix.Values.Length
 
@@ -154,7 +153,7 @@ module SpMV =
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: CSRMatrix<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) (vector: ClArray<'b option>) ->
 
             let result =
                 clContext.CreateClArray<'b option>(
