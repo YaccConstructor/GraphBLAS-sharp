@@ -1,7 +1,6 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
 
-[<Tests>]
 let matrixTests =
     testList
         "Matrix tests"
@@ -14,7 +13,6 @@ let matrixTests =
           Matrix.Transpose.tests ]
     |> testSequenced
 
-[<Tests>]
 let commonTests =
     testList
         "Common tests"
