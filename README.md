@@ -13,6 +13,7 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API impleme
   ```
   So, type of matrix-matrix elementwise oertion is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
 - No semirings. Just functions. Ofcourse one can implement semirings on the top of provided API.
+- Minimal core: high-order functions allows us to minimaze core by functions unification. For example, such functions as matrix-matrix addition, matrix-matrix element-wise multiplication, masking all are partial case of `map2` function.
 
 ### Operations
 #### Matrix-Matrix
@@ -85,7 +86,7 @@ Matrices from [SuiteSparse matrix collection](https://sparse.tamu.edu/) which we
 </tbody>
 </table>
 
-Element-wise matrix-matrix evaluation results.
+Element-wise matrix-matrix evaluation results presented below. Time is measured in milliseconds. We perform our experiments on the PC with Ubuntu 20.04 installed and with the following hardware configuration: Intel Core i7–4790 CPU, 3.60GHz, 32GB DDR4 RAM with GeForce GTX 2070, 8GB GDDR6, 1.41GHz. 
 
 <table>
 <thead>
