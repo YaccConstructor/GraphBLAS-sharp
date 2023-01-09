@@ -1,5 +1,13 @@
 # GraphBLAS-sharp
 
+[![FAKE Build](https://github.com/YaccConstructor/GraphBLAS-sharp/actions/workflows/build-on-push.yml/badge.svg)](https://github.com/YaccConstructor/GraphBLAS-sharp/actions/workflows/build-on-push.yml) 
+[![NuGet Badge](https://buildstats.info/nuget/GraphBLAS-sharp)](https://www.nuget.org/packages/GraphBLAS-sharp/)
+[![License](https://img.shields.io/badge/License-MIT-red.svg)](https://opensource.org/licenses/MIT)
+
+
+
+
+
 GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API implementation in F#. To utilize GPGPUs we use [Brahma.FSharp](https://github.com/YaccConstructor/Brahma.FSharp). So, GraphBLAS# can utilize any OpenCL-compatible device.
 
 ### Features
@@ -173,20 +181,6 @@ Element-wise matrix-matrix evaluation results presented below. Time is measured 
   </tr>
 </tbody>
 </table>
-
-## Builds
-
-GitHub Actions |
-:---: |
-[![GitHub Actions](https://github.com/YaccConstructor/GraphBLAS-sharp/workflows/Build%20master/badge.svg)](https://github.com/YaccConstructor/GraphBLAS-sharp/actions?query=branch%3Amaster) |
-[![Build History](https://buildstats.info/github/chart/YaccConstructor/GraphBLAS-sharp)](https://github.com/YaccConstructor/GraphBLAS-sharp/actions?query=branch%3Amaster) |
-
-## NuGet 
-
-Package | Stable | Prerelease
---- | --- | ---
-GraphBLAS-sharp | [![NuGet Badge](https://buildstats.info/nuget/GraphBLAS-sharp)](https://www.nuget.org/packages/GraphBLAS-sharp/) | [![NuGet Badge](https://buildstats.info/nuget/GraphBLAS-sharp?includePreReleases=true)](https://www.nuget.org/packages/GraphBLAS-sharp/)
-
 
 
 ## Contributing
