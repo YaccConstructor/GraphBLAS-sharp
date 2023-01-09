@@ -29,7 +29,7 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/) implementation i
 - [ ] ...
 
 ### Evaluation
-Matrices from [SuiteSparse matrix collection]() which we choose for evaluation.
+Matrices from [SuiteSparse matrix collection](https://sparse.tamu.edu/) which we choose for evaluation.
 <table>
 <thead>
   <tr>
@@ -84,7 +84,94 @@ Matrices from [SuiteSparse matrix collection]() which we choose for evaluation.
   </tr>
 </tbody>
 </table>
----
+
+Element-wise matrix-matrix evaluation results.
+
+<table>
+<thead>
+  <tr>
+    <th rowspan="3">Matrix</th>
+    <th colspan="4">Elemint-wise addition</th>
+    <th colspan="2">Elemint-wise multiplication</th>
+  </tr>
+  <tr>
+    <th colspan="2">GraphBLAS-sharp</th>
+    <th rowspan="2">SuiteSparse</th>
+    <th rowspan="2">CUSP</th>
+    <th rowspan="2">GraphBLAS-sharp</th>
+    <th rowspan="2">SuiteSparse</th>
+  </tr>
+  <tr>
+    <th>No AtLeastOne</th>
+    <th>AtLeastOne</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>wing</td>
+    <td>4,3 ± 0,8</td>
+    <td>4,3 ± 0,6</td>
+    <td>2,7 ± 0,9</td>
+    <td>1,5 ± 0,0</td>
+    <td>3,7 ± 0,5</td>
+    <td>3,5 ± 0,4</td>
+  </tr>
+  <tr>
+    <td>luxembourg osm</td>
+    <td>4,9 ± 0,7</td>
+    <td>4,1 ± 0,5</td>
+    <td>3,0 ± 1,1</td>
+    <td>1,2 ± 0,1</td>
+    <td>3,8 ± 0,6</td>
+    <td>3,0 ± 0,6</td>
+  </tr>
+  <tr>
+    <td>amazon0312</td>
+    <td>22,3 ± 1,3</td>
+    <td>22,1 ± 1,3</td>
+    <td>33,4 ± 0,8</td>
+    <td>11,0 ± 1,4</td>
+    <td>18,7 ± 0,9</td>
+    <td>35,7 ± 1,4</td>
+  </tr>
+  <tr>
+    <td>amazon-2008</td>
+    <td>38,7 ± 0,8</td>
+    <td>39,0 ± 1,0</td>
+    <td>55,9 ± 1,0</td>
+    <td>19,1 ± 1,4</td>
+    <td>34,5 ± 1,0</td>
+    <td>58,9 ± 1,9</td>
+  </tr>
+  <tr>
+    <td>web-Google</td>
+    <td>43,4 ± 0,8</td>
+    <td>43,4 ± 1,1</td>
+    <td>67,2 ± 7,5</td>
+    <td>21,3 ± 1,3</td>
+    <td>39,0 ± 1,2</td>
+    <td>66,2 ± 0,4</td>
+  </tr>
+  <tr>
+    <td>webbase-1M</td>
+    <td>63,6 ± 1,1</td>
+    <td>63,7 ± 1,3</td>
+    <td>86,5 ± 2,0</td>
+    <td>24,3 ± 1,3</td>
+    <td>54,5 ± 0,7</td>
+    <td>37,6 ± 5,6</td>
+  </tr>
+  <tr>
+    <td>cit-Patents</td>
+    <td>26,9 ± 0,7</td>
+    <td>26,0 ± 0,7</td>
+    <td>183,4 ± 5,4</td>
+    <td>10,8 ± 0,6</td>
+    <td>24,3 ± 0,7</td>
+    <td>162,2 ± 1,7</td>
+  </tr>
+</tbody>
+</table>
 
 ## Builds
 
