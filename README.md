@@ -14,6 +14,76 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/) implementation i
   So, type of matrix-matrix elementwise oertion is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
 - No semirings. Just functions. Ofcourse one can implement semirings on the top of provided API.
 
+### Operations
+#### Matrix-Matrix
+- [x] COO-COO element-wize
+- [x] CSR-CSR element-wize
+- [ ] CSR-CSR multiplication
+- [ ] COO transpose
+- [ ] CSR transpose
+#### Vector-Matrix
+- [x] Dense-CSR multiplication
+- [ ] COO-CSR multiplication
+#### Vector-Vector
+- [x] Dense-Dense element-wise
+- [ ] ...
+
+### Evaluation
+Matrices from [SuiteSparse matrix collection]() which we choose for evaluation.
+<table>
+<thead>
+  <tr>
+    <th>Matrix</th>
+    <th>Size</th>
+    <th>NNZ</th>
+    <th>Squared matrix NNZ</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>wing</td>
+    <td>62 032</td>
+    <td>243 088</td>
+    <td>714 200</td>
+  </tr>
+  <tr>
+    <td>luxembourg osm</td>
+    <td>114 599</td>
+    <td>119 666</td>
+    <td>393 261</td>
+  </tr>
+  <tr>
+    <td>amazon0312</td>
+    <td>400 727</td>
+    <td>3 200 440</td>
+    <td>14 390 544</td>
+  </tr>
+  <tr>
+    <td>amazon-2008</td>
+    <td>735 323</td>
+    <td>5 158 388</td>
+    <td>25 366 745</td>
+  </tr>
+  <tr>
+    <td>web-Google</td>
+    <td>916 428</td>
+    <td>5 105 039</td>
+    <td>29 710 164</td>
+  </tr>
+  <tr>
+    <td>webbase-1M</td>
+    <td>1 000 005</td>
+    <td>3 105 536</td>
+    <td>51 111 996</td>
+  </tr>
+  <tr>
+    <td>cit-Patents</td>
+    <td>3 774 768</td>
+    <td>16 518 948</td>
+    <td>469</td>
+  </tr>
+</tbody>
+</table>
 ---
 
 ## Builds
