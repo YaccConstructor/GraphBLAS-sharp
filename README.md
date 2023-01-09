@@ -1,6 +1,6 @@
 # GraphBLAS-sharp
 
-GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/) implementation in F#. To utilize GPGPUs we use [Brahma.FSharp](https://github.com/YaccConstructor/Brahma.FSharp). So, GraphBLAS# can utilize any OpenCL compatible device.
+GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API implementation in F#. To utilize GPGPUs we use [Brahma.FSharp](https://github.com/YaccConstructor/Brahma.FSharp). So, GraphBLAS# can utilize any OpenCL-compatible device.
 
 ### Features
 - ```Option<'t>``` to solve [explicit/implicit zeroes problem](https://github.com/GraphBLAS/LAGraph/issues/28#issuecomment-542952115). If graph has labels of type ```'t``` then adjacency matrix is ```Matrix<Option<'t>>```. Sparse storage contains only values for ```Some<'t>``` cells. 
