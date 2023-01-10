@@ -9,6 +9,10 @@ let main argv =
                              typeof<EWiseAddBenchmarks4Float32CSRWithoutDataTransfer>
                              typeof<EWiseAddBenchmarks4BoolCOOWithoutDataTransfer>
                              typeof<EWiseAddBenchmarks4BoolCSRWithoutDataTransfer>
+                             typeof<MxmBenchmarks4Float32MultiplicationOnly>
+                             typeof<MxmBenchmarks4Float32WithTransposing>
+                             typeof<MxmBenchmarks4BoolMultiplicationOnly>
+                             typeof<MxmBenchmarks4BoolWithTransposing>
                              //typeof<BFSBenchmarks>
                              //typeof<MxvBenchmarks>
                              //typeof<TransposeBenchmarks>

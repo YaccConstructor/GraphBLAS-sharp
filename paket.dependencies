@@ -1,27 +1,27 @@
 source https://www.nuget.org/api/v2
 source https://api.nuget.org/v3/index.json
 storage: none
-nuget FSharp.Core ~> 5.0
+nuget FSharp.Core ~> 7.0
 nuget Microsoft.SourceLink.GitHub 1.0.0 copy_local: true
 nuget Expecto 9.0.2
 nuget Expecto.FsCheck 9.0.2
-nuget YoloDev.Expecto.TestSdk 0.11.1
+nuget YoloDev.Expecto.TestSdk 0.13.3
 nuget Microsoft.NET.Test.Sdk 16.8.0
 nuget altcover ~> 7
 
-nuget System.Collections.Immutable 5.0
+nuget System.Collections.Immutable 7.0
 nuget ExtraConstraints.Fody 1.14.0
 nuget Microsoft.Build.Framework ~> 16.10
-nuget System.CodeDom >= 5.0
+nuget System.CodeDom >= 7.0
 nuget FSharp.Quotations.Evaluator 2.1.0
-nuget FSharpx.Collections 2.1.3
-nuget FSharpx.Text.StructuredFormat ~> 3.0.0
-nuget Brahma.FSharp >= 2.0.0-alpha9.6
+nuget FSharpx.Collections >= 3.1
+nuget FSharpx.Text.StructuredFormat >= 3.1
+nuget Brahma.FSharp >= 2.0.1
 nuget BenchmarkDotNet
-nuget MathNet.Numerics.FSharp
+nuget MathNet.Numerics.FSharp 4.0.0
 nuget MathNet.Numerics.MKL.Win-x64 2.5.0
 nuget TypeShape 9.0.0
-nuget YC.QuickGraph 3.7.4
+nuget QuikGraph 2.5.0
 
 // [ FAKE GROUP ]
 group Build
@@ -48,7 +48,7 @@ group Docs
     source https://api.nuget.org/v3/index.json
     nuget Argu
     nuget FSharp.Compiler.Service 34.1.0
-    nuget FSharp.Core ~> 4.6
+    nuget FSharp.Core ~> 7.0
     nuget Fake.IO.FileSystem 5.20.4
     nuget FAKE.Core.Environment 5.20.4
     nuget Fake.DotNet.Cli 5.20.4

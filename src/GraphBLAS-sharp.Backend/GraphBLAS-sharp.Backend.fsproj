@@ -1,24 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Common/CommonQuotes.fs" />
     <Compile Include="Common/Utils.fs" />
-    <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Sum.fs" />
+    <Compile Include="Common/PrefixSum.fs" />
+    <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/BitonicSort.fs" />
+    <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/StandardOperations.fs" />
-    <Compile Include="Matrices.fs" />
+    <Compile Include="Common/Reduce.fs" />
+    <Compile Include="Predefined/PrefixSum.fs" />
+    <!--Compile Include="Matrices.fs" /-->
+    <Compile Include="Masks.fs" />
+    <Compile Include="Objects/Common.fs" />
+    <Compile Include="Objects/ArraysExtentions.fs" />
+    <Compile Include="Objects/Vector.fs" />
+    <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
-    <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
+    <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
-    <Compile Include="Matrix/CSRMatrix/SpMV.fs" />
+    <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
+    <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix/Matrix.fs" />
+    <Compile Include="Vector/SparseVector/SparseElementwise.fs" />
+    <Compile Include="Vector/SparseVector/SparseVector.fs" />
+    <Compile Include="Vector/DenseVector/DenseVector.fs" />
+    <Compile Include="Vector/Vector.fs" />
+    <Compile Include="Vector/SpMV.fs" />
+    <Compile Include="Algorithms/BFS.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

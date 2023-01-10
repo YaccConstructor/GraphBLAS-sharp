@@ -1,7 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net5.0</TargetFrameworks>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
@@ -18,8 +19,9 @@
     <!--Compile Include="BenchmarksBFS.fs" /-->
     <Compile Include="BenchmarksMxv.fs" />
     <Compile Include="BenchmarksEWiseAdd.fs" />
+    <Compile Include="BenchmarksMxm.fs" />
     <!--Compile Include="BenchmarksTranspose.fs" /-->
-    <Compile Include="BenchmarksMathNET.fs" />      
+    <Compile Include="BenchmarksMathNET.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

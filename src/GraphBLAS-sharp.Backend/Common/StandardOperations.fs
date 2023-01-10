@@ -1,5 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Common
 
+open FSharp.Quotations
+
 type AtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
     | Both of 'a * 'b
     | Left of 'a
@@ -50,7 +52,14 @@ module StandardOperations =
             if res = zero then None else Some res @>
 
     let boolSum =
-        <@ fun (_: bool option) (_: bool option) -> Some true @>
+        <@ fun (x: bool option) (y: bool option) ->
+            let mutable res = false
+
+            match x, y with
+            | None, None -> ()
+            | _ -> res <- true
+
+            if res then Some true else None @>
 
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
@@ -88,9 +97,47 @@ module StandardOperations =
             | Both _ -> res <- true
             | _ -> ()
 
-            if res then None else (Some true) @>
+            if res then Some true else None @>
 
     let intMulAtLeastOne = mkNumericMulAtLeastOne 0
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
+
+    let atLeastOneToOption op =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) ->
+            match leftItem, rightItem with
+            | Some left, Some right -> (%op) (Both(left, right))
+            | None, Some right -> (%op) (Right right)
+            | Some left, None -> (%op) (Left left)
+            | None, None -> None @>
+
+    let fillSubToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem (Some value)
+            | None -> (%op) leftItem None @>
+
+    let fillSubComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem None
+            | None -> (%op) leftItem (Some value) @>
+
+    let fillSubOp<'a when 'a: struct> =
+        <@ fun (left: 'a option) (right: 'a option) ->
+            match left, right with
+            | _, None -> left
+            | _ -> right @>
+
+    let maskOp<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match right with
+            | Some _ -> left
+            | _ -> None @>
+
+    let complementedMaskOp<'a, 'b when 'a: struct and 'b: struct> =
+        <@ fun (left: 'a option) (right: 'b option) ->
+            match right with
+            | None -> left
+            | _ -> None @>

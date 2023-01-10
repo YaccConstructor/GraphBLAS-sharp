@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Tests
 open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open FsCheck
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
@@ -81,6 +82,58 @@ module Generators =
             gen {
                 let! (nrows, ncols) = dimension2DGenerator
                 let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                return matrix
+            }
+
+        static member IntType() =
+            matrixGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            matrixGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            matrixGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            matrixGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            matrixGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
+    type SingleSymmetricalMatrix() =
+        static let matrixGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrows, _) = dimension2DGenerator
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, nrows)
+
+                for row in 1 .. nrows - 1 do
+                    for col in 0 .. row - 1 do
+                        matrix.[row, col] <- matrix.[col, row]
+
                 return matrix
             }
 
@@ -331,19 +384,260 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-// type ArrayOfDistinctKeys() =
-//     // Stack overflow.
-//     static member ArrayOfDistinctKeysArb() =
-//         gen {
-//             let! array = Arb.generate<(uint64 * int)[]>
-//             return Array.distinctBy (fun (key, _) -> key) array
-//         }
-//         |> Arb.fromGen
+    type PairOfMatricesOfCompatibleSizeWithMask() =
+        static let pairOfMatricesOfCompatibleSizeWithMaskGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nrowsA, ncolsA)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (ncolsA, ncolsB)
+
+                let! mask =
+                    (genericSparseGenerator false Arb.generate<bool>)
+                    <| Gen.array2DOfDim (nrowsA, ncolsB)
+
+                return (matrixA, matrixB, mask)
+            }
+
+        static member IntType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> (genericSparseGenerator 0 Arb.generate<int>)
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0 Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0u Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
+    type ArrayOfDistinctKeys() =
+        static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
+            let tuplesGenerator =
+                Gen.zip3
+                <| keysGenerator
+                <| keysGenerator
+                <| valuesGenerator
+
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! array = Gen.arrayOfLength <| length <| tuplesGenerator
+
+                return Array.distinctBy (fun (r, c, _) -> r, c) array
+            }
+
+        static member IntType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<bool>
+            |> Arb.fromGen
+
+    type ArrayOfAscendingKeys() =
+        static let arrayOfAscendingKeysGenerator (valuesGenerator: Gen<'a>) =
+            let tuplesGenerator =
+                Gen.zip
+                <| (Gen.sized <| fun size -> Gen.choose (0, size))
+                <| valuesGenerator
+
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! array = Gen.arrayOfLength <| length <| tuplesGenerator
+
+                return array |> Array.sortBy fst
+            }
+
+        static member IntType() =
+            arrayOfAscendingKeysGenerator <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            arrayOfAscendingKeysGenerator
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            arrayOfAscendingKeysGenerator
+            <| Arb.generate<bool>
+            |> Arb.fromGen
+
+    type PairOfVectorsOfEqualSize() =
+        static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! leftArray = Gen.arrayOfLength length valuesGenerator
+
+                let! rightArray = Gen.arrayOfLength length valuesGenerator
+
+                return (leftArray, rightArray)
+            }
+
+        static member IntType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfVectorsOfEqualSize
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<bool>
+            |> Arb.fromGen
 
 module Utils =
-    type TestContext =
-        { ClContext: ClContext
-          Queue: MailboxProcessor<Msg> }
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
@@ -356,8 +650,66 @@ module Utils =
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                    // typeof<Generators.ArrayOfDistinctKeys>
-                    ] }
+                    typeof<Generators.ArrayOfDistinctKeys>
+                    typeof<Generators.ArrayOfAscendingKeys>
+                    typeof<Generators.PairOfVectorsOfEqualSize> ] }
+
+    let undirectedAlgoConfig =
+        { FsCheckConfig.defaultConfig with
+              maxTest = 10
+              startSize = 1
+              endSize = 1000
+              arbitrary = [ typeof<Generators.SingleSymmetricalMatrix> ] }
+
+    let createMatrixFromArray2D matrixCase array isZero =
+        match matrixCase with
+        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+        | CSC -> MatrixCSC <| CSCMatrix.FromArray2D(array, isZero)
+
+    let createVectorFromArray vectorCase array isZero =
+        match vectorCase with
+        | Backend.VectorFormat.Sparse ->
+            Backend.VectorSparse
+            <| Backend.SparseVector.FromArray(array, isZero)
+        | Backend.VectorFormat.Dense ->
+            Backend.VectorDense
+            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
+
+    let createArrayFromDictionary size zero (dictionary: System.Collections.Generic.Dictionary<int, 'a>) =
+        let array = Array.create size zero
+
+        for key in dictionary.Keys do
+            array.[key] <- dictionary.[key]
+
+        array
+
+    let unwrapOptionArray zero array =
+        Array.map
+            (fun x ->
+                match x with
+                | Some v -> v
+                | None -> zero)
+            array
+
+    let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
+        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. actual.Length - 1 do
+            if not (areEqual actual.[i] expected.[i]) then
+                sprintf "%s. Arrays differ at position %A of %A. Actual value is %A, expected %A"
+                <| message
+                <| i
+                <| (actual.Length - 1)
+                <| actual.[i]
+                <| expected.[i]
+                |> failtestf "%s"
+
+    let listOfUnionCases<'a> =
+        FSharpType.GetUnionCases typeof<'a>
+        |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
+        |> List.ofArray
 
     let rec cartesian listOfLists =
         match listOfLists with
@@ -371,12 +723,13 @@ module Utils =
                 (cartesian t)
         | _ -> []
 
-    let listOfUnionCases<'a> =
-        FSharpType.GetUnionCases typeof<'a>
-        |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)
-        |> List.ofArray
+module Context =
 
-    let avaliableContexts (platformRegex: string) =
+    type TestContext =
+        { ClContext: ClContext
+          Queue: MailboxProcessor<Msg> }
+
+    let availableContexts (platformRegex: string) =
         let mutable e = ErrorCode.Unknown
 
         Cl.GetPlatformIDs &e
@@ -451,25 +804,54 @@ module Utils =
 
         { ClContext = context; Queue = queue }
 
-    type OperationCase =
-        { ClContext: TestContext
-          MatrixCase: MatrixFromat }
+    let gpuOnlyContextFilter =
+        Seq.filter
+            (fun (context: TestContext) ->
+                let mutable e = ErrorCode.Unknown
+                let device = context.ClContext.ClDevice.Device
 
-    let testCases =
-        [ avaliableContexts "" |> Seq.map box
-          listOfUnionCases<MatrixFromat> |> Seq.map box ]
-        |> List.map List.ofSeq
-        |> cartesian
+                let deviceType =
+                    Cl
+                        .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                        .CastTo<DeviceType>()
+
+                deviceType = DeviceType.Gpu)
+
+module TestCases =
+
+    type OperationCase<'a> =
+        { ClContext: Context.TestContext
+          Format: 'a }
+
+    let defaultPlatformRegex = ""
+
+    let testCases contextFilter =
+        Context.availableContexts defaultPlatformRegex
+        |> contextFilter
+        |> List.ofSeq
+
+    let getTestCases<'a> contextFilter =
+        Context.availableContexts defaultPlatformRegex
+        |> contextFilter
+        |> List.ofSeq
+        |> List.collect
+            (fun x ->
+                Utils.listOfUnionCases<'a>
+                |> List.ofSeq
+                |> List.map (fun y -> x, y))
         |> List.map
-            (fun list ->
-                { ClContext = unbox list.[0]
-                  MatrixCase = unbox list.[1] })
+            (fun pair ->
+                { ClContext = fst pair
+                  Format = snd pair })
 
-    let createMatrixFromArray2D matrixCase array isZero =
-        match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
+    let operationGPUTests name (testFixtures: OperationCase<'a> -> Test list) =
+        getTestCases<'a> Context.gpuOnlyContextFilter
+        |> List.distinctBy (fun case -> case.ClContext.ClContext, case.Format)
+        |> List.collect testFixtures
+        |> testList name
 
-    let createVectorFromArray vectorCase array isZero =
-        match vectorCase with
-        | VectorFormat.COO -> VectorCOO <| COOVector.FromArray(array, isZero)
+    let gpuTests name testFixtures =
+        testCases Context.gpuOnlyContextFilter
+        |> List.distinctBy (fun testContext -> testContext.ClContext)
+        |> List.collect testFixtures
+        |> testList name

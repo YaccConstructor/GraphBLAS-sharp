@@ -11,18 +11,37 @@ open GraphBLAS.FSharp.IO
 let allTests =
     testList
         "All tests"
-        [ //Backend.PrefixSum.tests
-          //Backend.BitonicSort.tests
+        [ Backend.Mxm.tests
+          Backend.BitonicSort.tests
+          Backend.PrefixSum.tests
+          Backend.Scatter.tests
+          Backend.Convert.tests
           Backend.RemoveDuplicates.tests
           Backend.Copy.tests
           Backend.Replicate.tests
-          Backend.EwiseAdd.tests
-          //Matrix.EWiseAdd.tests
+          //Backend.Elementwise.elementwiseAddTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneTests
+          //Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
+          //Backend.Elementwise.elementwiseMulAtLeastOneTests
+          Backend.Transpose.tests
+          Backend.SpMV.tests
           //Matrix.GetTuples.tests
           //Matrix.Mxv.tests
-          //Matrix.Transpose.tests
-          //Algo.Bfs.tests
-          ]
+          Algo.BFS.tests
+          Backend.Reduce.tests
+          Backend.Sum.tests
+          Backend.Vector.ZeroCreate.tests
+          Backend.Vector.OfList.tests
+          Backend.Vector.Copy.tests
+          Backend.Vector.Convert.tests
+          Backend.Vector.ElementWiseAtLeastOne.addTests
+          Backend.Vector.ElementWiseAtLeastOne.mulTests
+          Backend.Vector.ElementWise.addTests
+          Backend.Vector.ElementWise.mulTests
+          Backend.Vector.FillSubVector.tests
+          Backend.Vector.FillSubVector.complementedTests
+          Backend.Vector.Reduce.tests
+          Backend.Vector.ContainNonZero.tests ]
     |> testSequenced
 
 [<EntryPoint>]
