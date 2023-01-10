@@ -6,35 +6,32 @@ open GraphBLAS.FSharp.Tests
 open TypeShape.Core
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
+open Brahma.FSharp.OpenCL
 open OpenCL.Net
 
 let logger = Log.create "Matrix.GetTuples.Tests"
 
 type OperationCase =
-    {
-        ClContext: OpenCLEvaluationContext
-        MatrixCase: MatrixFromat
-    }
+    { ClContext: ClContext
+      MatrixCase: MatrixFromat }
 
 let testCases =
-    [
-        Utils.avaliableContexts "" |> Seq.map box
-        Utils.listOfUnionCases<MatrixFromat> |> Seq.map box
-    ]
+    [ Utils.avaliableContexts "" |> Seq.map box
+      Utils.listOfUnionCases<MatrixFromat>
+      |> Seq.map box ]
     |> List.map List.ofSeq
     |> Utils.cartesian
     |> List.map
-        (fun list -> {
-            ClContext = unbox list.[0]
-            MatrixCase = unbox list.[1]
-        })
+        (fun list ->
+            { ClContext = unbox list.[0]
+              MatrixCase = unbox list.[1] })
 
-let correctnessGenericTest<'a when 'a : struct>
+let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)
     (zero: 'a)
     (case: OperationCase)
-    (matrix: 'a[,]) =
+    (matrix: 'a [,])
+    =
 
     let isZero = isEqual zero
 
@@ -46,21 +43,19 @@ let correctnessGenericTest<'a when 'a : struct>
                 let i = idx / Array2D.length2 matrix
                 let j = idx % Array2D.length2 matrix
 
-                (i, j, v)
-            )
+                (i, j, v))
         |> Seq.filter (fun (_, _, v) -> (not << isZero) v)
         |> Array.ofSeq
         |> Array.unzip3
         |> fun (rows, cols, vals) ->
-            {
-                RowIndices = rows
-                ColumnIndices = cols
-                Values = vals
-            }
+            { RowIndices = rows
+              ColumnIndices = cols
+              Values = vals }
 
     let actual =
         try
-            let matrix = Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
+            let matrix =
+                Utils.createMatrixFromArray2D case.MatrixCase matrix isZero
 
             logger.debug (
                 eventX "Matrix is \n{matrix}"
@@ -76,7 +71,9 @@ let correctnessGenericTest<'a when 'a : struct>
             |> EvalGB.runSync
 
         finally
-            case.ClContext.Provider.CloseAllBuffers()
+            // TODO fix me
+            ()
+    //case.ClContext.Provider.CloseAllBuffers()
 
     logger.debug (
         eventX "Expected result is {expected}"
@@ -88,8 +85,11 @@ let correctnessGenericTest<'a when 'a : struct>
         >> setField "actual" (sprintf "%A" actual.Values)
     )
 
-    let actualIndices = Seq.zip actual.RowIndices actual.ColumnIndices
-    let expectedIndices = Seq.zip expected.RowIndices expected.ColumnIndices
+    let actualIndices =
+        Seq.zip actual.RowIndices actual.ColumnIndices
+
+    let expectedIndices =
+        Seq.zip expected.RowIndices expected.ColumnIndices
 
     "Indices of expected and result matrix must be the same"
     |> Expect.sequenceEqual actualIndices expectedIndices
@@ -104,30 +104,31 @@ let correctnessGenericTest<'a when 'a : struct>
     "There should be no difference between expected and received values"
     |> Expect.allEqual equality true
 
-let testFixtures case = [
-    let config = Utils.defaultConfig
-    let getCorrectnessTestName datatype = sprintf "Correctness on %s, %A" datatype case
+let testFixtures case =
+    [ let config = Utils.defaultConfig
 
-    case
-    |> correctnessGenericTest<int> (=) 0
-    |> testPropertyWithConfig config (getCorrectnessTestName "int")
+      let getCorrectnessTestName datatype =
+          sprintf "Correctness on %s, %A" datatype case
 
-    case
-    |> correctnessGenericTest<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) 0.
-    |> testPropertyWithConfig config (getCorrectnessTestName "float")
+      case
+      |> correctnessGenericTest<int> (=) 0
+      |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-    case
-    |> correctnessGenericTest<int16> (=) 0s
-    |> testPropertyWithConfig config (getCorrectnessTestName "int16")
+      case
+      |> correctnessGenericTest<float> (fun x y -> abs (x - y) < Accuracy.medium.absolute) 0.
+      |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-    case
-    |> correctnessGenericTest<uint16> (=) 0us
-    |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
+      case
+      |> correctnessGenericTest<int16> (=) 0s
+      |> testPropertyWithConfig config (getCorrectnessTestName "int16")
 
-    case
-    |> correctnessGenericTest<bool> (=) false
-    |> ptestPropertyWithConfig config (getCorrectnessTestName "bool")
-]
+      case
+      |> correctnessGenericTest<uint16> (=) 0us
+      |> testPropertyWithConfig config (getCorrectnessTestName "uint16")
+
+      case
+      |> correctnessGenericTest<bool> (=) false
+      |> ptestPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
     testCases
@@ -135,10 +136,13 @@ let tests =
         (fun case ->
             let mutable e = ErrorCode.Unknown
             let device = case.ClContext.Device
-            let deviceType = Cl.GetDeviceInfo(device, DeviceInfo.Type, &e).CastTo<DeviceType>()
 
-            deviceType = DeviceType.Cpu &&
-            case.MatrixCase = CSR
-        )
+            let deviceType =
+                Cl
+                    .GetDeviceInfo(device, DeviceInfo.Type, &e)
+                    .CastTo<DeviceType>()
+
+            deviceType = DeviceType.Cpu
+            && case.MatrixCase = CSR)
     |> List.collect testFixtures
     |> testList "Matrix.tuples tests"

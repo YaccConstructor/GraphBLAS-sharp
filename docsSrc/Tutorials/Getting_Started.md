@@ -5,7 +5,7 @@ let foo = ()
 let myAge = 21
 ```
 
-## Here is the path to downloading 
+## Here is the path to downloading
 
     [lang=bash]
     paket install GraphBLAS-sharp

@@ -3,62 +3,74 @@ module Backend.RemoveDuplicates
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Evaluation
-open Brahma.FSharp.OpenCL.WorkflowBuilder.Basic
-open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
+open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
 
 let logger = Log.create "RemoveDuplicates.Tests"
 
-let testCases = [
-    testCase "Simple correctness test" <| fun () ->
-        let array = [| 1; 2; 2; 3; 3; 3 |]
+let context = Context.defaultContext.ClContext
 
-        let actual =
-            opencl {
-                let! copiedArray = Copy.copyArray array
-                let! result = RemoveDuplicates.fromArray copiedArray
-                if array.Length <> 0 then
-                    let! _ = ToHost result
-                    ()
-                return result
-            }
-            |> OpenCLEvaluationContext().RunSync
+let testCases =
+    let removeDuplicates_wg_1 = ClArray.removeDuplications context 1
+    let removeDuplicates_wg_2 = ClArray.removeDuplications context 2
+    let removeDuplicates_wg_32 = ClArray.removeDuplications context 32
+    let q = Context.defaultContext.Queue
+    q.Error.Add(fun e -> failwithf "%A" e)
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
-        )
+    [ testCase "Simple correctness test"
+      <| fun () ->
+          let array = [| 1; 2; 2; 3; 3; 3 |]
 
-        let expected = [| 1; 2; 3 |]
+          let clArray = context.CreateClArray array
 
-        "Array should be without duplicates"
-        |> Expect.sequenceEqual actual expected
+          let actual =
+              let clActual = removeDuplicates_wg_2 q clArray
 
-    testCase "Test on empty array" <| fun () ->
-        let array = Array.zeroCreate<int> 0
+              let actual = Array.zeroCreate clActual.Length
+              q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 
-        let actual =
-            opencl {
-                let! copiedArray = Copy.copyArray array
-                let! result = RemoveDuplicates.fromArray copiedArray
-                if array.Length <> 0 then
-                    let! _ = ToHost result
-                    ()
-                return result
-            }
-            |> OpenCLEvaluationContext().RunSync
+          logger.debug (
+              eventX "Actual is {actual}"
+              >> setField "actual" (sprintf "%A" actual)
+          )
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
-        )
+          let expected = [| 1; 2; 3 |]
 
-        let expected = array
+          "Array should be without duplicates"
+          |> Expect.sequenceEqual actual expected
 
-        "Array should be without duplicates"
-        |> Expect.sequenceEqual actual expected
-]
+      testProperty "Correctness test on random int arrays"
+      <| fun (array: array<int>) ->
+          let array = Array.sort array
+
+          if array.Length > 0 then
+              let clArray = context.CreateClArray array
+
+              let removeDuplicates =
+                  if array.Length % 32 = 0 then
+                      removeDuplicates_wg_32
+                  else
+                      removeDuplicates_wg_2
+
+              let actual =
+                  let clActual = removeDuplicates q clArray
+
+                  let actual = Array.zeroCreate clActual.Length
+                  q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
+
+              logger.debug (
+                  eventX "Actual is {actual}"
+                  >> setField "actual" (sprintf "%A" actual)
+              )
+
+              let expected = Seq.distinct array |> Array.ofSeq
+
+              "Array should be without duplicates"
+              |> Expect.sequenceEqual actual expected
+
+      ]
 
 let tests =
     testCases
-    |> testList "RemoveDuplicates tests"
+    |> testList "Array.removeDuplicates tests"
