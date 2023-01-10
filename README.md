@@ -24,18 +24,38 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API impleme
 - Minimal core: high-order functions allows us to minimaze core by functions unification. For example, such functions as matrix-matrix addition, matrix-matrix element-wise multiplication, masking all are partial case of `map2` function.
 
 ### Operations
-#### Matrix-Matrix
-- [x] COO-COO element-wize
-- [x] CSR-CSR element-wize
-- [ ] CSR-CSR multiplication
-- [ ] COO transpose
-- [ ] CSR transpose
-#### Vector-Matrix
-- [x] Dense-CSR multiplication
-- [ ] COO-CSR multiplication
-#### Vector-Vector
-- [x] Dense-Dense element-wise
-- [ ] ...
+- **Matrix-Matrix**
+  - [x] COO-COO element-wize
+  - [x] CSR-CSR element-wize
+  - [ ] CSR-CSR multiplication
+  - [ ] COO transpose
+  - [ ] CSR transpose 
+- **Vector-Matrix**
+  - [x] Dense-CSR multiplication
+  - [ ] COO-CSR multiplication
+- **Vector-Vector**
+  - [x] Dense-Dense element-wise
+  - [ ] ...
+- **Matrix**
+  - [ ] `map`
+  - [ ] `iter`
+  - [ ] ...
+- **Vector**
+  - [ ] `map`
+  - [ ] `iter`
+  - [ ] `filter`
+  - [ ] `contains`
+  - [ ] ...  
+
+### Graph Analysis Algorithms
+- [ ] BFS
+- [ ] Parent BFS
+- [ ] Single Source Shortest Path
+- [ ] Triangles Counting
+- [ ] Local Clustering Coefficient
+- [ ] Community Detection using Label Propagation
+- [ ] Weakly Connected Components
+- [ ] PageRank
 
 ### Evaluation
 Matrices from [SuiteSparse matrix collection](https://sparse.tamu.edu/) which we choose for evaluation.
