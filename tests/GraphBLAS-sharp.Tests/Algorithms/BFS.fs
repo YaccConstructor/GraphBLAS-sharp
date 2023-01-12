@@ -43,7 +43,7 @@ let testFixtures (testContext: TestContext) =
 
               match matrix with
               | ClMatrix.CSR mtx ->
-                  let res = bfs queue mtx source |> ClVectorDense
+                  let res = bfs queue mtx source |> ClVector.Dense
 
                   let resHost = res.ToHost queue
 

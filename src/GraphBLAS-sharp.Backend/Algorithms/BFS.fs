@@ -42,7 +42,7 @@ module BFS =
             let frontier = ofList vertexCount [ source, 1 ]
 
             match frontier with
-            | ClVectorDense front ->
+            | ClVector.Dense front ->
 
                 let mutable level = 0
                 let mutable stop = false

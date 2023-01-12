@@ -23,7 +23,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero containsN
 
         let result =
             match vector.ToDevice context with
-            | ClVectorDense clArray ->
+            | ClVector.Dense clArray ->
                 let resultCell = containsNonZero q clArray
                 let result = Array.zeroCreate 1
 
