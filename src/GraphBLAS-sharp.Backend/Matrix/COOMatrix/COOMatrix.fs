@@ -172,7 +172,7 @@ module COOMatrix =
 
                     let mutable rightEdge = firstSide - 1
 
-                    if rightEdge > diagonalNumber then
+                    if rightEdge > diagonalNumber then // TODO()
                         rightEdge <- diagonalNumber
 
                     while leftEdge <= rightEdge do
@@ -233,7 +233,7 @@ module COOMatrix =
 
                     let mutable rightEdge = firstLocalLength - 1
 
-                    if rightEdge > localID then
+                    if rightEdge > localID then // TODO()
                         rightEdge <- localID
 
                     while leftEdge <= rightEdge do

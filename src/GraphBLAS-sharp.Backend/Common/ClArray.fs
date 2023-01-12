@@ -255,44 +255,13 @@ module ClArray =
 
             bitmap
 
-    let setPositions (clContext: ClContext) =
-
-        let setPositions =
-            <@ fun (ndRange: Range1D) (inputArray: ClArray<int>) inputLength (positions: ClArray<int>) (outputArray: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i < inputLength then
-                    outputArray.[positions.[i]] <- inputArray.[i] @>
-
-        let kernel = clContext.Compile(setPositions)
-
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) (positions: ClArray<int>) (outputArraySize: int) ->
-
-            let ndRange =
-                Range1D.CreateValid(inputArray.Length, workGroupSize)
-
-            let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags outputArraySize
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange inputArray inputArray.Length positions outputArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            outputArray
-
     ///<description>Remove duplicates form the given array.</description>
     ///<param name="clContext">Computational context</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
 
-        let setPositions = setPositions clContext
+        let scatter = Scatter.runInplace clContext workGroupSize
         let getUniqueBitmap = getUniqueBitmap clContext
 
         let prefixSumExclude =
@@ -318,6 +287,8 @@ module ClArray =
                 a.[0]
 
             let outputArray =
-                setPositions processor workGroupSize inputArray positions resultLength
+                clContext.CreateClArrayWithGPUOnlyFlags resultLength
+
+            scatter processor positions inputArray outputArray
 
             outputArray
