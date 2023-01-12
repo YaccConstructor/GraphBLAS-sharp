@@ -1,7 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
-open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open MathNet.Numerics.LinearAlgebra

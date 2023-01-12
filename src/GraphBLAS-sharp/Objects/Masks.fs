@@ -1,7 +1,7 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Objects
 
 type MaskType =
     | Regular
@@ -18,12 +18,12 @@ type Mask1D =
     member this.ToBackend(context: ClContext) =
         let indices = context.CreateClArray this.Indices
 
-        { Backend.Mask1D.Context = context
+        { ClMask1D.Context = context
           IsComplemented = this.IsComplemented
           Size = this.Size
           Indices = indices }
 
-    static member FromBackend (q: MailboxProcessor<_>) (mask: Backend.Mask1D) =
+    static member FromBackend (q: MailboxProcessor<_>) (mask: ClMask1D) =
         let indices = Array.zeroCreate mask.NNZ
 
         let _ =
@@ -61,14 +61,14 @@ type Mask2D =
         let rows = context.CreateClArray this.Rows
         let columns = context.CreateClArray this.Columns
 
-        { Backend.Mask2D.Context = context
+        { ClMask2D.Context = context
           IsComplemented = this.IsComplemented
           RowCount = this.RowCount
           ColumnCount = this.ColumnCount
           Rows = rows
           Columns = columns }
 
-    static member FromBackend (q: MailboxProcessor<_>) (mask: Backend.Mask2D) =
+    static member FromBackend (q: MailboxProcessor<_>) (mask: ClMask2D) =
         let rows = Array.zeroCreate mask.Rows.Length
         let columns = Array.zeroCreate mask.Columns.Length
 

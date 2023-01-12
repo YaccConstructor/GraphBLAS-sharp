@@ -22,11 +22,11 @@
     <Compile Include="Common/Reduce.fs" />
     <Compile Include="Predefined/PrefixSum.fs" />
     <!--Compile Include="Matrices.fs" /-->
-    <Compile Include="Masks.fs" />
     <Compile Include="Objects/Common.fs" />
     <Compile Include="Objects/ArraysExtentions.fs" />
     <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
+    <Compile Include="Objects\Masks.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />

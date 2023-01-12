@@ -11,6 +11,7 @@ open Microsoft.FSharp.Collections
 open Backend.Common.StandardOperations
 open Utils
 open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Tests.Backend
 

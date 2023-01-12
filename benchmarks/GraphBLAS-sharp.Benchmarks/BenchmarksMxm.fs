@@ -1,10 +1,10 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 
@@ -24,7 +24,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
 
     let mutable firstMatrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable secondMatrix = Unchecked.defaultof<ClMatrix<'elem>>
-    let mutable mask = Unchecked.defaultof<Backend.Mask2D>
+    let mutable mask = Unchecked.defaultof<ClMask2D>
 
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>

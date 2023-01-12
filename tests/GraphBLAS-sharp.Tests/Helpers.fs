@@ -11,6 +11,7 @@ open Expecto.Logging.Message
 open System.Text.RegularExpressions
 open FSharp.Quotations.Evaluator
 open Expecto
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 
 [<AutoOpen>]

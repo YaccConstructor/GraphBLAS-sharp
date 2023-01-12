@@ -254,6 +254,6 @@ module CSRMatrix =
         let run =
             SpGEMM.run clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSCMatrix<'b>) (mask: Mask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSCMatrix<'b>) (mask: ClMask2D) ->
 
             run queue matrixLeft matrixRight mask

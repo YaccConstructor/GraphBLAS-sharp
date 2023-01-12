@@ -474,7 +474,7 @@ module Matrix =
         let runCSRnCSC =
             CSRMatrix.spgemmCSC clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: Mask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMask2D) ->
 
             match matrix1, matrix2, mask.IsComplemented with
             | ClMatrixCSR m1, ClMatrixCSC m2, false -> runCSRnCSC queue m1 m2 mask |> ClMatrixCOO
