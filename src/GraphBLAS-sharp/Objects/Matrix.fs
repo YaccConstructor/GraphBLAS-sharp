@@ -46,7 +46,7 @@ type Matrix<'a when 'a: struct> =
                   Columns = columns
                   Values = values }
 
-            ClMatrixCOO result
+            ClMatrix.COO result
         | MatrixCSR m ->
             let rows = context.CreateClArray m.RowPointers
             let columns = context.CreateClArray m.ColumnIndices
@@ -60,7 +60,7 @@ type Matrix<'a when 'a: struct> =
                   Columns = columns
                   Values = values }
 
-            ClMatrixCSR result
+            ClMatrix.CSR result
         | MatrixCSC m ->
             let rows = context.CreateClArray m.RowIndices
             let columnPtrs = context.CreateClArray m.ColumnPointers
@@ -74,11 +74,11 @@ type Matrix<'a when 'a: struct> =
                   ColumnPointers = columnPtrs
                   Values = values }
 
-            ClMatrixCSC result
+            ClMatrix.CSC result
 
     static member FromBackend (q: MailboxProcessor<_>) matrix =
         match matrix with
-        | ClMatrixCOO m ->
+        | ClMatrix.COO m ->
             let rows = Array.zeroCreate m.Rows.Length
             let columns = Array.zeroCreate m.Columns.Length
             let values = Array.zeroCreate m.Values.Length
@@ -100,7 +100,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             MatrixCOO result
-        | ClMatrixCSR m ->
+        | ClMatrix.CSR m ->
             let rows = Array.zeroCreate m.RowPointers.Length
             let columns = Array.zeroCreate m.Columns.Length
             let values = Array.zeroCreate m.Values.Length
@@ -122,7 +122,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             MatrixCSR result
-        | ClMatrixCSC m ->
+        | ClMatrix.CSC m ->
             let rows = Array.zeroCreate m.Rows.Length
             let columns = Array.zeroCreate m.ColumnPointers.Length
             let values = Array.zeroCreate m.Values.Length

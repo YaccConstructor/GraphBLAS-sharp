@@ -64,12 +64,12 @@ let correctnessGenericTest
             let m = mtx.ToBackend testContext.ClContext
 
             match vtr, m with
-            | VectorDense vtr, ClMatrixCSR m ->
+            | VectorDense vtr, ClMatrix.CSR m ->
                 let v = vtr.ToDevice testContext.ClContext
 
                 let res = spMV testContext.Queue m v
 
-                (ClMatrixCSR m).Dispose q
+                (ClMatrix.CSR m).Dispose q
                 v.Dispose q
                 let hostRes = res.ToHost q
                 res.Dispose q

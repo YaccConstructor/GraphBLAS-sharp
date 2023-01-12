@@ -238,7 +238,7 @@ type MxmBenchmarks4Float32MultiplicationOnly() =
         (Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -250,7 +250,7 @@ type MxmBenchmarks4Float32WithTransposing() =
         (Matrix.mxm Operations.add Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -262,7 +262,7 @@ type MxmBenchmarks4BoolMultiplicationOnly() =
         (Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -274,7 +274,7 @@ type MxmBenchmarks4BoolWithTransposing() =
         (Matrix.mxm Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<bool>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<bool>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -286,7 +286,7 @@ type MxmBenchmarks4Float32MultiplicationOnlyWithZerosFilter() =
         (Matrix.mxm Operations.addWithFilter Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
@@ -298,7 +298,7 @@ type MxmBenchmarks4Float32WithTransposingWithZerosFilter() =
         (Matrix.mxm Operations.addWithFilter Operations.mult),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrixCSR (CSRMatrix<float32>.ToBackend context matrix))
+        (fun context matrix -> ClMatrix.CSR (CSRMatrix<float32>.ToBackend context matrix))
         )
 
     static member InputMatrixProvider =
