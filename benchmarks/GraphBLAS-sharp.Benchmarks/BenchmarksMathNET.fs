@@ -18,7 +18,7 @@ type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'e
 
     static member COOMatrixToMathNETSparse matrix =
         match matrix with
-        | MatrixCOO matrix ->
+        | Matrix.COO matrix ->
             Matrix.Build.SparseFromCoordinateFormat(
                 matrix.RowCount,
                 matrix.ColumnCount,

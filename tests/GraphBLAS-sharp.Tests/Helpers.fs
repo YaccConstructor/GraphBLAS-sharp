@@ -661,9 +661,9 @@ module Utils =
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-        | CSC -> MatrixCSC <| CSCMatrix.FromArray2D(array, isZero)
+        | CSR -> Matrix.CSR <| CSRMatrix.FromArray2D(array, isZero)
+        | COO -> Matrix.COO <| COOMatrix.FromArray2D(array, isZero)
+        | CSC -> Matrix.CSC <| CSCMatrix.FromArray2D(array, isZero)
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with

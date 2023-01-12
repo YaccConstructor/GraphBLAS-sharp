@@ -107,7 +107,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
 
     member this.ReadMask(maskReader) =
         match this.ReadMatrix maskReader with
-        | MatrixCOO m ->
+        | Matrix.COO m ->
             maskHost <-
                 { IsComplemented = false
                   RowCount = m.RowCount

@@ -32,7 +32,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
     let actual2D = Array2D.create rows columns zero
 
     match actual with
-    | MatrixCOO actual ->
+    | Matrix.COO actual ->
         for i in 0 .. actual.Rows.Length - 1 do
             if isEqual zero actual.Values.[i] then
                 failwith "Resulting zeroes should be filtered."

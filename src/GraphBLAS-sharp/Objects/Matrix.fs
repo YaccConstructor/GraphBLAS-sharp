@@ -8,32 +8,33 @@ type MatrixFormat =
     | COO
     | CSC
 
+[<RequireQualifiedAccess>]
 type Matrix<'a when 'a: struct> =
-    | MatrixCSR of CSRMatrix<'a>
-    | MatrixCOO of COOMatrix<'a>
-    | MatrixCSC of CSCMatrix<'a>
+    | CSR of CSRMatrix<'a>
+    | COO of COOMatrix<'a>
+    | CSC of CSCMatrix<'a>
 
     member this.RowCount =
         match this with
-        | MatrixCSR matrix -> matrix.RowCount
-        | MatrixCOO matrix -> matrix.RowCount
-        | MatrixCSC matrix -> matrix.RowCount
+        | CSR matrix -> matrix.RowCount
+        | COO matrix -> matrix.RowCount
+        | CSC matrix -> matrix.RowCount
 
     member this.ColumnCount =
         match this with
-        | MatrixCSR matrix -> matrix.ColumnCount
-        | MatrixCOO matrix -> matrix.ColumnCount
-        | MatrixCSC matrix -> matrix.ColumnCount
+        | CSR matrix -> matrix.ColumnCount
+        | COO matrix -> matrix.ColumnCount
+        | CSC matrix -> matrix.ColumnCount
 
     member this.NNZCount =
         match this with
-        | MatrixCOO m -> m.Values.Length
-        | MatrixCSR m -> m.Values.Length
-        | MatrixCSC m -> m.Values.Length
+        | COO m -> m.Values.Length
+        | CSR m -> m.Values.Length
+        | CSC m -> m.Values.Length
 
     member this.ToBackend(context: ClContext) =
         match this with
-        | MatrixCOO m ->
+        | COO m ->
             let rows = context.CreateClArray m.Rows
             let columns = context.CreateClArray m.Columns
             let values = context.CreateClArray m.Values
@@ -47,7 +48,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             ClMatrix.COO result
-        | MatrixCSR m ->
+        | CSR m ->
             let rows = context.CreateClArray m.RowPointers
             let columns = context.CreateClArray m.ColumnIndices
             let values = context.CreateClArray m.Values
@@ -61,7 +62,7 @@ type Matrix<'a when 'a: struct> =
                   Values = values }
 
             ClMatrix.CSR result
-        | MatrixCSC m ->
+        | CSC m ->
             let rows = context.CreateClArray m.RowIndices
             let columnPtrs = context.CreateClArray m.ColumnPointers
             let values = context.CreateClArray m.Values
@@ -99,7 +100,7 @@ type Matrix<'a when 'a: struct> =
                   Columns = columns
                   Values = values }
 
-            MatrixCOO result
+            COO result
         | ClMatrix.CSR m ->
             let rows = Array.zeroCreate m.RowPointers.Length
             let columns = Array.zeroCreate m.Columns.Length
@@ -121,7 +122,7 @@ type Matrix<'a when 'a: struct> =
                   ColumnIndices = columns
                   Values = values }
 
-            MatrixCSR result
+            CSR result
         | ClMatrix.CSC m ->
             let rows = Array.zeroCreate m.Rows.Length
             let columns = Array.zeroCreate m.ColumnPointers.Length
@@ -143,7 +144,7 @@ type Matrix<'a when 'a: struct> =
                   ColumnPointers = columns
                   Values = values }
 
-            MatrixCSC result
+            CSC result
 
 and CSRMatrix<'a> =
     { RowCount: int
@@ -221,7 +222,7 @@ and CSRMatrix<'a> =
             rowPointers
 
         match matrix with
-        | MatrixCOO m ->
+        | Matrix.COO m ->
             let rowPointers =
                 context.CreateClArray(
                     rowIndices2rowPointers m.Rows m.RowCount,
@@ -289,7 +290,7 @@ and COOMatrix<'a> =
 
     static member ToBackend (context: ClContext) matrix =
         match matrix with
-        | MatrixCOO m ->
+        | Matrix.COO m ->
             let rows =
                 context.CreateClArray(
                     m.Rows,

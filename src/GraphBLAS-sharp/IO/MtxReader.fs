@@ -119,7 +119,7 @@ type MtxReader(pathToFile: string) =
                     values.[i] <- value)
                 sortedData
 
-            MatrixCOO
+            Matrix.COO
                 { Rows = rows
                   Columns = cols
                   Values = values

@@ -16,7 +16,7 @@ let wgSize = 32
 
 let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
-    | MatrixCOO actual ->
+    | Matrix.COO actual ->
         let expected =
             COOMatrix.FromArray2D(expected2D, areEqual zero)
 
@@ -34,7 +34,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
-    | MatrixCSR actual ->
+    | Matrix.CSR actual ->
         let expected =
             CSRMatrix.FromArray2D(expected2D, areEqual zero)
 
@@ -52,7 +52,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
-    | MatrixCSC actual ->
+    | Matrix.CSC actual ->
         let expected =
             CSCMatrix.FromArray2D(expected2D, areEqual zero)
 
