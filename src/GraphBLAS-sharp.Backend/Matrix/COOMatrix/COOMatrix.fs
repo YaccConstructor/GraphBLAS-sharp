@@ -2,71 +2,11 @@ namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend
 
 module COOMatrix =
-    ///<param name="clContext">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
-
-        let indicesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        let valuesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        let sum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
-
-        let resultLength = Array.zeroCreate<int> 1
-
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r = sum processor positions resultLengthGpu
-
-            let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
-
-            let resultRows =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let resultColumns =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let resultValues =
-                clContext.CreateClArray(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            indicesScatter processor positions allRows resultRows
-
-            indicesScatter processor positions allColumns resultColumns
-
-            valuesScatter processor positions allValues resultValues
-
-            resultRows, resultColumns, resultValues, resultLength
-
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
@@ -368,7 +308,7 @@ module COOMatrix =
         let preparePositions =
             preparePositions clContext opAdd workGroupSize
 
-        let setPositions = setPositions<'c> clContext workGroupSize
+        let setPositions = Matrix.Common.setPositions<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClCOOMatrix<'a>) (matrixRight: ClCOOMatrix<'b>) ->
 

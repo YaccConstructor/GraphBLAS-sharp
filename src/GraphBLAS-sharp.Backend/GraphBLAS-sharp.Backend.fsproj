@@ -27,6 +27,7 @@
     <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects\Masks.fs" />
+    <Compile Include="Matrix\Common.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />

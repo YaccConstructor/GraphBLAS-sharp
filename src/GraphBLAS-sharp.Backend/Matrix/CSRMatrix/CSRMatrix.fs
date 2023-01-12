@@ -42,7 +42,7 @@ module CSRMatrix =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             let total = clContext.CreateClCell()
-            let _ = scan processor rows total 0
+            ignore <| scan processor rows total 0
             processor.Post(Msg.CreateFreeMsg(total))
 
             rows
@@ -172,7 +172,7 @@ module CSRMatrix =
             preparePositions clContext opAdd Utils.defaultWorkGroupSize
 
         let setPositions =
-            setPositions<'c> clContext Utils.defaultWorkGroupSize
+            Matrix.Common.setPositions<'c> clContext Utils.defaultWorkGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSRMatrix<'b>) ->
 
@@ -192,7 +192,7 @@ module CSRMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
-            let resultRows, resultColumns, resultValues, positions, positionsSum =
+            let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allRows allColumns allValues positions
 
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
