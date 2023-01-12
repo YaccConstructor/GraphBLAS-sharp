@@ -108,12 +108,11 @@ module COOMatrix =
                     let diagonalNumber = x
 
                     let mutable leftEdge = diagonalNumber + 1 - secondSide
-                    if leftEdge < 0 then leftEdge <- 0
+                    leftEdge <- max 0 leftEdge
 
                     let mutable rightEdge = firstSide - 1
 
-                    if rightEdge > diagonalNumber then // TODO()
-                        rightEdge <- diagonalNumber
+                    rightEdge <- min diagonalNumber rightEdge
 
                     while leftEdge <= rightEdge do
                         let middleIdx = (leftEdge + rightEdge) / 2
@@ -169,12 +168,11 @@ module COOMatrix =
 
                 if i < sumOfSides then
                     let mutable leftEdge = localID + 1 - secondLocalLength
-                    if leftEdge < 0 then leftEdge <- 0
+                    leftEdge <- max 0 leftEdge
 
                     let mutable rightEdge = firstLocalLength - 1
 
-                    if rightEdge > localID then // TODO()
-                        rightEdge <- localID
+                    rightEdge <- min localID rightEdge
 
                     while leftEdge <= rightEdge do
                         let middleIdx = (leftEdge + rightEdge) / 2

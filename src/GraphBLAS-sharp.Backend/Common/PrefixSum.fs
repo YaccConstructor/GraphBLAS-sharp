@@ -136,9 +136,7 @@ module PrefixSum =
 
     let private scanExclusive<'a when 'a: struct> =
         scanGeneral
-            <@ fun (a: ClArray<'a>) (b: 'a) (c: int) (d: int) (e: int) ->
-
-                () @>
+            <@ fun (_: ClArray<'a>) (_: 'a) (_: int) (_: int) (_: int) -> () @>
             <@ fun (resultBuffer: ClArray<'a>) (resultLocalBuffer: 'a []) (inputArrayLength: int) (smth: int) (gid: int) (i: int) (localID: int) ->
 
                 if gid < inputArrayLength then

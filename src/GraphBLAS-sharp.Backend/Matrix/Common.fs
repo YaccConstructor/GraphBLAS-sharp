@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Backend.Matrix
+namespace GraphBLAS.FSharp.Backend.Matrix
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common

@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 open System
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 
 module internal Elementwise =
@@ -84,7 +83,7 @@ module internal Elementwise =
         let localArraySize = workGroupSize + 2
 
         let merge =
-            <@ fun (ndRange: Range1D) rows (firstRowPointers: ClArray<int>) (firstColumns: ClArray<int>) (firstValues: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumns: ClArray<int>) (secondValues: ClArray<'b>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftMergedValues: ClArray<'a>) (rightMergedValues: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) (firstRowPointers: ClArray<int>) (firstColumns: ClArray<int>) (firstValues: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumns: ClArray<int>) (secondValues: ClArray<'b>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftMergedValues: ClArray<'a>) (rightMergedValues: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let globalID = ndRange.GlobalID0
                 let localID = ndRange.LocalID0
@@ -299,7 +298,6 @@ module internal Elementwise =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            (matrixLeftRowPointers.Length - 1)
                             matrixLeftRowPointers
                             matrixLeftColumns
                             matrixLeftValues

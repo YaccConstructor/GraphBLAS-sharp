@@ -21,12 +21,11 @@ module Elementwise =
                 let diagonalNumber = x
 
                 let mutable leftEdge = diagonalNumber + 1 - secondSide
-                if leftEdge < 0 then leftEdge <- 0
+                leftEdge <- max 0 leftEdge
 
                 let mutable rightEdge = firstSide - 1
 
-                if rightEdge > diagonalNumber then
-                    rightEdge <- diagonalNumber
+                rightEdge <- min rightEdge diagonalNumber
 
                 while leftEdge <= rightEdge do
                     let middleIdx = (leftEdge + rightEdge) / 2
@@ -76,8 +75,7 @@ module Elementwise =
 
                 let mutable rightEdge = firstLocalLength - 1
 
-                if rightEdge > localID then
-                    rightEdge <- localID
+                rightEdge <- min rightEdge localID
 
                 while leftEdge <= rightEdge do
                     let middleIdx = (leftEdge + rightEdge) / 2
