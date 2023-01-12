@@ -16,11 +16,11 @@ let checkResult size (actual: Vector<'a>) =
     Expect.equal actual.Size size "The size should be the same"
 
     match actual with
-    | VectorDense vector ->
+    | Vector.Dense vector ->
         Array.iter
         <| (fun item -> Expect.equal item None "values must be None")
         <| vector
-    | VectorSparse vector ->
+    | Vector.Sparse vector ->
         Expect.equal vector.Values [| Unchecked.defaultof<'a> |] "The values array must contain the default value"
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 

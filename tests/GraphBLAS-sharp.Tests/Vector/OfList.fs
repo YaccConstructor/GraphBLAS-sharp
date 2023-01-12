@@ -23,7 +23,7 @@ let checkResult
     Expect.equal actual.Size actualSize "lengths must be the same"
 
     match actual with
-    | VectorSparse actual ->
+    | Vector.Sparse actual ->
         compareArrays (=) actual.Indices expectedIndices "indices must be the same"
         compareArrays isEqual actual.Values expectedValues "values must be the same"
     | _ -> failwith "Vector format must be Sparse."

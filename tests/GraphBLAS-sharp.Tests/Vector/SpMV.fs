@@ -64,7 +64,7 @@ let correctnessGenericTest
             let m = mtx.ToBackend testContext.ClContext
 
             match vtr, m with
-            | VectorDense vtr, ClMatrix.CSR m ->
+            | Vector.Dense vtr, ClMatrix.CSR m ->
                 let v = vtr.ToDevice testContext.ClContext
 
                 let res = spMV testContext.Queue m v

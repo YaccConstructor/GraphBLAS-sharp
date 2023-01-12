@@ -51,7 +51,7 @@ let testFixtures (testContext: TestContext) =
                   res.Dispose queue
 
                   match resHost with
-                  | VectorDense resHost ->
+                  | Vector.Dense resHost ->
                       let actual = resHost |> Utils.unwrapOptionArray 0
 
                       Expect.sequenceEqual actual expected "Sequences must be equal"

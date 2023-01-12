@@ -668,10 +668,10 @@ module Utils =
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
         | VectorFormat.Sparse ->
-            VectorSparse
+            Vector.Sparse
             <| SparseVector.FromArray(array, isZero)
         | VectorFormat.Dense ->
-            VectorDense
+            Vector.Dense
             <| ArraysExtensions.DenseVectorFromArray(array, isZero)
 
     let createArrayFromDictionary size zero (dictionary: System.Collections.Generic.Dictionary<int, 'a>) =

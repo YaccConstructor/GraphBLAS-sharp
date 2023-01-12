@@ -18,7 +18,7 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
     Expect.equal actual.Size expected.Size "The size should be the same"
 
     match actual, expected with
-    | VectorDense actual, VectorDense expected ->
+    | Vector.Dense actual, Vector.Dense expected ->
         let isEqual left right =
             match left, right with
             | Some left, Some right -> isEqual left right
@@ -26,7 +26,7 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
             | _, _ -> false
 
         compareArrays isEqual actual expected "The values array must contain the default value"
-    | VectorSparse actual, VectorSparse expected ->
+    | Vector.Sparse actual, Vector.Sparse expected ->
         compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
     | _, _ -> failwith "Copy format must be the same"

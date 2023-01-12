@@ -72,23 +72,24 @@ and ClSparseVector<'a> =
 
     member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
+[<RequireQualifiedAccess>]
 type Vector<'a when 'a: struct> =
-    | VectorSparse of SparseVector<'a>
-    | VectorDense of 'a option []
+    | Sparse of SparseVector<'a>
+    | Dense of 'a option []
     member this.Size =
         match this with
-        | VectorSparse vector -> vector.Size
-        | VectorDense vector -> vector.Size
+        | Sparse vector -> vector.Size
+        | Dense vector -> vector.Size
 
     override this.ToString() =
         match this with
-        | VectorSparse vector -> vector.ToString()
-        | VectorDense vector -> DenseVectorToString vector
+        | Sparse vector -> vector.ToString()
+        | Dense vector -> DenseVectorToString vector
 
     member this.ToDevice(context: ClContext) =
         match this with
-        | VectorSparse vector -> ClVectorSparse <| vector.ToDevice(context)
-        | VectorDense vector -> ClVectorDense <| vector.ToDevice(context)
+        | Sparse vector -> ClVectorSparse <| vector.ToDevice(context)
+        | Dense vector -> ClVectorDense <| vector.ToDevice(context)
 
 and ClVector<'a when 'a: struct> =
     | ClVectorSparse of ClSparseVector<'a>
@@ -100,8 +101,8 @@ and ClVector<'a when 'a: struct> =
 
     member this.ToHost(q: MailboxProcessor<_>) =
         match this with
-        | ClVectorSparse vector -> VectorSparse <| vector.ToHost(q)
-        | ClVectorDense vector -> VectorDense <| vector.ToHost(q)
+        | ClVectorSparse vector -> Vector.Sparse <| vector.ToHost(q)
+        | ClVectorDense vector -> Vector.Dense <| vector.ToHost(q)
 
     member this.Dispose(q) =
         match this with

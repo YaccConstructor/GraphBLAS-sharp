@@ -28,11 +28,11 @@ let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (le
     for i in 0 .. expectedArrayLength - 1 do
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
-    let (VectorDense expected) =
+    let (Vector.Dense expected) =
         createVectorFromArray Dense expectedArray (isEqual resultZero)
 
     match actual with
-    | VectorDense actual ->
+    | Vector.Dense actual ->
         "arrays must have the same values"
         |> Expect.equal actual expected
     | _ -> failwith "Vector format must be Sparse."

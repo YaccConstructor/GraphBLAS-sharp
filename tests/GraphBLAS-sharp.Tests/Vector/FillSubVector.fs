@@ -47,7 +47,7 @@ let checkResult
             expectedArray.[i] <- vector.[i]
 
     match actual with
-    | VectorSparse actual ->
+    | Vector.Sparse actual ->
         let actualArray = Array.create vector.Length vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do

@@ -35,7 +35,7 @@ let checkResult
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
     match actual with
-    | VectorSparse actual ->
+    | Vector.Sparse actual ->
         let actualArray =
             Array.create expectedArrayLength resultZero
 
