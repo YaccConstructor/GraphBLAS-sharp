@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
@@ -219,7 +220,7 @@ module SparseVector =
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         (workGroupSize: int)
         =
-        elementWise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
+        elementWise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)

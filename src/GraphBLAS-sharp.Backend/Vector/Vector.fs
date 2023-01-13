@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
@@ -122,10 +123,10 @@ module Vector =
 
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) (workGroupSize: int) =
         let sparseFillVector =
-            SparseVector.fillSubVector clContext (StandardOperations.fillSubToOption maskOp) workGroupSize
+            SparseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext (StandardOperations.fillSubToOption maskOp) workGroupSize
+            DenseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
 
         let toSparseVector =
             DenseVector.toSparse clContext workGroupSize
@@ -159,7 +160,7 @@ module Vector =
         =
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext (StandardOperations.fillSubComplementedToOption maskOp) workGroupSize
+            DenseVector.fillSubVector clContext (Convert.fillSubComplementedToOption maskOp) workGroupSize
 
         let vectorToDense =
             SparseVector.toDense clContext workGroupSize
@@ -189,11 +190,10 @@ module Vector =
                 ClVector.Dense
                 <| denseFillVector processor vector mask value
 
-    let standardFillSubVector<'a, 'b when 'a: struct and 'b: struct> =
-        fillSubVector<'a, 'b> StandardOperations.fillSubOp<'a>
+    let standardFillSubVector<'a, 'b when 'a: struct and 'b: struct> = fillSubVector<'a, 'b> Mask.fillSubOp<'a>
 
     let standardFillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> =
-        fillSubVectorComplemented<'a, 'b> StandardOperations.fillSubOp<'a>
+        fillSubVectorComplemented<'a, 'b> Mask.fillSubOp<'a>
 
     let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =

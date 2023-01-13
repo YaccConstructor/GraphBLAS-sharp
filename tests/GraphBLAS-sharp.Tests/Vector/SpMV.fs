@@ -3,12 +3,12 @@
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Common.StandardOperations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 
@@ -91,26 +91,29 @@ let testFixturesSpMV (testContext: TestContext) =
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolSpMV = SpMV.run context boolSum boolMul wgSize
+      let boolSpMV =
+          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intSpMV = SpMV.run context intSum intMul wgSize
+      let intSpMV =
+          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          SpMV.run context floatSum floatMul wgSize
+          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd = SpMV.run context byteSum byteMul wgSize
+      let byteAdd =
+          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

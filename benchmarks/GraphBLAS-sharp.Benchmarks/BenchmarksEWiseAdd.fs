@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
@@ -222,7 +223,7 @@ module M =
 type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCOOMatrix<float32>,float32>(
-        (fun context wgSize -> COOMatrix.elementwise context StandardOperations.float32Sum wgSize),
+        (fun context wgSize -> COOMatrix.elementwise context ArithmeticOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         COOMatrix<float32>.ToBackend
@@ -234,7 +235,7 @@ type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
     inherit EWiseAddBenchmarksWithDataTransfer<ClCOOMatrix<float32>,float32>(
-        (fun context wgSize -> COOMatrix.elementwise context StandardOperations.float32Sum wgSize),
+        (fun context wgSize -> COOMatrix.elementwise context ArithmeticOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         COOMatrix<float32>.ToBackend,
@@ -248,7 +249,7 @@ type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCOOMatrix<bool>,bool>(
-        (fun context wgSize -> COOMatrix.elementwise context StandardOperations.boolSum wgSize),
+        (fun context wgSize -> COOMatrix.elementwise context ArithmeticOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
         COOMatrix<bool>.ToBackend
@@ -261,7 +262,7 @@ type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCSRMatrix<float32>,float32>(
-        (fun context wgSize -> CSRMatrix.elementwise context StandardOperations.float32Sum wgSize),
+        (fun context wgSize -> CSRMatrix.elementwise context ArithmeticOperations.float32Sum wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         CSRMatrix<float32>.ToBackend
@@ -274,7 +275,7 @@ type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCSRMatrix<bool>,bool>(
-        (fun context wgSize -> CSRMatrix.elementwise context StandardOperations.boolSum wgSize),
+        (fun context wgSize -> CSRMatrix.elementwise context ArithmeticOperations.boolSum wgSize),
         (fun _ -> true),
         (fun _ -> true),
         CSRMatrix<bool>.ToBackend
@@ -288,7 +289,7 @@ type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCOOMatrix<bool>,bool>(
-        (fun context wgSize -> COOMatrix.elementwiseAtLeastOne context StandardOperations.boolSumAtLeastOne wgSize),
+        (fun context wgSize -> COOMatrix.elementwiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
         COOMatrix<bool>.ToBackend
@@ -300,7 +301,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCOOWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCSRMatrix<bool>,bool>(
-        (fun context wgSize -> CSRMatrix.elementwiseAtLeastOne context StandardOperations.boolSumAtLeastOne wgSize),
+        (fun context wgSize -> CSRMatrix.elementwiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize),
         (fun _ -> true),
         (fun _ -> true),
         CSRMatrix<bool>.ToBackend
@@ -312,7 +313,7 @@ type EWiseAddAtLeastOneBenchmarks4BoolCSRWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCOOMatrix<float32>,float32>(
-        (fun context wgSize -> COOMatrix.elementwiseAtLeastOne context StandardOperations.float32SumAtLeastOne wgSize),
+        (fun context wgSize -> COOMatrix.elementwiseAtLeastOne context ArithmeticOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         COOMatrix<float32>.ToBackend
@@ -324,7 +325,7 @@ type EWiseAddAtLeastOneBenchmarks4Float32COOWithoutDataTransfer() =
 type EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClCSRMatrix<float32>,float32>(
-        (fun context wgSize -> CSRMatrix.elementwiseAtLeastOne context StandardOperations.float32SumAtLeastOne wgSize),
+        (fun context wgSize -> CSRMatrix.elementwiseAtLeastOne context ArithmeticOperations.float32SumAtLeastOne wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         CSRMatrix<float32>.ToBackend

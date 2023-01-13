@@ -2,7 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open System
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 
 module internal Elementwise =

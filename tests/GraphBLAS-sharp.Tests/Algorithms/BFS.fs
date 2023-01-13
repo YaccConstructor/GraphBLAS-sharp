@@ -3,6 +3,7 @@ module GraphBLAS.FSharp.Tests.Backend.Algorithms.BFS
 open Expecto
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
@@ -19,7 +20,7 @@ let testFixtures (testContext: TestContext) =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
-          Algorithms.BFS.singleSource context StandardOperations.intSum StandardOperations.intMul workGroupSize
+          Algorithms.BFS.singleSource context ArithmeticOperations.intSum ArithmeticOperations.intMul workGroupSize
 
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->

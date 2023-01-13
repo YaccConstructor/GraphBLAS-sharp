@@ -261,7 +261,9 @@ module ClArray =
     ///<param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
 
-        let scatter = Scatter.runInplace clContext workGroupSize
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
+
         let getUniqueBitmap = getUniqueBitmap clContext
 
         let prefixSumExclude =
@@ -303,8 +305,7 @@ module ClArray =
                 if gid < length then
                     let isExist = (%predicate) vector.[gid]
 
-                    if isExist then
-                        result.Value <- true @>
+                    if isExist then result.Value <- true @>
 
         let kernel = clContext.Compile exists
 

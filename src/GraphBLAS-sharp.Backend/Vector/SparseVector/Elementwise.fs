@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
 
 module Elementwise =
     let merge workGroupSize =
@@ -115,31 +116,6 @@ module Elementwise =
                     firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                     isLeftBitMap.[i] <- 1 @>
 
-    let private both<'c> =
-        <@ fun index (result: 'c option) (rawPositionsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'c>) ->
-            rawPositionsBuffer.[index] <- 0
-
-            match result with
-            | Some v ->
-                allValuesBuffer.[index + 1] <- v
-                rawPositionsBuffer.[index + 1] <- 1
-            | None -> rawPositionsBuffer.[index + 1] <- 0 @>
-
-    let private leftRight<'c> =
-        <@ fun index (leftResult: 'c option) (rightResult: 'c option) (isLeftBitmap: ClArray<int>) (allValuesBuffer: ClArray<'c>) (rawPositionsBuffer: ClArray<int>) ->
-            if isLeftBitmap.[index] = 1 then
-                match leftResult with
-                | Some v ->
-                    allValuesBuffer.[index] <- v
-                    rawPositionsBuffer.[index] <- 1
-                | None -> rawPositionsBuffer.[index] <- 0
-            else
-                match rightResult with
-                | Some v ->
-                    allValuesBuffer.[index] <- v
-                    rawPositionsBuffer.[index] <- 1
-                | None -> rawPositionsBuffer.[index] <- 0 @>
-
     let prepareFillVector opAdd =
         <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
@@ -152,7 +128,7 @@ module Elementwise =
                 let result =
                     (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1]) value
 
-                (%both) gid result positions allValues
+                (%PreparePositions.both) gid result positions allValues
             elif (gid < length
                   && gid > 0
                   && allIndices.[gid - 1] <> allIndices.[gid])
@@ -163,7 +139,7 @@ module Elementwise =
                 let rightResult =
                     (%opAdd) None (Some rightValues.[gid]) value
 
-                (%leftRight) gid leftResult rightResult isLeft allValues positions @>
+                (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>
 
     let preparePositions opAdd =
         <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
@@ -175,7 +151,7 @@ module Elementwise =
                 let result =
                     (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1])
 
-                (%both) gid result positions allValues
+                (%PreparePositions.both) gid result positions allValues
             elif (gid < length
                   && gid > 0
                   && allIndices.[gid - 1] <> allIndices.[gid])
@@ -183,4 +159,4 @@ module Elementwise =
                 let leftResult = (%opAdd) (Some leftValues.[gid]) None
                 let rightResult = (%opAdd) None (Some rightValues.[gid])
 
-                (%leftRight) gid leftResult rightResult isLeft allValues positions @>
+                (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>

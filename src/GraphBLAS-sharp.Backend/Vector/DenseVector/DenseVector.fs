@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Vector.Dense
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects
@@ -60,7 +61,7 @@ module DenseVector =
             resultVector
 
     let elementWiseAtLeastOne clContext op workGroupSize =
-        elementWise clContext (StandardOperations.atLeastOneToOption op) workGroupSize
+        elementWise clContext (Convert.atLeastOneToOption op) workGroupSize
 
     let fillSubVectorTo<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -115,10 +116,7 @@ module DenseVector =
             resultVector
 
     let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
-        fillSubVectorTo<'a, 'b>
-            clContext
-            (StandardOperations.fillSubToOption StandardOperations.fillSubOp<'a>)
-            workGroupSize
+        fillSubVectorTo<'a, 'b> clContext (Convert.fillSubToOption Mask.fillSubOp<'a>) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 

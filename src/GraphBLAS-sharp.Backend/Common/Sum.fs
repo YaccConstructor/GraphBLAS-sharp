@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 
 module internal Sum =

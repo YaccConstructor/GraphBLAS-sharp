@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
 open FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Quotes
 
 module PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =

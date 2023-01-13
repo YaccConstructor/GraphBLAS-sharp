@@ -5,6 +5,7 @@ open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
@@ -26,13 +27,19 @@ module BFS =
         let ofList = Vector.ofList clContext Dense
 
         let maskComplementedTo =
-            DenseVector.elementWiseTo clContext StandardOperations.complementedMaskOp workGroupSize
+            DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
 
         let fillSubVectorTo =
             DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
 
         let containsNonZero =
-            ClArray.exists clContext workGroupSize <@ fun (item: int option) -> match item with Some _ -> true | _ -> false @>
+            ClArray.exists
+                clContext
+                workGroupSize
+                <@ fun (item: int option) ->
+                    match item with
+                    | Some _ -> true
+                    | _ -> false @>
 
         fun (queue: MailboxProcessor<Msg>) (matrix: ClCSRMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount

@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Matrix.CSR.Elementwise
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Objects
@@ -128,7 +129,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwiseWithCOO clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
+        elementwiseWithCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
@@ -234,7 +235,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwiseToCOO clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
+        elementwiseToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let elementwiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -242,7 +243,7 @@ module CSRMatrix =
         workGroupSize
         =
 
-        elementwise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let spgemmCSC
         (clContext: ClContext)

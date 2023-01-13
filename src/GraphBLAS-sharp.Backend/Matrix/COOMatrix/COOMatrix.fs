@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
@@ -306,7 +307,8 @@ module COOMatrix =
         let preparePositions =
             preparePositions clContext opAdd workGroupSize
 
-        let setPositions = Matrix.Common.setPositions<'c> clContext workGroupSize
+        let setPositions =
+            Matrix.Common.setPositions<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClCOOMatrix<'a>) (matrixRight: ClCOOMatrix<'b>) ->
 
@@ -443,7 +445,7 @@ module COOMatrix =
         workGroupSize
         =
 
-        elementwise clContext (StandardOperations.atLeastOneToOption opAdd) workGroupSize
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
