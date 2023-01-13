@@ -23,6 +23,7 @@
     <Compile Include="Quotes/Mask.fs" />
     <Compile Include="Quotes/SubSum.fs" />
     <Compile Include="Quotes\PreparePositions.fs" />
+    <Compile Include="Quotes\Predicates.fs" />
     <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />
