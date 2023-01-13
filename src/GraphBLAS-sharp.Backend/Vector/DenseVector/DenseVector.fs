@@ -247,7 +247,8 @@ module DenseVector =
         let getValuesAndIndices =
             getValuesAndIndices clContext workGroupSize
 
-        let reduce = Reduce.run clContext workGroupSize opAdd
+        let reduce =
+            Fold.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

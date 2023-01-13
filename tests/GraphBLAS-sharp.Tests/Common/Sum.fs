@@ -46,7 +46,7 @@ let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a
         |> Expect.equal actualSum expectedSum
 
 let testFixtures config wgSize q plus (plusQ: Expr<'a -> 'a -> 'a>) zero isEqual filter name =
-    let sum = Sum.run context wgSize plusQ zero
+    let sum = Fold.sum context wgSize plusQ zero
 
     makeTest q sum plus zero isEqual filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)

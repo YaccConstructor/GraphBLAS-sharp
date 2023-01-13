@@ -46,42 +46,50 @@ let testFixtures =
     let getCorrectnessTestName datatype =
         sprintf "Correctness on %s, %A" datatype Dense
 
-    [ let containsNonZeroInt = ClArray.exists context wgSize Predicates.containsNonZero
+    [ let containsNonZeroInt =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<int> ((=) 0) containsNonZeroInt
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let containsNonZeroByte = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroByte =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<byte> ((=) 0uy) containsNonZeroByte
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let containsNonZeroFloat = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroFloat =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<float> ((=) 0.0) containsNonZeroFloat
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let containsNonZeroBool = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroBool =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<bool> ((=) false) containsNonZeroBool
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let containsNonZeroInt = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroInt =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<int> ((=) 0) containsNonZeroInt (Array.create 1000 0)
       |> testPropertyWithConfig config (getCorrectnessTestName "int zeros")
 
-      let containsNonZeroByte = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroByte =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<byte> ((=) 0uy) containsNonZeroByte (Array.create 1000 0uy)
       |> testPropertyWithConfig config (getCorrectnessTestName "byte zeros")
 
-      let containsNonZeroFloat = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroFloat =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<float> ((=) 0.0) containsNonZeroFloat (Array.create 1000 0.0)
       |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
 
-      let containsNonZeroBool = ClArray.exists context wgSize Predicates.containsNonZero
+      let containsNonZeroBool =
+          ClArray.exists context wgSize Predicates.containsNonZero
 
       correctnessGenericTest<bool> ((=) false) containsNonZeroBool (Array.create 1000 false)
       |> testPropertyWithConfig config (getCorrectnessTestName "bool zeros") ]

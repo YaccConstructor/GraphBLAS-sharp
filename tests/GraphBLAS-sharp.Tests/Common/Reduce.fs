@@ -59,7 +59,7 @@ let makeTest
 
 
 let testFixtures config wgSize q plus plusQ zero filter name =
-    let reduce = Reduce.run context wgSize plusQ
+    let reduce = Fold.reduce context wgSize plusQ
 
     makeTest q reduce plus zero filter
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
