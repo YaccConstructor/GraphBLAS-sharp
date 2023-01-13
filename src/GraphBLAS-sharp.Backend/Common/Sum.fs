@@ -189,7 +189,7 @@ module Fold =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let rec private scanToCellReduce<'a when 'a: struct>
+    let private scanToCellReduce<'a when 'a: struct>
         (clContext: ClContext)
         (workGroupSize: int)
         (opAdd: Expr<'a -> 'a -> 'a>)
