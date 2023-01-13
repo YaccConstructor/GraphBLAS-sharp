@@ -23,7 +23,8 @@ let commonTests =
           Common.Copy.tests
           Common.Replicate.tests
           Common.Reduce.tests
-          Common.Sum.tests ]
+          Common.Sum.tests
+          Common.Exists.tests ]
     |> testSequenced
 
 let vectorTests =
@@ -40,8 +41,7 @@ let vectorTests =
           Vector.Elementwise.mulTests
           Vector.FillSubVector.tests
           Vector.FillSubVector.complementedTests
-          Vector.Reduce.tests
-          Vector.ContainNonZero.tests ]
+          Vector.Reduce.tests ]
     |> testSequenced
 
 let algorithmsTests =

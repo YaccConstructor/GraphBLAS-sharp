@@ -11,8 +11,8 @@
 
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Common\Quotes.fs" />
     <Compile Include="Common\Scatter.fs" />
-    <Compile Include="Common/Quotes.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/PrefixSum.fs" />

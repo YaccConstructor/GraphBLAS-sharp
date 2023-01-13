@@ -23,6 +23,7 @@
         <Compile Include="Common/Scatter.fs" />
         <Compile Include="Common/Sum.fs" />
         <Compile Include="Common/Reduce.fs" />
+        <Compile Include="Common\Exists.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
@@ -35,7 +36,6 @@
         <Compile Include="Vector/Convert.fs" />
         <Compile Include="Vector/Reduce.fs" />
         <Compile Include="Vector/Elementwise.fs" />
-        <Compile Include="Vector/ContainsNonZero.fs" />
         <Compile Include="Vector/SpMV.fs" />
         <Compile Include="Algorithms/BFS.fs" />
         <Compile Include="Matrix/Convert.fs" />

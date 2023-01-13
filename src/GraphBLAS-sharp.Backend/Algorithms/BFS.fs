@@ -32,7 +32,7 @@ module BFS =
             DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
 
         let containsNonZero =
-            DenseVector.containsNonZero clContext workGroupSize
+            ClArray.exists clContext workGroupSize <@ fun (item: int option) -> match item with Some _ -> true | _ -> false @>
 
         fun (queue: MailboxProcessor<Msg>) (matrix: ClCSRMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount

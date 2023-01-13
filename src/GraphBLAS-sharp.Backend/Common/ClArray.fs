@@ -292,3 +292,33 @@ module ClArray =
             scatter processor positions inputArray outputArray
 
             outputArray
+
+    let exists<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (predicate: Expr<'a option -> bool>) =
+
+        let exists =
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (result: ClCell<bool>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let isExist = (%predicate) vector.[gid]
+
+                    if isExist then
+                        result.Value <- true @>
+
+        let kernel = clContext.Compile exists
+
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
+
+            let result = clContext.CreateClCell false
+
+            let ndRange =
+                Range1D.CreateValid(vector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result

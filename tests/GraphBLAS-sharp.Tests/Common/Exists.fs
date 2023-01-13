@@ -1,7 +1,8 @@
-module GraphBLAS.FSharp.Tests.Backend.Vector.ContainNonZero
+module GraphBLAS.FSharp.Tests.Backend.Common.Exists
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open Context
@@ -37,6 +38,12 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero containsN
         $"The results should be the same, vector : {vector}"
         |> Expect.equal result (Array.exists (not << isZero) array)
 
+let predicate<'a when 'a : struct> =
+    <@ fun (item: 'a option) ->
+        match item with
+        Some _ -> true
+        | _ -> false @>
+
 let testFixtures =
     let config = defaultConfig
 
@@ -46,49 +53,49 @@ let testFixtures =
         sprintf "Correctness on %s, %A" datatype Dense
 
     [ let containsNonZeroInt =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<int> ((=) 0) containsNonZeroInt
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let containsNonZeroByte =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<byte> ((=) 0uy) containsNonZeroByte
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let containsNonZeroFloat =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<float> ((=) 0.0) containsNonZeroFloat
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let containsNonZeroBool =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<bool> ((=) false) containsNonZeroBool
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let containsNonZeroInt =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<int> ((=) 0) containsNonZeroInt (Array.create 1000 0)
       |> testPropertyWithConfig config (getCorrectnessTestName "int zeros")
 
       let containsNonZeroByte =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<byte> ((=) 0uy) containsNonZeroByte (Array.create 1000 0uy)
       |> testPropertyWithConfig config (getCorrectnessTestName "byte zeros")
 
       let containsNonZeroFloat =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<float> ((=) 0.0) containsNonZeroFloat (Array.create 1000 0.0)
       |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
 
       let containsNonZeroBool =
-          DenseVector.containsNonZero context wgSize
+          ClArray.exists context wgSize predicate
 
       correctnessGenericTest<bool> ((=) false) containsNonZeroBool (Array.create 1000 false)
       |> testPropertyWithConfig config (getCorrectnessTestName "bool zeros") ]
