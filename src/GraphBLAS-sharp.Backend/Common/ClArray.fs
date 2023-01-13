@@ -295,10 +295,10 @@ module ClArray =
 
             outputArray
 
-    let exists<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (predicate: Expr<'a option -> bool>) =
+    let exists (clContext: ClContext) (workGroupSize: int) (predicate: Expr<'a -> bool>) =
 
         let exists =
-            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (result: ClCell<bool>) ->
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (result: ClCell<bool>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -309,7 +309,7 @@ module ClArray =
 
         let kernel = clContext.Compile exists
 
-        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a>) ->
 
             let result = clContext.CreateClCell false
 

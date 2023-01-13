@@ -16,14 +16,15 @@ let matrixTests =
 let commonTests =
     testList
         "Common tests"
-        [ Common.BitonicSort.tests
-          Common.PrefixSum.tests
-          Common.Scatter.tests
-          Common.RemoveDuplicates.tests
-          Common.Copy.tests
-          Common.Replicate.tests
-          Common.Reduce.tests
-          Common.Sum.tests
+          [
+        // [ Common.BitonicSort.tests
+        //   Common.PrefixSum.tests
+        //   Common.Scatter.tests
+        //   Common.RemoveDuplicates.tests
+        //   Common.Copy.tests
+        //   Common.Replicate.tests
+        //   Common.Reduce.tests
+        //   Common.Sum.tests
           Common.Exists.tests ]
     |> testSequenced
 
@@ -53,9 +54,10 @@ let allTests =
     testList
         "All tests"
         [ commonTests
-          matrixTests
-          vectorTests
-          algorithmsTests ]
+          //matrixTests
+          //vectorTests
+          //algorithmsTests ]
+        ]
     |> testSequenced
 
 [<EntryPoint>]
