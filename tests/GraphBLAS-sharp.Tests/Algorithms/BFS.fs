@@ -42,7 +42,7 @@ let testFixtures (testContext: TestContext) =
               let matrixHost =
                   Utils.createMatrixFromArray2D CSR matrix (fun x -> x = 0)
 
-              let matrix = matrixHost.ToBackend context
+              let matrix = matrixHost.ToDevice context
 
               match matrix with
               | ClMatrix.CSR mtx ->

@@ -13,6 +13,7 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "Elementwise.Tests"
 
@@ -64,19 +65,17 @@ let correctnessGenericTest
 
     if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
         try
-            let m1 =
-                mtx1.ToBackend case.TestContext.ClContext
+            let m1 = mtx1.ToDevice case.TestContext.ClContext
 
-            let m2 =
-                mtx2.ToBackend case.TestContext.ClContext
+            let m2 = mtx2.ToDevice case.TestContext.ClContext
 
             let res = addFun q m1 m2
 
             m1.Dispose q
             m2.Dispose q
 
-            let cooRes = toCOOFun q res
-            let actual = Matrix.FromBackend q cooRes
+            let (cooRes: ClMatrix<'a>) = toCOOFun q res
+            let actual = cooRes.ToHost q
 
             cooRes.Dispose q
             res.Dispose q

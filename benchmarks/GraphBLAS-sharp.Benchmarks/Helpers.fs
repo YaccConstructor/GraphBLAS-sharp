@@ -5,12 +5,14 @@ open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
 open Brahma.FSharp
 open Brahma.FSharp.OpenCL.Translator
+open GraphBLAS.FSharp.Backend.Objects
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
 open System.Text.RegularExpressions
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Jobs
+open GraphBLAS.FSharp.Objects
 
 type CommonConfig() =
     inherit ManualConfig()
@@ -223,25 +225,3 @@ module Utils =
         random.NextBytes buffer
         System.BitConverter.ToSingle(buffer, 0)
 
-    // let rowPointers2rowIndices (rowPointers: int []) =
-    //     let rowIndices =
-    //         Array.zeroCreate rowPointers.[rowPointers.Length - 1]
-
-    //     [| 0 .. rowPointers.Length - 2 |]
-    //     |> Array.Parallel.iter
-    //         (fun i ->
-    //             [| rowPointers.[i] .. rowPointers.[i + 1] - 1 |]
-    //             |> Array.Parallel.iter (fun j -> rowIndices.[j] <- i))
-
-    //     rowIndices
-
-    // let rowIndices2rowPointers (rowIndices: int []) rowCount =
-    //     let nnzPerRow = Array.zeroCreate rowCount
-    //     let rowPointers = Array.zeroCreate rowCount
-
-    //     Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) rowIndices
-
-    //     for i in 1 .. rowCount - 1 do
-    //         rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
-
-    //     rowPointers

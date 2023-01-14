@@ -62,7 +62,7 @@ let correctnessGenericTest
 
     if mtx.NNZCount > 0 && vtr.Size > 0 then
         try
-            let m = mtx.ToBackend testContext.ClContext
+            let m = mtx.ToDevice testContext.ClContext
 
             match vtr, m with
             | Vector.Dense vtr, ClMatrix.CSR m ->

@@ -8,6 +8,8 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "Transpose.Tests"
 
@@ -18,7 +20,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
     | Matrix.COO actual ->
         let expected =
-            COOMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.COO.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -36,7 +38,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         |> compareArrays areEqual actual.Values expected.Values
     | Matrix.CSR actual ->
         let expected =
-            CSRMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.CSR.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -54,7 +56,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         |> compareArrays areEqual actual.Values expected.Values
     | Matrix.CSC actual ->
         let expected =
-            CSCMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.CSC.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -77,9 +79,9 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
-            let mT = transposeFun q m
-            let res = Matrix.FromBackend q mT
+            let m = mtx.ToDevice context
+            let (mT: ClMatrix<'a>) = transposeFun q m
+            let res = mT.ToHost q
             m.Dispose q
             mT.Dispose q
             res
@@ -104,10 +106,10 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
+            let m = mtx.ToDevice context
             let mT = transposeFun q m
             let mTT = transposeFun q mT
-            let res = Matrix.FromBackend q mTT
+            let res = mTT.ToHost q
             m.Dispose q
             mT.Dispose q
             mTT.Dispose q
