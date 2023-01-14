@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Quotes
 
 module Predicates =
-    let containsNonZero<'a> =
+    let isSome<'a> =
         <@ fun (item: 'a option) ->
             match item with
             | Some _ -> true
