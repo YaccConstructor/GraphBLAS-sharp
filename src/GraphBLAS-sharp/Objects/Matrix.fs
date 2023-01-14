@@ -4,11 +4,6 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
-type MatrixFormat =
-    | CSR
-    | COO
-    | CSC
-
 [<RequireQualifiedAccess>]
 type Matrix<'a when 'a: struct> =
     | CSR of CSRMatrix<'a>

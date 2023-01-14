@@ -8,6 +8,8 @@ open GraphBLAS.FSharp.Tests.Utils
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let logger = Log.create "Vector.copy.Tests"
 

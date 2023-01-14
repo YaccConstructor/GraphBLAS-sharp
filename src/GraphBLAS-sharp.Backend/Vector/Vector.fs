@@ -9,6 +9,8 @@ open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Common.ClArray
+open GraphBLAS.FSharp.Backend.Objects.ClVector
+
 
 module Vector =
     let zeroCreate (clContext: ClContext) (workGroupSize: int) =
@@ -37,9 +39,14 @@ module Vector =
 
             match format with
             | Sparse ->
-                SparseVector
-                    .FromTuples(indices, values, size)
-                    .ToDevice clContext
+                let indices = clContext.CreateClArray indices
+                let values = clContext.CreateClArray values
+
+                { Context = clContext
+                  Indices = indices
+                  Values = values
+                  Size = size }
+
                 |> ClVector.Sparse
             | Dense ->
                 let res = Array.zeroCreate size

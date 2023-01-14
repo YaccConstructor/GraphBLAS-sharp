@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 module DenseVector =
     let elementWiseTo<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>

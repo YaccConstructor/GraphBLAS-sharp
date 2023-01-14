@@ -719,7 +719,7 @@ module Utils =
         match vectorCase with
         | VectorFormat.Sparse ->
             Vector.Sparse
-            <| SparseVector.FromArray(array, isZero)
+            <| Vector.Sparse.FromArray(array, isZero)
         | VectorFormat.Dense ->
             Vector.Dense
             <| ArraysExtensions.DenseVectorFromArray(array, isZero)

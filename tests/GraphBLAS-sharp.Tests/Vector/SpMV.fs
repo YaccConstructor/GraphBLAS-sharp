@@ -11,6 +11,7 @@ open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
     let rows = Array2D.length1 baseMtx

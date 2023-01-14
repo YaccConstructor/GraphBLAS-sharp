@@ -7,6 +7,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -191,7 +192,7 @@ module SparseVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
                 merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
@@ -287,7 +288,7 @@ module SparseVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClSparseVector<'a>) (rightVector: ClSparseVector<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
                 merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
@@ -327,7 +328,7 @@ module SparseVector =
         let create =
             ClArray.zeroCreate clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) ->
             let resultVector = create processor vector.Size
 
             let ndRange =
@@ -350,4 +351,4 @@ module SparseVector =
         let reduce =
             Fold.reduce clContext workGroupSize opAdd
 
-        fun (processor: MailboxProcessor<_>) (vector: ClSparseVector<'a>) -> reduce processor vector.Values
+        fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values

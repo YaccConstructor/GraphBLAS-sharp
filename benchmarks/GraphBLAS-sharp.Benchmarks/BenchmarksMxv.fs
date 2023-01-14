@@ -4,6 +4,7 @@ open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open BenchmarkDotNet.Attributes
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 [<Config(typeof<CommonConfig>)>]
 type MxvBenchmarks() =
