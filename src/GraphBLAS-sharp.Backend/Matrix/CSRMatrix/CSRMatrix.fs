@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module CSRMatrix =
     let private expandRowPointers (clContext: ClContext) workGroupSize =
@@ -55,7 +56,7 @@ module CSRMatrix =
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) ->
             let rows =
                 prepare processor matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
@@ -73,7 +74,7 @@ module CSRMatrix =
         let prepare =
             expandRowPointers clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) ->
             let rows =
                 prepare processor matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
@@ -98,7 +99,7 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (m1: ClCSRMatrix<'a>) (m2: ClCSRMatrix<'b>) ->
+        fun (processor: MailboxProcessor<_>) (m1: ClMatrix.CSR<'a>) (m2: ClMatrix.CSR<'b>) ->
             let m1COO =
                 { Context = clContext
                   RowCount = m1.RowCount
@@ -141,7 +142,7 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) ->
             let coo = toCOOInplace queue matrix
             let transposedCoo = transposeInplace queue coo
             toCSRInplace queue transposedCoo
@@ -156,7 +157,7 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) ->
             let coo = toCOO queue matrix
             let transposedCoo = transposeInplace queue coo
             toCSRInplace queue transposedCoo
@@ -175,7 +176,7 @@ module CSRMatrix =
         let setPositions =
             Matrix.Common.setPositions<'c> clContext Utils.defaultWorkGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSRMatrix<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
                 merge
@@ -222,7 +223,7 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext Utils.defaultWorkGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSRMatrix<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
 
             let cooRes =
                 elementwiseToCOO queue matrixLeft matrixRight
@@ -255,6 +256,6 @@ module CSRMatrix =
         let run =
             SpGEMM.run clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSCMatrix<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
 
             run queue matrixLeft matrixRight mask

@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module COOMatrix =
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -310,7 +311,7 @@ module COOMatrix =
         let setPositions =
             Matrix.Common.setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCOOMatrix<'a>) (matrixRight: ClCOOMatrix<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
@@ -350,7 +351,7 @@ module COOMatrix =
 
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
 
             let resultRows = copy processor matrix.Rows
 
@@ -406,7 +407,7 @@ module COOMatrix =
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
                 prepare processor matrix.Rows matrix.RowCount
 
@@ -423,7 +424,7 @@ module COOMatrix =
     let toCSRInplace (clContext: ClContext) workGroupSize =
         let prepare = compressRows clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
                 prepare processor matrix.Rows matrix.RowCount
 
@@ -452,7 +453,7 @@ module COOMatrix =
         let sort =
             BitonicSort.sortKeyValuesInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values
 
             { Context = clContext
@@ -468,13 +469,12 @@ module COOMatrix =
         let copy = ClArray.copy clContext workGroupSize
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCOOMatrix<'a>) ->
-            let copiedMatrix =
-                { Context = clContext
-                  RowCount = matrix.RowCount
-                  ColumnCount = matrix.ColumnCount
-                  Rows = copy queue matrix.Rows
-                  Columns = copy queue matrix.Columns
-                  Values = copyData queue matrix.Values }
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
 
-            transposeInplace queue copiedMatrix
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = copy queue matrix.Rows
+              Columns = copy queue matrix.Columns
+              Values = copyData queue matrix.Values }
+            |> transposeInplace queue

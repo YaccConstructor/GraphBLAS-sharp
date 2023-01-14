@@ -94,7 +94,7 @@ module SpMV =
         let multiplyValues = clContext.Compile multiplyValues
         let reduceValuesByRows = clContext.Compile reduceValuesByRows
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) (vector: ClArray<'b option>) (result: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) (result: ClArray<'b option>) ->
 
             let matrixLength = matrix.Values.Length
 
@@ -153,7 +153,7 @@ module SpMV =
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClCSRMatrix<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
                 clContext.CreateClArray<'b option>(

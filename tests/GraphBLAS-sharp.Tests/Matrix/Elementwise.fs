@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases

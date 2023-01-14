@@ -3,9 +3,9 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Predefined
-open GraphBLAS.FSharp.Backend
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module internal SpGEMM =
     let private calculate
@@ -106,7 +106,7 @@ module internal SpGEMM =
 
         let program = context.Compile(run)
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSCMatrix<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
 
             let values =
                 context.CreateClArray<'c>(
@@ -164,7 +164,7 @@ module internal SpGEMM =
         let scanInplace =
             PrefixSum.standardExcludeInplace context workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClCSRMatrix<'a>) (matrixRight: ClCSCMatrix<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
 
             let values, bitmap =
                 calculate queue matrixLeft matrixRight mask

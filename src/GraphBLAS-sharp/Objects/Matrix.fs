@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 type MatrixFormat =
     | CSR
@@ -40,7 +41,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { ClCOOMatrix.Context = context
+                { Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
@@ -54,7 +55,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { ClCSRMatrix.Context = context
+                { Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   RowPointers = rows
@@ -68,7 +69,7 @@ type Matrix<'a when 'a: struct> =
             let values = context.CreateClArray m.Values
 
             let result =
-                { ClCSCMatrix.Context = context
+                { Context = context
                   RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows = rows
@@ -247,7 +248,7 @@ and CSRMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { ClCSRMatrix.Context = context
+            { Context = context
               RowCount = m.RowCount
               ColumnCount = m.ColumnCount
               RowPointers = rowPointers
@@ -315,7 +316,7 @@ and COOMatrix<'a> =
                     allocationMode = AllocationMode.CopyHostPtr
                 )
 
-            { ClCOOMatrix.Context = context
+            { Context = context
               RowCount = m.RowCount
               ColumnCount = m.ColumnCount
               Rows = rows

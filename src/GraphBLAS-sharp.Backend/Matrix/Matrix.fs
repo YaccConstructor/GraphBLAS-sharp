@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
@@ -16,35 +17,29 @@ module Matrix =
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO m ->
-                let res =
+                ClMatrix.COO
                     { Context = clContext
                       RowCount = m.RowCount
                       ColumnCount = m.ColumnCount
                       Rows = copy processor m.Rows
                       Columns = copy processor m.Columns
                       Values = copyData processor m.Values }
-
-                ClMatrix.COO res
             | ClMatrix.CSR m ->
-                let res =
+                ClMatrix.CSR
                     { Context = clContext
                       RowCount = m.RowCount
                       ColumnCount = m.ColumnCount
                       RowPointers = copy processor m.RowPointers
                       Columns = copy processor m.Columns
                       Values = copyData processor m.Values }
-
-                ClMatrix.CSR res
             | ClMatrix.CSC m ->
-                let res =
+                ClMatrix.CSC
                     { Context = clContext
                       RowCount = m.RowCount
                       ColumnCount = m.ColumnCount
                       Rows = copy processor m.Rows
                       ColumnPointers = copy processor m.ColumnPointers
                       Values = copyData processor m.Values }
-
-                ClMatrix.CSC res
 
     /// <summary>
     /// Creates a new matrix, represented in CSR format, that is equal to the given one.
@@ -63,15 +58,16 @@ module Matrix =
             | ClMatrix.COO m -> toCSR processor m |> ClMatrix.CSR
             | ClMatrix.CSR _ -> copy processor matrix
             | ClMatrix.CSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
 
-                transpose processor csrT |> ClMatrix.CSR
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = m.ColumnPointers
+                  Columns = m.Rows
+                  Values = m.Values }
+
+                |> transpose processor
+                |> ClMatrix.CSR
 
     /// <summary>
     /// Returns the matrix, represented in CSR format, that is equal to the given one.
@@ -91,15 +87,15 @@ module Matrix =
             | ClMatrix.COO m -> toCSRInplace processor m |> ClMatrix.CSR
             | ClMatrix.CSR _ -> matrix
             | ClMatrix.CSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = m.ColumnPointers
+                  Columns = m.Rows
+                  Values = m.Values }
 
-                transposeInplace processor csrT |> ClMatrix.CSR
+                |> transposeInplace processor
+                |> ClMatrix.CSR
 
     /// <summary>
     /// Creates a new matrix, represented in COO format, that is equal to the given one.
@@ -118,16 +114,17 @@ module Matrix =
             | ClMatrix.COO _ -> copy processor matrix
             | ClMatrix.CSR m -> toCOO processor m |> ClMatrix.COO
             | ClMatrix.CSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
 
-                let cooT = toCOO processor csrT
-                transposeInplace processor cooT |> ClMatrix.COO
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = m.ColumnPointers
+                  Columns = m.Rows
+                  Values = m.Values }
+
+                |> toCOO processor
+                |> transposeInplace processor
+                |> ClMatrix.COO
 
     /// <summary>
     /// Returns the matrix, represented in COO format, that is equal to the given one.
@@ -147,16 +144,17 @@ module Matrix =
             | ClMatrix.COO _ -> matrix
             | ClMatrix.CSR m -> toCOOInplace processor m |> ClMatrix.COO
             | ClMatrix.CSC m ->
-                let csrT =
-                    { Context = m.Context
-                      RowCount = m.ColumnCount
-                      ColumnCount = m.RowCount
-                      RowPointers = m.ColumnPointers
-                      Columns = m.Rows
-                      Values = m.Values }
 
-                let cooT = toCOOInplace processor csrT
-                transposeInplace processor cooT |> ClMatrix.COO
+                { Context = m.Context
+                  RowCount = m.ColumnCount
+                  ColumnCount = m.RowCount
+                  RowPointers = m.ColumnPointers
+                  Columns = m.Rows
+                  Values = m.Values }
+
+                |> toCOOInplace processor
+                |> transposeInplace processor
+                |> ClMatrix.COO
 
     /// <summary>
     /// Creates a new matrix, represented in CSC format, that is equal to the given one.
@@ -187,8 +185,8 @@ module Matrix =
                   Values = csrT.Values }
                 |> ClMatrix.CSC
             | ClMatrix.COO m ->
-                let cooT = transposeCOO processor m
-                let csrT = toCSR processor cooT
+                let csrT =
+                    transposeCOO processor m |> toCSR processor
 
                 { Context = csrT.Context
                   RowCount = csrT.ColumnCount
@@ -228,8 +226,9 @@ module Matrix =
                   Values = csrT.Values }
                 |> ClMatrix.CSC
             | ClMatrix.COO m ->
-                let cooT = transposeCOOInplace processor m
-                let csrT = toCSRInplace processor cooT
+                let csrT =
+                    toCSRInplace processor
+                    <| transposeCOOInplace processor m
 
                 { Context = csrT.Context
                   RowCount = csrT.ColumnCount

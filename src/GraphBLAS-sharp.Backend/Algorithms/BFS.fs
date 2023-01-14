@@ -35,7 +35,7 @@ module BFS =
         let containsNonZero =
             ClArray.exists clContext workGroupSize Predicates.containsNonZero
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClCSRMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels = zeroCreate queue vertexCount
