@@ -349,6 +349,6 @@ module SparseVector =
     let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let reduce =
-            Fold.reduce clContext workGroupSize opAdd
+            Reduce.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values

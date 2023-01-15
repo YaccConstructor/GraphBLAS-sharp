@@ -5,7 +5,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 
-module Fold =
+module Reduce =
     let private runGeneral (clContext: ClContext) (workGroupSize: int) scan scanToCell =
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
