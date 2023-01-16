@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Backend
+﻿namespace GraphBLAS.FSharp.Backend.Objects
 
 open Brahma.FSharp
 

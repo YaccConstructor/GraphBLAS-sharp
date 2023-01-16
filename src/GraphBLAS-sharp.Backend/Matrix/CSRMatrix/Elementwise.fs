@@ -1,11 +1,8 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open System
-open System.Diagnostics.CodeAnalysis
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 
 module internal Elementwise =
@@ -82,67 +79,11 @@ module internal Elementwise =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
             rowPositions, allValues
 
-    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
-
-        let sum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
-
-        let indicesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        let valuesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-
-            let resultLength = Array.zeroCreate 1
-            let prefixSumArrayLength = positions.Length
-
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r = sum processor positions resultLengthGpu
-
-            processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-            let resultLength = resultLength.[0]
-            processor.Post(Msg.CreateFreeMsg<_>(r))
-
-            let resultRows =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let resultColumns =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let resultValues =
-                clContext.CreateClArray(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
-
-            indicesScatter processor positions allRows resultRows
-
-            indicesScatter processor positions allColumns resultColumns
-
-            valuesScatter processor positions allValues resultValues
-
-            resultRows, resultColumns, resultValues, positions, resultLength
-
     let merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
         let localArraySize = workGroupSize + 2
 
         let merge =
-            <@ fun (ndRange: Range1D) rows (firstRowPointers: ClArray<int>) (firstColumns: ClArray<int>) (firstValues: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumns: ClArray<int>) (secondValues: ClArray<'b>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftMergedValues: ClArray<'a>) (rightMergedValues: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) (firstRowPointers: ClArray<int>) (firstColumns: ClArray<int>) (firstValues: ClArray<'a>) (secondRowPointers: ClArray<int>) (secondColumns: ClArray<int>) (secondValues: ClArray<'b>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (leftMergedValues: ClArray<'a>) (rightMergedValues: ClArray<'b>) (isEndOfRowBitmap: ClArray<int>) (isLeftBitmap: ClArray<int>) ->
 
                 let globalID = ndRange.GlobalID0
                 let localID = ndRange.LocalID0
@@ -357,7 +298,6 @@ module internal Elementwise =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            (matrixLeftRowPointers.Length - 1)
                             matrixLeftRowPointers
                             matrixLeftColumns
                             matrixLeftValues

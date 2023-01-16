@@ -1,8 +1,7 @@
 namespace GraphBLAS.FSharp.IO
 
 open System.IO
-open GraphBLAS.FSharp
-open System
+open GraphBLAS.FSharp.Objects
 
 type MtxReader(pathToFile: string) =
     let mutable object = MtxMatrix
@@ -120,7 +119,7 @@ type MtxReader(pathToFile: string) =
                     values.[i] <- value)
                 sortedData
 
-            MatrixCOO
+            Matrix.COO
                 { Rows = rows
                   Columns = cols
                   Values = values

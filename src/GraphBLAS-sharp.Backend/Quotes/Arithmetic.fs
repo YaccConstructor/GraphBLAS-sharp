@@ -1,13 +1,8 @@
-﻿namespace GraphBLAS.FSharp.Backend.Common
+﻿namespace GraphBLAS.FSharp.Backend.Quotes
 
-open FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects
 
-type AtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
-    | Both of 'a * 'b
-    | Left of 'a
-    | Right of 'b
-
-module StandardOperations =
+module ArithmeticOperations =
     let inline mkNumericSum zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
@@ -103,41 +98,3 @@ module StandardOperations =
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
-
-    let atLeastOneToOption op =
-        <@ fun (leftItem: 'a option) (rightItem: 'b option) ->
-            match leftItem, rightItem with
-            | Some left, Some right -> (%op) (Both(left, right))
-            | None, Some right -> (%op) (Right right)
-            | Some left, None -> (%op) (Left left)
-            | None, None -> None @>
-
-    let fillSubToOption (op: Expr<'a option -> 'a option -> 'a option>) =
-        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
-            match rightItem with
-            | Some _ -> (%op) leftItem (Some value)
-            | None -> (%op) leftItem None @>
-
-    let fillSubComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
-        <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
-            match rightItem with
-            | Some _ -> (%op) leftItem None
-            | None -> (%op) leftItem (Some value) @>
-
-    let fillSubOp<'a when 'a: struct> =
-        <@ fun (left: 'a option) (right: 'a option) ->
-            match left, right with
-            | _, None -> left
-            | _ -> right @>
-
-    let maskOp<'a, 'b when 'a: struct and 'b: struct> =
-        <@ fun (left: 'a option) (right: 'b option) ->
-            match right with
-            | Some _ -> left
-            | _ -> None @>
-
-    let complementedMaskOp<'a, 'b when 'a: struct and 'b: struct> =
-        <@ fun (left: 'a option) (right: 'b option) ->
-            match right with
-            | None -> left
-            | _ -> None @>

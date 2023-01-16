@@ -1,14 +1,15 @@
-module Backend.Mxm
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Mxm
 
 open Expecto
 open Expecto.Logging
-open Expecto.Logging.Message
-
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "Mxm.Tests"
 
@@ -40,14 +41,14 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
             createMatrixFromArray2D COO expected (isEqual zero)
 
         if expected.NNZCount > 0 then
-            let m1 = m1.ToBackend context
-            let m2 = m2.ToBackend context
+            let m1 = m1.ToDevice context
+            let m2 = m2.ToDevice context
 
             let mask =
                 Mask2D.FromArray2D(mask, not).ToBackend context
 
-            let result = mxmFun q m1 m2 mask
-            let actual = Matrix.FromBackend q result
+            let (result: ClMatrix<'a>) = mxmFun q m1 m2 mask
+            let actual = result.ToHost q
 
             m1.Dispose q
             m2.Dispose q

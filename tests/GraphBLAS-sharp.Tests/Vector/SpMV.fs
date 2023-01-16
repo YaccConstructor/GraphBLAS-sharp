@@ -1,16 +1,17 @@
-﻿module Backend.SpMV
+﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
-open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Common.StandardOperations
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
     let rows = Array2D.length1 baseMtx
@@ -46,7 +47,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> Backend.CSRMatrix<'a> -> ClArray<'b option> -> ClArray<'c option>)
+    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClArray<'b option> -> ClArray<'c option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -61,15 +62,15 @@ let correctnessGenericTest
 
     if mtx.NNZCount > 0 && vtr.Size > 0 then
         try
-            let m = mtx.ToBackend testContext.ClContext
+            let m = mtx.ToDevice testContext.ClContext
 
             match vtr, m with
-            | VectorDense vtr, Backend.MatrixCSR m ->
+            | Vector.Dense vtr, ClMatrix.CSR m ->
                 let v = vtr.ToDevice testContext.ClContext
 
                 let res = spMV testContext.Queue m v
 
-                (Backend.MatrixCSR m).Dispose q
+                (ClMatrix.CSR m).Dispose q
                 v.Dispose q
                 let hostRes = res.ToHost q
                 res.Dispose q
@@ -91,26 +92,29 @@ let testFixturesSpMV (testContext: TestContext) =
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolSpMV = SpMV.run context boolSum boolMul wgSize
+      let boolSpMV =
+          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intSpMV = SpMV.run context intSum intMul wgSize
+      let intSpMV =
+          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          SpMV.run context floatSum floatMul wgSize
+          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let byteAdd = SpMV.run context byteSum byteMul wgSize
+      let byteAdd =
+          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

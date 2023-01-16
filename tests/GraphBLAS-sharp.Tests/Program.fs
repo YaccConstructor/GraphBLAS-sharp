@@ -1,64 +1,62 @@
 open Expecto
+open GraphBLAS.FSharp.Tests.Backend
 
-open Brahma.FSharp.OpenCL
-open GraphBLAS.FSharp.Backend.Common
-open OpenCL.Net
-open GraphBLAS.FSharp
-//open GraphBLAS.FSharp.Algorithms
-open GraphBLAS.FSharp.IO
+let matrixTests =
+    testList
+        "Matrix tests"
+        [ Matrix.Convert.tests
+          Matrix.Elementwise.elementwiseAddTests
+          Matrix.Elementwise.elementwiseAddAtLeastOneTests
+          Matrix.Elementwise.elementwiseMulAtLeastOneTests
+          Matrix.Elementwise.elementwiseAddAtLeastOneToCOOTests
+          Matrix.Mxm.tests
+          Matrix.Transpose.tests ]
+    |> testSequenced
+
+let commonTests =
+    testList
+        "Common tests"
+        [ Common.BitonicSort.tests
+          Common.PrefixSum.tests
+          Common.Scatter.tests
+          Common.RemoveDuplicates.tests
+          Common.Copy.tests
+          Common.Replicate.tests
+          Common.Reduce.tests
+          Common.Sum.tests
+          Common.Exists.tests ]
+    |> testSequenced
+
+let vectorTests =
+    testList
+        "Vector tests"
+        [ Vector.SpMV.tests
+          Vector.ZeroCreate.tests
+          Vector.OfList.tests
+          Vector.Copy.tests
+          Vector.Convert.tests
+          Vector.ElementwiseAtLeastOne.addTests
+          Vector.ElementwiseAtLeastOne.mulTests
+          Vector.Elementwise.addTests
+          Vector.Elementwise.mulTests
+          Vector.FillSubVector.tests
+          Vector.FillSubVector.complementedTests
+          Vector.Reduce.tests ]
+    |> testSequenced
+
+let algorithmsTests =
+    testList "Algorithms tests" [ Algorithms.BFS.tests ]
+    |> testSequenced
 
 [<Tests>]
 let allTests =
     testList
         "All tests"
-        [ Backend.Mxm.tests
-          Backend.BitonicSort.tests
-          Backend.PrefixSum.tests
-          Backend.Scatter.tests
-          Backend.Convert.tests
-          Backend.RemoveDuplicates.tests
-          Backend.Copy.tests
-          Backend.Replicate.tests
-          //Backend.Elementwise.elementwiseAddTests
-          //Backend.Elementwise.elementwiseAddAtLeastOneTests
-          //Backend.Elementwise.elementwiseAddAtLeastOneToCOOTests
-          //Backend.Elementwise.elementwiseMulAtLeastOneTests
-          Backend.Transpose.tests
-          Backend.SpMV.tests
-          //Matrix.GetTuples.tests
-          //Matrix.Mxv.tests
-          Algo.BFS.tests
-          Backend.Reduce.tests
-          Backend.Sum.tests
-          Backend.Vector.ZeroCreate.tests
-          Backend.Vector.OfList.tests
-          Backend.Vector.Copy.tests
-          Backend.Vector.Convert.tests
-          Backend.Vector.ElementWiseAtLeastOne.addTests
-          Backend.Vector.ElementWiseAtLeastOne.mulTests
-          Backend.Vector.ElementWise.addTests
-          Backend.Vector.ElementWise.mulTests
-          Backend.Vector.FillSubVector.tests
-          Backend.Vector.FillSubVector.complementedTests
-          Backend.Vector.Reduce.tests
-          Backend.Vector.ContainNonZero.tests ]
+        [ commonTests
+          matrixTests
+          vectorTests
+          algorithmsTests ]
     |> testSequenced
 
 [<EntryPoint>]
 let main argv = allTests |> runTestsWithCLIArgs [] argv
-
-// graphblas {
-//     let! matrix =
-//         MtxReader("webbase-1M.mtx").ReadMatrix(fun _ -> 1)
-//         |> Matrix.switch CSR
-//         >>= Matrix.synchronizeAndReturn
-//     let! vector = Vector.ofList matrix.ColumnCount (List.init matrix.ColumnCount (fun i -> i, 1))
-//     return!
-//         Matrix.mxv Predefined.AddMult.int matrix vector
-//         >>= Vector.synchronizeAndReturn
-// }
-// |> EvalGB.withClContext (OpenCLEvaluationContext())
-// |> EvalGB.runSync
-// |> printfn "%A"
-
-// 0

@@ -1,13 +1,16 @@
-module Backend.Vector.ElementWiseAtLeastOne
+module GraphBLAS.FSharp.Tests.Backend.Vector.ElementwiseAtLeastOne
 
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend.Common
-open StandardOperations
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let logger =
     Log.create "Vector.ElementWiseAtLeasOneMul.Tests"
@@ -34,7 +37,7 @@ let checkResult
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
     match actual with
-    | VectorSparse actual ->
+    | Vector.Sparse actual ->
         let actualArray =
             Array.create expectedArrayLength resultZero
 
@@ -70,8 +73,8 @@ let correctnessGenericTest
 
     if leftNNZCount > 0 && rightNNZCount > 0 then
 
-        let q = case.ClContext.Queue
-        let context = case.ClContext.ClContext
+        let q = case.TestContext.Queue
+        let context = case.TestContext.ClContext
 
         let firstVector =
             createVectorFromArray case.Format leftArray (leftIsEqual leftZero)
@@ -105,12 +108,12 @@ let addTestFixtures case =
         $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     [ let toCoo = Vector.toSparse context wgSize
 
       let intAddFun =
-          Vector.elementWiseAtLeastOne context intSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
@@ -119,7 +122,7 @@ let addTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatAddFun =
-          Vector.elementWiseAtLeastOne context floatSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -131,7 +134,7 @@ let addTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolAddFun =
-          Vector.elementWiseAtLeastOne context boolSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
@@ -140,7 +143,7 @@ let addTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteAddFun =
-          Vector.elementWiseAtLeastOne context byteSumAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
@@ -156,13 +159,13 @@ let mulTestFixtures case =
         $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
 
     [ let toCoo = Vector.toSparse context wgSize
 
       let intMulFun =
-          Vector.elementWiseAtLeastOne context intMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
@@ -171,7 +174,7 @@ let mulTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatMulFun =
-          Vector.elementWiseAtLeastOne context floatMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -183,7 +186,7 @@ let mulTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolMulFun =
-          Vector.elementWiseAtLeastOne context boolMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
@@ -192,7 +195,7 @@ let mulTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteMulFun =
-          Vector.elementWiseAtLeastOne context byteMulAtLeastOne wgSize
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo

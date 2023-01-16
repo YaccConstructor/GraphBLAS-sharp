@@ -1,41 +1,14 @@
-namespace GraphBLAS.FSharp.Backend.DenseVector
+namespace GraphBLAS.FSharp.Backend.Vector.Dense
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 module DenseVector =
-    let containsNonZero<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let containsNonZero =
-            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (result: ClCell<bool>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length then
-                    match vector.[gid] with
-                    | Some _ -> result.Value <- true
-                    | _ -> () @>
-
-        let kernel = clContext.Compile containsNonZero
-
-        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
-
-            let result = clContext.CreateClCell false
-
-            let ndRange =
-                Range1D.CreateValid(vector.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            result
-
     let elementWiseTo<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
@@ -89,7 +62,7 @@ module DenseVector =
             resultVector
 
     let elementWiseAtLeastOne clContext op workGroupSize =
-        elementWise clContext (StandardOperations.atLeastOneToOption op) workGroupSize
+        elementWise clContext (Convert.atLeastOneToOption op) workGroupSize
 
     let fillSubVectorTo<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -144,10 +117,7 @@ module DenseVector =
             resultVector
 
     let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
-        fillSubVectorTo<'a, 'b>
-            clContext
-            (StandardOperations.fillSubToOption StandardOperations.fillSubOp<'a>)
-            workGroupSize
+        fillSubVectorTo<'a, 'b> clContext (Convert.fillSubToOption Mask.fillSubOp<'a>) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
 
@@ -208,7 +178,7 @@ module DenseVector =
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate 1
+        let resultLength = Array.zeroCreate<int> 1
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
@@ -278,7 +248,8 @@ module DenseVector =
         let getValuesAndIndices =
             getValuesAndIndices clContext workGroupSize
 
-        let reduce = Reduce.run clContext workGroupSize opAdd
+        let reduce =
+            Reduce.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

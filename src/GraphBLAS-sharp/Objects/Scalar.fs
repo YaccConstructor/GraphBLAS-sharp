@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp
+namespace GraphBLAS.FSharp.Objects
 
 type Scalar<'a when 'a: struct> = ScalarWrapped of ArrayScalar<'a>
 

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp.Backend.Objects
 
 open Brahma.FSharp
 
@@ -7,7 +7,7 @@ type MaskType =
     | Complemented
     | NoMask
 
-type Mask1D =
+type ClMask1D =
     { Context: ClContext
       IsComplemented: bool
       Size: int
@@ -19,7 +19,7 @@ type Mask1D =
         q.Post(Msg.CreateFreeMsg<_>(this.Indices))
         q.PostAndReply(Msg.MsgNotifyMe)
 
-type Mask2D =
+type ClMask2D =
     { Context: ClContext
       IsComplemented: bool
       RowCount: int

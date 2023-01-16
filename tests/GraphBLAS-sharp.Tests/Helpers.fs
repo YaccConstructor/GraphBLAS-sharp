@@ -1,20 +1,18 @@
 namespace GraphBLAS.FSharp.Tests
 
-open Brahma.FSharp.OpenCL.Shared
 open Brahma.FSharp.OpenCL.Translator
 open FsCheck
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp
 open Microsoft.FSharp.Reflection
 open Brahma.FSharp
-open Brahma.FSharp.ClContextExtensions
 open OpenCL.Net
 open Expecto.Logging
 open Expecto.Logging.Message
 open System.Text.RegularExpressions
 open FSharp.Quotations.Evaluator
 open Expecto
-open GraphBLAS.FSharp.Predefined
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Backend.Objects
 
 [<AutoOpen>]
 module Extensions =
@@ -586,6 +584,55 @@ module Generators =
             <| Arb.generate<bool>
             |> Arb.fromGen
 
+    type BufferCompatibleVector() =
+        static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! array = Gen.arrayOfLength length valuesGenerator
+
+                return array
+            }
+
+        static member IntType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfVectorsOfEqualSize
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<bool>
+            |> Arb.fromGen
+
     type PairOfVectorsOfEqualSize() =
         static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
             gen {
@@ -652,6 +699,7 @@ module Utils =
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys>
                     typeof<Generators.ArrayOfAscendingKeys>
+                    typeof<Generators.BufferCompatibleVector>
                     typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
     let undirectedAlgoConfig =
@@ -663,18 +711,24 @@ module Utils =
 
     let createMatrixFromArray2D matrixCase array isZero =
         match matrixCase with
-        | CSR -> MatrixCSR <| CSRMatrix.FromArray2D(array, isZero)
-        | COO -> MatrixCOO <| COOMatrix.FromArray2D(array, isZero)
-        | CSC -> MatrixCSC <| CSCMatrix.FromArray2D(array, isZero)
+        | CSR ->
+            Matrix.CSR
+            <| Matrix.CSR.FromArray2D(array, isZero)
+        | COO ->
+            Matrix.COO
+            <| Matrix.COO.FromArray2D(array, isZero)
+        | CSC ->
+            Matrix.CSC
+            <| Matrix.CSC.FromArray2D(array, isZero)
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
-        | Backend.VectorFormat.Sparse ->
-            Backend.VectorSparse
-            <| Backend.SparseVector.FromArray(array, isZero)
-        | Backend.VectorFormat.Dense ->
-            Backend.VectorDense
-            <| Backend.ArraysExtensions.DenseVectorFromArray(array, isZero)
+        | VectorFormat.Sparse ->
+            Vector.Sparse
+            <| Vector.Sparse.FromArray(array, isZero)
+        | VectorFormat.Dense ->
+            Vector.Dense
+            <| ArraysExtensions.DenseVectorFromArray(array, isZero)
 
     let createArrayFromDictionary size zero (dictionary: System.Collections.Generic.Dictionary<int, 'a>) =
         let array = Array.create size zero
@@ -724,7 +778,6 @@ module Utils =
         | _ -> []
 
 module Context =
-
     type TestContext =
         { ClContext: ClContext
           Queue: MailboxProcessor<Msg> }
@@ -820,7 +873,7 @@ module Context =
 module TestCases =
 
     type OperationCase<'a> =
-        { ClContext: Context.TestContext
+        { TestContext: Context.TestContext
           Format: 'a }
 
     let defaultPlatformRegex = ""
@@ -841,12 +894,12 @@ module TestCases =
                 |> List.map (fun y -> x, y))
         |> List.map
             (fun pair ->
-                { ClContext = fst pair
+                { TestContext = fst pair
                   Format = snd pair })
 
     let operationGPUTests name (testFixtures: OperationCase<'a> -> Test list) =
         getTestCases<'a> Context.gpuOnlyContextFilter
-        |> List.distinctBy (fun case -> case.ClContext.ClContext, case.Format)
+        |> List.distinctBy (fun case -> case.TestContext.ClContext, case.Format)
         |> List.collect testFixtures
         |> testList name
 

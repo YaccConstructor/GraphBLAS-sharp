@@ -1,13 +1,16 @@
-module Backend.Vector.FillSubVector
+module GraphBLAS.FSharp.Tests.Backend.Vector.FillSubVector
 
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let logger = Log.create "Vector.fillSubVector.Tests"
 
@@ -46,7 +49,7 @@ let checkResult
             expectedArray.[i] <- vector.[i]
 
     match actual with
-    | VectorSparse actual ->
+    | Vector.Sparse actual ->
         let actualArray = Array.create vector.Length vectorZero
 
         for i in 0 .. actual.Indices.Length - 1 do
@@ -76,8 +79,8 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
     let maskNNZ = NNZCount mask (maskIsEqual maskZero)
 
     if vectorNNZ > 0 && maskNNZ > 0 && isValueValid value then
-        let q = case.ClContext.Queue
-        let context = case.ClContext.ClContext
+        let q = case.TestContext.Queue
+        let context = case.TestContext.ClContext
 
         let leftVector =
             createVectorFromArray case.Format vector (vectorIsEqual vectorZero)
@@ -116,7 +119,7 @@ let testFixtures case =
         $"Correctness on %s{datatype}, vector: %A{case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     let floatIsEqual x y =
         abs (x - y) < Accuracy.medium.absolute || x = y
@@ -169,7 +172,7 @@ let testFixturesComplemented case =
         $"Correctness on %s{datatype}, vector: %A{case.Format}"
 
     let wgSize = 32
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
     let floatIsEqual x y =
         abs (x - y) < Accuracy.medium.absolute || x = y

@@ -1,13 +1,16 @@
-module Backend.Vector.ElementWise
+module GraphBLAS.FSharp.Tests.Backend.Vector.Elementwise
 
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Backend.Common
-open StandardOperations
 open TestCases
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let logger = Log.create "Vector.ElementWise.Tests"
 
@@ -27,11 +30,11 @@ let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (le
     for i in 0 .. expectedArrayLength - 1 do
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
-    let (VectorDense expected) =
+    let (Vector.Dense expected) =
         createVectorFromArray Dense expectedArray (isEqual resultZero)
 
     match actual with
-    | VectorDense actual ->
+    | Vector.Dense actual ->
         "arrays must have the same values"
         |> Expect.equal actual expected
     | _ -> failwith "Vector format must be Sparse."
@@ -58,8 +61,8 @@ let correctnessGenericTest
 
     if leftNNZCount > 0 && rightNNZCount > 0 then
 
-        let context = case.ClContext.ClContext
-        let q = case.ClContext.Queue
+        let context = case.TestContext.ClContext
+        let q = case.TestContext.Queue
 
         let firstVector =
             createVectorFromArray case.Format leftArray (leftIsEqual leftZero)
@@ -95,9 +98,10 @@ let addTestFixtures case =
 
     let wgSize = 32
 
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
-    [ let intAddFun = Vector.elementWise context intSum wgSize
+    [ let intAddFun =
+          Vector.elementWise context ArithmeticOperations.intSum wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -106,7 +110,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatAddFun =
-          Vector.elementWise context floatSum wgSize
+          Vector.elementWise context ArithmeticOperations.floatSum wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -118,7 +122,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolAddFun =
-          Vector.elementWise context boolSum wgSize
+          Vector.elementWise context ArithmeticOperations.boolSum wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -127,7 +131,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteAddFun =
-          Vector.elementWise context byteSum wgSize
+          Vector.elementWise context ArithmeticOperations.byteSum wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -144,9 +148,10 @@ let mulTestFixtures case =
 
     let wgSize = 32
 
-    let context = case.ClContext.ClContext
+    let context = case.TestContext.ClContext
 
-    [ let intMulFun = Vector.elementWise context intMul wgSize
+    [ let intMulFun =
+          Vector.elementWise context ArithmeticOperations.intMul wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -155,7 +160,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMulFun =
-          Vector.elementWise context floatMul wgSize
+          Vector.elementWise context ArithmeticOperations.floatMul wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -167,7 +172,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMulFun =
-          Vector.elementWise context boolMul wgSize
+          Vector.elementWise context ArithmeticOperations.boolMul wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -176,7 +181,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMulFun =
-          Vector.elementWise context byteMul wgSize
+          Vector.elementWise context ArithmeticOperations.byteMul wgSize
 
       let byteToDense = Vector.toDense context wgSize
 

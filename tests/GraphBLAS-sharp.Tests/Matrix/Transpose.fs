@@ -1,13 +1,15 @@
-module Backend.Transpose
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Transpose
 
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Tests.TestCases
-open OpenCL.Net
+open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "Transpose.Tests"
 
@@ -16,9 +18,9 @@ let wgSize = 32
 
 let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
-    | MatrixCOO actual ->
+    | Matrix.COO actual ->
         let expected =
-            COOMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.COO.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -34,9 +36,9 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
-    | MatrixCSR actual ->
+    | Matrix.CSR actual ->
         let expected =
-            CSRMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.CSR.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -52,9 +54,9 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> compareArrays areEqual actual.Values expected.Values
-    | MatrixCSC actual ->
+    | Matrix.CSC actual ->
         let expected =
-            CSCMatrix.FromArray2D(expected2D, areEqual zero)
+            Matrix.CSC.FromArray2D(expected2D, areEqual zero)
 
         "The number of rows should be the same"
         |> Expect.equal actual.RowCount expected.RowCount
@@ -77,9 +79,9 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
-            let mT = transposeFun q m
-            let res = Matrix.FromBackend q mT
+            let m = mtx.ToDevice context
+            let (mT: ClMatrix<'a>) = transposeFun q m
+            let res = mT.ToHost q
             m.Dispose q
             mT.Dispose q
             res
@@ -104,10 +106,10 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
     if mtx.NNZCount > 0 then
         let actual =
-            let m = mtx.ToBackend context
+            let m = mtx.ToDevice context
             let mT = transposeFun q m
             let mTT = transposeFun q mT
-            let res = Matrix.FromBackend q mTT
+            let res = mTT.ToHost q
             m.Dispose q
             mT.Dispose q
             mTT.Dispose q
@@ -122,14 +124,14 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
 
 let testFixtures case =
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A, %A" datatype case.Format case.ClContext
+        sprintf "Correctness on %s, %A, %A" datatype case.Format case.TestContext
 
     let areEqualFloat x y =
         System.Double.IsNaN x && System.Double.IsNaN y
         || x = y
 
-    let context = case.ClContext.ClContext
-    let q = case.ClContext.Queue
+    let context = case.TestContext.ClContext
+    let q = case.TestContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let transposeFun = Matrix.transpose context wgSize

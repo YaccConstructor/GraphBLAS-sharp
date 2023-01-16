@@ -3,16 +3,14 @@ namespace GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
-open System.IO
-open GraphBLAS.FSharp.IO
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 [<Config(typeof<CommonConfig>)>]
 type MxvBenchmarks() =
     let rand = System.Random()
 
-    let mutable matrix = Unchecked.defaultof<Matrix<float>>
+    let mutable matrix = Unchecked.defaultof<ClMatrix<float>>
     let mutable vector = Unchecked.defaultof<Vector<float>>
     let semiring = Predefined.AddMult.float
 

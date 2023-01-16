@@ -1,17 +1,12 @@
 ﻿namespace GraphBLAS.FSharp.Benchmarks
 
 open System.IO
-open System.Text.RegularExpressions
-open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics
-open Brahma.FSharp.OpenCL
 open Microsoft.FSharp.Core
-open OpenCL.Net
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -23,7 +18,7 @@ type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'e
 
     static member COOMatrixToMathNETSparse matrix =
         match matrix with
-        | MatrixCOO matrix ->
+        | Matrix.COO matrix ->
             Matrix.Build.SparseFromCoordinateFormat(
                 matrix.RowCount,
                 matrix.ColumnCount,

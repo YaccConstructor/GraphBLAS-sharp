@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="MatrixExtensions.fs" />
     <Compile Include="Helpers.fs" />
     <!--Compile Include="BenchmarksBFS.fs" /-->
     <Compile Include="BenchmarksMxv.fs" />

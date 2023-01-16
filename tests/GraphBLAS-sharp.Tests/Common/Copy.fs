@@ -1,11 +1,11 @@
-module Backend.Copy
+module GraphBLAS.FSharp.Tests.Backend.Common.Copy
 
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Backend.Common
 
 let logger = Log.create "Copy.Tests"
 

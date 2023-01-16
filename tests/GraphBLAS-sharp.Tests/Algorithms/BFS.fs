@@ -1,12 +1,16 @@
-module Algo.BFS
+module GraphBLAS.FSharp.Tests.Backend.Algorithms.BFS
 
 open Expecto
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
 open GraphBLAS.FSharp.Tests.QuickGraph.CreateGraph
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Objects
 
 let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
@@ -18,7 +22,7 @@ let testFixtures (testContext: TestContext) =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
-          Algorithms.BFS.singleSource context StandardOperations.intSum StandardOperations.intMul workGroupSize
+          Algorithms.BFS.singleSource context ArithmeticOperations.intSum ArithmeticOperations.intMul workGroupSize
 
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
@@ -36,13 +40,13 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D GraphBLAS.FSharp.CSR matrix (fun x -> x = 0)
+                  Utils.createMatrixFromArray2D CSR matrix (fun x -> x = 0)
 
-              let matrix = matrixHost.ToBackend context
+              let matrix = matrixHost.ToDevice context
 
               match matrix with
-              | MatrixCSR mtx ->
-                  let res = bfs queue mtx source |> ClVectorDense
+              | ClMatrix.CSR mtx ->
+                  let res = bfs queue mtx source |> ClVector.Dense
 
                   let resHost = res.ToHost queue
 
@@ -50,7 +54,7 @@ let testFixtures (testContext: TestContext) =
                   res.Dispose queue
 
                   match resHost with
-                  | VectorDense resHost ->
+                  | Vector.Dense resHost ->
                       let actual = resHost |> Utils.unwrapOptionArray 0
 
                       Expect.sequenceEqual actual expected "Sequences must be equal"
