@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Common.ClArray
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 

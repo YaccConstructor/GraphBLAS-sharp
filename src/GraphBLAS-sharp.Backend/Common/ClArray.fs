@@ -2,25 +2,9 @@ namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module ClArray =
-    type ClContext with
-        member this.CreateClArrayWithGPUOnlyFlags(size: int) =
-            this.CreateClArray(
-                size,
-                deviceAccessMode = DeviceAccessMode.ReadWrite,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                allocationMode = AllocationMode.Default
-            )
-
-        member this.CreateClArrayWithGPUOnlyFlags(array: 'a []) =
-            this.CreateClArray(
-                array,
-                deviceAccessMode = DeviceAccessMode.ReadWrite,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                allocationMode = AllocationMode.CopyHostPtr
-            )
-
     let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
 
         let init =
