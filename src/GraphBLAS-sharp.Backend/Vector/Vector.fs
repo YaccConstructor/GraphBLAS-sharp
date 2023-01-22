@@ -17,45 +17,57 @@ module Vector =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
+        fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) (flag: AllocationFlag) ->
             match format with
             | Sparse ->
-                let vector =
+                ClVector.Sparse
                     { Context = clContext
-                      Indices = clContext.CreateClArrayWithGPUOnlyFlags [| 0 |]
-                      Values = clContext.CreateClArrayWithGPUOnlyFlags [| Unchecked.defaultof<'a> |]
+                      Indices = clContext.CreateClArrayWithFlag(flag, [| 0 |])
+                      Values = clContext.CreateClArrayWithFlag(flag, [| Unchecked.defaultof<'a> |])
                       Size = size }
-
-                ClVector.Sparse vector
             | Dense -> ClVector.Dense <| zeroCreate processor size
 
-    let ofList (clContext: ClContext) =
-        fun (format: VectorFormat) size (elements: (int * 'a) list) ->
+    let ofList (clContext: ClContext) (workGroupSize: int) =
+
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let map =
+            ClArray.map clContext workGroupSize <@ Some @>
+
+        fun (processor: MailboxProcessor<_>) (format: VectorFormat) flag size (elements: (int * 'a) list) ->
             let indices, values =
                 elements
                 |> Array.ofList
                 |> Array.sortBy fst
                 |> Array.unzip
 
+            let indices =
+                clContext.CreateClArrayWithFlag(flag, indices)
+
+            let values =
+                clContext.CreateClArrayWithFlag(flag, values)
+
             match format with
             | Sparse ->
-                let indices = clContext.CreateClArray indices
-                let values = clContext.CreateClArray values
-
                 { Context = clContext
                   Indices = indices
                   Values = values
                   Size = size }
-
                 |> ClVector.Sparse
             | Dense ->
-                let res = Array.zeroCreate size
+                let mappedValues = map processor values flag
 
-                for i in 0 .. indices.Length - 1 do
-                    res.[indices.[i]] <- Some(values.[i])
+                let result =
+                    clContext.CreateClArrayWithFlag(flag, size)
 
-                ClVector.Dense
-                <| clContext.CreateClArrayWithGPUOnlyFlags res
+                scatter processor indices mappedValues result
+
+                processor.Post(Msg.CreateFreeMsg(mappedValues))
+                processor.Post(Msg.CreateFreeMsg(indices))
+                processor.Post(Msg.CreateFreeMsg(values))
+
+                ClVector.Dense result
 
     let copy (clContext: ClContext) (workGroupSize: int) =
         let copy = ClArray.copy clContext workGroupSize

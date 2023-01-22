@@ -20,7 +20,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (length: int) ->
             // TODO: Выставить нужные флаги
             let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags(length)
+                clContext.CreateClArrayWithFlag(GPUOnly, length)
 
             let kernel = program.GetKernel()
 
@@ -48,7 +48,7 @@ module ClArray =
             let value = clContext.CreateClCell(value)
 
             let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags(length)
+                clContext.CreateClArrayWithFlag(GPUOnly, length)
 
             let kernel = program.GetKernel()
 
@@ -84,7 +84,7 @@ module ClArray =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags inputArray.Length
+                clContext.CreateClArrayWithFlag(GPUOnly, inputArray.Length)
 
             let kernel = program.GetKernel()
 
@@ -112,7 +112,7 @@ module ClArray =
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags outputArrayLength
+                clContext.CreateClArrayWithFlag(GPUOnly, outputArrayLength)
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
@@ -229,7 +229,7 @@ module ClArray =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
             let bitmap =
-                clContext.CreateClArrayWithGPUOnlyFlags inputLength
+                clContext.CreateClArrayWithFlag(GPUOnly, inputLength)
 
             let kernel = kernel.GetKernel()
 
@@ -273,7 +273,7 @@ module ClArray =
                 a.[0]
 
             let outputArray =
-                clContext.CreateClArrayWithGPUOnlyFlags resultLength
+                clContext.CreateClArrayWithFlag(GPUOnly, resultLength)
 
             scatter processor positions inputArray outputArray
 
@@ -303,6 +303,34 @@ module ClArray =
             let kernel = kernel.GetKernel()
 
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result
+
+    let map<'a, 'b> (clContext: ClContext) (workGroupSize: int) (op: Expr<'a -> 'b>) =
+
+        let map =
+            <@ fun (ndRange: Range1D) (lenght: int) (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < lenght then
+                    result.[gid] <- (%op) inputArray.[gid] @>
+
+        let kernel = clContext.Compile map
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) flag ->
+
+            let result =
+                clContext.CreateClArrayWithFlag(flag, inputArray.Length)
+
+            let ndRange =
+                Range1D.CreateValid(workGroupSize, inputArray.Length)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length inputArray result))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 

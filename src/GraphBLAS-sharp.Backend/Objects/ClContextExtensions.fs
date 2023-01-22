@@ -3,19 +3,41 @@ namespace GraphBLAS.FSharp.Backend.Objects
 open Brahma.FSharp
 
 module ClContext =
-    type ClContext with
-        member this.CreateClArrayWithGPUOnlyFlags(size: int) =
-            this.CreateClArray(
-                size,
-                deviceAccessMode = DeviceAccessMode.ReadWrite,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                allocationMode = AllocationMode.Default
-            )
+    type AllocationFlag =
+        | GPUOnly
+        | CPUInterop
 
-        member this.CreateClArrayWithGPUOnlyFlags(array: 'a []) =
-            this.CreateClArray(
-                array,
-                deviceAccessMode = DeviceAccessMode.ReadWrite,
-                hostAccessMode = HostAccessMode.NotAccessible,
-                allocationMode = AllocationMode.CopyHostPtr
-            )
+    type ClContext with
+        member this.CreateClArrayWithFlag(mode, (size: int)) =
+            match mode with
+            | GPUOnly ->
+                this.CreateClArray(
+                    size,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.Default
+                )
+            | CPUInterop ->
+                this.CreateClArray(
+                    size,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+        member this.CreateClArrayWithFlag(mode, (array: 'a [])) =
+            match mode with
+            | GPUOnly ->
+                this.CreateClArray(
+                    array,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
+            | CPUInterop ->
+                this.CreateClArray(
+                    array,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    hostAccessMode = HostAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.CopyHostPtr
+                )
