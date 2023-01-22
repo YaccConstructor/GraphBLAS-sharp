@@ -10,9 +10,11 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize flag =
-        let copy = ClArray.copy clContext workGroupSize flag
+        let copy =
+            ClArray.copy clContext workGroupSize flag
 
-        let copyData = ClArray.copy clContext workGroupSize flag
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -47,7 +49,9 @@ module Matrix =
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize flag =
-        let toCSR = COOMatrix.toCSR clContext workGroupSize flag
+        let toCSR =
+            COOMatrix.toCSR clContext workGroupSize flag
+
         let copy = copy clContext workGroupSize flag
 
         let transpose =
@@ -103,7 +107,9 @@ module Matrix =
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOO (clContext: ClContext) workGroupSize flag =
-        let toCOO = CSRMatrix.toCOO clContext workGroupSize flag
+        let toCOO =
+            CSRMatrix.toCOO clContext workGroupSize flag
+
         let copy = copy clContext workGroupSize flag
 
         let transposeInplace =
@@ -162,7 +168,9 @@ module Matrix =
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSC (clContext: ClContext) workGroupSize flag =
-        let toCSR = COOMatrix.toCSR clContext workGroupSize flag
+        let toCSR =
+            COOMatrix.toCSR clContext workGroupSize flag
+
         let copy = copy clContext workGroupSize flag
 
         let transposeCSR =
@@ -352,7 +360,12 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 
-    let elementwiseAtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize flag =
+    let elementwiseAtLeastOneToCOO
+        (clContext: ClContext)
+        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
+        workGroupSize
+        flag
+        =
         let COOElementwise =
             COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize flag
 
@@ -440,8 +453,11 @@ module Matrix =
         let COOtranspose =
             COOMatrix.transpose clContext workGroupSize flag
 
-        let copy = ClArray.copy clContext workGroupSize flag
-        let copyData = ClArray.copy clContext workGroupSize flag
+        let copy =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with

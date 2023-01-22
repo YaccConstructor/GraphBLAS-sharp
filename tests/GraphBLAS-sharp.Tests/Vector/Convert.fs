@@ -63,7 +63,8 @@ let testFixtures case =
 
     match case.Format with
     | Sparse ->
-        [ let convertFun = Vector.toSparse context wgSize CPUInterop
+        [ let convertFun =
+              Vector.toSparse context wgSize CPUInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -71,7 +72,8 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Vector.toSparse context wgSize CPUInterop
+          let convertFun =
+              Vector.toSparse context wgSize CPUInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map

@@ -152,7 +152,8 @@ module SparseVector =
         let prepare =
             preparePositions<'a, 'b, 'c> clContext op workGroupSize
 
-        let setPositions = setPositions clContext workGroupSize flag
+        let setPositions =
+            setPositions clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -178,12 +179,7 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeastOne
-        (clContext: ClContext)
-        opAdd
-        workGroupSize
-        flag
-        =
+    let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize flag =
         elementWise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
@@ -239,7 +235,8 @@ module SparseVector =
         let prepare =
             preparePositionsFillSubVector clContext op workGroupSize
 
-        let setPositions = setPositions clContext workGroupSize flag
+        let setPositions =
+            setPositions clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 

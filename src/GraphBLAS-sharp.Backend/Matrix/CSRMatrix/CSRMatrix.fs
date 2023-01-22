@@ -26,7 +26,8 @@ module CSRMatrix =
 
         let program = clContext.Compile(expandRowPointers)
 
-        let create = ClArray.create clContext workGroupSize flag
+        let create =
+            ClArray.create clContext workGroupSize flag
 
         let scan =
             ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
@@ -53,8 +54,11 @@ module CSRMatrix =
         let prepare =
             expandRowPointers clContext workGroupSize flag
 
-        let copy = ClArray.copy clContext workGroupSize flag
-        let copyData = ClArray.copy clContext workGroupSize flag
+        let copy =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) ->
             let rows =
@@ -88,7 +92,12 @@ module CSRMatrix =
               Values = matrix.Values }
 
     ///<remarks>Old version</remarks>
-    let elementwiseWithCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize flag =
+    let elementwiseWithCOO
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        flag
+        =
 
         let prepareRows =
             expandRowPointers clContext workGroupSize flag
@@ -135,7 +144,8 @@ module CSRMatrix =
 
     let transposeInplace (clContext: ClContext) workGroupSize flag =
 
-        let toCOOInplace = toCOOInplace clContext workGroupSize flag
+        let toCOOInplace =
+            toCOOInplace clContext workGroupSize flag
 
         let transposeInplace =
             COOMatrix.transposeInplace clContext workGroupSize

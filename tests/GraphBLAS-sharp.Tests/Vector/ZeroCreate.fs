@@ -36,8 +36,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     if vectorSize > 0 then
         let q = case.TestContext.Queue
 
-        let (clVector: ClVector<'a>) =
-            zeroCreate q vectorSize case.Format
+        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.Format
 
         let hostVector = clVector.ToHost q
 
@@ -58,26 +57,30 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intZeroCreate = Vector.zeroCreate context wgSize CPUInterop
+    [ let intZeroCreate =
+          Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let byteZeroCreat = Vector.zeroCreate context wgSize CPUInterop
+      let byteZeroCreat =
+          Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
 
-      let floatZeroCreate = Vector.zeroCreate context wgSize CPUInterop
+      let floatZeroCreate =
+          Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest floatZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolZeroCreate = Vector.zeroCreate context wgSize CPUInterop
+      let boolZeroCreate =
+          Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest boolZeroCreate

@@ -25,7 +25,8 @@ module BFS =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize CPUInterop
 
-        let ofList = Vector.ofList clContext workGroupSize GPUOnly
+        let ofList =
+            Vector.ofList clContext workGroupSize GPUOnly
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize

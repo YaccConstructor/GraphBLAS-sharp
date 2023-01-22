@@ -111,7 +111,8 @@ let addTestFixtures case =
     let wgSize = 32
     let context = case.TestContext.ClContext
 
-    [ let toCoo = Vector.toSparse context wgSize CPUInterop
+    [ let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let intAddFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize CPUInterop
@@ -120,7 +121,8 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toSparse context wgSize CPUInterop
+      let floatToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let floatAddFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize CPUInterop
@@ -132,7 +134,8 @@ let addTestFixtures case =
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
-      let boolToCoo = Vector.toSparse context wgSize CPUInterop
+      let boolToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let boolAddFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize CPUInterop
@@ -141,7 +144,8 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
-      let byteToCoo = Vector.toSparse context wgSize CPUInterop
+      let byteToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let byteAddFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize CPUInterop
@@ -163,7 +167,8 @@ let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
 
-    [ let toCoo = Vector.toSparse context wgSize CPUInterop
+    [ let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let intMulFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize CPUInterop
@@ -172,7 +177,8 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toSparse context wgSize CPUInterop
+      let floatToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let floatMulFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize CPUInterop
@@ -184,7 +190,8 @@ let mulTestFixtures case =
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
-      let boolToCoo = Vector.toSparse context wgSize CPUInterop
+      let boolToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let boolMulFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize CPUInterop
@@ -193,7 +200,8 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
-      let byteToCoo = Vector.toSparse context wgSize CPUInterop
+      let byteToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       let byteMulFun =
           Vector.elementWiseAtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize CPUInterop
@@ -204,4 +212,3 @@ let mulTestFixtures case =
 
 let mulTests =
     operationGPUTests "Backend.Vector.ElementWiseAtLeasOneMul tests" mulTestFixtures
-

@@ -50,11 +50,13 @@ module Vector =
                   Size = size }
                 |> ClVector.Sparse
             | Dense ->
-                let values = clContext.CreateClArrayWithFlag(GPUOnly, values)
-                let indices = clContext.CreateClArrayWithFlag(GPUOnly, indices)
+                let values =
+                    clContext.CreateClArrayWithFlag(GPUOnly, values)
 
-                let mappedValues =
-                    map processor values
+                let indices =
+                    clContext.CreateClArrayWithFlag(GPUOnly, indices)
+
+                let mappedValues = map processor values
 
                 let result =
                     clContext.CreateClArrayWithFlag(flag, size)
@@ -68,11 +70,14 @@ module Vector =
                 ClVector.Dense result
 
     let copy (clContext: ClContext) workGroupSize flag =
-        let copy = ClArray.copy clContext workGroupSize flag
+        let copy =
+            ClArray.copy clContext workGroupSize flag
 
-        let copyData = ClArray.copy clContext workGroupSize flag
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
-        let copyOptionData = ClArray.copy clContext workGroupSize flag
+        let copyOptionData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
@@ -103,7 +108,8 @@ module Vector =
         let toDense =
             SparseVector.toDense clContext workGroupSize flag
 
-        let copy = ClArray.copy clContext workGroupSize flag
+        let copy =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with

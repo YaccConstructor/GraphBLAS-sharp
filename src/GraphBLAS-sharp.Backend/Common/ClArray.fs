@@ -64,8 +64,7 @@ module ClArray =
 
         let create = create clContext workGroupSize flag
 
-        fun (processor: MailboxProcessor<_>) length ->
-            create processor length Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) length -> create processor length Unchecked.defaultof<'a>
 
     let copy (clContext: ClContext) workGroupSize flag =
         let copy =

@@ -126,7 +126,8 @@ module DenseVector =
         let kernel = clContext.Compile(getPositions)
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
-            let positions = clContext.CreateClArrayWithFlag(flag, vector.Length)
+            let positions =
+                clContext.CreateClArrayWithFlag(flag, vector.Length)
 
             let ndRange =
                 Range1D.CreateValid(vector.Length, workGroupSize)
@@ -159,7 +160,8 @@ module DenseVector =
 
         let kernel = clContext.Compile(getValuesAndIndices)
 
-        let getPositions = getBitmap clContext workGroupSize GPUOnly
+        let getPositions =
+            getBitmap clContext workGroupSize GPUOnly
 
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize

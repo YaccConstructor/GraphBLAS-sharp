@@ -130,7 +130,8 @@ let testFixtures case =
     [ let intFill =
           Vector.standardFillSubVector context wgSize CPUInterop
 
-      let intToCoo = Vector.toSparse context wgSize CPUInterop
+      let intToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
@@ -139,7 +140,8 @@ let testFixtures case =
       let floatFill =
           Vector.standardFillSubVector context wgSize CPUInterop
 
-      let floatToCoo = Vector.toSparse context wgSize CPUInterop
+      let floatToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
@@ -148,7 +150,8 @@ let testFixtures case =
       let byteFill =
           Vector.standardFillSubVector context wgSize CPUInterop
 
-      let byteToCoo = Vector.toSparse context wgSize CPUInterop
+      let byteToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
@@ -157,7 +160,8 @@ let testFixtures case =
       let boolFill =
           Vector.standardFillSubVector context wgSize CPUInterop
 
-      let boolToCoo = Vector.toSparse context wgSize CPUInterop
+      let boolToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
@@ -183,7 +187,8 @@ let testFixturesComplemented case =
     [ let intFill =
           Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let intToCoo = Vector.toSparse context wgSize CPUInterop
+      let intToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
@@ -192,7 +197,8 @@ let testFixturesComplemented case =
       let floatFill =
           Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let floatToCoo = Vector.toSparse context wgSize CPUInterop
+      let floatToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
@@ -201,7 +207,8 @@ let testFixturesComplemented case =
       let byteFill =
           Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let byteToCoo = Vector.toSparse context wgSize CPUInterop
+      let byteToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
@@ -210,7 +217,8 @@ let testFixturesComplemented case =
       let boolFill =
           Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let boolToCoo = Vector.toSparse context wgSize CPUInterop
+      let boolToCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented

@@ -55,8 +55,7 @@ let correctnessGenericTest<'a when 'a: struct>
 
         let actualSize = (Array.max indices) + abs sizeDelta + 1
 
-        let clActual =
-            ofList q case.Format actualSize elements
+        let clActual = ofList q case.Format actualSize elements
 
         let clCooActual = toCoo q clActual
 
@@ -82,7 +81,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let boolOfList = Vector.ofList context wgSize CPUInterop
 
-      let toCoo = Vector.toSparse context wgSize CPUInterop
+      let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> correctnessGenericTest<bool> (=) boolOfList toCoo
@@ -90,7 +90,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let intOfList = Vector.ofList context wgSize CPUInterop
 
-      let toCoo = Vector.toSparse context wgSize CPUInterop
+      let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> correctnessGenericTest<int> (=) intOfList toCoo
@@ -99,7 +100,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let byteOfList = Vector.ofList context wgSize CPUInterop
 
-      let toCoo = Vector.toSparse context wgSize CPUInterop
+      let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> correctnessGenericTest<byte> (=) byteOfList toCoo
@@ -107,7 +109,8 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
       let floatOfList = Vector.ofList context wgSize CPUInterop
 
-      let toCoo = Vector.toSparse context wgSize CPUInterop
+      let toCoo =
+          Vector.toSparse context wgSize CPUInterop
 
       case
       |> correctnessGenericTest<byte> (=) floatOfList toCoo
