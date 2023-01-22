@@ -17,7 +17,7 @@
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects/Masks.fs" />
     <Compile Include="Objects/AtLeastOne.fs" />
-    <Compile Include="Objects\ClContextExtensions.fs" />
+    <Compile Include="Objects/ClContextExtensions.fs" />
     <Compile Include="Quotes/SubReduce.fs" />
     <Compile Include="Quotes/Arithmetic.fs" />
     <Compile Include="Quotes/Convert.fs" />
