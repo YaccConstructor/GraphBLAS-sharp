@@ -246,10 +246,10 @@ module ClArray =
         let scatter =
             Scatter.runInplace clContext workGroupSize
 
-        let getUniqueBitmap = getUniqueBitmap clContext GPUOnly
+        let getUniqueBitmap = getUniqueBitmap clContext DeviceOnly
 
         let prefixSumExclude =
-            prefixSumExclude <@ (+) @> clContext workGroupSize GPUOnly
+            prefixSumExclude <@ (+) @> clContext workGroupSize DeviceOnly
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -271,7 +271,7 @@ module ClArray =
                 a.[0]
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(GPUOnly, resultLength)
+                clContext.CreateClArrayWithFlag(DeviceOnly, resultLength)
 
             scatter processor positions inputArray outputArray
 

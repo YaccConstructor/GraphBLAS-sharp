@@ -79,38 +79,38 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case.Format
 
-      let boolOfList = Vector.ofList context wgSize CPUInterop
+      let boolOfList = Vector.ofList context wgSize HostInterop
 
       let toCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> correctnessGenericTest<bool> (=) boolOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intOfList = Vector.ofList context wgSize CPUInterop
+      let intOfList = Vector.ofList context wgSize HostInterop
 
       let toCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> correctnessGenericTest<int> (=) intOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
 
-      let byteOfList = Vector.ofList context wgSize CPUInterop
+      let byteOfList = Vector.ofList context wgSize HostInterop
 
       let toCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> correctnessGenericTest<byte> (=) byteOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let floatOfList = Vector.ofList context wgSize CPUInterop
+      let floatOfList = Vector.ofList context wgSize HostInterop
 
       let toCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> correctnessGenericTest<byte> (=) floatOfList toCoo

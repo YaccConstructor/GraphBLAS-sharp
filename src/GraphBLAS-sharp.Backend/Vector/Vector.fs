@@ -35,7 +35,7 @@ module Vector =
             ClArray.zeroCreate clContext workGroupSize flag
 
         let map =
-            ClArray.map clContext workGroupSize GPUOnly <@ Some @>
+            ClArray.map clContext workGroupSize DeviceOnly <@ Some @>
 
         fun (processor: MailboxProcessor<_>) format size (elements: (int * 'a) list) ->
             match format with
@@ -55,10 +55,10 @@ module Vector =
                 let indices, values = elements |> Array.ofList |> Array.unzip
 
                 let values =
-                    clContext.CreateClArrayWithFlag(GPUOnly, values)
+                    clContext.CreateClArrayWithFlag(DeviceOnly, values)
 
                 let indices =
-                    clContext.CreateClArrayWithFlag(GPUOnly, indices)
+                    clContext.CreateClArrayWithFlag(DeviceOnly, indices)
 
                 let mappedValues = map processor values
 

@@ -58,14 +58,14 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let intZeroCreate =
-          Vector.zeroCreate context wgSize CPUInterop
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let byteZeroCreat =
-          Vector.zeroCreate context wgSize CPUInterop
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest byteZeroCreat
@@ -73,14 +73,14 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
 
       let floatZeroCreate =
-          Vector.zeroCreate context wgSize CPUInterop
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest floatZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolZeroCreate =
-          Vector.zeroCreate context wgSize CPUInterop
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest boolZeroCreate

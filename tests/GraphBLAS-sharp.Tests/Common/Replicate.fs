@@ -54,24 +54,24 @@ let testCases =
             |> Expect.sequenceEqual actual expected
 
     [ testProperty "Correctness test on random int arrays"
-      <| (let replicate = ClArray.replicate context CPUInterop
+      <| (let replicate = ClArray.replicate context HostInterop
           let getReplicateFun = getReplicateFun replicate
           fun (array: array<int>) -> makeTest getReplicateFun array id)
 
       testProperty "Correctness test on random bool arrays"
-      <| (let replicate = ClArray.replicate context CPUInterop
+      <| (let replicate = ClArray.replicate context HostInterop
           let getReplicateFun = getReplicateFun replicate
 
           fun (array: array<bool>) -> makeTest getReplicateFun array id)
 
       testProperty "Correctness test on random float arrays"
-      <| (let replicate = ClArray.replicate context CPUInterop
+      <| (let replicate = ClArray.replicate context HostInterop
           let getReplicateFun = getReplicateFun replicate
 
           fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter (System.Double.IsNaN >> not)))
 
       testProperty "Correctness test on random byte arrays"
-      <| (let replicate = ClArray.replicate context CPUInterop
+      <| (let replicate = ClArray.replicate context HostInterop
           let getReplicateFun = getReplicateFun replicate
 
           fun (array: array<byte>) -> makeTest getReplicateFun array id)

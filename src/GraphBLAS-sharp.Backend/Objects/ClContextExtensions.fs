@@ -4,20 +4,20 @@ open Brahma.FSharp
 
 module ClContext =
     type AllocationFlag =
-        | GPUOnly
-        | CPUInterop
+        | DeviceOnly
+        | HostInterop
 
     type ClContext with
         member this.CreateClArrayWithFlag(mode, size: int) =
             match mode with
-            | GPUOnly ->
+            | DeviceOnly ->
                 this.CreateClArray(
                     size,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.Default
                 )
-            | CPUInterop ->
+            | HostInterop ->
                 this.CreateClArray(
                     size,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
@@ -27,14 +27,14 @@ module ClContext =
 
         member this.CreateClArrayWithFlag(mode, array: 'a []) =
             match mode with
-            | GPUOnly ->
+            | DeviceOnly ->
                 this.CreateClArray(
                     array,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,
                     hostAccessMode = HostAccessMode.NotAccessible,
                     allocationMode = AllocationMode.CopyHostPtr
                 )
-            | CPUInterop ->
+            | HostInterop ->
                 this.CreateClArray(
                     array,
                     deviceAccessMode = DeviceAccessMode.ReadWrite,

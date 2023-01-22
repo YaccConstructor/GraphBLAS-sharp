@@ -106,7 +106,7 @@ module SpMV =
                 Range1D.CreateValid(matrix.RowCount, workGroupSize)
 
             let intermediateArray =
-                clContext.CreateClArrayWithFlag<'c option>(GPUOnly, matrixLength)
+                clContext.CreateClArrayWithFlag<'c option>(DeviceOnly, matrixLength)
 
             let multiplyValues = multiplyValues.GetKernel()
 

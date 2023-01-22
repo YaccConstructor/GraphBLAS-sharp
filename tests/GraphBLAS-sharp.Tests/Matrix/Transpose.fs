@@ -136,7 +136,7 @@ let testFixtures case =
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ let transposeFun =
-          Matrix.transpose context wgSize CPUInterop
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) 0
@@ -148,7 +148,7 @@ let testFixtures case =
 
 
       let transposeFun =
-          Matrix.transpose context wgSize CPUInterop
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun areEqualFloat 0.0
@@ -159,7 +159,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
 
       let transposeFun =
-          Matrix.transpose context wgSize CPUInterop
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) 0uy
@@ -170,7 +170,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
 
       let transposeFun =
-          Matrix.transpose context wgSize CPUInterop
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) false

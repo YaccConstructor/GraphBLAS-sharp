@@ -23,7 +23,7 @@ let testCases =
                 |> Array.filter (fun i -> array.Length % i = 0)
                 |> Array.max
 
-            copy wgSize CPUInterop q
+            copy wgSize HostInterop q
 
     let makeTest getCopyFun (array: array<'a>) filterFun =
         if array.Length > 0 then

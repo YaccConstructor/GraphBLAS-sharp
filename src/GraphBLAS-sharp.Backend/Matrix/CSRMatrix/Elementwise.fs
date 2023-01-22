@@ -45,10 +45,10 @@ module internal Elementwise =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rowPositions =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, length)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'c>(GPUOnly, length)
+                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
 
             let kernel = kernel.GetKernel()
 
@@ -232,22 +232,22 @@ module internal Elementwise =
             let resLength = firstLength + secondLength
 
             let allRows =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let allColumns =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let leftMergedValues =
-                clContext.CreateClArrayWithFlag<'a>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, resLength)
 
             let rightMergedValues =
-                clContext.CreateClArrayWithFlag<'b>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, resLength)
 
             let isEndOfRow =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let isLeft =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, resLength)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let ndRange =
                 Range1D.CreateValid((matrixLeftRowPointers.Length - 1) * workGroupSize, workGroupSize)

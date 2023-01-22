@@ -94,28 +94,28 @@ let testFixturesSpMV (testContext: TestContext) =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolSpMV =
-          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize CPUInterop
+          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize HostInterop
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intSpMV =
-          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize CPUInterop
+          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize HostInterop
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize CPUInterop
+          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize HostInterop
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize CPUInterop
+          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize HostInterop
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

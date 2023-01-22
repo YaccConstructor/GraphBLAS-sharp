@@ -26,16 +26,16 @@ module SparseVector =
                 firstIndices.Length + secondIndices.Length
 
             let allIndices =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, sumOfSides)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let firstResultValues =
-                clContext.CreateClArrayWithFlag<'a>(GPUOnly, sumOfSides)
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, sumOfSides)
 
             let secondResultValues =
-                clContext.CreateClArrayWithFlag<'b>(GPUOnly, sumOfSides)
+                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, sumOfSides)
 
             let isLeftBitmap =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, sumOfSides)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)
@@ -78,10 +78,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'c>(GPUOnly, length)
+                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArrayWithFlag<int>(GPUOnly, length)
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
@@ -196,10 +196,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'a>(GPUOnly, length)
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArrayWithFlag(GPUOnly, length)
+                clContext.CreateClArrayWithFlag(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)

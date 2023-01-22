@@ -161,7 +161,7 @@ module DenseVector =
         let kernel = clContext.Compile(getValuesAndIndices)
 
         let getPositions =
-            getBitmap clContext workGroupSize GPUOnly
+            getBitmap clContext workGroupSize DeviceOnly
 
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
@@ -224,7 +224,7 @@ module DenseVector =
     let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let getValuesAndIndices =
-            getValuesAndIndices clContext workGroupSize GPUOnly
+            getValuesAndIndices clContext workGroupSize DeviceOnly
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd

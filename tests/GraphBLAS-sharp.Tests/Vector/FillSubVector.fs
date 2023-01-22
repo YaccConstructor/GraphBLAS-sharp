@@ -128,40 +128,40 @@ let testFixtures case =
     let isComplemented = false
 
     [ let intFill =
-          Vector.standardFillSubVector context wgSize CPUInterop
+          Vector.standardFillSubVector context wgSize HostInterop
 
       let intToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVector context wgSize CPUInterop
+          Vector.standardFillSubVector context wgSize HostInterop
 
       let floatToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVector context wgSize CPUInterop
+          Vector.standardFillSubVector context wgSize HostInterop
 
       let byteToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVector context wgSize CPUInterop
+          Vector.standardFillSubVector context wgSize HostInterop
 
       let boolToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
@@ -185,40 +185,40 @@ let testFixturesComplemented case =
     let isComplemented = true
 
     [ let intFill =
-          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
+          Vector.standardFillSubVectorComplemented context wgSize HostInterop
 
       let intToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
+          Vector.standardFillSubVectorComplemented context wgSize HostInterop
 
       let floatToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
+          Vector.standardFillSubVectorComplemented context wgSize HostInterop
 
       let byteToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
+          Vector.standardFillSubVectorComplemented context wgSize HostInterop
 
       let boolToCoo =
-          Vector.toSparse context wgSize CPUInterop
+          Vector.toSparse context wgSize HostInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented

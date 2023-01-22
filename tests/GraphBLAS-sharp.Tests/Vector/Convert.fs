@@ -64,7 +64,7 @@ let testFixtures case =
     match case.Format with
     | Sparse ->
         [ let convertFun =
-              Vector.toSparse context wgSize CPUInterop
+              Vector.toSparse context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -73,7 +73,7 @@ let testFixtures case =
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
           let convertFun =
-              Vector.toSparse context wgSize CPUInterop
+              Vector.toSparse context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -82,7 +82,8 @@ let testFixtures case =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | Dense ->
-        [ let convertFun = Vector.toDense context wgSize CPUInterop
+        [ let convertFun =
+              Vector.toDense context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -90,7 +91,8 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Vector.toDense context wgSize CPUInterop
+          let convertFun =
+              Vector.toDense context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map

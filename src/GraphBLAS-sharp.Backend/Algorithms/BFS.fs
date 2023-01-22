@@ -23,10 +23,10 @@ module BFS =
             SpMV.runTo clContext add mul workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize CPUInterop
+            ClArray.zeroCreate clContext workGroupSize HostInterop
 
         let ofList =
-            Vector.ofList clContext workGroupSize GPUOnly
+            Vector.ofList clContext workGroupSize DeviceOnly
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
