@@ -28,28 +28,34 @@ module Vector =
             | Dense -> ClVector.Dense <| zeroCreate processor size
 
     let ofList (clContext: ClContext) workGroupSize flag =
-
         let scatter =
             Scatter.runInplace clContext workGroupSize
+
+        let zeroCreate = ClArray.zeroCreate clContext workGroupSize flag
 
         let map =
             ClArray.map clContext workGroupSize GPUOnly <@ Some @>
 
         fun (processor: MailboxProcessor<_>) format size (elements: (int * 'a) list) ->
-            let indices, values =
-                elements
-                |> Array.ofList
-                |> Array.sortBy fst
-                |> Array.unzip
-
             match format with
             | Sparse ->
+                let indices, values =
+                    elements
+                    |> Array.ofList
+                    |> Array.sortBy fst
+                    |> Array.unzip
+
                 { Context = clContext
                   Indices = clContext.CreateClArrayWithFlag(flag, indices)
                   Values = clContext.CreateClArrayWithFlag(flag, values)
                   Size = size }
                 |> ClVector.Sparse
             | Dense ->
+                let indices, values =
+                    elements
+                    |> Array.ofList
+                    |> Array.unzip
+
                 let values =
                     clContext.CreateClArrayWithFlag(GPUOnly, values)
 
@@ -58,8 +64,7 @@ module Vector =
 
                 let mappedValues = map processor values
 
-                let result =
-                    clContext.CreateClArrayWithFlag(flag, size)
+                let result = zeroCreate processor size
 
                 scatter processor indices mappedValues result
 

@@ -324,7 +324,7 @@ module ClArray =
                 clContext.CreateClArrayWithFlag(flag, inputArray.Length)
 
             let ndRange =
-                Range1D.CreateValid(workGroupSize, inputArray.Length)
+                Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
