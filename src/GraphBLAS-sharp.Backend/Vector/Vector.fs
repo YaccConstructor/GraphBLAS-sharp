@@ -31,7 +31,8 @@ module Vector =
         let scatter =
             Scatter.runInplace clContext workGroupSize
 
-        let zeroCreate = ClArray.zeroCreate clContext workGroupSize flag
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize flag
 
         let map =
             ClArray.map clContext workGroupSize GPUOnly <@ Some @>
@@ -51,10 +52,7 @@ module Vector =
                   Size = size }
                 |> ClVector.Sparse
             | Dense ->
-                let indices, values =
-                    elements
-                    |> Array.ofList
-                    |> Array.unzip
+                let indices, values = elements |> Array.ofList |> Array.unzip
 
                 let values =
                     clContext.CreateClArrayWithFlag(GPUOnly, values)
