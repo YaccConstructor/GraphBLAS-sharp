@@ -37,6 +37,7 @@
         <Compile Include="Vector/Reduce.fs" />
         <Compile Include="Vector/Elementwise.fs" />
         <Compile Include="Vector/SpMV.fs" />
+        <Compile Include="Vector\ElementwiseGen.fs" />
         <Compile Include="Algorithms/BFS.fs" />
         <Compile Include="Matrix/Convert.fs" />
         <Compile Include="Matrix/Elementwise.fs" />

@@ -20,6 +20,9 @@ let NNZCountCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
 
+let getCorrectnessTestName<'a> (case: OperationCase<'a>) fstType sndType thrType =
+    $"Correctness on '{fstType} option -> '{sndType} option -> '{thrType} option, {case.Format}"
+
 let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (leftArray: 'a []) (rightArray: 'b []) =
 
     let expectedArrayLength = leftArray.Length
@@ -93,9 +96,6 @@ let correctnessGenericTest
 
 let addTestFixtures case =
 
-    let getCorrectnessTestName fstType sndType thrType =
-        $"Correctness on '{fstType} option -> '{sndType} option -> '{thrType} option, {case.Format}"
-
     let wgSize = 32
 
     let context = case.TestContext.ClContext
@@ -107,7 +107,7 @@ let addTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun intToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatAddFun =
           Vector.elementWise context ArithmeticOperations.floatSum wgSize
@@ -119,7 +119,7 @@ let addTestFixtures case =
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolAddFun =
           Vector.elementWise context ArithmeticOperations.boolSum wgSize
@@ -128,7 +128,7 @@ let addTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteAddFun =
           Vector.elementWise context ArithmeticOperations.byteSum wgSize
@@ -137,15 +137,12 @@ let addTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+      |> testPropertyWithConfig config (getCorrectnessTestName case "byte" "byte" "byte") ]
 
 let addTests =
     operationGPUTests "Backend.Vector.ElementWiseAdd tests" addTestFixtures
 
 let mulTestFixtures case =
-    let getCorrectnessTestName fstType sndType thrType =
-        $"Correctness on '{fstType} option -> '{sndType} option -> '{thrType} option, {case.Format}"
-
     let wgSize = 32
 
     let context = case.TestContext.ClContext
@@ -157,7 +154,7 @@ let mulTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun intToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatMulFun =
           Vector.elementWise context ArithmeticOperations.floatMul wgSize
@@ -169,7 +166,7 @@ let mulTestFixtures case =
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolMulFun =
           Vector.elementWise context ArithmeticOperations.boolMul wgSize
@@ -178,7 +175,7 @@ let mulTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+      |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteMulFun =
           Vector.elementWise context ArithmeticOperations.byteMul wgSize
@@ -187,7 +184,7 @@ let mulTestFixtures case =
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+      |> testPropertyWithConfig config (getCorrectnessTestName case "byte" "byte" "byte") ]
 
 let mulTests =
     operationGPUTests "Backend.Vector.ElementWiseMul tests" addTestFixtures
