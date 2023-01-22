@@ -12,6 +12,7 @@ open Microsoft.FSharp.Core
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
     let rows = Array2D.length1 baseMtx
@@ -93,28 +94,28 @@ let testFixturesSpMV (testContext: TestContext) =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolSpMV =
-          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
+          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize CPUInterop
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intSpMV =
-          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
+          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize CPUInterop
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
+          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize CPUInterop
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
+          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize CPUInterop
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

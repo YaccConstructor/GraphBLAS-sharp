@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
@@ -27,7 +28,7 @@ let checkResult size (actual: Vector<'a>) =
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
-    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClContext.AllocationFlag -> ClVector<'a>)
+    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (vectorSize: int)
     =
@@ -36,7 +37,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
         let q = case.TestContext.Queue
 
         let (clVector: ClVector<'a>) =
-            zeroCreate q vectorSize case.Format ClContext.CPUInterop
+            zeroCreate q vectorSize case.Format
 
         let hostVector = clVector.ToHost q
 
@@ -57,26 +58,26 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intZeroCreate = Vector.zeroCreate context wgSize
+    [ let intZeroCreate = Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let byteZeroCreat = Vector.zeroCreate context wgSize
+      let byteZeroCreat = Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
 
-      let floatZeroCreate = Vector.zeroCreate context wgSize
+      let floatZeroCreate = Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest floatZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolZeroCreate = Vector.zeroCreate context wgSize
+      let boolZeroCreate = Vector.zeroCreate context wgSize CPUInterop
 
       case
       |> correctnessGenericTest boolZeroCreate

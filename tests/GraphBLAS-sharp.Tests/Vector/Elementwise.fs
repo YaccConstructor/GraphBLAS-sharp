@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.ElementWise.Tests"
 
@@ -101,39 +102,39 @@ let addTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intAddFun =
-          Vector.elementWise context ArithmeticOperations.intSum wgSize
+          Vector.elementWise context ArithmeticOperations.intSum wgSize CPUInterop
 
-      let intToDense = Vector.toDense context wgSize
+      let intToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatAddFun =
-          Vector.elementWise context ArithmeticOperations.floatSum wgSize
+          Vector.elementWise context ArithmeticOperations.floatSum wgSize CPUInterop
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = Vector.toDense context wgSize
+      let floatToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolAddFun =
-          Vector.elementWise context ArithmeticOperations.boolSum wgSize
+          Vector.elementWise context ArithmeticOperations.boolSum wgSize CPUInterop
 
-      let boolToDense = Vector.toDense context wgSize
+      let boolToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteAddFun =
-          Vector.elementWise context ArithmeticOperations.byteSum wgSize
+          Vector.elementWise context ArithmeticOperations.byteSum wgSize CPUInterop
 
-      let byteToDense = Vector.toDense context wgSize
+      let byteToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
@@ -151,39 +152,39 @@ let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intMulFun =
-          Vector.elementWise context ArithmeticOperations.intMul wgSize
+          Vector.elementWise context ArithmeticOperations.intMul wgSize CPUInterop
 
-      let intToDense = Vector.toDense context wgSize
+      let intToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMulFun =
-          Vector.elementWise context ArithmeticOperations.floatMul wgSize
+          Vector.elementWise context ArithmeticOperations.floatMul wgSize CPUInterop
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = Vector.toDense context wgSize
+      let floatToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMulFun =
-          Vector.elementWise context ArithmeticOperations.boolMul wgSize
+          Vector.elementWise context ArithmeticOperations.boolMul wgSize CPUInterop
 
-      let boolToDense = Vector.toDense context wgSize
+      let boolToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMulFun =
-          Vector.elementWise context ArithmeticOperations.byteMul wgSize
+          Vector.elementWise context ArithmeticOperations.byteMul wgSize CPUInterop
 
-      let byteToDense = Vector.toDense context wgSize
+      let byteToDense = Vector.toDense context wgSize CPUInterop
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense

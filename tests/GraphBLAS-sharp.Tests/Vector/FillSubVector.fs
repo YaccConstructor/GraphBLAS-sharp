@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.fillSubVector.Tests"
 
@@ -127,36 +128,36 @@ let testFixtures case =
     let isComplemented = false
 
     [ let intFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.standardFillSubVector context wgSize CPUInterop
 
-      let intToCoo = Vector.toSparse context wgSize
+      let intToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.standardFillSubVector context wgSize CPUInterop
 
-      let floatToCoo = Vector.toSparse context wgSize
+      let floatToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.standardFillSubVector context wgSize CPUInterop
 
-      let byteToCoo = Vector.toSparse context wgSize
+      let byteToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.standardFillSubVector context wgSize CPUInterop
 
-      let boolToCoo = Vector.toSparse context wgSize
+      let boolToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
@@ -180,36 +181,36 @@ let testFixturesComplemented case =
     let isComplemented = true
 
     [ let intFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let intToCoo = Vector.toSparse context wgSize
+      let intToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let floatToCoo = Vector.toSparse context wgSize
+      let floatToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let byteToCoo = Vector.toSparse context wgSize
+      let byteToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.standardFillSubVectorComplemented context wgSize CPUInterop
 
-      let boolToCoo = Vector.toSparse context wgSize
+      let boolToCoo = Vector.toSparse context wgSize CPUInterop
 
       case
       |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
