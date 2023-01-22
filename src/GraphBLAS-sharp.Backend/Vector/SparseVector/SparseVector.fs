@@ -10,6 +10,148 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 module SparseVector =
+
+    let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+
+        let sum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate<int> 1
+
+        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r = sum processor positions resultLengthGpu
+
+            let resultLength =
+                let res =
+                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+                processor.Post(Msg.CreateFreeMsg<_>(r))
+
+                res.[0]
+
+            let resultValues =
+                clContext.CreateClArray<'a>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let resultIndices =
+                clContext.CreateClArray<int>(
+                    resultLength,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.ReadWrite,
+                    allocationMode = AllocationMode.Default
+                )
+
+            valuesScatter processor positions allValues resultValues
+
+            indicesScatter processor positions allIndices resultIndices
+
+            resultValues, resultIndices
+
+    let preparePositionsGen<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
+
+        let kernel =
+            clContext.Compile
+            <| Elementwise.preparePositionsGen opAdd
+
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
+
+            let resultBitmap =
+                clContext.CreateClArray<int>(
+                    vectorLenght,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let resultIndices =
+                clContext.CreateClArray<int>(
+                    vectorLenght,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let resultValues =
+                clContext.CreateClArray<'c>(
+                    vectorLenght,
+                    hostAccessMode = HostAccessMode.NotAccessible,
+                    deviceAccessMode = DeviceAccessMode.WriteOnly,
+                    allocationMode = AllocationMode.Default
+                )
+
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftIndices
+                            rightValues
+                            rightIndices
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            resultBitmap, resultValues, resultIndices
+
+    let elementwiseGen<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
+
+        let prepare =
+            preparePositionsGen<'a, 'b, 'c> clContext workGroupSize op
+
+        let setPositions = setPositions clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+
+            let bitmap, allValues, allIndices =
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
+
+            let resultValues, resultIndices =
+                setPositions processor allValues allIndices bitmap
+
+            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+            processor.Post(Msg.CreateFreeMsg<_>(allValues))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+
+            { Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = max leftVector.Size rightVector.Size }
+
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
 
         let kernel =
@@ -126,55 +268,6 @@ module SparseVector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allValues, positions
-
-    let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
-
-        let sum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
-
-        let valuesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        let indicesScatter =
-            Scatter.runInplace clContext workGroupSize
-
-        let resultLength = Array.zeroCreate<int> 1
-
-        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
-
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r = sum processor positions resultLengthGpu
-
-            let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
-
-            let resultValues =
-                clContext.CreateClArray<'a>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            let resultIndices =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
-
-            valuesScatter processor positions allValues resultValues
-
-            indicesScatter processor positions allIndices resultIndices
-
-            resultValues, resultIndices
 
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
