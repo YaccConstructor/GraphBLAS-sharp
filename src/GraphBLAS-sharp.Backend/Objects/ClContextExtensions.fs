@@ -8,7 +8,7 @@ module ClContext =
         | CPUInterop
 
     type ClContext with
-        member this.CreateClArrayWithFlag(mode, (size: int)) =
+        member this.CreateClArrayWithFlag(mode, size: int) =
             match mode with
             | GPUOnly ->
                 this.CreateClArray(
@@ -25,7 +25,7 @@ module ClContext =
                     allocationMode = AllocationMode.Default
                 )
 
-        member this.CreateClArrayWithFlag(mode, (array: 'a [])) =
+        member this.CreateClArrayWithFlag(mode, array: 'a []) =
             match mode with
             | GPUOnly ->
                 this.CreateClArray(

@@ -17,7 +17,7 @@ module Vector =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) (flag: AllocationFlag) ->
+        fun (processor: MailboxProcessor<_>) size format flag ->
             match format with
             | Sparse ->
                 ClVector.Sparse
@@ -35,7 +35,7 @@ module Vector =
         let map =
             ClArray.map clContext workGroupSize <@ Some @>
 
-        fun (processor: MailboxProcessor<_>) (format: VectorFormat) flag size (elements: (int * 'a) list) ->
+        fun (processor: MailboxProcessor<_>) format flag size (elements: (int * 'a) list) ->
             let indices, values =
                 elements
                 |> Array.ofList

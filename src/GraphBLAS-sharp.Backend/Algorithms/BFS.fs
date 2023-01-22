@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module BFS =
@@ -24,7 +25,7 @@ module BFS =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
-        let ofList = Vector.ofList clContext Dense
+        let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
@@ -40,7 +41,8 @@ module BFS =
 
             let levels = zeroCreate queue vertexCount
 
-            let frontier = ofList vertexCount [ source, 1 ]
+            let frontier =
+                ofList queue Dense GPUOnly vertexCount [ source, 1 ]
 
             match frontier with
             | ClVector.Dense front ->

@@ -27,7 +27,7 @@ let checkResult size (actual: Vector<'a>) =
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
-    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClVector<'a>)
+    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClContext.AllocationFlag -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (vectorSize: int)
     =
@@ -35,7 +35,8 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     if vectorSize > 0 then
         let q = case.TestContext.Queue
 
-        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.Format
+        let (clVector: ClVector<'a>) =
+            zeroCreate q vectorSize case.Format ClContext.CPUInterop
 
         let hostVector = clVector.ToHost q
 
