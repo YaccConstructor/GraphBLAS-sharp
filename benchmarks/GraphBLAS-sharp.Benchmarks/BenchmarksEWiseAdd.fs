@@ -14,39 +14,10 @@ open GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Objects.Matrix
 open GraphBLAS.FSharp.Benchmarks.MatrixExtensions
 
-type Config() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun (matrix,_) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun (matrix,_) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn(
-                "NNZ",
-                fun (matrix,_) ->
-                    match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
-                    | Array -> 0
-            )
-            :> IColumn,
-            MatrixShapeColumn(
-                "SqrNNZ",
-                fun (_,matrix) ->
-                    match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
-                    | Array -> 0
-            )
-            :> IColumn,
-            TEPSColumn() :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        )
-        |> ignore
-
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Config>)>]
+[<Config(typeof<CommonConfig>)>]
 type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,

@@ -1,8 +1,0 @@
-arc130.mtx
-wing.mtx
-!linux_call_graph.mtx
-!webbase-1M.mtx
-!cit-Patents.mtx
-!wikipedia-20061104.mtx
-!wb-edu.mtx
-!soc-LiveJournal1.mtx

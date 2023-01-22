@@ -1,2 +1,0 @@
-arc130.mtx
-webbase-1M.mtx
