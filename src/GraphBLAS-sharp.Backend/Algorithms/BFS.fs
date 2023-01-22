@@ -23,7 +23,7 @@ module BFS =
             SpMV.runTo clContext add mul workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            ClArray.zeroCreate clContext workGroupSize CPUInterop
 
         let ofList = Vector.ofList clContext workGroupSize
 
