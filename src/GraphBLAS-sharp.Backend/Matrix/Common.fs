@@ -3,11 +3,12 @@ namespace GraphBLAS.FSharp.Backend.Matrix
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Common =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
 
         let indicesScatter =
             Scatter.runInplace clContext workGroupSize
@@ -34,28 +35,14 @@ module Common =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
+
 
             let resultColumns =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
 
             let resultValues =
-                clContext.CreateClArray(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag(flag, resultLength)
 
             indicesScatter processor positions allRows resultRows
 

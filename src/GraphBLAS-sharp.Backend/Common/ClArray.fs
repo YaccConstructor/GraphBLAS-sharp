@@ -307,7 +307,7 @@ module ClArray =
 
             result
 
-    let map<'a, 'b> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b>) flag =
+    let map<'a, 'b> (clContext: ClContext) workGroupSize flag (op: Expr<'a -> 'b>) =
 
         let map =
             <@ fun (ndRange: Range1D) (lenght: int) (inputArray: ClArray<'a>) (result: ClArray<'b>) ->

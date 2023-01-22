@@ -25,7 +25,7 @@ module BFS =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize CPUInterop
 
-        let ofList = Vector.ofList clContext workGroupSize
+        let ofList = Vector.ofList clContext workGroupSize GPUOnly
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
@@ -42,7 +42,7 @@ module BFS =
             let levels = zeroCreate queue vertexCount
 
             let frontier =
-                ofList queue Dense GPUOnly vertexCount [ source, 1 ]
+                ofList queue Dense vertexCount [ source, 1 ]
 
             match frontier with
             | ClVector.Dense front ->
