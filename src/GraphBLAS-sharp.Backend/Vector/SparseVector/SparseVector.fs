@@ -8,6 +8,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
@@ -25,36 +26,16 @@ module SparseVector =
                 firstIndices.Length + secondIndices.Length
 
             let allIndices =
-                clContext.CreateClArray<int>(
-                    sumOfSides,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let firstResultValues =
-                clContext.CreateClArray<'a>(
-                    sumOfSides,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, sumOfSides)
 
             let secondResultValues =
-                clContext.CreateClArray<'b>(
-                    sumOfSides,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, sumOfSides)
 
             let isLeftBitmap =
-                clContext.CreateClArray<int>(
-                    sumOfSides,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)
@@ -97,20 +78,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArray<'c>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArray<int>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
@@ -127,7 +98,7 @@ module SparseVector =
 
             allValues, positions
 
-    let private setPositions<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
 
         let sum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
@@ -155,20 +126,10 @@ module SparseVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArray<'a>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(flag, resultLength)
 
             let resultIndices =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
 
             valuesScatter processor positions allValues resultValues
 
@@ -183,6 +144,7 @@ module SparseVector =
         (clContext: ClContext)
         op
         (workGroupSize: int)
+        flag
         =
 
         let merge = merge clContext workGroupSize
@@ -190,7 +152,8 @@ module SparseVector =
         let prepare =
             preparePositions<'a, 'b, 'c> clContext op workGroupSize
 
-        let setPositions = setPositions clContext workGroupSize
+        let setPositions =
+            setPositions clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -216,17 +179,13 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeastOne
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        (workGroupSize: int)
-        =
-        elementWise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+    let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize flag =
+        elementWise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         op
-        (workGroupSize: int)
+        workGroupSize
         =
 
         let kernel =
@@ -237,20 +196,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArray<'a>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArray<int>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
@@ -279,14 +228,15 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op (workGroupSize: int) =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize flag =
 
         let merge = merge clContext workGroupSize
 
         let prepare =
             preparePositionsFillSubVector clContext op workGroupSize
 
-        let setPositions = setPositions clContext workGroupSize
+        let setPositions =
+            setPositions clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
@@ -312,7 +262,7 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let toDense (clContext: ClContext) (workGroupSize: int) =
+    let toDense (clContext: ClContext) workGroupSize flag =
 
         let toDense =
             <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (indices: ClArray<int>) (resultArray: ClArray<'a option>) ->
@@ -326,7 +276,7 @@ module SparseVector =
         let kernel = clContext.Compile(toDense)
 
         let create =
-            ClArray.zeroCreate clContext workGroupSize
+            ClArray.zeroCreate clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) ->
             let resultVector = create processor vector.Size

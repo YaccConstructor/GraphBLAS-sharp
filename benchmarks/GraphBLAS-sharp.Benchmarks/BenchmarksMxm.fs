@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Benchmarks.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -74,7 +75,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSR2CSC =
         match funCSR2CSC with
         | None ->
-            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize HostInterop
             funCSR2CSC <- Some x
             x
         | Some x -> x
@@ -82,7 +83,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSC2CSR =
         match funCSC2CSR with
         | None ->
-            let x = Matrix.toCSRInplace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSRInplace this.OclContext this.WorkGroupSize HostInterop
             funCSC2CSR <- Some x
             x
         | Some x -> x

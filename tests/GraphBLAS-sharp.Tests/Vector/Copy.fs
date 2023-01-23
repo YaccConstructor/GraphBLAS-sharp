@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.copy.Tests"
 
@@ -71,28 +72,28 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let wgSize = 32
     let context = case.TestContext.ClContext
 
-    [ let intCopy = Vector.copy context wgSize
+    [ let intCopy = Vector.copy context wgSize HostInterop
       let isZero item = item = 0
 
       case
       |> correctnessGenericTest<int> id (=) isZero intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatCopy = Vector.copy context wgSize
+      let floatCopy = Vector.copy context wgSize HostInterop
       let isZero item = item = 0.0
 
       case
       |> correctnessGenericTest<float> filterFloats (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolCopy = Vector.copy context wgSize
+      let boolCopy = Vector.copy context wgSize HostInterop
       let isZero item = item = true
 
       case
       |> correctnessGenericTest<bool> id (=) isZero boolCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let floatCopy = Vector.copy context wgSize
+      let floatCopy = Vector.copy context wgSize HostInterop
       let isZero item = item = 0uy
 
       case

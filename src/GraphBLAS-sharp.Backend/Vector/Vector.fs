@@ -8,61 +8,79 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Common.ClArray
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 
 module Vector =
-    let zeroCreate (clContext: ClContext) (workGroupSize: int) =
+    let zeroCreate (clContext: ClContext) workGroupSize flag =
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            ClArray.zeroCreate clContext workGroupSize flag
 
-        fun (processor: MailboxProcessor<_>) (size: int) (format: VectorFormat) ->
+        fun (processor: MailboxProcessor<_>) size format ->
             match format with
             | Sparse ->
-                let vector =
+                ClVector.Sparse
                     { Context = clContext
-                      Indices = clContext.CreateClArrayWithGPUOnlyFlags [| 0 |]
-                      Values = clContext.CreateClArrayWithGPUOnlyFlags [| Unchecked.defaultof<'a> |]
+                      Indices = clContext.CreateClArrayWithFlag(flag, [| 0 |])
+                      Values = clContext.CreateClArrayWithFlag(flag, [| Unchecked.defaultof<'a> |])
                       Size = size }
-
-                ClVector.Sparse vector
             | Dense -> ClVector.Dense <| zeroCreate processor size
 
-    let ofList (clContext: ClContext) =
-        fun (format: VectorFormat) size (elements: (int * 'a) list) ->
-            let indices, values =
-                elements
-                |> Array.ofList
-                |> Array.sortBy fst
-                |> Array.unzip
+    let ofList (clContext: ClContext) workGroupSize flag =
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
 
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize flag
+
+        let map =
+            ClArray.map clContext workGroupSize DeviceOnly <@ Some @>
+
+        fun (processor: MailboxProcessor<_>) format size (elements: (int * 'a) list) ->
             match format with
             | Sparse ->
-                let indices = clContext.CreateClArray indices
-                let values = clContext.CreateClArray values
+                let indices, values =
+                    elements
+                    |> Array.ofList
+                    |> Array.sortBy fst
+                    |> Array.unzip
 
                 { Context = clContext
-                  Indices = indices
-                  Values = values
+                  Indices = clContext.CreateClArrayWithFlag(flag, indices)
+                  Values = clContext.CreateClArrayWithFlag(flag, values)
                   Size = size }
-
                 |> ClVector.Sparse
             | Dense ->
-                let res = Array.zeroCreate size
+                let indices, values = elements |> Array.ofList |> Array.unzip
 
-                for i in 0 .. indices.Length - 1 do
-                    res.[indices.[i]] <- Some(values.[i])
+                let values =
+                    clContext.CreateClArrayWithFlag(DeviceOnly, values)
 
-                ClVector.Dense
-                <| clContext.CreateClArrayWithGPUOnlyFlags res
+                let indices =
+                    clContext.CreateClArrayWithFlag(DeviceOnly, indices)
 
-    let copy (clContext: ClContext) (workGroupSize: int) =
-        let copy = ClArray.copy clContext workGroupSize
+                let mappedValues = map processor values
 
-        let copyData = ClArray.copy clContext workGroupSize
+                let result = zeroCreate processor size
 
-        let copyOptionData = ClArray.copy clContext workGroupSize
+                scatter processor indices mappedValues result
+
+                processor.Post(Msg.CreateFreeMsg(mappedValues))
+                processor.Post(Msg.CreateFreeMsg(indices))
+                processor.Post(Msg.CreateFreeMsg(values))
+
+                ClVector.Dense result
+
+    let copy (clContext: ClContext) workGroupSize flag =
+        let copy =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyOptionData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
@@ -78,34 +96,35 @@ module Vector =
 
     let mask = copy
 
-    let toSparse (clContext: ClContext) (workGroupSize: int) =
+    let toSparse (clContext: ClContext) workGroupSize flag =
         let toSparse =
-            DenseVector.toSparse clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize flag
 
-        let copy = copy clContext workGroupSize
+        let copy = copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
             | ClVector.Dense vector -> ClVector.Sparse <| toSparse processor vector
             | ClVector.Sparse _ -> copy processor vector
 
-    let toDense (clContext: ClContext) (workGroupSize: int) =
+    let toDense (clContext: ClContext) workGroupSize flag =
         let toDense =
-            SparseVector.toDense clContext workGroupSize
+            SparseVector.toDense clContext workGroupSize flag
 
-        let copy = ClArray.copy clContext workGroupSize
+        let copy =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with
             | ClVector.Dense vector -> ClVector.Dense <| copy processor vector
             | ClVector.Sparse vector -> ClVector.Dense <| toDense processor vector
 
-    let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize flag =
         let addSparse =
-            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
+            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize flag
 
         let addDense =
-            DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
+            DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -113,12 +132,12 @@ module Vector =
             | ClVector.Dense left, ClVector.Dense right -> ClVector.Dense <| addDense processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) (workGroupSize: int) =
+    let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize flag =
         let addDense =
-            DenseVector.elementWise clContext opAdd workGroupSize
+            DenseVector.elementWise clContext opAdd workGroupSize flag
 
         let addSparse =
-            SparseVector.elementWise clContext opAdd workGroupSize
+            SparseVector.elementWise clContext opAdd workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -128,18 +147,18 @@ module Vector =
             | ClVector.Sparse left, ClVector.Sparse right -> ClVector.Sparse <| addSparse processor left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) (workGroupSize: int) =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) workGroupSize flag =
         let sparseFillVector =
-            SparseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
+            SparseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize flag
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
+            DenseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize flag
 
         let toSparseVector =
-            DenseVector.toSparse clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize flag
 
         let toSparseMask =
-            DenseVector.toSparse clContext workGroupSize
+            DenseVector.toSparse clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
             match vector, maskVector with
@@ -163,17 +182,18 @@ module Vector =
     let fillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct>
         maskOp
         (clContext: ClContext)
-        (workGroupSize: int)
+        workGroupSize
+        flag
         =
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext (Convert.fillSubComplementedToOption maskOp) workGroupSize
+            DenseVector.fillSubVector clContext (Convert.fillSubComplementedToOption maskOp) workGroupSize flag
 
         let vectorToDense =
-            SparseVector.toDense clContext workGroupSize
+            SparseVector.toDense clContext workGroupSize flag
 
         let maskToDense =
-            SparseVector.toDense clContext workGroupSize
+            SparseVector.toDense clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
             match leftVector, maskVector with
@@ -202,7 +222,7 @@ module Vector =
     let standardFillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> =
         fillSubVectorComplemented<'a, 'b> Mask.fillSubOp<'a>
 
-    let reduce (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =
             SparseVector.reduce clContext workGroupSize opAdd
 

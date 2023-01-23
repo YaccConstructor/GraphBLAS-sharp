@@ -5,8 +5,8 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module DenseVector =
     let elementWiseTo<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -42,7 +42,8 @@ module DenseVector =
     let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
-        (workGroupSize: int)
+        workGroupSize
+        flag
         =
 
         let elementWiseTo =
@@ -50,12 +51,7 @@ module DenseVector =
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
             let resultVector =
-                clContext.CreateClArray(
-                    leftVector.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag(flag, leftVector.Length)
 
             elementWiseTo processor leftVector rightVector resultVector
 
@@ -67,7 +63,7 @@ module DenseVector =
     let fillSubVectorTo<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
-        (workGroupSize: int)
+        workGroupSize
         =
 
         let fillSubVectorKernel =
@@ -97,7 +93,8 @@ module DenseVector =
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
-        (workGroupSize: int)
+        workGroupSize
+        flag
         =
 
         let fillSubVectorTo =
@@ -105,21 +102,16 @@ module DenseVector =
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultVector =
-                clContext.CreateClArray<'a option>(
-                    leftVector.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag(flag, leftVector.Length)
 
             fillSubVectorTo processor leftVector maskVector value resultVector
 
             resultVector
 
-    let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
+    let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
         fillSubVectorTo<'a, 'b> clContext (Convert.fillSubToOption Mask.fillSubOp<'a>) workGroupSize
 
-    let private getBitmap<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private getBitmap<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
 
         let getPositions =
             <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
@@ -135,12 +127,7 @@ module DenseVector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
             let positions =
-                clContext.CreateClArray(
-                    vector.Length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag(flag, vector.Length)
 
             let ndRange =
                 Range1D.CreateValid(vector.Length, workGroupSize)
@@ -153,7 +140,7 @@ module DenseVector =
 
             positions
 
-    let private getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
 
         let getValuesAndIndices =
             <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (positions: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
@@ -173,7 +160,8 @@ module DenseVector =
 
         let kernel = clContext.Compile(getValuesAndIndices)
 
-        let getPositions = getBitmap clContext workGroupSize
+        let getPositions =
+            getBitmap clContext workGroupSize DeviceOnly
 
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
@@ -198,20 +186,10 @@ module DenseVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArray<'a>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(flag, resultLength)
 
             let resultIndices =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
 
             let ndRange =
                 Range1D.CreateValid(vector.Length, workGroupSize)
@@ -229,10 +207,10 @@ module DenseVector =
 
             resultValues, resultIndices
 
-    let toSparse<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) =
+    let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
 
         let getValuesAndIndices =
-            getValuesAndIndices clContext workGroupSize
+            getValuesAndIndices clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
@@ -243,10 +221,10 @@ module DenseVector =
               Values = values
               Size = vector.Length }
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let getValuesAndIndices =
-            getValuesAndIndices clContext workGroupSize
+            getValuesAndIndices clContext workGroupSize DeviceOnly
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd

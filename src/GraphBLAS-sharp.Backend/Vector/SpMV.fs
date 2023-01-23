@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module SpMV =
     let runTo
@@ -105,12 +106,7 @@ module SpMV =
                 Range1D.CreateValid(matrix.RowCount, workGroupSize)
 
             let intermediateArray =
-                clContext.CreateClArray<'c option>(
-                    matrixLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'c option>(DeviceOnly, matrixLength)
 
             let multiplyValues = multiplyValues.GetKernel()
 
@@ -150,18 +146,14 @@ module SpMV =
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
+        flag
         =
         let runTo = runTo clContext add mul workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
-                clContext.CreateClArray<'b option>(
-                    matrix.RowCount,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'b option>(flag, matrix.RowCount)
 
             runTo queue matrix vector result
 

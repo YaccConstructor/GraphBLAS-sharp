@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Transpose.Tests"
 
@@ -134,7 +135,8 @@ let testFixtures case =
     let q = case.TestContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let transposeFun = Matrix.transpose context wgSize
+    [ let transposeFun =
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) 0
@@ -145,7 +147,8 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
 
 
-      let transposeFun = Matrix.transpose context wgSize
+      let transposeFun =
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun areEqualFloat 0.0
@@ -155,7 +158,8 @@ let testFixtures case =
       |> makeTestTwiceTranspose context q transposeFun areEqualFloat 0.0
       |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
 
-      let transposeFun = Matrix.transpose context wgSize
+      let transposeFun =
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) 0uy
@@ -165,7 +169,8 @@ let testFixtures case =
       |> makeTestTwiceTranspose context q transposeFun (=) 0uy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
 
-      let transposeFun = Matrix.transpose context wgSize
+      let transposeFun =
+          Matrix.transpose context wgSize HostInterop
 
       case
       |> makeTestRegular context q transposeFun (=) false

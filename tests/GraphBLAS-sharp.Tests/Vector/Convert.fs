@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger =
     Log.create "Backend.Vector.Convert.Tests"
@@ -62,7 +63,8 @@ let testFixtures case =
 
     match case.Format with
     | Sparse ->
-        [ let convertFun = Vector.toSparse context wgSize
+        [ let convertFun =
+              Vector.toSparse context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -70,7 +72,8 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Vector.toSparse context wgSize
+          let convertFun =
+              Vector.toSparse context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -79,7 +82,8 @@ let testFixtures case =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | Dense ->
-        [ let convertFun = Vector.toDense context wgSize
+        [ let convertFun =
+              Vector.toDense context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -87,7 +91,8 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Vector.toDense context wgSize
+          let convertFun =
+              Vector.toDense context wgSize HostInterop
 
           listOfUnionCases<VectorFormat>
           |> List.map

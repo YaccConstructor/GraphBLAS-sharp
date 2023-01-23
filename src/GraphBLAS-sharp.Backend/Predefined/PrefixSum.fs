@@ -21,19 +21,19 @@ module internal PrefixSum =
 
             scan processor inputArray totalSum 0
 
-    let standardInclude (clContext: ClContext) workGroupSize =
+    let standardInclude (clContext: ClContext) workGroupSize flag =
 
         let scan =
-            ClArray.prefixSumInclude <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumInclude <@ (+) @> clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
             scan processor inputArray totalSum 0
 
-    let standardExclude (clContext: ClContext) workGroupSize =
+    let standardExclude (clContext: ClContext) workGroupSize flag =
 
         let scan =
-            ClArray.prefixSumExclude <@ (+) @> clContext workGroupSize
+            ClArray.prefixSumExclude <@ (+) @> clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
