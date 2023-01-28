@@ -48,7 +48,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
     static member AvaliableContexts = Utils.avaliableContexts
 
     static member InputMatricesProviderBuilder pathToConfig =
-        let datasetFolder = "EWiseAdd"
+        let datasetFolder = ""
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map
