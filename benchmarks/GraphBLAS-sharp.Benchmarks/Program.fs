@@ -5,9 +5,7 @@ open BenchmarkDotNet.Running
 let main argv =
     let benchmarks =
         BenchmarkSwitcher [| typeof<BFSBenchmarksWithoutDataTransfer>
-                             typeof<MxmBenchmarks4Float32MultiplicationOnly>
-                             //typeof<MxvBenchmarks>
-                             //typeof<TransposeBenchmarks>
+                             typeof<EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer>
                               |]
 
     benchmarks.Run argv |> ignore
