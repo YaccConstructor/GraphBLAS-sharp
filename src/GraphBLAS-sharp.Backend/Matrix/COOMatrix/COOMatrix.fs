@@ -7,6 +7,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module COOMatrix =
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -57,18 +58,10 @@ module COOMatrix =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rawPositionsGpu =
-                clContext.CreateClArray<int>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
 
             let allValues =
-                clContext.CreateClArray<'c>(
-                    length,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
 
             let kernel = kernel.GetKernel()
 
@@ -225,44 +218,19 @@ module COOMatrix =
             let sumOfSides = firstSide + secondSide
 
             let allRows =
-                clContext.CreateClArray<int>(
-                    sumOfSides,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let allColumns =
-                clContext.CreateClArray<int>(
-                    sumOfSides,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let leftMergedValues =
-                clContext.CreateClArray<'a>(
-                    sumOfSides,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, sumOfSides)
 
             let rightMergedValues =
-                clContext.CreateClArray<'b>(
-                    sumOfSides,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, sumOfSides)
 
             let isLeft =
-                clContext.CreateClArray<int>(
-                    sumOfSides,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)
@@ -301,6 +269,7 @@ module COOMatrix =
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
+        flag
         =
 
         let merge = merge clContext workGroupSize
@@ -309,7 +278,7 @@ module COOMatrix =
             preparePositions clContext opAdd workGroupSize
 
         let setPositions =
-            Matrix.Common.setPositions<'c> clContext workGroupSize
+            Matrix.Common.setPositions<'c> clContext workGroupSize flag
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 
@@ -345,11 +314,13 @@ module COOMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let getTuples (clContext: ClContext) workGroupSize =
+    let getTuples (clContext: ClContext) workGroupSize flag =
 
-        let copy = ClArray.copy clContext workGroupSize
+        let copy =
+            ClArray.copy clContext workGroupSize flag
 
-        let copyData = ClArray.copy clContext workGroupSize
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
 
@@ -364,7 +335,7 @@ module COOMatrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    let private compressRows (clContext: ClContext) workGroupSize =
+    let private compressRows (clContext: ClContext) workGroupSize flag =
 
         let compressRows =
             <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
@@ -379,7 +350,8 @@ module COOMatrix =
 
         let program = clContext.Compile(compressRows)
 
-        let create = ClArray.create clContext workGroupSize
+        let create =
+            ClArray.create clContext workGroupSize flag
 
         let scan =
             ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
@@ -401,11 +373,15 @@ module COOMatrix =
 
             rowPointers
 
-    let toCSR (clContext: ClContext) workGroupSize =
-        let prepare = compressRows clContext workGroupSize
+    let toCSR (clContext: ClContext) workGroupSize flag =
+        let prepare =
+            compressRows clContext workGroupSize flag
 
-        let copy = ClArray.copy clContext workGroupSize
-        let copyData = ClArray.copy clContext workGroupSize
+        let copy =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
@@ -421,8 +397,9 @@ module COOMatrix =
               Columns = cols
               Values = vals }
 
-    let toCSRInplace (clContext: ClContext) workGroupSize =
-        let prepare = compressRows clContext workGroupSize
+    let toCSRInplace (clContext: ClContext) workGroupSize flag =
+        let prepare =
+            compressRows clContext workGroupSize flag
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
@@ -444,9 +421,10 @@ module COOMatrix =
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
+        flag
         =
 
-        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
@@ -463,11 +441,15 @@ module COOMatrix =
               Columns = matrix.Rows
               Values = matrix.Values }
 
-    let transpose (clContext: ClContext) workGroupSize =
+    let transpose (clContext: ClContext) workGroupSize flag =
 
         let transposeInplace = transposeInplace clContext workGroupSize
-        let copy = ClArray.copy clContext workGroupSize
-        let copyData = ClArray.copy clContext workGroupSize
+
+        let copy =
+            ClArray.copy clContext workGroupSize flag
+
+        let copyData =
+            ClArray.copy clContext workGroupSize flag
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
 

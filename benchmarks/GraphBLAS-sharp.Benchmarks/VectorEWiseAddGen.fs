@@ -12,6 +12,7 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 type VectorConfig() =
     inherit ManualConfig()
@@ -179,7 +180,7 @@ module VectorGenerator =
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
         VectorGenerator.floatPair Sparse)
 
     static member SizeProvider = seq { 1000000000 }
@@ -187,7 +188,7 @@ type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
     static member SizeProvider = seq { 10000000 }
@@ -195,7 +196,7 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
     static member SizeProvider = seq { 10000000 }

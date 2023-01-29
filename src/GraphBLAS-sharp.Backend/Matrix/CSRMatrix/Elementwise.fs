@@ -4,6 +4,7 @@ open System
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Elementwise =
     let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -44,20 +45,10 @@ module internal Elementwise =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rowPositions =
-                clContext.CreateClArray<int>(
-                    length,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
 
             let allValues =
-                clContext.CreateClArray<'c>(
-                    length,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
 
             let kernel = kernel.GetKernel()
 
@@ -241,52 +232,22 @@ module internal Elementwise =
             let resLength = firstLength + secondLength
 
             let allRows =
-                clContext.CreateClArray<int>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let allColumns =
-                clContext.CreateClArray<int>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let leftMergedValues =
-                clContext.CreateClArray<'a>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, resLength)
 
             let rightMergedValues =
-                clContext.CreateClArray<'b>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, resLength)
 
             let isEndOfRow =
-                clContext.CreateClArray<int>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let isLeft =
-                clContext.CreateClArray<int>(
-                    resLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
 
             let ndRange =
                 Range1D.CreateValid((matrixLeftRowPointers.Length - 1) * workGroupSize, workGroupSize)

@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal SpGEMM =
     let private calculate
@@ -109,18 +110,10 @@ module internal SpGEMM =
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
 
             let values =
-                context.CreateClArray<'c>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                context.CreateClArrayWithFlag<'c>(DeviceOnly, mask.NNZ)
 
             let bitmap =
-                context.CreateClArray<int>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                context.CreateClArrayWithFlag<int>(DeviceOnly, mask.NNZ)
 
             let kernel = program.GetKernel()
 

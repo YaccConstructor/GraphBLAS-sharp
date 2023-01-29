@@ -13,6 +13,7 @@ open TestCases
 open GraphBLAS.FSharp.Tests.Backend.Vector.Elementwise
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger =
     Log.create "Backend.Vector.SparseVector.ElementWiseGen.Tests"
@@ -83,39 +84,43 @@ let addTestFixtures (testContext: TestContext) =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intAddFun =
-          SparseVector.elementwiseGeneral context intSum wgSize
+          SparseVector.elementwiseGeneral context intSum wgSize DeviceOnly
 
-      let intToDense = SparseVector.toDense context wgSize
+      let intToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatAddFun =
-          SparseVector.elementwiseGeneral context floatSum wgSize
+          SparseVector.elementwiseGeneral context floatSum wgSize DeviceOnly
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = SparseVector.toDense context wgSize
+      let floatToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolAddFun =
-          SparseVector.elementwiseGeneral context boolSum wgSize
+          SparseVector.elementwiseGeneral context boolSum wgSize DeviceOnly
 
-      let boolToDense = SparseVector.toDense context wgSize
+      let boolToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteAddFun =
-          SparseVector.elementwiseGeneral context byteSum wgSize
+          SparseVector.elementwiseGeneral context byteSum wgSize DeviceOnly
 
-      let byteToDense = SparseVector.toDense context wgSize
+      let byteToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
@@ -149,39 +154,43 @@ let mulTestFixtures (testContext: TestContext) =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intMulFun =
-          SparseVector.elementwiseGeneral context intMul wgSize
+          SparseVector.elementwiseGeneral context intMul wgSize DeviceOnly
 
-      let intToDense = SparseVector.toDense context wgSize
+      let intToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMulFun =
-          SparseVector.elementwiseGeneral context floatMul wgSize
+          SparseVector.elementwiseGeneral context floatMul wgSize DeviceOnly
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = SparseVector.toDense context wgSize
+      let floatToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMulFun =
-          SparseVector.elementwiseGeneral context boolMul wgSize
+          SparseVector.elementwiseGeneral context boolMul wgSize DeviceOnly
 
-      let boolToDense = SparseVector.toDense context wgSize
+      let boolToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMulFun =
-          SparseVector.elementwiseGeneral context byteMul wgSize
+          SparseVector.elementwiseGeneral context byteMul wgSize DeviceOnly
 
-      let byteToDense = SparseVector.toDense context wgSize
+      let byteToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense
@@ -202,21 +211,23 @@ let noneNoneTestFixtures (testContext: TestContext) =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intMaskFun =
-          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1) wgSize
+          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1) wgSize DeviceOnly
 
-      let intToDense = SparseVector.toDense context wgSize
+      let intToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (fillSubVectorFun 1 0 (=)) intMaskFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMaskFun =
-          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1.0) wgSize
+          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1.0) wgSize DeviceOnly
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = SparseVector.toDense context wgSize
+      let floatToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest
@@ -232,18 +243,20 @@ let noneNoneTestFixtures (testContext: TestContext) =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMaskFun =
-          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ true) wgSize
+          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ true) wgSize DeviceOnly
 
-      let boolToDense = SparseVector.toDense context wgSize
+      let boolToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (fillSubVectorFun true false (=)) boolMaskFun boolToDense
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMaskFun =
-          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1uy) wgSize
+          SparseVector.elementwiseGeneral context (fillSubVectorComplementedQ 1uy) wgSize DeviceOnly
 
-      let byteToDense = SparseVector.toDense context wgSize
+      let byteToDense =
+          SparseVector.toDense context wgSize DeviceOnly
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (fillSubVectorFun 1uy 0uy (=)) byteMaskFun byteToDense

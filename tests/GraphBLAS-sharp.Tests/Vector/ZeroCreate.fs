@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
@@ -56,26 +57,30 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intZeroCreate = Vector.zeroCreate context wgSize
+    [ let intZeroCreate =
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let byteZeroCreat = Vector.zeroCreate context wgSize
+      let byteZeroCreat =
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
 
-      let floatZeroCreate = Vector.zeroCreate context wgSize
+      let floatZeroCreate =
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest floatZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolZeroCreate = Vector.zeroCreate context wgSize
+      let boolZeroCreate =
+          Vector.zeroCreate context wgSize HostInterop
 
       case
       |> correctnessGenericTest boolZeroCreate

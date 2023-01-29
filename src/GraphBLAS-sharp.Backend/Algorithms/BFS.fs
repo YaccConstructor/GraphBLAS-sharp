@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module BFS =
@@ -22,9 +23,10 @@ module BFS =
             SpMV.runTo clContext add mul workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            ClArray.zeroCreate clContext workGroupSize HostInterop
 
-        let ofList = Vector.ofList clContext Dense
+        let ofList =
+            Vector.ofList clContext workGroupSize DeviceOnly
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
@@ -40,7 +42,8 @@ module BFS =
 
             let levels = zeroCreate queue vertexCount
 
-            let frontier = ofList vertexCount [ source, 1 ]
+            let frontier =
+                ofList queue Dense vertexCount [ source, 1 ]
 
             match frontier with
             | ClVector.Dense front ->

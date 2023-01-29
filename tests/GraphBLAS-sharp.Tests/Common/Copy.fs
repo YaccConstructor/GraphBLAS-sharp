@@ -6,6 +6,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Copy.Tests"
 
@@ -22,7 +23,7 @@ let testCases =
                 |> Array.filter (fun i -> array.Length % i = 0)
                 |> Array.max
 
-            copy wgSize q
+            copy wgSize HostInterop q
 
     let makeTest getCopyFun (array: array<'a>) filterFun =
         if array.Length > 0 then
