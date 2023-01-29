@@ -77,7 +77,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
         this.ResultVector.Dispose this.Processor
 
     member this.CreateVectors()  =
-        let vectorPair = (Gen.sample this.Size 1 generator)[0]
+        let vectorPair = List.last (Gen.sample this.Size 1 generator)
 
         firstVectorHost <- fst vectorPair
         secondVectorHost <- snd vectorPair
@@ -177,13 +177,15 @@ module VectorGenerator =
 
         pairOfVectorsOfEqualSize normalFloatGenerator createVector
 
+    let sizeSet = [ 1000; 10000000 ]
+
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
         (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
         VectorGenerator.floatPair Sparse)
 
-    static member SizeProvider = seq { 1000000000 }
+    static member SizeProvider = VectorGenerator.sizeSet
 
 type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 
@@ -191,7 +193,7 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
         (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = seq { 10000000 }
+    static member SizeProvider = VectorGenerator.sizeSet
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
@@ -199,5 +201,5 @@ type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
         (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = seq { 10000000 }
+    static member SizeProvider = VectorGenerator.sizeSet
 
