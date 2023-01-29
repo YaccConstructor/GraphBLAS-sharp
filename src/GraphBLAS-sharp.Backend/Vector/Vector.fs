@@ -122,10 +122,25 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
-            | ClVector.Dense leftVector, ClVector.Dense rightVector ->
-                ClVector.Dense
-                <| addDense processor leftVector rightVector
+            | ClVector.Dense left, ClVector.Dense right -> ClVector.Dense <| addDense processor left right
             | ClVector.Sparse left, ClVector.Sparse right -> ClVector.Sparse <| addSparse processor left right
+            | _ -> failwith "Vector formats are not matching."
+
+    let elementwiseGeneral<'a , 'b, 'c when 'a : struct and 'b : struct and 'c : struct>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupsSize =
+
+        let sparseEWise =
+            SparseVector.elementwiseGen clContext opAdd workGroupsSize
+
+        let denseEWise =
+            DenseVector.elementWise clContext opAdd workGroupsSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVector.Sparse left, ClVector.Sparse right -> ClVector.Sparse <| sparseEWise processor left right
+            | ClVector.Dense left, ClVector.Dense right -> ClVector.Dense <| denseEWise processor left right
             | _ -> failwith "Vector formats are not matching."
 
     let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) (workGroupSize: int) =
