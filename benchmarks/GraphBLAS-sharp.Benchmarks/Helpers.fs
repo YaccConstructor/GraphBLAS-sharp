@@ -5,14 +5,12 @@ open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
 open Brahma.FSharp
 open Brahma.FSharp.OpenCL.Translator
-open GraphBLAS.FSharp.Backend.Objects
 open OpenCL.Net
 open GraphBLAS.FSharp.IO
 open System.IO
 open System.Text.RegularExpressions
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Jobs
-open GraphBLAS.FSharp.Objects
 
 type CommonConfig() =
     inherit ManualConfig()

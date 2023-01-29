@@ -1,3 +1,7 @@
+
+Gpu
+32
+
 NVIDIA*
 Gpu
 32
