@@ -45,7 +45,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
-    [<ParamsSource("SizeProvider")>]
+    [<Params(1000, 100000, 10000000)>]
     member val Size = Unchecked.defaultof<int> with get, set
 
     member this.OclContext: ClContext = (fst this.OclContextInfo).ClContext
@@ -177,7 +177,7 @@ module VectorGenerator =
 
         pairOfVectorsOfEqualSize normalFloatGenerator createVector
 
-    let sizeSet = [ 1000; 10000000 ]
+/// Without data transfer
 
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
@@ -185,15 +185,19 @@ type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
         (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
         VectorGenerator.floatPair Sparse)
 
-    static member SizeProvider = VectorGenerator.sizeSet
-
 type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
         (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = VectorGenerator.sizeSet
+/// General
+
+type VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer() =
+
+    inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize HostInterop),
+        VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
@@ -201,5 +205,30 @@ type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
         (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = VectorGenerator.sizeSet
+/// With data transfer
 
+type VectorEWiseBenchmarks4FloatSparseWithDataTransfer() =
+
+    inherit VectorEWiseBenchmarksWithDataTransfer<float>(
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
+        VectorGenerator.floatPair Sparse)
+
+type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
+
+    inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
+        VectorGenerator.intPair Sparse)
+
+/// General with data transfer
+
+type VectorEWiseGeneralBenchmarks4FloatSparseWithDataTransfer() =
+
+    inherit VectorEWiseBenchmarksWithDataTransfer<float>(
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize HostInterop),
+        VectorGenerator.floatPair Sparse)
+
+type VectorEWiseGeneralBenchmarks4Int32SparseWithDataTransfer() =
+
+    inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
+        VectorGenerator.intPair Sparse)
