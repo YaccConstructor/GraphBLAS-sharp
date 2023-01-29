@@ -33,19 +33,20 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
     generator: Gen<Vector<'elem> * Vector<'elem>>) =
 
     let mutable funToBenchmark = None
+
     let mutable firstVector = Unchecked.defaultof<ClVector<'elem>>
+
     let mutable secondVector = Unchecked.defaultof<ClVector<'elem>>
 
-    let mutable firstVectorHost = Unchecked.defaultof<Vector<'elem>>
 
-    let mutable secondVectorHost = Unchecked.defaultof<Vector<'elem>>
+    member val HostVectorPair = Unchecked.defaultof<Vector<'elem> * Vector<'elem>> with get, set
 
     member val ResultVector = Unchecked.defaultof<ClVector<'elem>> with get,set
 
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
-    [<Params(1000, 100000, 10000000)>]
+    [<Params(1000, 100000, 100000000)>]
     member val Size = Unchecked.defaultof<int> with get, set
 
     member this.OclContext: ClContext = (fst this.OclContextInfo).ClContext
@@ -77,14 +78,11 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
         this.ResultVector.Dispose this.Processor
 
     member this.CreateVectors()  =
-        let vectorPair = List.last (Gen.sample this.Size 1 generator)
-
-        firstVectorHost <- fst vectorPair
-        secondVectorHost <- snd vectorPair
+        this.HostVectorPair <- List.last (Gen.sample this.Size 1 generator)
 
     member this.LoadVectorsToGPU() =
-        firstVector <- firstVectorHost.ToDevice this.OclContext
-        secondVector <- secondVectorHost.ToDevice this.OclContext
+        firstVector <- (fst this.HostVectorPair).ToDevice this.OclContext
+        secondVector <- (snd this.HostVectorPair).ToDevice this.OclContext
 
     abstract member GlobalSetup : unit -> unit
 
