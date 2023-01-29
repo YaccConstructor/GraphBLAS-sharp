@@ -132,7 +132,7 @@ module Vector =
         workGroupsSize =
 
         let sparseEWise =
-            SparseVector.elementwiseGen clContext opAdd workGroupsSize
+            SparseVector.elementwiseGeneral clContext opAdd workGroupsSize
 
         let denseEWise =
             DenseVector.elementWise clContext opAdd workGroupsSize

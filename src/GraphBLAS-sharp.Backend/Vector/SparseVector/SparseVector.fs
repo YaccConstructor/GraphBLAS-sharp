@@ -118,7 +118,7 @@ module SparseVector =
 
             resultBitmap, resultValues, resultIndices
 
-    let elementwiseGen<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let elementwiseGeneral<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         op
         workGroupSize

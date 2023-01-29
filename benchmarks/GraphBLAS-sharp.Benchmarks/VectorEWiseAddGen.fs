@@ -190,13 +190,13 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
         (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = seq { 1000000000 }
+    static member SizeProvider = seq { 10000000 }
 
-type VectorEWiseGenBenchmarks4Int32SparseWithoutDataTransfer() =
+type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)
 
-    static member SizeProvider = seq { 1000000000 }
+    static member SizeProvider = seq { 10000000 }
 
