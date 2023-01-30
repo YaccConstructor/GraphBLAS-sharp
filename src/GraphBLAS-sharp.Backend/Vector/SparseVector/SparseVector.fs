@@ -56,7 +56,7 @@ module SparseVector =
 
         let kernel =
             clContext.Compile
-            <| Elementwise.preparePositionsGen opAdd
+            <| Elementwise.preparePositionsGeneral opAdd
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
 

@@ -28,7 +28,7 @@ module Elementwise =
 
             result @>
 
-    let preparePositionsGen (op: Expr<'a option -> 'b option -> 'c option>) =
+    let preparePositionsGeneral (op: Expr<'a option -> 'b option -> 'c option>) =
         <@ fun (ndRange: Range1D) vectorLength leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
             let gid = ndRange.GlobalID0
