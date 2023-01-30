@@ -179,13 +179,13 @@ module VectorGenerator =
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwise context ArithmeticOperations.floatSum wgSize),
+        (fun context -> Vector.elementwise context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwise context ArithmeticOperations.intSum wgSize),
+        (fun context -> Vector.elementwise context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)
 
 /// General
@@ -193,13 +193,13 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize),
+        (fun context -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
+        (fun context -> Vector.elementwiseGeneral context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)
 
 /// With data transfer
@@ -207,13 +207,13 @@ type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseBenchmarks4FloatSparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwise context ArithmeticOperations.floatSum wgSize),
+        (fun context -> Vector.elementwise context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwise context ArithmeticOperations.intSum wgSize),
+        (fun context -> Vector.elementwise context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)
 
 /// General with data transfer
@@ -221,11 +221,11 @@ type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize),
+        (fun context -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
+        (fun context -> Vector.elementwiseGeneral context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)

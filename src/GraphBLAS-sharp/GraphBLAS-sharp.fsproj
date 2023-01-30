@@ -21,9 +21,9 @@
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects/Scalar.fs" />
     <Compile Include="Objects/Masks.fs" />
-    <Compile Include="Objects\Vector.fs" />
-    <Compile Include="Objects\VectorExtensions.fs" />
-    <Compile Include="Objects\MatrixExtensions.fs" />
+    <Compile Include="Objects/Vector.fs" />
+    <Compile Include="Objects/VectorExtensions.fs" />
+    <Compile Include="Objects/MatrixExtensions.fs" />
     <Compile Include="Operations/Scalar.fs" />
     <Compile Include="IO/MtxReader.fs" />
     <Compile Include="Predefined/Monoids/Any.fs" />
