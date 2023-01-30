@@ -82,16 +82,13 @@ module Vector =
         fun (processor: MailboxProcessor<_>) flag (vector: ClVector<'a>) ->
             match vector with
             | ClVector.Sparse vector ->
-                let vector =
-                    { Context = clContext
-                      Indices = copy processor flag vector.Indices
-                      Values = copyData processor flag vector.Values
-                      Size = vector.Size }
-
-                ClVector.Sparse vector
+                { Context = clContext
+                  Indices = copy processor flag vector.Indices
+                  Values = copyData processor flag vector.Values
+                  Size = vector.Size }
+                |> ClVector.Sparse
             | ClVector.Dense vector ->
-                ClVector.Dense
-                <| copyOptionData processor flag vector
+                ClVector.Dense <| copyOptionData processor flag vector
 
     let mask = copy
 
@@ -134,12 +131,12 @@ module Vector =
                 <| addDense processor flag left right
             | _ -> failwith "Vector formats are not matching."
 
-    let elementWise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let addDense =
-            DenseVector.elementWise clContext opAdd workGroupSize
+            DenseVector.elementwise clContext opAdd workGroupSize
 
         let addSparse =
-            SparseVector.elementWise clContext opAdd workGroupSize
+            SparseVector.elementwise clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -161,7 +158,7 @@ module Vector =
             SparseVector.elementwiseGeneral clContext opAdd workGroupsSize
 
         let denseEWise =
-            DenseVector.elementWise clContext opAdd workGroupsSize
+            DenseVector.elementwise clContext opAdd workGroupsSize
 
         fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with

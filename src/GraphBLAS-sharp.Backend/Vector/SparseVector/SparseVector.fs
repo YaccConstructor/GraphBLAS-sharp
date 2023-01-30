@@ -219,7 +219,7 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
+    let elementwise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
         let merge = merge clContext workGroupSize
 
@@ -253,7 +253,7 @@ module SparseVector =
               Size = max leftVector.Size rightVector.Size }
 
     let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize flag =
-        elementWise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)

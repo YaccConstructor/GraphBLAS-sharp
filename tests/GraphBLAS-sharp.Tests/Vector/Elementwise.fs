@@ -4,9 +4,8 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Tests.Utils
-open TestCases
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
@@ -102,7 +101,7 @@ let addTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intAddFun =
-          Vector.elementWise context ArithmeticOperations.intSum wgSize
+          Vector.elementwise context ArithmeticOperations.intSum wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -111,7 +110,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatAddFun =
-          Vector.elementWise context ArithmeticOperations.floatSum wgSize
+          Vector.elementwise context ArithmeticOperations.floatSum wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -123,7 +122,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolAddFun =
-          Vector.elementWise context ArithmeticOperations.boolSum wgSize
+          Vector.elementwise context ArithmeticOperations.boolSum wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -132,7 +131,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteAddFun =
-          Vector.elementWise context ArithmeticOperations.byteSum wgSize
+          Vector.elementwise context ArithmeticOperations.byteSum wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -149,7 +148,7 @@ let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intMulFun =
-          Vector.elementWise context ArithmeticOperations.intMul wgSize
+          Vector.elementwise context ArithmeticOperations.intMul wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -158,7 +157,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatMulFun =
-          Vector.elementWise context ArithmeticOperations.floatMul wgSize
+          Vector.elementwise context ArithmeticOperations.floatMul wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -170,7 +169,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolMulFun =
-          Vector.elementWise context ArithmeticOperations.boolMul wgSize
+          Vector.elementwise context ArithmeticOperations.boolMul wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -179,7 +178,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteMulFun =
-          Vector.elementWise context ArithmeticOperations.byteMul wgSize
+          Vector.elementwise context ArithmeticOperations.byteMul wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -189,3 +188,275 @@ let mulTestFixtures case =
 
 let mulTests =
     operationGPUTests "Backend.Vector.ElementWiseMul tests" addTestFixtures
+
+let addAtLeastOneTestFixtures case =
+    let config = defaultConfig
+
+    let getCorrectnessTestName fstType sndType thrType =
+        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
+
+    let wgSize = 32
+    let context = case.TestContext.ClContext
+
+    [ let toCoo = Vector.toSparse context wgSize
+
+      let intAddFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatToCoo = Vector.toSparse context wgSize
+
+      let floatAddFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolToCoo = Vector.toSparse context wgSize
+
+      let boolAddFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteToCoo = Vector.toSparse context wgSize
+
+      let byteAddFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let addAtLeastOneTests =
+    operationGPUTests "Backend.Vector.ElementWiseAtLeasOneAdd tests" addTestFixtures
+
+let mulAtLeastOneTestFixtures case =
+    let config = defaultConfig
+
+    let getCorrectnessTestName fstType sndType thrType =
+        $"Correctness on AtLeastOne<{fstType}, {sndType}> -> {thrType} option, {case.Format}"
+
+    let wgSize = 32
+    let context = case.TestContext.ClContext
+
+
+    [ let toCoo = Vector.toSparse context wgSize
+
+      let intMulFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatToCoo = Vector.toSparse context wgSize
+
+      let floatMulFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolToCoo = Vector.toSparse context wgSize
+
+      let boolMulFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteToCoo = Vector.toSparse context wgSize
+
+      let byteMulFun =
+          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let mulAtLeastOneTests =
+    operationGPUTests "Backend.Vector.ElementWiseAtLeasOneMul tests" mulTestFixtures
+
+let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
+    let wgSize = 32
+
+    let context = case.TestContext.ClContext
+
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    [ let intAddFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize
+
+      let intToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun intToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatAddFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      let floatToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolAddFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.boolSum wgSize
+
+      let boolToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteAddFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.byteSum wgSize
+
+      let byteToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let addGeneralTests =
+    operationGPUTests "Backend.Vector.ElementWiseAddGen tests" addGeneralTestFixtures
+
+let fillSubVectorComplementedQ<'a, 'b> value =
+    <@ fun (left: 'a option) (right: 'b option) ->
+        match left with
+        | None -> Some value
+        | _ -> right @>
+
+let fillSubVectorFun value zero isEqual =
+    fun left right ->
+        if isEqual left zero then
+            value
+        else
+            right
+
+let mulGeneralTestFixtures case =
+    let wgSize = 32
+
+    let context = case.TestContext.ClContext
+
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    [ let intMulFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.intMul wgSize
+
+      let intToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun intToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatMulFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.floatMul wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      let floatToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolMulFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.boolMul wgSize
+
+      let boolToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteMulFun =
+          Vector.elementwiseGeneral context ArithmeticOperations.byteMul wgSize
+
+      let byteToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let mulGeneralTests =
+    operationGPUTests "Backend.Vector.SparseVector.ElementWiseMulGen tests" mulGeneralTestFixtures
+
+let complementedGeneralTestFixtures case =
+    let wgSize = 32
+
+    let context = case.TestContext.ClContext
+
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    [ let intMaskFun =
+          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1) wgSize
+
+      let intToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (fillSubVectorFun 1 0 (=)) intMaskFun intToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatMaskFun =
+          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1.0) wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      let floatToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest
+          fIsEqual
+          fIsEqual
+          fIsEqual
+          0.0
+          0.0
+          0.0
+          (fillSubVectorFun 1.0 0.0 fIsEqual)
+          floatMaskFun
+          floatToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolMaskFun =
+          Vector.elementwiseGeneral context (fillSubVectorComplementedQ true) wgSize
+
+      let boolToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (fillSubVectorFun true false (=)) boolMaskFun boolToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteMaskFun =
+          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1uy) wgSize
+
+      let byteToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (fillSubVectorFun 1uy 0uy (=)) byteMaskFun byteToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let complementedGeneralTests =
+    operationGPUTests "Backend.Vector.ElementWiseGen mask tests" complementedGeneralTestFixtures

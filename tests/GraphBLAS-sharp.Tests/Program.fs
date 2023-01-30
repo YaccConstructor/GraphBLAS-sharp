@@ -35,10 +35,13 @@ let vectorTests =
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
-          Vector.ElementwiseAtLeastOne.addTests
-          Vector.ElementwiseAtLeastOne.mulTests
           Vector.Elementwise.addTests
           Vector.Elementwise.mulTests
+          Vector.Elementwise.addAtLeastOneTests
+          Vector.Elementwise.mulAtLeastOneTests
+          Vector.Elementwise.addGeneralTests
+          Vector.Elementwise.mulGeneralTests
+          Vector.Elementwise.complementedGeneralTests
           Vector.FillSubVector.tests
           Vector.FillSubVector.complementedTests
           Vector.Reduce.tests ]
