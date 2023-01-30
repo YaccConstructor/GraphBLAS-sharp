@@ -23,10 +23,9 @@ module BFS =
             SpMV.runTo clContext add mul workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize HostInterop
+            ClArray.zeroCreate clContext workGroupSize
 
-        let ofList =
-            Vector.ofList clContext workGroupSize DeviceOnly
+        let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
             DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
@@ -40,10 +39,10 @@ module BFS =
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue vertexCount
+            let levels = zeroCreate queue HostInterop vertexCount
 
             let frontier =
-                ofList queue Dense vertexCount [ source, 1 ]
+                ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
 
             match frontier with
             | ClVector.Dense front ->

@@ -146,11 +146,10 @@ module SpMV =
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
-        flag
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
                 clContext.CreateClArrayWithFlag<'b option>(flag, matrix.RowCount)

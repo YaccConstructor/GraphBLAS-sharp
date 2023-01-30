@@ -48,7 +48,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClArray<'b option> -> ClArray<'c option>)
+    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'b option> -> ClArray<'c option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -69,7 +69,7 @@ let correctnessGenericTest
             | Vector.Dense vtr, ClMatrix.CSR m ->
                 let v = vtr.ToDevice testContext.ClContext
 
-                let res = spMV testContext.Queue m v
+                let res = spMV testContext.Queue HostInterop m v
 
                 (ClMatrix.CSR m).Dispose q
                 v.Dispose q
@@ -94,28 +94,28 @@ let testFixturesSpMV (testContext: TestContext) =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolSpMV =
-          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize HostInterop
+          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
 
       testContext
       |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intSpMV =
-          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize HostInterop
+          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
 
       testContext
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatSpMV =
-          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize HostInterop
+          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
 
       testContext
       |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize HostInterop
+          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
 
       testContext
       |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q

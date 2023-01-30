@@ -32,7 +32,7 @@
         <Compile Include="Vector/OfList.fs" />
         <Compile Include="Vector/Copy.fs" />
         <Compile Include="Vector/FillSubVector.fs" />
-        <Compile Include="Vector/ElementWiseAtLeasOne.fs" />
+        <Compile Include="Vector\ElementwiseAtLeasOne.fs" />
         <Compile Include="Vector/Convert.fs" />
         <Compile Include="Vector/Reduce.fs" />
         <Compile Include="Vector/Elementwise.fs" />

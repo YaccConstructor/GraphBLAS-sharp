@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module SparseVector =
 
-    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
+    let private setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
@@ -25,7 +25,7 @@ module SparseVector =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) flag (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
             let resultLengthGpu = clContext.CreateClCell 0
 
@@ -99,16 +99,14 @@ module SparseVector =
         (clContext: ClContext)
         op
         workGroupSize
-        flag
         =
 
         let prepare =
             preparePositionsGeneral<'a, 'b, 'c> clContext workGroupSize op
 
-        let setPositions =
-            setPositions clContext workGroupSize flag
+        let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
             let bitmap, allValues, allIndices =
                 prepare
@@ -120,7 +118,7 @@ module SparseVector =
                     rightVector.Indices
 
             let resultValues, resultIndices =
-                setPositions processor allValues allIndices bitmap
+                setPositions processor flag allValues allIndices bitmap
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -131,12 +129,12 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) (workGroupSize: int) =
+    let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let kernel =
             clContext.Compile(Elementwise.merge workGroupSize)
 
-        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
+        fun (processor: MailboxProcessor<_>) flag (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
 
             let firstSide = firstIndices.Length
 
@@ -187,7 +185,7 @@ module SparseVector =
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         op
-        (workGroupSize: int)
+        workGroupSize
         =
 
         let kernel =
@@ -219,27 +217,21 @@ module SparseVector =
             allValues, positions
 
     ///<param name="clContext">.</param>
-    ///<param name="opAdd">.</param>
+    ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
-        op
-        (workGroupSize: int)
-        flag
-        =
+    let elementWise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
         let merge = merge clContext workGroupSize
 
         let prepare =
             preparePositions<'a, 'b, 'c> clContext op workGroupSize
 
-        let setPositions =
-            setPositions clContext workGroupSize flag
+        let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
-                merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
+                merge processor flag leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
 
             let allValues, positions =
                 prepare processor allIndices leftValues rightValues isLeft
@@ -249,7 +241,7 @@ module SparseVector =
             processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
             let resultValues, resultIndices =
-                setPositions processor allValues allIndices positions
+                setPositions processor flag allValues allIndices positions
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -307,22 +299,21 @@ module SparseVector =
             allValues, positions
 
     ///<param name="clContext">.</param>
-    ///<param name="opAdd">.</param>
+    ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize flag =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
 
         let merge = merge clContext workGroupSize
 
         let prepare =
             preparePositionsFillSubVector clContext op workGroupSize
 
-        let setPositions =
-            setPositions clContext workGroupSize flag
+        let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
-                merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
+                merge processor flag leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
 
             let allValues, positions =
                 prepare processor allIndices leftValues rightValues value isLeft
@@ -332,7 +323,7 @@ module SparseVector =
             processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
             let resultValues, resultIndices =
-                setPositions processor allValues allIndices positions
+                setPositions processor flag allValues allIndices positions
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -343,7 +334,7 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let toDense (clContext: ClContext) workGroupSize flag =
+    let toDense (clContext: ClContext) workGroupSize =
 
         let toDense =
             <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (indices: ClArray<int>) (resultArray: ClArray<'a option>) ->
@@ -357,10 +348,10 @@ module SparseVector =
         let kernel = clContext.Compile(toDense)
 
         let create =
-            ClArray.zeroCreate clContext workGroupSize flag
+            ClArray.zeroCreate clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) ->
-            let resultVector = create processor vector.Size
+        fun (processor: MailboxProcessor<_>) flag (vector: ClVector.Sparse<'a>) ->
+            let resultVector = create processor flag vector.Size
 
             let ndRange =
                 Range1D.CreateValid(vector.Indices.Length, workGroupSize)
@@ -377,7 +368,7 @@ module SparseVector =
 
             resultVector
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd

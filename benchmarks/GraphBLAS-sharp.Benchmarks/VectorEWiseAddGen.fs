@@ -38,7 +38,6 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
 
     let mutable secondVector = Unchecked.defaultof<ClVector<'elem>>
 
-
     member val HostVectorPair = Unchecked.defaultof<Vector<'elem> * Vector<'elem>> with get, set
 
     member val ResultVector = Unchecked.defaultof<ClVector<'elem>> with get,set
@@ -68,7 +67,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
         | Some x -> x
 
     member this.EWiseAddition() =
-        this.ResultVector <- this.FunToBenchmark this.Processor firstVector secondVector
+        this.ResultVector <- this.FunToBenchmark this.Processor HostInterop firstVector secondVector
 
     member this.ClearInputVectors()=
         firstVector.Dispose this.Processor
@@ -180,13 +179,13 @@ module VectorGenerator =
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)
 
 /// General
@@ -194,13 +193,13 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)
 
 /// With data transfer
@@ -208,13 +207,13 @@ type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseBenchmarks4FloatSparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.floatSum wgSize),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementWise context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)
 
 /// General with data transfer
@@ -222,11 +221,11 @@ type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize HostInterop),
+        (fun context wgSize -> Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize),
         VectorGenerator.intPair Sparse)

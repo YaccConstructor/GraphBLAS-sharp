@@ -75,7 +75,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSR2CSC =
         match funCSR2CSC with
         | None ->
-            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize HostInterop
+            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize
             funCSR2CSC <- Some x
             x
         | Some x -> x
@@ -83,7 +83,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSC2CSR =
         match funCSC2CSR with
         | None ->
-            let x = Matrix.toCSRInplace this.OclContext this.WorkGroupSize HostInterop
+            let x = Matrix.toCSRInplace this.OclContext this.WorkGroupSize
             funCSC2CSR <- Some x
             x
         | Some x -> x
@@ -130,10 +130,10 @@ type MxmBenchmarks<'elem when 'elem : struct>(
         mask <- maskHost.ToBackend(this.OclContext)
 
     member this.ConvertSecondMatrixToCSC() =
-        secondMatrix <- this.FunCSR2CSC this.Processor secondMatrix
+        secondMatrix <- this.FunCSR2CSC this.Processor HostInterop secondMatrix
 
     member this.ConvertSecondMatrixToCSR() =
-        secondMatrix <- this.FunCSC2CSR this.Processor secondMatrix
+        secondMatrix <- this.FunCSC2CSR this.Processor HostInterop secondMatrix
 
     abstract member GlobalSetup : unit -> unit
 

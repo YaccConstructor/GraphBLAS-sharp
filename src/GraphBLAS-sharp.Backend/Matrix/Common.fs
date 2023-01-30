@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 module Common =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize flag =
+    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let indicesScatter =
             Scatter.runInplace clContext workGroupSize
@@ -21,7 +21,7 @@ module Common =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) flag (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu

@@ -24,7 +24,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     if mtx.NNZCount > 0 then
         let actual =
             let mBefore = mtx.ToDevice context
-            let mAfter: ClMatrix<'a> = convertFun q mBefore
+            let mAfter: ClMatrix<'a> = convertFun q HostInterop mBefore
             let res = mAfter.ToHost q
             mBefore.Dispose q
             mAfter.Dispose q
@@ -51,7 +51,7 @@ let testFixtures formatTo =
 
     match formatTo with
     | COO ->
-        [ let convertFun = Matrix.toCOO context wgSize HostInterop
+        [ let convertFun = Matrix.toCOO context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map
@@ -59,7 +59,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCOO context wgSize HostInterop
+          let convertFun = Matrix.toCOO context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map
@@ -68,7 +68,7 @@ let testFixtures formatTo =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | CSR ->
-        [ let convertFun = Matrix.toCSR context wgSize HostInterop
+        [ let convertFun = Matrix.toCSR context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map
@@ -76,7 +76,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSR context wgSize HostInterop
+          let convertFun = Matrix.toCSR context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map
@@ -85,7 +85,7 @@ let testFixtures formatTo =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | CSC ->
-        [ let convertFun = Matrix.toCSC context wgSize HostInterop
+        [ let convertFun = Matrix.toCSC context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map
@@ -93,7 +93,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSC context wgSize HostInterop
+          let convertFun = Matrix.toCSC context wgSize
 
           listOfUnionCases<MatrixFormat>
           |> List.map

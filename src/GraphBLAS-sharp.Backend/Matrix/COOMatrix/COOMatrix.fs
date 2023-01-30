@@ -269,7 +269,6 @@ module COOMatrix =
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
-        flag
         =
 
         let merge = merge clContext workGroupSize
@@ -278,9 +277,9 @@ module COOMatrix =
             preparePositions clContext opAdd workGroupSize
 
         let setPositions =
-            Matrix.Common.setPositions<'c> clContext workGroupSize flag
+            Matrix.Common.setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
+        fun (queue: MailboxProcessor<_>) flag (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
@@ -299,7 +298,7 @@ module COOMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
             let resultRows, resultColumns, resultValues, resultLength =
-                setPositions queue allRows allColumns allValues rawPositions
+                setPositions queue flag allRows allColumns allValues rawPositions
 
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
@@ -314,28 +313,26 @@ module COOMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let getTuples (clContext: ClContext) workGroupSize flag =
+    let getTuples (clContext: ClContext) workGroupSize =
 
-        let copy =
-            ClArray.copy clContext workGroupSize flag
+        let copy = ClArray.copy clContext workGroupSize
 
-        let copyData =
-            ClArray.copy clContext workGroupSize flag
+        let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
 
-            let resultRows = copy processor matrix.Rows
+            let resultRows = copy processor flag matrix.Rows
 
-            let resultColumns = copy processor matrix.Columns
+            let resultColumns = copy processor flag matrix.Columns
 
-            let resultValues = copyData processor matrix.Values
+            let resultValues = copyData processor flag matrix.Values
 
             { Context = clContext
               RowIndices = resultRows
               ColumnIndices = resultColumns
               Values = resultValues }
 
-    let private compressRows (clContext: ClContext) workGroupSize flag =
+    let private compressRows (clContext: ClContext) workGroupSize =
 
         let compressRows =
             <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
@@ -350,16 +347,15 @@ module COOMatrix =
 
         let program = clContext.Compile(compressRows)
 
-        let create =
-            ClArray.create clContext workGroupSize flag
+        let create = ClArray.create clContext workGroupSize
 
         let scan =
             ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (rowIndices: ClArray<int>) rowCount ->
+        fun (processor: MailboxProcessor<_>) flag (rowIndices: ClArray<int>) rowCount ->
 
             let nnz = rowIndices.Length
-            let rowPointers = create processor (rowCount + 1) nnz
+            let rowPointers = create processor flag (rowCount + 1) nnz
 
             let kernel = program.GetKernel()
 
@@ -373,22 +369,19 @@ module COOMatrix =
 
             rowPointers
 
-    let toCSR (clContext: ClContext) workGroupSize flag =
-        let prepare =
-            compressRows clContext workGroupSize flag
+    let toCSR (clContext: ClContext) workGroupSize =
+        let prepare = compressRows clContext workGroupSize
 
-        let copy =
-            ClArray.copy clContext workGroupSize flag
+        let copy = ClArray.copy clContext workGroupSize
 
-        let copyData =
-            ClArray.copy clContext workGroupSize flag
+        let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
-                prepare processor matrix.Rows matrix.RowCount
+                prepare processor flag matrix.Rows matrix.RowCount
 
-            let cols = copy processor matrix.Columns
-            let vals = copyData processor matrix.Values
+            let cols = copy processor flag matrix.Columns
+            let vals = copyData processor flag matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount
@@ -397,13 +390,12 @@ module COOMatrix =
               Columns = cols
               Values = vals }
 
-    let toCSRInplace (clContext: ClContext) workGroupSize flag =
-        let prepare =
-            compressRows clContext workGroupSize flag
+    let toCSRInplace (clContext: ClContext) workGroupSize =
+        let prepare = compressRows clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
-                prepare processor matrix.Rows matrix.RowCount
+                prepare processor flag matrix.Rows matrix.RowCount
 
             processor.Post(Msg.CreateFreeMsg(matrix.Rows))
 
@@ -421,10 +413,9 @@ module COOMatrix =
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
-        flag
         =
 
-        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
@@ -441,22 +432,20 @@ module COOMatrix =
               Columns = matrix.Rows
               Values = matrix.Values }
 
-    let transpose (clContext: ClContext) workGroupSize flag =
+    let transpose (clContext: ClContext) workGroupSize =
 
         let transposeInplace = transposeInplace clContext workGroupSize
 
-        let copy =
-            ClArray.copy clContext workGroupSize flag
+        let copy = ClArray.copy clContext workGroupSize
 
-        let copyData =
-            ClArray.copy clContext workGroupSize flag
+        let copyData = ClArray.copy clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
+        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
 
             { Context = clContext
               RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
-              Rows = copy queue matrix.Rows
-              Columns = copy queue matrix.Columns
-              Values = copyData queue matrix.Values }
+              Rows = copy queue flag matrix.Rows
+              Columns = copy queue flag matrix.Columns
+              Values = copyData queue flag matrix.Values }
             |> transposeInplace queue

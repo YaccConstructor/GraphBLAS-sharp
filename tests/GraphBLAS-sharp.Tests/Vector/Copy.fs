@@ -38,7 +38,7 @@ let correctnessGenericTest<'a when 'a: struct>
     filter
     isEqual
     (isZero: 'a -> bool)
-    (copy: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'a>)
+    (copy: MailboxProcessor<Brahma.FSharp.Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (array: 'a [])
     =
@@ -52,7 +52,7 @@ let correctnessGenericTest<'a when 'a: struct>
             createVectorFromArray case.Format array isZero
 
         let clVector = expected.ToDevice context
-        let clVectorCopy = copy q clVector
+        let clVectorCopy = copy q HostInterop clVector
         let actual = clVectorCopy.ToHost q
 
         clVector.Dispose q
@@ -72,28 +72,28 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     let wgSize = 32
     let context = case.TestContext.ClContext
 
-    [ let intCopy = Vector.copy context wgSize HostInterop
+    [ let intCopy = Vector.copy context wgSize
       let isZero item = item = 0
 
       case
       |> correctnessGenericTest<int> id (=) isZero intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatCopy = Vector.copy context wgSize HostInterop
+      let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0.0
 
       case
       |> correctnessGenericTest<float> filterFloats (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolCopy = Vector.copy context wgSize HostInterop
+      let boolCopy = Vector.copy context wgSize
       let isZero item = item = true
 
       case
       |> correctnessGenericTest<bool> id (=) isZero boolCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let floatCopy = Vector.copy context wgSize HostInterop
+      let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0uy
 
       case

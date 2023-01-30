@@ -5,7 +5,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module ClArray =
-    let init (clContext: ClContext) workGroupSize flag (initializer: Expr<int -> 'a>) =
+    let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
 
         let init =
             <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) ->
@@ -17,7 +17,7 @@ module ClArray =
 
         let program = clContext.Compile(init)
 
-        fun (processor: MailboxProcessor<_>) (length: int) ->
+        fun (processor: MailboxProcessor<_>) flag (length: int) ->
             let outputArray =
                 clContext.CreateClArrayWithFlag(flag, length)
 
@@ -31,7 +31,7 @@ module ClArray =
 
             outputArray
 
-    let create (clContext: ClContext) workGroupSize flag =
+    let create (clContext: ClContext) workGroupSize =
 
         let create =
             <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) (value: ClCell<'a>) ->
@@ -43,7 +43,7 @@ module ClArray =
 
         let program = clContext.Compile(create)
 
-        fun (processor: MailboxProcessor<_>) (length: int) (value: 'a) ->
+        fun (processor: MailboxProcessor<_>) flag (length: int) (value: 'a) ->
             let value = clContext.CreateClCell(value)
 
             let outputArray =
@@ -60,13 +60,13 @@ module ClArray =
 
             outputArray
 
-    let zeroCreate (clContext: ClContext) workGroupSize flag =
+    let zeroCreate (clContext: ClContext) workGroupSize =
 
-        let create = create clContext workGroupSize flag
+        let create = create clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) length -> create processor length Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) flag length -> create processor flag length Unchecked.defaultof<'a>
 
-    let copy (clContext: ClContext) workGroupSize flag =
+    let copy (clContext: ClContext) workGroupSize =
         let copy =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
 
@@ -77,7 +77,7 @@ module ClArray =
 
         let program = clContext.Compile(copy)
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
@@ -94,7 +94,7 @@ module ClArray =
 
             outputArray
 
-    let replicate (clContext: ClContext) flag =
+    let replicate (clContext: ClContext) =
 
         let replicate =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength outputArrayLength ->
@@ -106,7 +106,7 @@ module ClArray =
 
         let kernel = clContext.Compile(replicate)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) count ->
+        fun (processor: MailboxProcessor<_>) flag workGroupSize (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
@@ -172,29 +172,29 @@ module ClArray =
     ///<param name="zero">Zero element for binary operation.</param>
     let prefixSumIncludeInplace = PrefixSum.runIncludeInplace
 
-    let prefixSumExclude plus (clContext: ClContext) workGroupSize flag =
+    let prefixSumExclude plus (clContext: ClContext) workGroupSize =
 
         let runExcludeInplace =
             prefixSumExcludeInplace plus clContext workGroupSize
 
-        let copy = copy clContext workGroupSize flag
+        let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-            let outputArray = copy processor inputArray
+            let outputArray = copy processor flag inputArray
 
             runExcludeInplace processor outputArray totalSum zero
 
-    let prefixSumInclude plus (clContext: ClContext) workGroupSize flag =
+    let prefixSumInclude plus (clContext: ClContext) workGroupSize =
 
         let runIncludeInplace =
             prefixSumIncludeInplace plus clContext workGroupSize
 
-        let copy = copy clContext workGroupSize flag
+        let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-            let outputArray = copy processor inputArray
+            let outputArray = copy processor flag inputArray
 
             runIncludeInplace processor outputArray totalSum zero
 
@@ -204,7 +204,7 @@ module ClArray =
     let prefixSumBackwardsIncludeInplace plus =
         PrefixSum.runBackwardsIncludeInplace plus
 
-    let getUniqueBitmap (clContext: ClContext) flag =
+    let getUniqueBitmap (clContext: ClContext) workGroupSize =
 
         let getUniqueBitmap =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
@@ -219,7 +219,7 @@ module ClArray =
 
         let kernel = clContext.Compile(getUniqueBitmap)
 
-        fun (processor: MailboxProcessor<_>) workGroupSize (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
 
             let inputLength = inputArray.Length
 
@@ -246,19 +246,20 @@ module ClArray =
         let scatter =
             Scatter.runInplace clContext workGroupSize
 
-        let getUniqueBitmap = getUniqueBitmap clContext DeviceOnly
+        let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
 
         let prefixSumExclude =
-            prefixSumExclude <@ (+) @> clContext workGroupSize DeviceOnly
+            prefixSumExclude <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let bitmap =
-                getUniqueBitmap processor workGroupSize inputArray
+                getUniqueBitmap processor DeviceOnly inputArray
 
             let sum = clContext.CreateClCell 0
 
-            let positions, sum = prefixSumExclude processor bitmap sum 0
+            let positions, sum =
+                prefixSumExclude processor DeviceOnly bitmap sum 0
 
             let resultLength =
                 let a = [| 0 |]
@@ -277,7 +278,7 @@ module ClArray =
 
             outputArray
 
-    let exists (clContext: ClContext) (workGroupSize: int) (predicate: Expr<'a -> bool>) =
+    let exists (clContext: ClContext) workGroupSize (predicate: Expr<'a -> bool>) =
 
         let exists =
             <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (result: ClCell<bool>) ->
@@ -306,10 +307,10 @@ module ClArray =
 
             result
 
-    let map<'a, 'b> (clContext: ClContext) workGroupSize flag (op: Expr<'a -> 'b>) =
+    let map<'a, 'b> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b>) =
 
         let map =
-            <@ fun (ndRange: Range1D) (lenght: int) (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
+            <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -318,7 +319,7 @@ module ClArray =
 
         let kernel = clContext.Compile map
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
 
             let result =
                 clContext.CreateClArrayWithFlag(flag, inputArray.Length)
