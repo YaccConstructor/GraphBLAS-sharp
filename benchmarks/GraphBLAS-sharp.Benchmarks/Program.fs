@@ -15,6 +15,8 @@ let main argv =
                              typeof<MxmBenchmarks4BoolWithTransposing>
                              typeof<VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer>
                              typeof<VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer>
+                             typeof<VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer>
+                             typeof<VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer>
                              //typeof<BFSBenchmarks>
                              //typeof<MxvBenchmarks>
                              //typeof<TransposeBenchmarks>
