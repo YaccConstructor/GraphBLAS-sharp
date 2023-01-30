@@ -88,7 +88,8 @@ module Vector =
                   Size = vector.Size }
                 |> ClVector.Sparse
             | ClVector.Dense vector ->
-                ClVector.Dense <| copyOptionData processor flag vector
+                ClVector.Dense
+                <| copyOptionData processor flag vector
 
     let mask = copy
 
