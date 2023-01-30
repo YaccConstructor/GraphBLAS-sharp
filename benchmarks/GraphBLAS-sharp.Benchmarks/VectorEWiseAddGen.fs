@@ -46,7 +46,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
-    [<Params(10000, 1000000, 100000000)>]
+    [<Params(10000, 1000000, 1000000)>]
     member val Size = Unchecked.defaultof<int> with get, set
 
     member this.OclContext: ClContext = (fst this.OclContextInfo).ClContext
