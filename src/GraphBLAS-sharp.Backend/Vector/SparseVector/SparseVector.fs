@@ -40,10 +40,10 @@ module SparseVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArrayWithFlag<'a>(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(allocationMode, resultLength)
 
             let resultIndices =
-                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
             valuesScatter processor positions allValues resultValues
 
@@ -61,13 +61,13 @@ module SparseVector =
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
 
             let resultBitmap =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, vectorLenght)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
             let resultIndices =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, vectorLenght)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
             let resultValues =
-                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, vectorLenght)
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
 
             let ndRange =
                 Range1D.CreateValid(vectorLenght, workGroupSize)
@@ -144,16 +144,16 @@ module SparseVector =
                 firstIndices.Length + secondIndices.Length
 
             let allIndices =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, sumOfSides)
 
             let firstResultValues =
-                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, sumOfSides)
 
             let secondResultValues =
-                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, sumOfSides)
 
             let isLeftBitmap =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, sumOfSides)
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)
@@ -196,10 +196,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)
@@ -269,10 +269,10 @@ module SparseVector =
             let length = allIndices.Length
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, length)
 
             let positions =
-                clContext.CreateClArrayWithFlag(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
             let ndRange =
                 Range1D.CreateValid(length, workGroupSize)

@@ -58,10 +58,10 @@ module COOMatrix =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rawPositionsGpu =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, length)
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, length)
 
             let kernel = kernel.GetKernel()
 
@@ -215,19 +215,19 @@ module COOMatrix =
             let sumOfSides = firstSide + secondSide
 
             let allRows =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, sumOfSides)
 
             let allColumns =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, sumOfSides)
 
             let leftMergedValues =
-                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, sumOfSides)
 
             let rightMergedValues =
-                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, sumOfSides)
 
             let isLeft =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, sumOfSides)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, sumOfSides)
 
             let ndRange =
                 Range1D.CreateValid(sumOfSides, workGroupSize)

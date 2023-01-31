@@ -35,14 +35,14 @@ module Common =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
 
             let resultColumns =
-                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
             let resultValues =
-                clContext.CreateClArrayWithFlag(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
             indicesScatter processor positions allRows resultRows
 

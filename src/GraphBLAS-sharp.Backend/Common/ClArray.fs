@@ -19,7 +19,7 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) allocationMode (length: int) ->
             let outputArray =
-                clContext.CreateClArrayWithFlag(allocationMode, length)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
 
             let kernel = program.GetKernel()
 
@@ -47,7 +47,7 @@ module ClArray =
             let value = clContext.CreateClCell(value)
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(allocationMode, length)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
 
             let kernel = program.GetKernel()
 
@@ -82,7 +82,7 @@ module ClArray =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(allocationMode, inputArray.Length)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
 
             let kernel = program.GetKernel()
 
@@ -110,7 +110,7 @@ module ClArray =
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(allocationMode, outputArrayLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, outputArrayLength)
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
@@ -227,7 +227,7 @@ module ClArray =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
             let bitmap =
-                clContext.CreateClArrayWithFlag(allocationMode, inputLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputLength)
 
             let kernel = kernel.GetKernel()
 
@@ -272,7 +272,7 @@ module ClArray =
                 a.[0]
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(DeviceOnly, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
             scatter processor positions inputArray outputArray
 
@@ -322,7 +322,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
 
             let result =
-                clContext.CreateClArrayWithFlag(allocationMode, inputArray.Length)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
 
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)

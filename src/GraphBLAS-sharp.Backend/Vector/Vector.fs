@@ -22,8 +22,8 @@ module Vector =
             | Sparse ->
                 ClVector.Sparse
                     { Context = clContext
-                      Indices = clContext.CreateClArrayWithFlag(allocationMode, [| 0 |])
-                      Values = clContext.CreateClArrayWithFlag(allocationMode, [| Unchecked.defaultof<'a> |])
+                      Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| 0 |])
+                      Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| Unchecked.defaultof<'a> |])
                       Size = size }
             | Dense -> ClVector.Dense <| zeroCreate processor allocationMode size
 
@@ -47,18 +47,18 @@ module Vector =
                     |> Array.unzip
 
                 { Context = clContext
-                  Indices = clContext.CreateClArrayWithFlag(allocationMode, indices)
-                  Values = clContext.CreateClArrayWithFlag(allocationMode, values)
+                  Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, indices)
+                  Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
                   Size = size }
                 |> ClVector.Sparse
             | Dense ->
                 let indices, values = elements |> Array.ofList |> Array.unzip
 
                 let values =
-                    clContext.CreateClArrayWithFlag(DeviceOnly, values)
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
 
                 let indices =
-                    clContext.CreateClArrayWithFlag(DeviceOnly, indices)
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, indices)
 
                 let mappedValues = map processor DeviceOnly values
 

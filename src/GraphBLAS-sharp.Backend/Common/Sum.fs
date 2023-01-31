@@ -17,12 +17,12 @@ module Reduce =
                 (inputArray.Length - 1) / workGroupSize + 1
 
             let firstVerticesArray =
-                clContext.CreateClArrayWithFlag(DeviceOnly, firstLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, firstLength)
 
             let secondLength = (firstLength - 1) / workGroupSize + 1
 
             let secondVerticesArray =
-                clContext.CreateClArrayWithFlag(DeviceOnly, secondLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, secondLength)
 
             let mutable verticesArrays = firstVerticesArray, secondVerticesArray
             let swap (a, b) = (b, a)
