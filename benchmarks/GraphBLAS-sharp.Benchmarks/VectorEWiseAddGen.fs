@@ -85,11 +85,14 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
 
     abstract member GlobalSetup : unit -> unit
 
+    abstract member IterationSetup: unit -> unit
+
+    abstract member Benchmark : unit -> unit
+
     abstract member IterationCleanup : unit -> unit
 
     abstract member GlobalCleanup : unit -> unit
 
-    abstract member Benchmark : unit -> unit
 
 type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
         buildFunToBenchmark,
@@ -100,22 +103,25 @@ type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
         generator)
 
     [<GlobalSetup>]
-    override this.GlobalSetup() =
+    override this.GlobalSetup() = ()
+
+    [<IterationSetup>]
+    override this.IterationSetup() =
         this.CreateVectors ()
         this.LoadVectorsToGPU ()
-
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearResult()
-
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () =
-        this.ClearInputVectors()
 
     [<Benchmark>]
     override this.Benchmark () =
         this.EWiseAddition()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+    [<IterationCleanup>]
+    override this.IterationCleanup () =
+        this.ClearResult()
+        this.ClearInputVectors()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() = ()
 
 type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
         buildFunToBenchmark,
@@ -126,16 +132,11 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
         generator)
 
     [<GlobalSetup>]
-    override this.GlobalSetup() =
+    override this.GlobalSetup() = ()
+
+    [<IterationSetup>]
+    override this.IterationSetup() =
         this.CreateVectors()
-
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () = ()
-
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearInputVectors()
-        this.ClearResult()
 
     [<Benchmark>]
     override this.Benchmark () =
@@ -145,34 +146,13 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
         this.ResultVector.ToHost this.Processor |> ignore
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
-module VectorGenerator =
-    let private pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) createVector =
-        gen {
-            let! length = Gen.sized <| fun size -> Gen.constant size
+    [<IterationCleanup>]
+    override this.IterationCleanup () =
+        this.ClearInputVectors()
+        this.ClearResult()
 
-            let! leftArray = Gen.arrayOfLength length valuesGenerator
-
-            let! rightArray = Gen.arrayOfLength length valuesGenerator
-
-            return (createVector leftArray, createVector rightArray)
-        }
-
-    let intPair format =
-        let createVector array = Utils.createVectorFromArray format array ((=) 0)
-
-        pairOfVectorsOfEqualSize Arb.generate<int32> createVector
-
-    let floatPair format =
-        let normalFloatGenerator =
-            (Arb.Default.NormalFloat()
-            |> Arb.toGen
-            |> Gen.map float)
-
-        let fIsEqual x y = abs (x - y) < Accuracy.medium.absolute || x = y
-
-        let createVector array = Utils.createVectorFromArray format array (fIsEqual 0.0)
-
-        pairOfVectorsOfEqualSize normalFloatGenerator createVector
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() = ()
 
 /// Without data transfer
 
