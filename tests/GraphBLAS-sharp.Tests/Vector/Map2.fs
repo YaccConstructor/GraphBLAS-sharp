@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Vector.Elementwise
+module GraphBLAS.FSharp.Tests.Backend.Vector.Map2
 
 open Expecto
 open Expecto.Logging
@@ -101,7 +101,7 @@ let addTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intAddFun =
-          Vector.elementwise context ArithmeticOperations.intSum wgSize
+          Vector.map2 context ArithmeticOperations.intSum wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -110,7 +110,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatAddFun =
-          Vector.elementwise context ArithmeticOperations.floatSum wgSize
+          Vector.map2 context ArithmeticOperations.floatSum wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -122,7 +122,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolAddFun =
-          Vector.elementwise context ArithmeticOperations.boolSum wgSize
+          Vector.map2 context ArithmeticOperations.boolSum wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -131,7 +131,7 @@ let addTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteAddFun =
-          Vector.elementwise context ArithmeticOperations.byteSum wgSize
+          Vector.map2 context ArithmeticOperations.byteSum wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -148,7 +148,7 @@ let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
     [ let intMulFun =
-          Vector.elementwise context ArithmeticOperations.intMul wgSize
+          Vector.map2 context ArithmeticOperations.intMul wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -157,7 +157,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
       let floatMulFun =
-          Vector.elementwise context ArithmeticOperations.floatMul wgSize
+          Vector.map2 context ArithmeticOperations.floatMul wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -169,7 +169,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolMulFun =
-          Vector.elementwise context ArithmeticOperations.boolMul wgSize
+          Vector.map2 context ArithmeticOperations.boolMul wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -178,7 +178,7 @@ let mulTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName case "bool" "bool" "bool")
 
       let byteMulFun =
-          Vector.elementwise context ArithmeticOperations.byteMul wgSize
+          Vector.map2 context ArithmeticOperations.byteMul wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -201,7 +201,7 @@ let addAtLeastOneTestFixtures case =
     [ let toCoo = Vector.toSparse context wgSize
 
       let intAddFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun toCoo
@@ -210,7 +210,7 @@ let addAtLeastOneTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatAddFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -222,7 +222,7 @@ let addAtLeastOneTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolAddFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToCoo
@@ -231,7 +231,7 @@ let addAtLeastOneTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteAddFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToCoo
@@ -253,7 +253,7 @@ let mulAtLeastOneTestFixtures case =
     [ let toCoo = Vector.toSparse context wgSize
 
       let intMulFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun toCoo
@@ -262,7 +262,7 @@ let mulAtLeastOneTestFixtures case =
       let floatToCoo = Vector.toSparse context wgSize
 
       let floatMulFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -274,7 +274,7 @@ let mulAtLeastOneTestFixtures case =
       let boolToCoo = Vector.toSparse context wgSize
 
       let boolMulFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToCoo
@@ -283,7 +283,7 @@ let mulAtLeastOneTestFixtures case =
       let byteToCoo = Vector.toSparse context wgSize
 
       let byteMulFun =
-          Vector.elementWiseAtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
+          Vector.map2AtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
 
       case
       |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToCoo
@@ -300,7 +300,7 @@ let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intAddFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.intSum wgSize
+          Vector.map2General context ArithmeticOperations.intSum wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -309,7 +309,7 @@ let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatAddFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.floatSum wgSize
+          Vector.map2General context ArithmeticOperations.floatSum wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -321,7 +321,7 @@ let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolAddFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.boolSum wgSize
+          Vector.map2General context ArithmeticOperations.boolSum wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -330,7 +330,7 @@ let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteAddFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.byteSum wgSize
+          Vector.map2General context ArithmeticOperations.byteSum wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -362,7 +362,7 @@ let mulGeneralTestFixtures case =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intMulFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.intMul wgSize
+          Vector.map2General context ArithmeticOperations.intMul wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -371,7 +371,7 @@ let mulGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMulFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.floatMul wgSize
+          Vector.map2General context ArithmeticOperations.floatMul wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -383,7 +383,7 @@ let mulGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMulFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.boolMul wgSize
+          Vector.map2General context ArithmeticOperations.boolMul wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -392,7 +392,7 @@ let mulGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMulFun =
-          Vector.elementwiseGeneral context ArithmeticOperations.byteMul wgSize
+          Vector.map2General context ArithmeticOperations.byteMul wgSize
 
       let byteToDense = Vector.toDense context wgSize
 
@@ -411,7 +411,7 @@ let complementedGeneralTestFixtures case =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     [ let intMaskFun =
-          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1) wgSize
+          Vector.map2General context (fillSubVectorComplementedQ 1) wgSize
 
       let intToDense = Vector.toDense context wgSize
 
@@ -420,7 +420,7 @@ let complementedGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
       let floatMaskFun =
-          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1.0) wgSize
+          Vector.map2General context (fillSubVectorComplementedQ 1.0) wgSize
 
       let fIsEqual =
           fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
@@ -441,7 +441,7 @@ let complementedGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolMaskFun =
-          Vector.elementwiseGeneral context (fillSubVectorComplementedQ true) wgSize
+          Vector.map2General context (fillSubVectorComplementedQ true) wgSize
 
       let boolToDense = Vector.toDense context wgSize
 
@@ -450,7 +450,7 @@ let complementedGeneralTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
 
       let byteMaskFun =
-          Vector.elementwiseGeneral context (fillSubVectorComplementedQ 1uy) wgSize
+          Vector.map2General context (fillSubVectorComplementedQ 1uy) wgSize
 
       let byteToDense = Vector.toDense context wgSize
 

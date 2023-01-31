@@ -28,7 +28,7 @@ module BFS =
         let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
-            DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
+            DenseVector.map2To clContext Mask.complementedMaskOp workGroupSize
 
         let fillSubVectorTo =
             DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize

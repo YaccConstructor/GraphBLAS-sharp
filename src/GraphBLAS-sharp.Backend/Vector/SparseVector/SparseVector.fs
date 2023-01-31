@@ -95,11 +95,7 @@ module SparseVector =
 
             resultBitmap, resultValues, resultIndices
 
-    let elementwiseGeneral<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
-        op
-        workGroupSize
-        =
+    let map2General<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
         let prepare =
             preparePositionsGeneral<'a, 'b, 'c> clContext workGroupSize op
@@ -219,7 +215,7 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let elementwise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
+    let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
         let merge = merge clContext workGroupSize
 
@@ -252,8 +248,8 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
-        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
+    let map2AtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
+        map2 clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)

@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module DenseVector =
-    let elementWiseTo<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let map2To<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -39,14 +39,13 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let elementwise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
 
-        let elementWiseTo =
-            elementWiseTo clContext opAdd workGroupSize
+        let elementWiseTo = map2To clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
             let resultVector =
@@ -56,8 +55,8 @@ module DenseVector =
 
             resultVector
 
-    let elementWiseAtLeastOne clContext op workGroupSize =
-        elementwise clContext (Convert.atLeastOneToOption op) workGroupSize
+    let map2AtLeastOne clContext op workGroupSize =
+        map2 clContext (Convert.atLeastOneToOption op) workGroupSize
 
     let fillSubVectorTo<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)

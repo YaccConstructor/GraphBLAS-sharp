@@ -127,12 +127,12 @@ module Vector =
                 ClVector.Dense
                 <| toDense processor allocationMode vector
 
-    let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addSparse =
-            SparseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
+            SparseVector.map2AtLeastOne clContext opAdd workGroupSize
 
         let addDense =
-            DenseVector.elementWiseAtLeastOne clContext opAdd workGroupSize
+            DenseVector.map2AtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -144,12 +144,12 @@ module Vector =
                 <| addDense processor allocationMode left right
             | _ -> failwith "Vector formats are not matching."
 
-    let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let addDense =
-            DenseVector.elementwise clContext opAdd workGroupSize
+            DenseVector.map2 clContext opAdd workGroupSize
 
         let addSparse =
-            SparseVector.elementwise clContext opAdd workGroupSize
+            SparseVector.map2 clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -161,17 +161,17 @@ module Vector =
                 <| addSparse processor allocationMode left right
             | _ -> failwith "Vector formats are not matching."
 
-    let elementwiseGeneral<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let map2General<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupsSize
         =
 
         let sparseEWise =
-            SparseVector.elementwiseGeneral clContext opAdd workGroupsSize
+            SparseVector.map2General clContext opAdd workGroupsSize
 
         let denseEWise =
-            DenseVector.elementwise clContext opAdd workGroupsSize
+            DenseVector.map2 clContext opAdd workGroupsSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
