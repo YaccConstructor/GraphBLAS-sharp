@@ -313,7 +313,7 @@ module SparseVector =
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
-                merge processor allocationMode leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
+                merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
 
             let allValues, positions =
                 prepare processor allIndices leftValues rightValues value isLeft
@@ -351,7 +351,8 @@ module SparseVector =
             ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
-            let resultVector = create processor allocationMode vector.Size
+            let resultVector =
+                create processor allocationMode vector.Size
 
             let ndRange =
                 Range1D.CreateValid(vector.Indices.Length, workGroupSize)

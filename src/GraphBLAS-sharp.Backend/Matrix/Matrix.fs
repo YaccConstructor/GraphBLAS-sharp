@@ -85,7 +85,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
-            | ClMatrix.COO m -> toCSRInplace processor allocationMode m |> ClMatrix.CSR
+            | ClMatrix.COO m ->
+                toCSRInplace processor allocationMode m
+                |> ClMatrix.CSR
             | ClMatrix.CSR _ -> matrix
             | ClMatrix.CSC m ->
                 { Context = m.Context
@@ -144,7 +146,9 @@ module Matrix =
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO _ -> matrix
-            | ClMatrix.CSR m -> toCOOInplace processor allocationMode m |> ClMatrix.COO
+            | ClMatrix.CSR m ->
+                toCOOInplace processor allocationMode m
+                |> ClMatrix.COO
             | ClMatrix.CSC m ->
 
                 { Context = m.Context
@@ -220,7 +224,8 @@ module Matrix =
             match matrix with
             | ClMatrix.CSC _ -> matrix
             | ClMatrix.CSR m ->
-                let csrT = transposeCSRInplace processor allocationMode m
+                let csrT =
+                    transposeCSRInplace processor allocationMode m
 
                 { Context = csrT.Context
                   RowCount = csrT.ColumnCount
@@ -469,7 +474,9 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix ->
             match matrix with
-            | ClMatrix.COO m -> COOtranspose processor allocationMode m |> ClMatrix.COO
+            | ClMatrix.COO m ->
+                COOtranspose processor allocationMode m
+                |> ClMatrix.COO
             | ClMatrix.CSR m ->
                 { Context = m.Context
                   RowCount = m.ColumnCount

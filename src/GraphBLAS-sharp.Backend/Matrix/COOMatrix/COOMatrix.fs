@@ -318,11 +318,14 @@ module COOMatrix =
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
 
-            let resultRows = copy processor allocationMode matrix.Rows
+            let resultRows =
+                copy processor allocationMode matrix.Rows
 
-            let resultColumns = copy processor allocationMode matrix.Columns
+            let resultColumns =
+                copy processor allocationMode matrix.Columns
 
-            let resultValues = copyData processor allocationMode matrix.Values
+            let resultValues =
+                copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowIndices = resultRows
@@ -352,7 +355,9 @@ module COOMatrix =
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
             let nnz = rowIndices.Length
-            let rowPointers = create processor allocationMode (rowCount + 1) nnz
+
+            let rowPointers =
+                create processor allocationMode (rowCount + 1) nnz
 
             let kernel = program.GetKernel()
 
@@ -377,8 +382,11 @@ module COOMatrix =
             let rowPointers =
                 prepare processor allocationMode matrix.Rows matrix.RowCount
 
-            let cols = copy processor allocationMode matrix.Columns
-            let vals = copyData processor allocationMode matrix.Values
+            let cols =
+                copy processor allocationMode matrix.Columns
+
+            let vals =
+                copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount

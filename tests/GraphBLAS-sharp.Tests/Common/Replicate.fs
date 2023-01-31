@@ -23,7 +23,7 @@ let testCases =
                 |> Array.filter (fun i -> array.Length % i = 0)
                 |> Array.max
 
-            replicate q HostInterop wgSize
+            replicate wgSize q HostInterop
 
     let makeTest getReplicateFun (array: array<'a>) filterFun i =
         if array.Length > 0 && i > 0 then

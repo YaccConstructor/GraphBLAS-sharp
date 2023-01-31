@@ -23,9 +23,15 @@ module Vector =
                 ClVector.Sparse
                     { Context = clContext
                       Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| 0 |])
-                      Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| Unchecked.defaultof<'a> |])
+                      Values =
+                          clContext.CreateClArrayWithSpecificAllocationMode(
+                              allocationMode,
+                              [| Unchecked.defaultof<'a> |]
+                          )
                       Size = size }
-            | Dense -> ClVector.Dense <| zeroCreate processor allocationMode size
+            | Dense ->
+                ClVector.Dense
+                <| zeroCreate processor allocationMode size
 
     let ofList (clContext: ClContext) workGroupSize =
         let scatter =
@@ -101,7 +107,9 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) ->
             match vector with
-            | ClVector.Dense vector -> ClVector.Sparse <| toSparse processor allocationMode vector
+            | ClVector.Dense vector ->
+                ClVector.Sparse
+                <| toSparse processor allocationMode vector
             | ClVector.Sparse _ -> copy processor allocationMode vector
 
     let toDense (clContext: ClContext) workGroupSize =
@@ -112,8 +120,12 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) ->
             match vector with
-            | ClVector.Dense vector -> ClVector.Dense <| copy processor allocationMode vector
-            | ClVector.Sparse vector -> ClVector.Dense <| toDense processor allocationMode vector
+            | ClVector.Dense vector ->
+                ClVector.Dense
+                <| copy processor allocationMode vector
+            | ClVector.Sparse vector ->
+                ClVector.Dense
+                <| toDense processor allocationMode vector
 
     let elementWiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let addSparse =
@@ -190,12 +202,14 @@ module Vector =
                 ClVector.Sparse
                 <| sparseFillVector processor allocationMode vector mask value
             | ClVector.Sparse vector, ClVector.Dense mask ->
-                let mask = toSparseMask processor allocationMode mask
+                let mask =
+                    toSparseMask processor allocationMode mask
 
                 ClVector.Sparse
                 <| sparseFillVector processor allocationMode vector mask value
             | ClVector.Dense vector, ClVector.Sparse mask ->
-                let vector = toSparseVector processor allocationMode vector
+                let vector =
+                    toSparseVector processor allocationMode vector
 
                 ClVector.Sparse
                 <| sparseFillVector processor allocationMode vector mask value
@@ -217,18 +231,23 @@ module Vector =
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
             match leftVector, maskVector with
             | ClVector.Sparse vector, ClVector.Sparse mask ->
-                let denseVector = vectorToDense processor allocationMode vector
-                let denseMask = maskToDense processor allocationMode mask
+                let denseVector =
+                    vectorToDense processor allocationMode vector
+
+                let denseMask =
+                    maskToDense processor allocationMode mask
 
                 ClVector.Dense
                 <| denseFillVector processor allocationMode denseVector denseMask value
             | ClVector.Dense vector, ClVector.Sparse mask ->
-                let denseMask = maskToDense processor allocationMode mask
+                let denseMask =
+                    maskToDense processor allocationMode mask
 
                 ClVector.Dense
                 <| denseFillVector processor allocationMode vector denseMask value
             | ClVector.Sparse vector, ClVector.Dense mask ->
-                let denseVector = vectorToDense processor allocationMode vector
+                let denseVector =
+                    vectorToDense processor allocationMode vector
 
                 ClVector.Dense
                 <| denseFillVector processor allocationMode denseVector mask value

@@ -61,8 +61,11 @@ module CSRMatrix =
             let rows =
                 prepare processor allocationMode matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
-            let cols = copy processor allocationMode matrix.Columns
-            let vals = copyData processor allocationMode matrix.Values
+            let cols =
+                copy processor allocationMode matrix.Columns
+
+            let vals =
+                copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount
@@ -117,7 +120,8 @@ module CSRMatrix =
                   Columns = m2.Columns
                   Values = m2.Values }
 
-            let m3COO = eWiseCOO processor allocationMode m1COO m2COO
+            let m3COO =
+                eWiseCOO processor allocationMode m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
