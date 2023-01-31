@@ -38,7 +38,7 @@
         <Compile Include="Vector/SpMV.fs" />
         <Compile Include="Algorithms/BFS.fs" />
         <Compile Include="Matrix/Convert.fs" />
-        <Compile Include="Matrix/Elementwise.fs" />
+        <Compile Include="Matrix\Map2.fs" />
         <Compile Include="Matrix/Mxm.fs" />
         <Compile Include="Matrix/Transpose.fs" />
         <Compile Include="Program.fs" />

@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Matrix.CSR.Elementwise
+open GraphBLAS.FSharp.Backend.Matrix.CSR.Map2
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Matrix.COO
@@ -92,13 +92,13 @@ module CSRMatrix =
               Values = matrix.Values }
 
     ///<remarks>Old version</remarks>
-    let elementwiseWithCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let map2WithCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
 
         let prepareRows =
             expandRowPointers clContext workGroupSize
 
         let eWiseCOO =
-            COOMatrix.elementwise clContext opAdd workGroupSize
+            COOMatrix.map2 clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
@@ -129,13 +129,9 @@ module CSRMatrix =
             toCSRInplace processor allocationMode m3COO
 
     ///<remarks>Old version</remarks>
-    let elementwiseAtLeastOneWithCOO
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        workGroupSize
-        =
+    let map2AtLeastOneWithCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
 
-        elementwiseWithCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        map2WithCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let transposeInplace (clContext: ClContext) workGroupSize =
 
@@ -167,7 +163,7 @@ module CSRMatrix =
             |> transposeInplace queue
             |> toCSRInplace queue allocationMode
 
-    let elementwiseToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let map2ToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -216,14 +212,13 @@ module CSRMatrix =
               Columns = resultColumns
               Values = resultValues }
 
-    let elementwise<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
 
-        let elementwiseToCOO =
-            elementwiseToCOO clContext opAdd workGroupSize
+        let elementwiseToCOO = map2ToCOO clContext opAdd workGroupSize
 
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
@@ -232,21 +227,21 @@ module CSRMatrix =
             elementwiseToCOO queue allocationMode matrixLeft matrixRight
             |> toCSRInplace queue allocationMode
 
-    let elementwiseAtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let map2AtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
         =
 
-        elementwiseToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        map2ToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
-    let elementwiseAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
         =
 
-        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        map2 clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let spgemmCSC
         (clContext: ClContext)

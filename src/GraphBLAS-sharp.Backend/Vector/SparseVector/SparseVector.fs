@@ -56,7 +56,7 @@ module SparseVector =
 
         let kernel =
             clContext.Compile
-            <| Elementwise.preparePositionsGeneral opAdd
+            <| Map2.preparePositionsGeneral opAdd
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
 
@@ -128,7 +128,7 @@ module SparseVector =
     let private merge<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
 
         let kernel =
-            clContext.Compile(Elementwise.merge workGroupSize)
+            clContext.Compile(Map2.merge workGroupSize)
 
         fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
 
@@ -185,7 +185,7 @@ module SparseVector =
         =
 
         let kernel =
-            clContext.Compile(Elementwise.preparePositions op)
+            clContext.Compile(Map2.preparePositions op)
 
         fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
 
@@ -258,7 +258,7 @@ module SparseVector =
         =
 
         let kernel =
-            clContext.Compile(Elementwise.prepareFillVector op)
+            clContext.Compile(Map2.prepareFillVector op)
 
         fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) ->
 

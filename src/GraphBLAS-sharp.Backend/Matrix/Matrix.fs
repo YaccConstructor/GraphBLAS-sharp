@@ -247,12 +247,12 @@ module Matrix =
                   Values = csrT.Values }
                 |> ClMatrix.CSC
 
-    let elementwise (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOElementwise =
-            COOMatrix.elementwise clContext opAdd workGroupSize
+            COOMatrix.map2 clContext opAdd workGroupSize
 
         let CSRElementwise =
-            CSRMatrix.elementwise clContext opAdd workGroupSize
+            CSRMatrix.map2 clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
@@ -291,12 +291,12 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 
-    let elementwiseToCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let map2ToCOO (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let COOElementwise =
-            COOMatrix.elementwise clContext opAdd workGroupSize
+            COOMatrix.map2 clContext opAdd workGroupSize
 
         let CSRElementwise =
-            CSRMatrix.elementwiseToCOO clContext opAdd workGroupSize
+            CSRMatrix.map2ToCOO clContext opAdd workGroupSize
 
         let transposeCOOInplace =
             COOMatrix.transposeInplace clContext workGroupSize
@@ -331,12 +331,12 @@ module Matrix =
                 |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
-    let elementwiseAtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let COOElementwise =
-            COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
+            COOMatrix.map2AtLeastOne clContext opAdd workGroupSize
 
         let CSRElementwise =
-            CSRMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
+            CSRMatrix.map2AtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
@@ -375,12 +375,12 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 
-    let elementwiseAtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let map2AtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let COOElementwise =
-            COOMatrix.elementwiseAtLeastOne clContext opAdd workGroupSize
+            COOMatrix.map2AtLeastOne clContext opAdd workGroupSize
 
         let CSRElementwise =
-            CSRMatrix.elementwiseAtLeastOneToCOO clContext opAdd workGroupSize
+            CSRMatrix.map2AtLeastOneToCOO clContext opAdd workGroupSize
 
         let transposeCOOInplace =
             COOMatrix.transposeInplace clContext workGroupSize

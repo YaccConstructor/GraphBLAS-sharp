@@ -4,7 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open FSharp.Quotations
 
-module Elementwise =
+module Map2 =
     let binSearch<'a> =
         <@ fun lenght sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
 
