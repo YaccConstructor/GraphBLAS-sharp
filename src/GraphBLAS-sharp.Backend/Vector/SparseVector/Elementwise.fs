@@ -14,12 +14,9 @@ module Elementwise =
             let localID = ndRange.LocalID0
 
             if localID < 2 then
-                let mutable x = localID * (workGroupSize - 1) + i - 1
+                let x = localID * (workGroupSize - 1) + i - 1
 
-                if x >= sumOfSides then
-                    x <- sumOfSides - 1
-
-                let diagonalNumber = x
+                let diagonalNumber = min (sumOfSides - 1) x
 
                 let mutable leftEdge = diagonalNumber + 1 - secondSide
                 leftEdge <- max 0 leftEdge
