@@ -25,7 +25,7 @@ module SparseVector =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) flag (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
             let resultLengthGpu = clContext.CreateClCell 0
 
@@ -40,10 +40,10 @@ module SparseVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArrayWithFlag<'a>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<'a>(allocationMode, resultLength)
 
             let resultIndices =
-                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
 
             valuesScatter processor positions allValues resultValues
 
@@ -106,7 +106,7 @@ module SparseVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
             let bitmap, allValues, allIndices =
                 prepare
@@ -118,7 +118,7 @@ module SparseVector =
                     rightVector.Indices
 
             let resultValues, resultIndices =
-                setPositions processor flag allValues allIndices bitmap
+                setPositions processor allocationMode allValues allIndices bitmap
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -134,7 +134,7 @@ module SparseVector =
         let kernel =
             clContext.Compile(Elementwise.merge workGroupSize)
 
-        fun (processor: MailboxProcessor<_>) flag (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
+        fun (processor: MailboxProcessor<_>) (firstIndices: ClArray<int>) (firstValues: ClArray<'a>) (secondIndices: ClArray<int>) (secondValues: ClArray<'b>) ->
 
             let firstSide = firstIndices.Length
 
@@ -228,10 +228,10 @@ module SparseVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
-                merge processor flag leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
+                merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
 
             let allValues, positions =
                 prepare processor allIndices leftValues rightValues isLeft
@@ -241,7 +241,7 @@ module SparseVector =
             processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
             let resultValues, resultIndices =
-                setPositions processor flag allValues allIndices positions
+                setPositions processor allocationMode allValues allIndices positions
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -252,8 +252,8 @@ module SparseVector =
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
 
-    let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize flag =
-        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize flag
+    let elementWiseAtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
+        elementwise clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
 
     let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -310,10 +310,10 @@ module SparseVector =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
             let allIndices, leftValues, rightValues, isLeft =
-                merge processor flag leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
+                merge processor allocationMode leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
 
             let allValues, positions =
                 prepare processor allIndices leftValues rightValues value isLeft
@@ -323,7 +323,7 @@ module SparseVector =
             processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
             let resultValues, resultIndices =
-                setPositions processor flag allValues allIndices positions
+                setPositions processor allocationMode allValues allIndices positions
 
             processor.Post(Msg.CreateFreeMsg<_>(allIndices))
             processor.Post(Msg.CreateFreeMsg<_>(allValues))
@@ -350,8 +350,8 @@ module SparseVector =
         let create =
             ClArray.zeroCreate clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (vector: ClVector.Sparse<'a>) ->
-            let resultVector = create processor flag vector.Size
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
+            let resultVector = create processor allocationMode vector.Size
 
             let ndRange =
                 Range1D.CreateValid(vector.Indices.Length, workGroupSize)

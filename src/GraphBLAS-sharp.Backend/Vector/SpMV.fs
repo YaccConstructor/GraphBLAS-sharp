@@ -149,10 +149,10 @@ module SpMV =
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
-                clContext.CreateClArrayWithFlag<'b option>(flag, matrix.RowCount)
+                clContext.CreateClArrayWithFlag<'b option>(allocationMode, matrix.RowCount)
 
             runTo queue matrix vector result
 

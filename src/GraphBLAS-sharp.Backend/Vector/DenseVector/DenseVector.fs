@@ -48,9 +48,9 @@ module DenseVector =
         let elementWiseTo =
             elementWiseTo clContext opAdd workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
             let resultVector =
-                clContext.CreateClArrayWithFlag(flag, leftVector.Length)
+                clContext.CreateClArrayWithFlag(allocationMode, leftVector.Length)
 
             elementWiseTo processor leftVector rightVector resultVector
 
@@ -98,9 +98,9 @@ module DenseVector =
         let fillSubVectorTo =
             fillSubVectorTo clContext maskOp workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultVector =
-                clContext.CreateClArrayWithFlag(flag, leftVector.Length)
+                clContext.CreateClArrayWithFlag(allocationMode, leftVector.Length)
 
             fillSubVectorTo processor leftVector maskVector value resultVector
 
@@ -123,9 +123,9 @@ module DenseVector =
 
         let kernel = clContext.Compile(getPositions)
 
-        fun (processor: MailboxProcessor<_>) flag (vector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
             let positions =
-                clContext.CreateClArrayWithFlag(flag, vector.Length)
+                clContext.CreateClArrayWithFlag(allocationMode, vector.Length)
 
             let ndRange =
                 Range1D.CreateValid(vector.Length, workGroupSize)
@@ -165,7 +165,7 @@ module DenseVector =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) flag (vector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
             let positions = getPositions processor DeviceOnly vector
 
@@ -183,10 +183,10 @@ module DenseVector =
                 res.[0]
 
             let resultValues =
-                clContext.CreateClArrayWithFlag<'a>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<'a>(allocationMode, resultLength)
 
             let resultIndices =
-                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
 
             let ndRange =
                 Range1D.CreateValid(vector.Length, workGroupSize)
@@ -209,10 +209,10 @@ module DenseVector =
         let getValuesAndIndices =
             getValuesAndIndices clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (vector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
             let values, indices =
-                getValuesAndIndices processor flag vector
+                getValuesAndIndices processor allocationMode vector
 
             { Context = clContext
               Indices = indices

@@ -17,9 +17,9 @@ module ClArray =
 
         let program = clContext.Compile(init)
 
-        fun (processor: MailboxProcessor<_>) flag (length: int) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (length: int) ->
             let outputArray =
-                clContext.CreateClArrayWithFlag(flag, length)
+                clContext.CreateClArrayWithFlag(allocationMode, length)
 
             let kernel = program.GetKernel()
 
@@ -43,11 +43,11 @@ module ClArray =
 
         let program = clContext.Compile(create)
 
-        fun (processor: MailboxProcessor<_>) flag (length: int) (value: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (length: int) (value: 'a) ->
             let value = clContext.CreateClCell(value)
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(flag, length)
+                clContext.CreateClArrayWithFlag(allocationMode, length)
 
             let kernel = program.GetKernel()
 
@@ -64,7 +64,7 @@ module ClArray =
 
         let create = create clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag length -> create processor flag length Unchecked.defaultof<'a>
+        fun (processor: MailboxProcessor<_>) allocationMode length -> create processor allocationMode length Unchecked.defaultof<'a>
 
     let copy (clContext: ClContext) workGroupSize =
         let copy =
@@ -77,12 +77,12 @@ module ClArray =
 
         let program = clContext.Compile(copy)
 
-        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(flag, inputArray.Length)
+                clContext.CreateClArrayWithFlag(allocationMode, inputArray.Length)
 
             let kernel = program.GetKernel()
 
@@ -94,7 +94,7 @@ module ClArray =
 
             outputArray
 
-    let replicate (clContext: ClContext) =
+    let replicate (clContext: ClContext) workGroupSize =
 
         let replicate =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength outputArrayLength ->
@@ -106,11 +106,11 @@ module ClArray =
 
         let kernel = clContext.Compile(replicate)
 
-        fun (processor: MailboxProcessor<_>) flag workGroupSize (inputArray: ClArray<'a>) count ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) count ->
             let outputArrayLength = inputArray.Length * count
 
             let outputArray =
-                clContext.CreateClArrayWithFlag(flag, outputArrayLength)
+                clContext.CreateClArrayWithFlag(allocationMode, outputArrayLength)
 
             let ndRange =
                 Range1D.CreateValid(outputArray.Length, workGroupSize)
@@ -179,9 +179,9 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-            let outputArray = copy processor flag inputArray
+            let outputArray = copy processor allocationMode inputArray
 
             runExcludeInplace processor outputArray totalSum zero
 
@@ -192,9 +192,9 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
 
-            let outputArray = copy processor flag inputArray
+            let outputArray = copy processor allocationMode inputArray
 
             runIncludeInplace processor outputArray totalSum zero
 
@@ -219,7 +219,7 @@ module ClArray =
 
         let kernel = clContext.Compile(getUniqueBitmap)
 
-        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
 
             let inputLength = inputArray.Length
 
@@ -227,7 +227,7 @@ module ClArray =
                 Range1D.CreateValid(inputLength, workGroupSize)
 
             let bitmap =
-                clContext.CreateClArrayWithFlag(flag, inputLength)
+                clContext.CreateClArrayWithFlag(allocationMode, inputLength)
 
             let kernel = kernel.GetKernel()
 
@@ -319,10 +319,10 @@ module ClArray =
 
         let kernel = clContext.Compile map
 
-        fun (processor: MailboxProcessor<_>) flag (inputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
 
             let result =
-                clContext.CreateClArrayWithFlag(flag, inputArray.Length)
+                clContext.CreateClArrayWithFlag(allocationMode, inputArray.Length)
 
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)

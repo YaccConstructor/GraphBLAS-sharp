@@ -21,7 +21,7 @@ module Common =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) flag (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
@@ -35,14 +35,14 @@ module Common =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
 
 
             let resultColumns =
-                clContext.CreateClArrayWithFlag<int>(flag, resultLength)
+                clContext.CreateClArrayWithFlag<int>(allocationMode, resultLength)
 
             let resultValues =
-                clContext.CreateClArrayWithFlag(flag, resultLength)
+                clContext.CreateClArrayWithFlag(allocationMode, resultLength)
 
             indicesScatter processor positions allRows resultRows
 

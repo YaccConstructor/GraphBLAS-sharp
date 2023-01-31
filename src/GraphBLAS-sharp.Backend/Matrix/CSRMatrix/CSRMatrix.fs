@@ -31,9 +31,9 @@ module CSRMatrix =
         let scan =
             ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (rowPointers: ClArray<int>) nnz rowCount ->
+        fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
 
-            let rows = create processor flag nnz 0
+            let rows = create processor allocationMode nnz 0
 
             let kernel = program.GetKernel()
 
@@ -57,12 +57,12 @@ module CSRMatrix =
 
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =
-                prepare processor flag matrix.RowPointers matrix.Columns.Length matrix.RowCount
+                prepare processor allocationMode matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
-            let cols = copy processor flag matrix.Columns
-            let vals = copyData processor flag matrix.Values
+            let cols = copy processor allocationMode matrix.Columns
+            let vals = copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount
@@ -75,9 +75,9 @@ module CSRMatrix =
         let prepare =
             expandRowPointers clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =
-                prepare processor flag matrix.RowPointers matrix.Columns.Length matrix.RowCount
+                prepare processor allocationMode matrix.RowPointers matrix.Columns.Length matrix.RowCount
 
             processor.Post(Msg.CreateFreeMsg(matrix.RowPointers))
 
@@ -100,12 +100,12 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (m1: ClMatrix.CSR<'a>) (m2: ClMatrix.CSR<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (m1: ClMatrix.CSR<'a>) (m2: ClMatrix.CSR<'b>) ->
             let m1COO =
                 { Context = clContext
                   RowCount = m1.RowCount
                   ColumnCount = m1.ColumnCount
-                  Rows = prepareRows processor flag m1.RowPointers m1.Values.Length m1.RowCount
+                  Rows = prepareRows processor allocationMode m1.RowPointers m1.Values.Length m1.RowCount
                   Columns = m1.Columns
                   Values = m1.Values }
 
@@ -113,16 +113,16 @@ module CSRMatrix =
                 { Context = clContext
                   RowCount = m2.RowCount
                   ColumnCount = m2.ColumnCount
-                  Rows = prepareRows processor flag m2.RowPointers m2.Values.Length m2.RowCount
+                  Rows = prepareRows processor allocationMode m2.RowPointers m2.Values.Length m2.RowCount
                   Columns = m2.Columns
                   Values = m2.Values }
 
-            let m3COO = eWiseCOO processor flag m1COO m2COO
+            let m3COO = eWiseCOO processor allocationMode m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))
 
-            toCSRInplace processor flag m3COO
+            toCSRInplace processor allocationMode m3COO
 
     ///<remarks>Old version</remarks>
     let elementwiseAtLeastOneWithCOO
@@ -143,10 +143,10 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) ->
-            toCOOInplace queue flag matrix
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+            toCOOInplace queue allocationMode matrix
             |> transposeInplace queue
-            |> toCSRInplace queue flag
+            |> toCSRInplace queue allocationMode
 
     let transpose (clContext: ClContext) workGroupSize =
 
@@ -158,10 +158,10 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.CSR<'a>) ->
-            toCOO queue flag matrix
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+            toCOO queue allocationMode matrix
             |> transposeInplace queue
-            |> toCSRInplace queue flag
+            |> toCSRInplace queue allocationMode
 
     let elementwiseToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -177,7 +177,7 @@ module CSRMatrix =
         let setPositions =
             Matrix.Common.setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
                 merge
@@ -196,7 +196,7 @@ module CSRMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
             let resultRows, resultColumns, resultValues, _ =
-                setPositions queue flag allRows allColumns allValues positions
+                setPositions queue allocationMode allRows allColumns allValues positions
 
             queue.Post(Msg.CreateFreeMsg<_>(allRows))
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
@@ -224,9 +224,9 @@ module CSRMatrix =
         let toCSRInplace =
             COOMatrix.toCSRInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-            elementwiseToCOO queue flag matrixLeft matrixRight
-            |> toCSRInplace queue flag
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+            elementwiseToCOO queue allocationMode matrixLeft matrixRight
+            |> toCSRInplace queue allocationMode
 
     let elementwiseAtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)

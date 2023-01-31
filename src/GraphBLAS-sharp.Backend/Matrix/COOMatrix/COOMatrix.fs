@@ -276,7 +276,7 @@ module COOMatrix =
         let setPositions =
             Matrix.Common.setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 
             let allRows, allColumns, leftMergedValues, rightMergedValues, isLeft =
                 merge
@@ -294,8 +294,8 @@ module COOMatrix =
             queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
             queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
 
-            let resultRows, resultColumns, resultValues, resultLength =
-                setPositions queue flag allRows allColumns allValues rawPositions
+            let resultRows, resultColumns, resultValues, _ =
+                setPositions queue allocationMode allRows allColumns allValues rawPositions
 
             queue.Post(Msg.CreateFreeMsg<_>(isLeft))
             queue.Post(Msg.CreateFreeMsg<_>(rawPositions))
@@ -316,13 +316,13 @@ module COOMatrix =
 
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
 
-            let resultRows = copy processor flag matrix.Rows
+            let resultRows = copy processor allocationMode matrix.Rows
 
-            let resultColumns = copy processor flag matrix.Columns
+            let resultColumns = copy processor allocationMode matrix.Columns
 
-            let resultValues = copyData processor flag matrix.Values
+            let resultValues = copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowIndices = resultRows
@@ -349,10 +349,10 @@ module COOMatrix =
         let scan =
             ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (rowIndices: ClArray<int>) rowCount ->
+        fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
             let nnz = rowIndices.Length
-            let rowPointers = create processor flag (rowCount + 1) nnz
+            let rowPointers = create processor allocationMode (rowCount + 1) nnz
 
             let kernel = program.GetKernel()
 
@@ -373,12 +373,12 @@ module COOMatrix =
 
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
-                prepare processor flag matrix.Rows matrix.RowCount
+                prepare processor allocationMode matrix.Rows matrix.RowCount
 
-            let cols = copy processor flag matrix.Columns
-            let vals = copyData processor flag matrix.Values
+            let cols = copy processor allocationMode matrix.Columns
+            let vals = copyData processor allocationMode matrix.Values
 
             { Context = clContext
               RowCount = matrix.RowCount
@@ -390,9 +390,9 @@ module COOMatrix =
     let toCSRInplace (clContext: ClContext) workGroupSize =
         let prepare = compressRows clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
             let rowPointers =
-                prepare processor flag matrix.Rows matrix.RowCount
+                prepare processor allocationMode matrix.Rows matrix.RowCount
 
             processor.Post(Msg.CreateFreeMsg(matrix.Rows))
 
@@ -437,12 +437,12 @@ module COOMatrix =
 
         let copyData = ClArray.copy clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) flag (matrix: ClMatrix.COO<'a>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
 
             { Context = clContext
               RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
-              Rows = copy queue flag matrix.Rows
-              Columns = copy queue flag matrix.Columns
-              Values = copyData queue flag matrix.Values }
+              Rows = copy queue allocationMode matrix.Rows
+              Columns = copy queue allocationMode matrix.Columns
+              Values = copyData queue allocationMode matrix.Values }
             |> transposeInplace queue
