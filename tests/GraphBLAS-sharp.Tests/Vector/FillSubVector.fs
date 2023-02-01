@@ -20,22 +20,14 @@ let alwaysTrue _ = true
 
 let notNane x = not <| Double.IsNaN x
 
-let checkResult
-    isZero
-    isComplemented
-    (actual: Vector<'a>)
-    (vector: 'a [])
-    (mask: 'a [])
-    (value: 'a)
-    =
+let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask: 'a []) (value: 'a) =
 
     let expectedArray = Array.zeroCreate vector.Length
 
     let (Vector.Dense vector) =
         createVectorFromArray Dense vector isZero
 
-    let (Vector.Dense mask) =
-        createVectorFromArray Dense mask isZero
+    let (Vector.Dense mask) = createVectorFromArray Dense mask isZero
 
     for i in 0 .. vector.Length - 1 do
         expectedArray.[i] <-
@@ -52,7 +44,7 @@ let checkResult
     | Vector.Dense actual -> Expect.equal actual expectedArray "Arrays must be equals"
     | _ -> failwith "Vector format must be Dense."
 
-let makeTest<'a when 'a: struct and 'a : equality>
+let makeTest<'a when 'a: struct and 'a: equality>
     (isZero: 'a -> bool)
     isValueCompatible
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
@@ -106,7 +98,8 @@ let testFixtures case =
     let context = case.TestContext.ClContext
 
     let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute || x.Equals(y)
+        abs (x - y) < Accuracy.medium.absolute
+        || x.Equals(y)
 
     let isComplemented = false
 
@@ -196,7 +189,7 @@ let testFixturesComplemented case =
       let boolToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill  isComplemented
+      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =

@@ -260,7 +260,7 @@ module SparseVector =
         let kernel =
             clContext.Compile(Map2.prepareFillGeneral op)
 
-        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>)->
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) ->
 
             let resultBitmap =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
@@ -301,11 +301,7 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
-        (clContext: ClContext)
-        op
-        workGroupSize
-        =
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
 
         let prepare =
             preparePositionsFillSubVector clContext op workGroupSize
@@ -315,7 +311,14 @@ module SparseVector =
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
             let bitmap, values, indices =
-                prepare processor leftVector.Size leftVector.Values leftVector.Indices rightVector.Values rightVector.Indices value
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
+                    value
 
             let resultValues, resultIndices =
                 setPositions processor allocationMode values indices bitmap
