@@ -258,20 +258,21 @@ module SparseVector =
         =
 
         let kernel =
-            clContext.Compile(Map2.prepareFillVector op)
+            clContext.Compile(Map2.prepareFillGeneral op)
 
-        fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>)->
 
-            let length = allIndices.Length
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-            let allValues =
-                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, length)
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-            let positions =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, vectorLenght)
 
             let ndRange =
-                Range1D.CreateValid(length, workGroupSize)
+                Range1D.CreateValid(vectorLenght, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -280,26 +281,31 @@ module SparseVector =
                     (fun () ->
                         kernel.KernelFunc
                             ndRange
-                            length
-                            allIndices
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
                             leftValues
+                            leftIndices
                             rightValues
+                            rightIndices
                             value
-                            isLeft
-                            allValues
-                            positions)
+                            resultBitmap
+                            resultValues
+                            resultIndices)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            allValues, positions
+            resultBitmap, resultValues, resultIndices
 
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
-
-        let merge = merge clContext workGroupSize
+    let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
 
         let prepare =
             preparePositionsFillSubVector clContext op workGroupSize
@@ -308,27 +314,20 @@ module SparseVector =
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
-            let allIndices, leftValues, rightValues, isLeft =
-                merge processor leftVector.Indices leftVector.Values rightVector.Indices rightVector.Values
-
-            let allValues, positions =
-                prepare processor allIndices leftValues rightValues value isLeft
-
-            processor.Post(Msg.CreateFreeMsg<_>(leftValues))
-            processor.Post(Msg.CreateFreeMsg<_>(rightValues))
-            processor.Post(Msg.CreateFreeMsg<_>(isLeft))
+            let bitmap, values, indices =
+                prepare processor leftVector.Size leftVector.Values leftVector.Indices rightVector.Values rightVector.Indices value
 
             let resultValues, resultIndices =
-                setPositions processor allocationMode allValues allIndices positions
+                setPositions processor allocationMode values indices bitmap
 
-            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-            processor.Post(Msg.CreateFreeMsg<_>(allValues))
-            processor.Post(Msg.CreateFreeMsg<_>(positions))
+            processor.Post(Msg.CreateFreeMsg<_>(indices))
+            processor.Post(Msg.CreateFreeMsg<_>(values))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
 
             { Context = clContext
               Values = resultValues
               Indices = resultIndices
-              Size = max leftVector.Size rightVector.Size }
+              Size = rightVector.Size }
 
     let toDense (clContext: ClContext) workGroupSize =
 

@@ -1,5 +1,6 @@
 module GraphBLAS.FSharp.Tests.Backend.Vector.FillSubVector
 
+open System
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
@@ -15,82 +16,64 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.fillSubVector.Tests"
 
-let clContext = Context.defaultContext.ClContext
+let alwaysTrue _ = true
 
-let NNZCount array isZero =
-    Array.filter (fun item -> not <| isZero item) array
-    |> Array.length
-
-let complemented isComplemented value =
-    if isComplemented then
-        not value
-    else
-        value
+let notNane x = not <| Double.IsNaN x
 
 let checkResult
-    (resultIsEqual: 'a -> 'a -> bool)
-    (maskIsEqual: 'b -> 'b -> bool)
-    vectorZero
-    maskZero
+    isZero
     isComplemented
     (actual: Vector<'a>)
     (vector: 'a [])
-    (mask: 'b [])
+    (mask: 'a [])
     (value: 'a)
     =
 
-    let expectedArray = Array.create vector.Length vectorZero
+    let expectedArray = Array.zeroCreate vector.Length
 
-    let complemented = complemented isComplemented
+    let (Vector.Dense vector) =
+        createVectorFromArray Dense vector isZero
+
+    let (Vector.Dense mask) =
+        createVectorFromArray Dense mask isZero
 
     for i in 0 .. vector.Length - 1 do
-        if complemented (not <| maskIsEqual mask.[i] maskZero) then
-            expectedArray.[i] <- value
-        else
-            expectedArray.[i] <- vector.[i]
+        expectedArray.[i] <-
+            if isComplemented then
+                match vector.[i], mask.[i] with
+                | _, None -> Some value
+                | _ -> vector.[i]
+            else
+                match vector.[i], mask.[i] with
+                | _, Some _ -> Some value
+                | _ -> vector.[i]
 
     match actual with
-    | Vector.Sparse actual ->
-        let actualArray = Array.create vector.Length vectorZero
+    | Vector.Dense actual -> Expect.equal actual expectedArray "Arrays must be equals"
+    | _ -> failwith "Vector format must be Dense."
 
-        for i in 0 .. actual.Indices.Length - 1 do
-            actualArray.[actual.Indices.[i]] <- actual.Values.[i]
-
-        "arrays must have the same values and length"
-        |> compareArrays resultIsEqual actualArray expectedArray
-    | _ -> failwith "Vector format must be Sparse."
-
-let makeTest<'a, 'b when 'a: struct and 'b: struct>
-    vectorIsEqual
-    maskIsEqual
-    vectorZero
-    maskZero
-    (toCoo: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'b> -> ClCell<'a> -> ClVector<'a>)
-    (isValueValid: 'a -> bool)
+let makeTest<'a when 'a: struct and 'a : equality>
+    (isZero: 'a -> bool)
+    isValueCompatible
+    (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
+    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
     isComplemented
     case
-    (vector: 'a [], mask: 'b [])
+    (vector: 'a [], mask: 'a [])
     (value: 'a)
     =
 
-    let vectorNNZ =
-        NNZCount vector (vectorIsEqual vectorZero)
-
-    let maskNNZ = NNZCount mask (maskIsEqual maskZero)
-
-    if vectorNNZ > 0 && maskNNZ > 0 && isValueValid value then
+    if isValueCompatible value then
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
 
         let leftVector =
-            createVectorFromArray case.Format vector (vectorIsEqual vectorZero)
+            createVectorFromArray case.Format vector isZero
 
         let maskVector =
-            createVectorFromArray case.Format mask (maskIsEqual maskZero)
+            createVectorFromArray case.Format mask isZero
 
         let clLeftVector = leftVector.ToDevice context
-
         let clMaskVector = maskVector.ToDevice context
 
         try
@@ -99,7 +82,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
             let clActual =
                 fillVector q HostInterop clLeftVector clMaskVector clValue
 
-            let cooClActual = toCoo q HostInterop clActual
+            let cooClActual = toDense q HostInterop clActual
 
             let actual = cooClActual.ToHost q
 
@@ -108,7 +91,7 @@ let makeTest<'a, 'b when 'a: struct and 'b: struct>
             clActual.Dispose q
             cooClActual.Dispose q
 
-            checkResult vectorIsEqual maskIsEqual vectorZero maskZero isComplemented actual vector mask value
+            checkResult isZero isComplemented actual vector mask value
         with
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
@@ -123,44 +106,44 @@ let testFixtures case =
     let context = case.TestContext.ClContext
 
     let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute || x = y
+        abs (x - y) < Accuracy.medium.absolute || x.Equals(y)
 
     let isComplemented = false
 
     [ let intFill =
           Vector.standardFillSubVector context wgSize
 
-      let intToCoo = Vector.toSparse context wgSize
+      let intToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
+      |> makeTest ((=) 0) alwaysTrue intToCoo intFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
           Vector.standardFillSubVector context wgSize
 
-      let floatToCoo = Vector.toSparse context wgSize
+      let floatToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
+      |> makeTest (floatIsEqual 0.0) notNane floatToCoo floatFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
           Vector.standardFillSubVector context wgSize
 
-      let byteToCoo = Vector.toSparse context wgSize
+      let byteToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
+      |> makeTest ((=) 0uy) alwaysTrue byteToCoo byteFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
           Vector.standardFillSubVector context wgSize
 
-      let boolToCoo = Vector.toSparse context wgSize
+      let boolToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
+      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
@@ -183,37 +166,37 @@ let testFixturesComplemented case =
     [ let intFill =
           Vector.standardFillSubVectorComplemented context wgSize
 
-      let intToCoo = Vector.toSparse context wgSize
+      let intToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) 0 0 intToCoo intFill (fun _ -> true) isComplemented
+      |> makeTest ((=) 0) alwaysTrue intToCoo intFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
           Vector.standardFillSubVectorComplemented context wgSize
 
-      let floatToCoo = Vector.toSparse context wgSize
+      let floatToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest floatIsEqual floatIsEqual 0.0 0.0 floatToCoo floatFill System.Double.IsNormal isComplemented
+      |> makeTest (floatIsEqual 0.0) notNane floatToCoo floatFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
           Vector.standardFillSubVectorComplemented context wgSize
 
-      let byteToCoo = Vector.toSparse context wgSize
+      let byteToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) 0uy 0uy byteToCoo byteFill (fun _ -> true) isComplemented
+      |> makeTest ((=) 0uy) alwaysTrue byteToCoo byteFill isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
           Vector.standardFillSubVectorComplemented context wgSize
 
-      let boolToCoo = Vector.toSparse context wgSize
+      let boolToCoo = Vector.toDense context wgSize
 
       case
-      |> makeTest (=) (=) false false boolToCoo boolFill (fun _ -> true) isComplemented
+      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill  isComplemented
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =

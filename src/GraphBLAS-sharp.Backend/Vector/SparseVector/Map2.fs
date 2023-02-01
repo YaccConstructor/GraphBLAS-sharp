@@ -29,11 +29,11 @@ module Map2 =
             result @>
 
     let preparePositionsGeneral (op: Expr<'a option -> 'b option -> 'c option>) =
-        <@ fun (ndRange: Range1D) vectorLength leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+        <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
             let gid = ndRange.GlobalID0
 
-            if gid < vectorLength then
+            if gid < length then
 
                 let (leftValue: 'a option) =
                     (%binSearch) leftValuesLength gid leftIndices leftValues
@@ -48,6 +48,29 @@ module Map2 =
 
                     resultBitmap.[gid] <- 1
                 | None -> resultBitmap.[gid] <- 0 @>
+
+    let prepareFillGeneral op =
+        <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+
+            let gid = ndRange.GlobalID0
+
+            let value = value.Value
+
+            if gid < length then
+
+                let (leftValue: 'a option) =
+                    (%binSearch) leftValuesLength gid leftIndices leftValues
+
+                let (rightValue: 'b option) =
+                    (%binSearch) rightValuesLength gid rightIndices rightValues
+
+                match (%op) leftValue rightValue value with
+                | Some value ->
+                    resultValues.[gid] <- value
+                    resultIndices.[gid] <- gid
+
+                    resultBitmap.[gid] <- 1
+                | None -> resultBitmap.[gid] <- 0     @>
 
     let merge workGroupSize =
         <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
@@ -157,31 +180,6 @@ module Map2 =
                     allIndicesBuffer.[i] <- fstIdx
                     firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
                     isLeftBitMap.[i] <- 1 @>
-
-    let prepareFillVector opAdd =
-        <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (value: ClCell<'a>) (isLeft: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-
-            let gid = ndRange.GlobalID0
-
-            let value = value.Value
-
-            if gid < length - 1
-               && allIndices.[gid] = allIndices.[gid + 1] then
-                let result =
-                    (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1]) value
-
-                (%PreparePositions.both) gid result positions allValues
-            elif (gid < length
-                  && gid > 0
-                  && allIndices.[gid - 1] <> allIndices.[gid])
-                 || gid = 0 then
-                let leftResult =
-                    (%opAdd) (Some leftValues.[gid]) None value
-
-                let rightResult =
-                    (%opAdd) None (Some rightValues.[gid]) value
-
-                (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>
 
     let preparePositions opAdd =
         <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
