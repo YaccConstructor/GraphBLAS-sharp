@@ -28,10 +28,10 @@ module BFS =
         let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
-            DenseVector.map2To clContext Mask.complementedMaskOp workGroupSize
+            DenseVector.map2Inplace clContext Mask.complementedOp workGroupSize
 
         let fillSubVectorTo =
-            DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
+            DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
 
         let containsNonZero =
             ClArray.exists clContext workGroupSize Predicates.isSome

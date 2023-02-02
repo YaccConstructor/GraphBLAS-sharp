@@ -251,14 +251,14 @@ module SparseVector =
     let map2AtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
         map2 clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
 
-    let private preparePositionsFillSubVector<'a, 'b when 'a: struct and 'b: struct>
+    let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         op
         workGroupSize
         =
 
         let kernel =
-            clContext.Compile(Map2.prepareFillGeneral op)
+            clContext.Compile(Map2.prepareAssign op)
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) ->
 
@@ -301,10 +301,10 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
+    let assignByMask<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
 
         let prepare =
-            preparePositionsFillSubVector clContext op workGroupSize
+            preparePositionsAssignByMask clContext op workGroupSize
 
         let setPositions = setPositions clContext workGroupSize
 

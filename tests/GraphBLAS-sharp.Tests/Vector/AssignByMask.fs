@@ -1,9 +1,10 @@
-module GraphBLAS.FSharp.Tests.Backend.Vector.FillSubVector
+module GraphBLAS.FSharp.Tests.Backend.Vector.AssignByMask
 
 open System
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
@@ -104,7 +105,7 @@ let testFixtures case =
     let isComplemented = false
 
     [ let intFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.assignByMask context Mask.assign wgSize
 
       let intToCoo = Vector.toDense context wgSize
 
@@ -113,7 +114,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.assignByMask context Mask.assign wgSize
 
       let floatToCoo = Vector.toDense context wgSize
 
@@ -122,7 +123,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.assignByMask context Mask.assign wgSize
 
       let byteToCoo = Vector.toDense context wgSize
 
@@ -131,7 +132,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVector context wgSize
+          Vector.assignByMask context Mask.assign wgSize
 
       let boolToCoo = Vector.toDense context wgSize
 
@@ -157,7 +158,7 @@ let testFixturesComplemented case =
     let isComplemented = true
 
     [ let intFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.assignByMaskComplemented context Mask.assign wgSize
 
       let intToCoo = Vector.toDense context wgSize
 
@@ -166,7 +167,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.assignByMaskComplemented context Mask.assign wgSize
 
       let floatToCoo = Vector.toDense context wgSize
 
@@ -175,7 +176,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.assignByMaskComplemented context Mask.assign wgSize
 
       let byteToCoo = Vector.toDense context wgSize
 
@@ -184,7 +185,7 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let boolFill =
-          Vector.standardFillSubVectorComplemented context wgSize
+          Vector.assignByMaskComplemented context Mask.assign wgSize
 
       let boolToCoo = Vector.toDense context wgSize
 

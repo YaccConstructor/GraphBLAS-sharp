@@ -9,13 +9,13 @@ open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module DenseVector =
-    let map2To<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let map2Inplace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
 
-        let elementWise =
+        let map2 =
             <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
                 let gid = ndRange.GlobalID0
@@ -23,7 +23,7 @@ module DenseVector =
                 if gid < resultLength then
                     resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
 
-        let kernel = clContext.Compile(elementWise)
+        let kernel = clContext.Compile(map2)
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
@@ -45,7 +45,8 @@ module DenseVector =
         workGroupSize
         =
 
-        let elementWiseTo = map2To clContext opAdd workGroupSize
+        let elementWiseTo =
+            map2Inplace clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
             let resultVector =
@@ -58,7 +59,7 @@ module DenseVector =
     let map2AtLeastOne clContext op workGroupSize =
         map2 clContext (Convert.atLeastOneToOption op) workGroupSize
 
-    let fillSubVectorTo<'a, 'b when 'a: struct and 'b: struct>
+    let assignByMaskInplace<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
         workGroupSize
@@ -88,25 +89,22 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct>
+    let assignByMask<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
         workGroupSize
         =
 
-        let fillSubVectorTo =
-            fillSubVectorTo clContext maskOp workGroupSize
+        let assignByMask =
+            assignByMaskInplace clContext maskOp workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultVector =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftVector.Length)
 
-            fillSubVectorTo processor leftVector maskVector value resultVector
+            assignByMask processor leftVector maskVector value resultVector
 
             resultVector
-
-    let standardFillSubVectorTo<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
-        fillSubVectorTo<'a, 'b> clContext (Convert.fillSubToOption Mask.fillSubOp<'a>) workGroupSize
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 

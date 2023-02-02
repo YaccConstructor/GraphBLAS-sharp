@@ -49,7 +49,7 @@ module Map2 =
                     resultBitmap.[gid] <- 1
                 | None -> resultBitmap.[gid] <- 0 @>
 
-    let prepareFillGeneral op =
+    let prepareAssign op =
         <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
             let gid = ndRange.GlobalID0

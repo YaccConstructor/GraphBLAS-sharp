@@ -42,8 +42,8 @@ let vectorTests =
           Vector.Map2.addGeneralTests
           Vector.Map2.mulGeneralTests
           Vector.Map2.complementedGeneralTests
-          Vector.FillSubVector.tests
-          Vector.FillSubVector.complementedTests
+          Vector.AssignByMask.tests
+          Vector.AssignByMask.complementedTests
           Vector.Reduce.tests ]
     |> testSequenced
 

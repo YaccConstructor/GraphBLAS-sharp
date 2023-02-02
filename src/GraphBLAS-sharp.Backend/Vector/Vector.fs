@@ -127,23 +127,6 @@ module Vector =
                 ClVector.Dense
                 <| toDense processor allocationMode vector
 
-    let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
-        let addSparse =
-            SparseVector.map2AtLeastOne clContext opAdd workGroupSize
-
-        let addDense =
-            DenseVector.map2AtLeastOne clContext opAdd workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
-            match leftVector, rightVector with
-            | ClVector.Sparse left, ClVector.Sparse right ->
-                ClVector.Sparse
-                <| addSparse processor allocationMode left right
-            | ClVector.Dense left, ClVector.Dense right ->
-                ClVector.Dense
-                <| addDense processor allocationMode left right
-            | _ -> failwith "Vector formats are not matching."
-
     let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let addDense =
             DenseVector.map2 clContext opAdd workGroupSize
@@ -159,6 +142,23 @@ module Vector =
             | ClVector.Sparse left, ClVector.Sparse right ->
                 ClVector.Sparse
                 <| addSparse processor allocationMode left right
+            | _ -> failwith "Vector formats are not matching."
+
+    let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+        let addSparse =
+            SparseVector.map2AtLeastOne clContext opAdd workGroupSize
+
+        let addDense =
+            DenseVector.map2AtLeastOne clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVector.Sparse left, ClVector.Sparse right ->
+                ClVector.Sparse
+                <| addSparse processor allocationMode left right
+            | ClVector.Dense left, ClVector.Dense right ->
+                ClVector.Dense
+                <| addDense processor allocationMode left right
             | _ -> failwith "Vector formats are not matching."
 
     let map2General<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -183,12 +183,13 @@ module Vector =
                 <| denseEWise processor allocationMode left right
             | _ -> failwith "Vector formats are not matching."
 
-    let fillSubVector<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) workGroupSize =
+    let private assignByMaskGeneral<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
+
         let sparseFillVector =
-            SparseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
+            SparseVector.assignByMask clContext op workGroupSize
 
         let denseFillVector =
-            DenseVector.fillSubVector clContext (Convert.fillSubToOption maskOp) workGroupSize
+            DenseVector.assignByMask clContext op workGroupSize
 
         let toSparseVector =
             DenseVector.toSparse clContext workGroupSize
@@ -196,8 +197,8 @@ module Vector =
         let toSparseMask =
             DenseVector.toSparse clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
-            match vector, maskVector with
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: ClCell<'a>) ->
+            match vector, mask with
             | ClVector.Sparse vector, ClVector.Sparse mask ->
                 ClVector.Sparse
                 <| sparseFillVector processor allocationMode vector mask value
@@ -217,48 +218,11 @@ module Vector =
                 ClVector.Dense
                 <| denseFillVector processor allocationMode vector mask value
 
-    let fillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> maskOp (clContext: ClContext) workGroupSize =
+    let assignByMask<'a, 'b when 'a: struct and 'b: struct> clContext op workGroupSize =
+        assignByMaskGeneral<'a, 'b> clContext (Convert.assignToOption op) workGroupSize
 
-        let denseFillVector =
-            DenseVector.fillSubVector clContext (Convert.fillSubComplementedToOption maskOp) workGroupSize
-
-        let vectorToDense =
-            SparseVector.toDense clContext workGroupSize
-
-        let maskToDense =
-            SparseVector.toDense clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (maskVector: ClVector<'b>) (value: ClCell<'a>) ->
-            match leftVector, maskVector with
-            | ClVector.Sparse vector, ClVector.Sparse mask ->
-                let denseVector =
-                    vectorToDense processor allocationMode vector
-
-                let denseMask =
-                    maskToDense processor allocationMode mask
-
-                ClVector.Dense
-                <| denseFillVector processor allocationMode denseVector denseMask value
-            | ClVector.Dense vector, ClVector.Sparse mask ->
-                let denseMask =
-                    maskToDense processor allocationMode mask
-
-                ClVector.Dense
-                <| denseFillVector processor allocationMode vector denseMask value
-            | ClVector.Sparse vector, ClVector.Dense mask ->
-                let denseVector =
-                    vectorToDense processor allocationMode vector
-
-                ClVector.Dense
-                <| denseFillVector processor allocationMode denseVector mask value
-            | ClVector.Dense vector, ClVector.Dense mask ->
-                ClVector.Dense
-                <| denseFillVector processor allocationMode vector mask value
-
-    let standardFillSubVector<'a, 'b when 'a: struct and 'b: struct> = fillSubVector<'a, 'b> Mask.fillSubOp<'a>
-
-    let standardFillSubVectorComplemented<'a, 'b when 'a: struct and 'b: struct> =
-        fillSubVectorComplemented<'a, 'b> Mask.fillSubOp<'a>
+    let assignByMaskComplemented<'a, 'b when 'a: struct and 'b: struct> clContext op workGroupSize =
+        assignByMaskGeneral<'a, 'b> clContext (Convert.assignComplementedToOption op) workGroupSize
 
     let reduce (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =
