@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-module internal Elementwise =
+module internal Map2 =
     let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
@@ -45,10 +45,10 @@ module internal Elementwise =
                 Range1D.CreateValid(length, workGroupSize)
 
             let rowPositions =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, length)
 
             let allValues =
-                clContext.CreateClArrayWithFlag<'c>(DeviceOnly, length)
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, length)
 
             let kernel = kernel.GetKernel()
 
@@ -232,22 +232,22 @@ module internal Elementwise =
             let resLength = firstLength + secondLength
 
             let allRows =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resLength)
 
             let allColumns =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resLength)
 
             let leftMergedValues =
-                clContext.CreateClArrayWithFlag<'a>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, resLength)
 
             let rightMergedValues =
-                clContext.CreateClArrayWithFlag<'b>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, resLength)
 
             let isEndOfRow =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resLength)
 
             let isLeft =
-                clContext.CreateClArrayWithFlag<int>(DeviceOnly, resLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resLength)
 
             let ndRange =
                 Range1D.CreateValid((matrixLeftRowPointers.Length - 1) * workGroupSize, workGroupSize)

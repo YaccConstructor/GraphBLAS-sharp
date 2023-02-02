@@ -106,7 +106,7 @@ module SpMV =
                 Range1D.CreateValid(matrix.RowCount, workGroupSize)
 
             let intermediateArray =
-                clContext.CreateClArrayWithFlag<'c option>(DeviceOnly, matrixLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<'c option>(DeviceOnly, matrixLength)
 
             let multiplyValues = multiplyValues.GetKernel()
 
@@ -146,14 +146,13 @@ module SpMV =
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
-        flag
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
-                clContext.CreateClArrayWithFlag<'b option>(flag, matrix.RowCount)
+                clContext.CreateClArrayWithSpecificAllocationMode<'b option>(allocationMode, matrix.RowCount)
 
             runTo queue matrix vector result
 

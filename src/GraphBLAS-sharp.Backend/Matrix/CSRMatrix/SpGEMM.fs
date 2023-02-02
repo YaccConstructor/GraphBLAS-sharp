@@ -110,10 +110,10 @@ module internal SpGEMM =
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
 
             let values =
-                context.CreateClArrayWithFlag<'c>(DeviceOnly, mask.NNZ)
+                context.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, mask.NNZ)
 
             let bitmap =
-                context.CreateClArrayWithFlag<int>(DeviceOnly, mask.NNZ)
+                context.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, mask.NNZ)
 
             let kernel = program.GetKernel()
 

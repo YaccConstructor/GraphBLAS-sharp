@@ -35,11 +35,11 @@
     <!--Compile Include="Matrices.fs" /-->
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
-    <Compile Include="Matrix/CSRMatrix/Elementwise.fs" />
+    <Compile Include="Matrix/CSRMatrix/Map2.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix/Matrix.fs" />
-    <Compile Include="Vector/SparseVector/Elementwise.fs" />
+    <Compile Include="Vector/SparseVector/Map2.fs" />
     <Compile Include="Vector/SparseVector/SparseVector.fs" />
     <Compile Include="Vector/DenseVector/DenseVector.fs" />
     <Compile Include="Vector/Vector.fs" />

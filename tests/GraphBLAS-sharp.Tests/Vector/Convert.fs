@@ -23,7 +23,13 @@ let NNZCount array isZero =
     Array.filter (fun item -> not <| isZero item) array
     |> Array.length
 
-let makeTest formatFrom (convertFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>) isZero case (array: 'a []) =
+let makeTest
+    formatFrom
+    (convertFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
+    isZero
+    case
+    (array: 'a [])
+    =
     if array.Length > 0 && NNZCount array isZero > 0 then
         let context = case.TestContext.ClContext
         let q = case.TestContext.Queue
@@ -33,7 +39,7 @@ let makeTest formatFrom (convertFun: MailboxProcessor<_> -> ClVector<'a> -> ClVe
 
         let actual =
             let clVector = vector.ToDevice context
-            let convertedVector = convertFun q clVector
+            let convertedVector = convertFun q HostInterop clVector
 
             let res = convertedVector.ToHost q
 
@@ -63,8 +69,7 @@ let testFixtures case =
 
     match case.Format with
     | Sparse ->
-        [ let convertFun =
-              Vector.toSparse context wgSize HostInterop
+        [ let convertFun = Vector.toSparse context wgSize
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -72,8 +77,7 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun =
-              Vector.toSparse context wgSize HostInterop
+          let convertFun = Vector.toSparse context wgSize
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -82,8 +86,7 @@ let testFixtures case =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | Dense ->
-        [ let convertFun =
-              Vector.toDense context wgSize HostInterop
+        [ let convertFun = Vector.toDense context wgSize
 
           listOfUnionCases<VectorFormat>
           |> List.map
@@ -91,8 +94,7 @@ let testFixtures case =
                   makeTest formatFrom convertFun ((=) 0) case
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun =
-              Vector.toDense context wgSize HostInterop
+          let convertFun = Vector.toDense context wgSize
 
           listOfUnionCases<VectorFormat>
           |> List.map

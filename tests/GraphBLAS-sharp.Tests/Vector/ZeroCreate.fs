@@ -28,7 +28,7 @@ let checkResult size (actual: Vector<'a>) =
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
-    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClVector<'a>)
+    (zeroCreate: MailboxProcessor<_> -> AllocationFlag -> int -> VectorFormat -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (vectorSize: int)
     =
@@ -36,7 +36,8 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     if vectorSize > 0 then
         let q = case.TestContext.Queue
 
-        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.Format
+        let (clVector: ClVector<'a>) =
+            zeroCreate q HostInterop vectorSize case.Format
 
         let hostVector = clVector.ToHost q
 
@@ -57,30 +58,26 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intZeroCreate =
-          Vector.zeroCreate context wgSize HostInterop
+    [ let intZeroCreate = Vector.zeroCreate context wgSize
 
       case
       |> correctnessGenericTest intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let byteZeroCreat =
-          Vector.zeroCreate context wgSize HostInterop
+      let byteZeroCreat = Vector.zeroCreate context wgSize
 
       case
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
 
-      let floatZeroCreate =
-          Vector.zeroCreate context wgSize HostInterop
+      let floatZeroCreate = Vector.zeroCreate context wgSize
 
       case
       |> correctnessGenericTest floatZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      let boolZeroCreate =
-          Vector.zeroCreate context wgSize HostInterop
+      let boolZeroCreate = Vector.zeroCreate context wgSize
 
       case
       |> correctnessGenericTest boolZeroCreate

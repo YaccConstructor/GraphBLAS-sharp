@@ -33,8 +33,8 @@ let checkResult
 
 let correctnessGenericTest<'a when 'a: struct>
     (isEqual: 'a -> 'a -> bool)
-    (ofList: MailboxProcessor<_> -> VectorFormat -> int -> (int * 'a) list -> ClVector<'a>)
-    (toCoo: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>)
+    (ofList: MailboxProcessor<_> -> AllocationFlag -> VectorFormat -> int -> (int * 'a) list -> ClVector<'a>)
+    (toCoo: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (elements: (int * 'a) [])
     (sizeDelta: int)
@@ -55,9 +55,10 @@ let correctnessGenericTest<'a when 'a: struct>
 
         let actualSize = (Array.max indices) + abs sizeDelta + 1
 
-        let clActual = ofList q case.Format actualSize elements
+        let clActual =
+            ofList q HostInterop case.Format actualSize elements
 
-        let clCooActual = toCoo q clActual
+        let clCooActual = toCoo q HostInterop clActual
 
         let actual = clCooActual.ToHost q
 
@@ -79,38 +80,34 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case.Format
 
-      let boolOfList = Vector.ofList context wgSize HostInterop
+      let boolOfList = Vector.ofList context wgSize
 
-      let toCoo =
-          Vector.toSparse context wgSize HostInterop
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<bool> (=) boolOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
-      let intOfList = Vector.ofList context wgSize HostInterop
+      let intOfList = Vector.ofList context wgSize
 
-      let toCoo =
-          Vector.toSparse context wgSize HostInterop
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<int> (=) intOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
 
-      let byteOfList = Vector.ofList context wgSize HostInterop
+      let byteOfList = Vector.ofList context wgSize
 
-      let toCoo =
-          Vector.toSparse context wgSize HostInterop
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<byte> (=) byteOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let floatOfList = Vector.ofList context wgSize HostInterop
+      let floatOfList = Vector.ofList context wgSize
 
-      let toCoo =
-          Vector.toSparse context wgSize HostInterop
+      let toCoo = Vector.toSparse context wgSize
 
       case
       |> correctnessGenericTest<byte> (=) floatOfList toCoo
