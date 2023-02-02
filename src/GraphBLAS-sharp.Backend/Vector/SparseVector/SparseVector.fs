@@ -257,8 +257,7 @@ module SparseVector =
         workGroupSize
         =
 
-        let kernel =
-            clContext.Compile(Map2.prepareAssign op)
+        let kernel = clContext.Compile(Map2.prepareAssign op)
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) ->
 
