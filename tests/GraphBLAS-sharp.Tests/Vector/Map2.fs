@@ -508,7 +508,7 @@ let addWithValueTestFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let addWithValueGeneralTests =
-    operationGPUTests "Backend.Vector.addMap2AddWitValue mask tests" addWithValueTestFixtures
+    operationGPUTests "Backend.Vector.addMap2WitValue mask tests" addWithValueTestFixtures
 
 let mulWithValueTestFixtures case =
     let wgSize = 32
@@ -557,4 +557,4 @@ let mulWithValueTestFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
 
 let mulWithValueGeneralTests =
-    operationGPUTests "Backend.Vector.mulMap2AddWitValue mask tests" mulWithValueTestFixtures
+    operationGPUTests "Backend.Vector.mulMap2WitValue mask tests" mulWithValueTestFixtures

@@ -15,7 +15,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Vector.fillSubVector.Tests"
+let logger = Log.create "Vector.assignByMask.Tests"
 
 let alwaysTrue _ = true
 
@@ -141,7 +141,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    operationGPUTests "Backend.Vector.fillSubVector tests" testFixtures
+    operationGPUTests "Backend.Vector.assignByMask tests" testFixtures
 
 let testFixturesComplemented case =
     let config = defaultConfig
@@ -194,4 +194,4 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =
-    operationGPUTests "Backend.Vector.fillSubVectorComplemented tests" testFixturesComplemented
+    operationGPUTests "Backend.Vector.assignByMaskComplemented tests" testFixturesComplemented
