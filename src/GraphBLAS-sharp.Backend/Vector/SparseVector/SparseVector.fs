@@ -331,6 +331,95 @@ module SparseVector =
               Indices = resultIndices
               Size = rightVector.Size }
 
+    let private prepareMap2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c : struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
+
+        let kernel = clContext.Compile(Map2.prepareAssignGeneral op)
+
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'c option>) ->
+
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
+
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftIndices
+                            rightValues
+                            rightIndices
+                            value
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultBitmap, resultValues, resultIndices
+
+    ///<param name="clContext">.</param>
+    ///<param name="op">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2WithValue<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
+
+        let prepare =
+            prepareMap2WithValue clContext op workGroupSize
+
+        let setPositions = setPositions clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a option>) ->
+
+            let bitmap, values, indices =
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
+                    value
+
+            let resultValues, resultIndices =
+                setPositions processor allocationMode values indices bitmap
+
+            processor.Post(Msg.CreateFreeMsg<_>(indices))
+            processor.Post(Msg.CreateFreeMsg<_>(values))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+
+            { Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = rightVector.Size }
+
+    let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToMap2 op) workGroupSize
+
+    let assignByMaskWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMask op) workGroupSize
+
+    let assignByMaskComplementedWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMaskComplemented op) workGroupSize
+
     let toDense (clContext: ClContext) workGroupSize =
 
         let toDense =

@@ -72,6 +72,30 @@ module Map2 =
                     resultBitmap.[gid] <- 1
                 | None -> resultBitmap.[gid] <- 0 @>
 
+
+    let prepareAssignGeneral op =
+        <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'c option>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+
+            let gid = ndRange.GlobalID0
+
+            let optionValue = value.Value
+
+            if gid < length then
+
+                let (leftValue: 'a option) =
+                    (%binSearch) leftValuesLength gid leftIndices leftValues
+
+                let (rightValue: 'b option) =
+                    (%binSearch) rightValuesLength gid rightIndices rightValues
+
+                match (%op) leftValue rightValue optionValue with
+                | Some value ->
+                    resultValues.[gid] <- value
+                    resultIndices.[gid] <- gid
+
+                    resultBitmap.[gid] <- 1
+                | None -> resultBitmap.[gid] <- 0 @>
+
     let merge workGroupSize =
         <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
 

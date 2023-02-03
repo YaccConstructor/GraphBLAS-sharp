@@ -24,3 +24,19 @@ module Convert =
             | Some _ -> (%op) leftItem None
             | None -> (%op) leftItem (Some value) @>
 
+    let map2WithValueToMap2 (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (_: 'a option) ->
+            (%op) leftItem rightItem @>
+
+    let map2WithValueToAssignByMask (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (optionValue: 'b option) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem optionValue
+            | None -> (%op) leftItem None @>
+
+    let map2WithValueToAssignByMaskComplemented (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (optionValue: 'b option) ->
+            match rightItem with
+            | Some _ -> (%op) leftItem None
+            | None -> (%op) leftItem optionValue @>
+
