@@ -23,6 +23,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
                 q.PostAndReply(Msg.MsgNotifyMe)
 
+        member this.NNZ = this.Values.Length
+
     type COO<'elem when 'elem: struct> =
         { Context: ClContext
           RowCount: int
@@ -37,6 +39,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Columns))
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
                 q.PostAndReply(Msg.MsgNotifyMe)
+
+        member this.NNZ = this.Values.Length
 
     type CSC<'elem when 'elem: struct> =
         { Context: ClContext
@@ -53,6 +57,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
                 q.PostAndReply(Msg.MsgNotifyMe)
 
+        member this.NNZ = this.Values.Length
+
     type Tuple<'elem when 'elem: struct> =
         { Context: ClContext
           RowIndices: ClArray<int>
@@ -65,6 +71,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.PostAndReply(Msg.MsgNotifyMe)
+
+        member this.NNZ = this.Values.Length
 
 [<RequireQualifiedAccess>]
 type ClMatrix<'a when 'a: struct> =
@@ -89,3 +97,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSR matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.COO matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.CSC matrix -> (matrix :> IDeviceMemObject).Dispose q
+
+    member this.NNZ =
+        match this with
+        | ClMatrix.CSR matrix -> matrix.NNZ
+        | ClMatrix.COO matrix -> matrix.NNZ
+        | ClMatrix.CSC matrix -> matrix.NNZ

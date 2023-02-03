@@ -504,7 +504,7 @@ module Matrix =
         let runCSRnCSC =
             CSRMatrix.spgemmCSC clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMask2D) ->
-            match matrix1, matrix2, mask.IsComplemented with
-            | ClMatrix.CSR m1, ClMatrix.CSC m2, false -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
+        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMatrix<_>) ->
+            match matrix1, matrix2, mask with
+            | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
