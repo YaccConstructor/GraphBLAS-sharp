@@ -331,13 +331,14 @@ module SparseVector =
               Indices = resultIndices
               Size = rightVector.Size }
 
-    let private prepareMap2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c : struct>
+    let private prepareMap2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         op
         workGroupSize
         =
 
-        let kernel = clContext.Compile(Map2.prepareAssignGeneral op)
+        let kernel =
+            clContext.Compile(Map2.prepareAssignGeneral op)
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'c option>) ->
 
@@ -380,7 +381,11 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c : struct> (clContext: ClContext) op workGroupSize =
+    let map2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
 
         let prepare =
             prepareMap2WithValue clContext op workGroupSize

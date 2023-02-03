@@ -226,16 +226,20 @@ module Vector =
 
     let map2WithValue (clContext: ClContext) op workGroupSize =
 
-        let sparseMap2 = SparseVector.map2WithValue clContext op workGroupSize
+        let sparseMap2 =
+            SparseVector.map2WithValue clContext op workGroupSize
 
-        let denseMap2 = DenseVector.map2WithValue clContext op workGroupSize
+        let denseMap2 =
+            DenseVector.map2WithValue clContext op workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) (optionValue: ClCell<'c option>) ->
             match leftVector, rightVector with
             | ClVector.Dense leftVector, ClVector.Dense rightVector ->
-                ClVector.Dense <| denseMap2 processor allocationMode leftVector rightVector optionValue
+                ClVector.Dense
+                <| denseMap2 processor allocationMode leftVector rightVector optionValue
             | ClVector.Sparse leftVector, ClVector.Sparse rightVector ->
-                ClVector.Sparse <| sparseMap2 processor allocationMode leftVector rightVector optionValue
+                ClVector.Sparse
+                <| sparseMap2 processor allocationMode leftVector rightVector optionValue
             | _ -> failwith "Vector formats are not matching."
 
     let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =

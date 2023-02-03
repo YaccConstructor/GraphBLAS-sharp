@@ -19,7 +19,8 @@ let logger = Log.create "Vector.fillSubVector.Tests"
 
 let alwaysTrue _ = true
 
-let notNane = function
+let notNane =
+    function
     | Some x -> not <| Double.IsNaN x
     | None -> true
 
@@ -51,7 +52,12 @@ let makeTest<'a when 'a: struct and 'a: equality>
     (isZero: 'a -> bool)
     isValueCompatible
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a option> -> ClVector<'a>)
+    (fillVector: MailboxProcessor<Msg>
+                     -> AllocationFlag
+                     -> ClVector<'a>
+                     -> ClVector<'a>
+                     -> ClCell<'a option>
+                     -> ClVector<'a>)
     isComplemented
     case
     (vector: 'a [], mask: 'a [])

@@ -134,7 +134,8 @@ module DenseVector =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector optionValue resultVector)
+                    (fun () ->
+                        kernel.KernelFunc ndRange leftVector.Length leftVector rightVector optionValue resultVector)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

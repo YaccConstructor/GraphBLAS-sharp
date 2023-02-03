@@ -25,8 +25,7 @@ module Convert =
             | None -> (%op) leftItem (Some value) @>
 
     let map2WithValueToMap2 (op: Expr<'a option -> 'b option -> 'c option>) =
-        <@ fun (leftItem: 'a option) (rightItem: 'b option) (_: 'a option) ->
-            (%op) leftItem rightItem @>
+        <@ fun (leftItem: 'a option) (rightItem: 'b option) (_: 'a option) -> (%op) leftItem rightItem @>
 
     let map2WithValueToAssignByMask (op: Expr<'a option -> 'b option -> 'c option>) =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) (optionValue: 'b option) ->
@@ -39,4 +38,3 @@ module Convert =
             match rightItem with
             | Some _ -> (%op) leftItem None
             | None -> (%op) leftItem optionValue @>
-
