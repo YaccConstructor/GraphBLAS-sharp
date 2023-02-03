@@ -13,8 +13,8 @@ module SpMV =
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
-        //Until LocalMemSize added to ClDevice as member
-        let localMemorySize = Utils.getLocalMemorySize clContext
+
+        let localMemorySize = clContext.ClDevice.LocalMemSize / 1<Byte>
 
         let localPointersArraySize = workGroupSize + 1
 
