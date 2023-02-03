@@ -33,6 +33,8 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     (vectorSize: int)
     =
 
+    let vectorSize = abs vectorSize
+
     if vectorSize > 0 then
         let q = case.TestContext.Queue
 

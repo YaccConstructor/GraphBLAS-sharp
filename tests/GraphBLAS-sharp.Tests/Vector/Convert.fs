@@ -30,7 +30,7 @@ let makeTest
     let vector =
         createVectorFromArray formatFrom array isZero
 
-    if array.Length > 0 && vector.NNZ > 0 then
+    if vector.NNZ > 0 then
 
         let context = case.TestContext.ClContext
         let q = case.TestContext.Queue
@@ -47,7 +47,7 @@ let makeTest
             res
 
         logger.debug (
-            eventX "Actual is {actual}"
+            eventX $"Actual is {actual}"
             >> setField "actual" (sprintf "%A" actual)
         )
 

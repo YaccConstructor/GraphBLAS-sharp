@@ -85,7 +85,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let floatMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Double.MinValue max <@ max @> floatMaxReduce
+      |> correctnessGenericTest floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
       let byteMaxReduce = Vector.reduce context wgSize
@@ -103,7 +103,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let floatMinReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Double.MaxValue min <@ min @> floatMinReduce
+      |> correctnessGenericTest floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "float min")
 
       let byteMinReduce = Vector.reduce context wgSize

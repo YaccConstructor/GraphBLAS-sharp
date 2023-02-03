@@ -16,11 +16,6 @@ let logger = Log.create "Vector.ElementWise.Tests"
 
 let config = defaultConfig
 
-let floatIsEqual =
-    fun x y ->
-        abs (x - y) < Accuracy.medium.absolute
-        || x.Equals y
-
 let getCorrectnessTestName<'a> (case: OperationCase<'a>) fstType sndType thrType =
     $"Correctness on '{fstType} option -> '{sndType} option -> '{thrType} option, {case.Format}"
 
@@ -34,8 +29,9 @@ let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (le
     for i in 0 .. expectedArrayLength - 1 do
         expectedArray.[i] <- op leftArray.[i] rightArray.[i]
 
-    let (Vector.Dense expected) =
+    let expected =
         createVectorFromArray Dense expectedArray (isEqual resultZero)
+        |> vectorToDenseVector
 
     match actual with
     | Vector.Dense actual ->

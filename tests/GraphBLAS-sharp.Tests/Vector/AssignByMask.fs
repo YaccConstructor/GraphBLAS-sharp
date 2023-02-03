@@ -25,10 +25,13 @@ let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask
 
     let expectedArray = Array.zeroCreate vector.Length
 
-    let (Vector.Dense vector) =
+    let vector =
         createVectorFromArray Dense vector isZero
+        |> vectorToDenseVector
 
-    let (Vector.Dense mask) = createVectorFromArray Dense mask isZero
+    let mask =
+        createVectorFromArray Dense mask isZero
+        |> vectorToDenseVector
 
     for i in 0 .. vector.Length - 1 do
         expectedArray.[i] <-
@@ -101,10 +104,6 @@ let testFixtures case =
     let wgSize = 32
     let context = case.TestContext.ClContext
 
-    let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute
-        || x.Equals(y)
-
     let isComplemented = false
 
     [ let intFill =
@@ -154,9 +153,6 @@ let testFixturesComplemented case =
 
     let wgSize = 32
     let context = case.TestContext.ClContext
-
-    let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute || x = y
 
     let isComplemented = true
 
