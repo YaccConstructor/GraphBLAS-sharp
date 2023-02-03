@@ -15,7 +15,8 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Vector.assignWithValue.Tests"
+let logger =
+    Log.create "Vector.assignWithValue.Tests"
 
 let alwaysTrue _ = true
 
