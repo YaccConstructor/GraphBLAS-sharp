@@ -61,7 +61,7 @@ let correctnessGenericTest
     let vtr =
         createVectorFromArray Dense vector (isEqual zero)
 
-    if mtx.NNZCount > 0 && vtr.Size > 0 then
+    if mtx.NNZ > 0 && vtr.Size > 0 then
         try
             let m = mtx.ToDevice testContext.ClContext
 

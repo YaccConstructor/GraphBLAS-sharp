@@ -24,7 +24,7 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
     let m2 =
         createMatrixFromArray2D CSC rightMatrix (isEqual zero)
 
-    if m1.NNZCount > 0 && m2.NNZCount > 0 then
+    if m1.NNZ > 0 && m2.NNZ > 0 then
         let expected =
             Array2D.init
             <| Array2D.length1 mask
@@ -40,7 +40,7 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
         let expected =
             createMatrixFromArray2D COO expected (isEqual zero)
 
-        if expected.NNZCount > 0 then
+        if expected.NNZ > 0 then
             let m1 = m1.ToDevice context
             let m2 = m2.ToDevice context
 

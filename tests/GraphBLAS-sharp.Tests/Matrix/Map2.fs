@@ -64,7 +64,7 @@ let correctnessGenericTest
     let mtx2 =
         createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
-    if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
+    if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
         try
             let m1 = mtx1.ToDevice case.TestContext.ClContext
 

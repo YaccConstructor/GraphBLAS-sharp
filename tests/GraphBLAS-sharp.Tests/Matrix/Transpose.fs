@@ -78,7 +78,7 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D case.Format array (areEqual zero)
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let m = mtx.ToDevice context
             let (mT: ClMatrix<'a>) = transposeFun q HostInterop m
@@ -105,7 +105,7 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
     let mtx =
         createMatrixFromArray2D case.Format array (areEqual zero)
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let m = mtx.ToDevice context
             let mT = transposeFun q HostInterop m
