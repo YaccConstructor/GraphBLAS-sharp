@@ -224,6 +224,37 @@ module Vector =
     let assignByMaskComplemented<'a, 'b when 'a: struct and 'b: struct> clContext op workGroupSize =
         assignByMaskGeneral<'a, 'b> clContext (Convert.assignComplementedToOption op) workGroupSize
 
+    let map2WithValue (clContext: ClContext) op workGroupSize =
+
+        let sparseMap2 = SparseVector.map2WithValue clContext op workGroupSize
+
+        let denseMap2 = DenseVector.map2WithValue clContext op workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) (optionValue: ClCell<'c option>) ->
+            match leftVector, rightVector with
+            | ClVector.Dense leftVector, ClVector.Dense rightVector ->
+                ClVector.Dense <| denseMap2 processor allocationMode leftVector rightVector optionValue
+            | ClVector.Sparse leftVector, ClVector.Sparse rightVector ->
+                ClVector.Sparse <| sparseMap2 processor allocationMode leftVector rightVector optionValue
+            | _ -> failwith "Vector formats are not matching."
+
+    let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =
+
+        let map2 =
+            map2WithValue clContext (Convert.map2WithValueToMap2 op) workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+
+            let clCell = clContext.CreateClCell<'a option>()
+
+            map2 processor allocationMode leftVector rightVector clCell
+
+    let assignByMaskWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMask op) workGroupSize
+
+    let assignByMaskComplementedWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMaskComplemented op) workGroupSize
+
     let reduce (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =
             SparseVector.reduce clContext workGroupSize opAdd

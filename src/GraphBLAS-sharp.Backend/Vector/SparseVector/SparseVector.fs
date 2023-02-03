@@ -380,14 +380,14 @@ module SparseVector =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2WithValue<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
+    let map2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c : struct> (clContext: ClContext) op workGroupSize =
 
         let prepare =
             prepareMap2WithValue clContext op workGroupSize
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'c option>) ->
 
             let bitmap, values, indices =
                 prepare
@@ -410,15 +410,6 @@ module SparseVector =
               Values = resultValues
               Indices = resultIndices
               Size = rightVector.Size }
-
-    let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToMap2 op) workGroupSize
-
-    let assignByMaskWithOptionValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToAssignByMask op) workGroupSize
-
-    let assignByMaskComplementedWithOptionValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToAssignByMaskComplemented op) workGroupSize
 
     let toDense (clContext: ClContext) workGroupSize =
 

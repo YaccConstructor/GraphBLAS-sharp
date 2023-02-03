@@ -122,7 +122,10 @@ module DenseVector =
 
         let kernel = clContext.Compile(map2)
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (optionValue: ClCell<'c option>) (resultVector: ClArray<'c option>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (optionValue: ClCell<'c option>) ->
+
+            let resultVector =
+                clContext.CreateClArrayWithSpecificAllocationMode<'c option>(allocationMode, leftVector.Length)
 
             let ndRange =
                 Range1D.CreateValid(leftVector.Length, workGroupSize)
@@ -136,14 +139,7 @@ module DenseVector =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToMap2 op) workGroupSize
-
-    let assignByMaskWithOptionValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToAssignByMask op) workGroupSize
-
-    let assignByMaskComplementedWithOptionValue (clContext: ClContext) op workGroupSize =
-        map2WithValue clContext (Convert.map2WithValueToAssignByMaskComplemented op) workGroupSize
+            resultVector
 
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
