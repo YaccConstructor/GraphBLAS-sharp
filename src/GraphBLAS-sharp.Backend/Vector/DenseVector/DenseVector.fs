@@ -106,6 +106,45 @@ module DenseVector =
 
             resultVector
 
+    let map2WithValue<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
+
+        let map2 =
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (optionValue: ClCell<'c option>) (resultVector: ClArray<'c option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < resultLength then
+                    resultVector.[gid] <- (%op) leftVector.[gid] rightVector.[gid] optionValue.Value @>
+
+        let kernel = clContext.Compile(map2)
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (optionValue: ClCell<'c option>) (resultVector: ClArray<'c option>) ->
+
+            let ndRange =
+                Range1D.CreateValid(leftVector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector optionValue resultVector)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let map2WithValueButWithoutValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToMap2 op) workGroupSize
+
+    let assignByMaskWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMask op) workGroupSize
+
+    let assignByMaskComplementedWithOptionValue (clContext: ClContext) op workGroupSize =
+        map2WithValue clContext (Convert.map2WithValueToAssignByMaskComplemented op) workGroupSize
+
     let private getBitmap<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let getPositions =
