@@ -50,7 +50,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClMatrix<'b> -> ClMatrix<'c>)
+    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClMatrix<'a> -> ClMatrix<'c>)
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q

@@ -4,12 +4,12 @@ open QuikGraph
 
 module CreateGraph =
     let directedFromArray2D (matrix: 'a [,]) zero =
-        let graph = AdjacencyGraph<'a, Edge<'a>>()
+        let graph = AdjacencyGraph<int, Edge<int>>()
 
         for outVertex in 0 .. Array2D.length1 matrix - 1 do
             for inVertex in 0 .. Array2D.length2 matrix - 1 do
                 if matrix.[outVertex, inVertex] <> zero then
-                    graph.AddVerticesAndEdge(new Edge<'a>(outVertex, inVertex))
+                    graph.AddVerticesAndEdge(Edge<int>(outVertex, inVertex))
                     |> ignore
 
         graph
@@ -19,7 +19,7 @@ module CreateGraph =
             Array2D.mapi
                 (fun r c v ->
                     if v <> zero then
-                        Some(Edge<'a>(r, c))
+                        Some(Edge<int>(r, c))
                     else
                         None)
                 matrix

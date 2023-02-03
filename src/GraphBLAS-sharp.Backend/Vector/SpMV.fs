@@ -14,7 +14,8 @@ module SpMV =
         workGroupSize
         =
 
-        let localMemorySize = clContext.ClDevice.LocalMemSize / 1<Byte>
+        let localMemorySize =
+            clContext.ClDevice.LocalMemSize / 1<Byte>
 
         let localPointersArraySize = workGroupSize + 1
 

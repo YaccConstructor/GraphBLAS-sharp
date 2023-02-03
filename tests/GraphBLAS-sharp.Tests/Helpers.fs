@@ -706,7 +706,8 @@ module Utils =
         abs (x - y) < Accuracy.medium.absolute
         || x.Equals y
 
-    let vectorToDenseVector = function
+    let vectorToDenseVector =
+        function
         | Vector.Dense vector -> vector
         | _ -> failwith "Vector format must be Dense."
 
