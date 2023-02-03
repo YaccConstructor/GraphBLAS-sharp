@@ -460,3 +460,101 @@ let complementedGeneralTestFixtures case =
 
 let complementedGeneralTests =
     operationGPUTests "Backend.Vector.ElementWiseGen mask tests" complementedGeneralTestFixtures
+
+let addWithValueTestFixtures (case: OperationCase<VectorFormat>) =
+    let wgSize = 32
+
+    let context = case.TestContext.ClContext
+
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    [ let intAddFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.intSum wgSize
+
+      let intToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (+) intAddFun intToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatAddFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.floatSum wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      let floatToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (+) floatAddFun floatToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolAddFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.boolSum wgSize
+
+      let boolToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (||) boolAddFun boolToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteAddFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.byteSum wgSize
+
+      let byteToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (+) byteAddFun byteToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let addWithValueGeneralTests =
+    operationGPUTests "Backend.Vector.addMap2AddWitValue mask tests" addWithValueTestFixtures
+
+let mulWithValueTestFixtures case =
+    let wgSize = 32
+
+    let context = case.TestContext.ClContext
+
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    [ let intMulFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.intMul wgSize
+
+      let intToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0 0 0 (*) intMulFun intToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
+
+      let floatMulFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.floatMul wgSize
+
+      let fIsEqual =
+          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+
+      let floatToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest fIsEqual fIsEqual fIsEqual 0.0 0.0 0.0 (*) floatMulFun floatToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+
+      let boolMulFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.boolMul wgSize
+
+      let boolToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) false false false (&&) boolMulFun boolToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool" "bool" "bool")
+
+      let byteMulFun =
+          Vector.map2WithValueButWithoutValue context ArithmeticOperations.byteMul wgSize
+
+      let byteToDense = Vector.toDense context wgSize
+
+      case
+      |> correctnessGenericTest (=) (=) (=) 0uy 0uy 0uy (*) byteMulFun byteToDense
+      |> testPropertyWithConfig config (getCorrectnessTestName "byte" "byte" "byte") ]
+
+let mulWithValueGeneralTests =
+    operationGPUTests "Backend.Vector.mulMap2AddWitValue mask tests" mulWithValueTestFixtures

@@ -245,7 +245,7 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
 
-            let clCell = clContext.CreateClCell<'a option>()
+            let clCell = clContext.CreateClCell<'a option>() // TODO()
 
             map2 processor allocationMode leftVector rightVector clCell
 
