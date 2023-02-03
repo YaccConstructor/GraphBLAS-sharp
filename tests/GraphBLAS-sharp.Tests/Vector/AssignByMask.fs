@@ -15,7 +15,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Vector.fillSubVector.Tests"
+let logger = Log.create "Vector.assignByMask.Tests"
 
 let alwaysTrue _ = true
 
@@ -56,15 +56,18 @@ let makeTest<'a when 'a: struct and 'a: equality>
     (value: 'a)
     =
 
-    if isValueCompatible value then
+    let leftVector =
+        createVectorFromArray case.Format vector isZero
+
+    let maskVector =
+        createVectorFromArray case.Format mask isZero
+
+    if isValueCompatible value
+       && leftVector.NNZ > 0
+       && maskVector.NNZ > 0 then
+
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
-
-        let leftVector =
-            createVectorFromArray case.Format vector isZero
-
-        let maskVector =
-            createVectorFromArray case.Format mask isZero
 
         let clLeftVector = leftVector.ToDevice context
         let clMaskVector = maskVector.ToDevice context
@@ -141,7 +144,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    operationGPUTests "Backend.Vector.fillSubVector tests" testFixtures
+    operationGPUTests "Backend.Vector.assignByMask tests" testFixtures
 
 let testFixturesComplemented case =
     let config = defaultConfig
@@ -194,4 +197,4 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =
-    operationGPUTests "Backend.Vector.fillSubVectorComplemented tests" testFixturesComplemented
+    operationGPUTests "Backend.Vector.assignByMaskComplemented tests" testFixturesComplemented

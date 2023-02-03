@@ -96,7 +96,6 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<int> (=) intOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-
       let byteOfList = Vector.ofList context wgSize
 
       let toCoo = Vector.toSparse context wgSize

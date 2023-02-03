@@ -14,8 +14,6 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.copy.Tests"
 
-let clContext = Context.defaultContext.ClContext
-
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
 
     Expect.equal actual.Size expected.Size "The size should be the same"
@@ -35,21 +33,20 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
     | _, _ -> failwith "Copy format must be the same"
 
 let correctnessGenericTest<'a when 'a: struct>
-    filter
     isEqual
     (isZero: 'a -> bool)
     (copy: MailboxProcessor<Brahma.FSharp.Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (array: 'a [])
     =
-    if array.Length > 0 then
-        let array = filter array
+
+    let expected =
+        createVectorFromArray case.Format array isZero
+
+    if array.Length > 0 && expected.NNZ > 0 then
 
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
-
-        let expected =
-            createVectorFromArray case.Format array isZero
 
         let clVector = expected.ToDevice context
         let clVectorCopy = copy q HostInterop clVector
@@ -76,28 +73,28 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let isZero item = item = 0
 
       case
-      |> correctnessGenericTest<int> id (=) isZero intCopy
+      |> correctnessGenericTest<int> (=) isZero intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0.0
 
       case
-      |> correctnessGenericTest<float> filterFloats (=) isZero floatCopy
+      |> correctnessGenericTest<float> (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolCopy = Vector.copy context wgSize
       let isZero item = item = true
 
       case
-      |> correctnessGenericTest<bool> id (=) isZero boolCopy
+      |> correctnessGenericTest<bool> (=) isZero boolCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0uy
 
       case
-      |> correctnessGenericTest<byte> id (=) isZero floatCopy
+      |> correctnessGenericTest<byte> (=) isZero floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =
