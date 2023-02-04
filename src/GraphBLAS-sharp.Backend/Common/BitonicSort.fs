@@ -290,7 +290,7 @@ module internal BitonicSort =
             queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rows cols values values.Length))
             queue.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let sortKeyValuesInplace (clContext: ClContext) workGroupSize =
+    let sortKeyValuesInplace<'n, 'a when 'n: comparison> (clContext: ClContext) workGroupSize =
 
         let localBegin = localBegin clContext workGroupSize
         let globalStep = globalStep clContext workGroupSize

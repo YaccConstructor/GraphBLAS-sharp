@@ -15,7 +15,6 @@
     <Compile Include="Objects/ArraysExtentions.fs" />
     <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
-    <Compile Include="Objects/Masks.fs" />
     <Compile Include="Objects/AtLeastOne.fs" />
     <Compile Include="Objects/ClContextExtensions.fs" />
     <Compile Include="Quotes/SubReduce.fs" />

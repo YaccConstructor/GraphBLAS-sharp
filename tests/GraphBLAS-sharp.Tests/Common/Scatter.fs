@@ -10,8 +10,13 @@ open GraphBLAS.FSharp.Tests.Utils
 let logger = Log.create "Scatter.Tests"
 
 let context = defaultContext.ClContext
+let config = { defaultConfig with endSize = 1000000 }
 
-let makeTest (context: ClContext) (q: MailboxProcessor<_>) scatter (array: (int * 'a) []) (result: 'a []) =
+let wgSize = 32
+
+let q = defaultContext.Queue
+
+let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
     if array.Length > 0 then
         let expected = Array.copy result
 
@@ -41,22 +46,16 @@ let makeTest (context: ClContext) (q: MailboxProcessor<_>) scatter (array: (int 
         (sprintf "Arrays should be equal. Actual is \n%A, expected \n%A" actual expected)
         |> compareArrays (=) actual expected
 
-let testFixtures<'a when 'a: equality> config wgSize context q =
-    let scatter: MailboxProcessor<_> -> ClArray<int> -> ClArray<'a> -> ClArray<'a> -> unit =
-        Scatter.runInplace context wgSize
+let testFixtures<'a when 'a: equality> =
+    let scatter = Scatter.runInplace<'a> context wgSize
 
-    makeTest context q scatter
+    makeTest scatter
     |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =
-    let context = defaultContext.ClContext
-    let config = { defaultConfig with endSize = 1000000 }
-
-    let wgSize = 32
-    let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ testFixtures<int> config wgSize context q
-      testFixtures<byte> config wgSize context q
-      testFixtures<bool> config wgSize context q ]
+    [ testFixtures<int>
+      testFixtures<byte>
+      testFixtures<bool> ]
     |> testList "Backend.Common.Scatter tests"

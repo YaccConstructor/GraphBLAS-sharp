@@ -15,7 +15,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Vector.fillSubVector.Tests"
+let logger = Log.create "Vector.assignByMask.Tests"
 
 let alwaysTrue _ = true
 
@@ -25,10 +25,13 @@ let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask
 
     let expectedArray = Array.zeroCreate vector.Length
 
-    let (Vector.Dense vector) =
+    let vector =
         createVectorFromArray Dense vector isZero
+        |> vectorToDenseVector
 
-    let (Vector.Dense mask) = createVectorFromArray Dense mask isZero
+    let mask =
+        createVectorFromArray Dense mask isZero
+        |> vectorToDenseVector
 
     for i in 0 .. vector.Length - 1 do
         expectedArray.[i] <-
@@ -56,15 +59,18 @@ let makeTest<'a when 'a: struct and 'a: equality>
     (value: 'a)
     =
 
-    if isValueCompatible value then
+    let leftVector =
+        createVectorFromArray case.Format vector isZero
+
+    let maskVector =
+        createVectorFromArray case.Format mask isZero
+
+    if isValueCompatible value
+       && leftVector.NNZ > 0
+       && maskVector.NNZ > 0 then
+
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
-
-        let leftVector =
-            createVectorFromArray case.Format vector isZero
-
-        let maskVector =
-            createVectorFromArray case.Format mask isZero
 
         let clLeftVector = leftVector.ToDevice context
         let clMaskVector = maskVector.ToDevice context
@@ -97,10 +103,6 @@ let testFixtures case =
 
     let wgSize = 32
     let context = case.TestContext.ClContext
-
-    let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute
-        || x.Equals(y)
 
     let isComplemented = false
 
@@ -141,7 +143,7 @@ let testFixtures case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    operationGPUTests "Backend.Vector.fillSubVector tests" testFixtures
+    operationGPUTests "Backend.Vector.assignByMask tests" testFixtures
 
 let testFixturesComplemented case =
     let config = defaultConfig
@@ -151,9 +153,6 @@ let testFixturesComplemented case =
 
     let wgSize = 32
     let context = case.TestContext.ClContext
-
-    let floatIsEqual x y =
-        abs (x - y) < Accuracy.medium.absolute || x = y
 
     let isComplemented = true
 
@@ -194,4 +193,4 @@ let testFixturesComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let complementedTests =
-    operationGPUTests "Backend.Vector.fillSubVectorComplemented tests" testFixturesComplemented
+    operationGPUTests "Backend.Vector.assignByMaskComplemented tests" testFixturesComplemented

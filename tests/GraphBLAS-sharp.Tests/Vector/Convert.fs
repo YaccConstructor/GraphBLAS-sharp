@@ -19,10 +19,6 @@ let logger =
 let config = defaultConfig
 let wgSize = 32
 
-let NNZCount array isZero =
-    Array.filter (fun item -> not <| isZero item) array
-    |> Array.length
-
 let makeTest
     formatFrom
     (convertFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
@@ -30,12 +26,14 @@ let makeTest
     case
     (array: 'a [])
     =
-    if array.Length > 0 && NNZCount array isZero > 0 then
+
+    let vector =
+        createVectorFromArray formatFrom array isZero
+
+    if vector.NNZ > 0 then
+
         let context = case.TestContext.ClContext
         let q = case.TestContext.Queue
-
-        let vector =
-            createVectorFromArray formatFrom array isZero
 
         let actual =
             let clVector = vector.ToDevice context
@@ -49,7 +47,7 @@ let makeTest
             res
 
         logger.debug (
-            eventX "Actual is {actual}"
+            eventX $"Actual is {actual}"
             >> setField "actual" (sprintf "%A" actual)
         )
 

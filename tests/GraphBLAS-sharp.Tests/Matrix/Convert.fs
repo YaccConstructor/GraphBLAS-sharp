@@ -21,7 +21,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D formatFrom array isZero
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let mBefore = mtx.ToDevice context
             let mAfter: ClMatrix<'a> = convertFun q HostInterop mBefore

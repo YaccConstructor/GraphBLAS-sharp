@@ -26,11 +26,11 @@ type MxmBenchmarks<'elem when 'elem : struct>(
 
     let mutable firstMatrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable secondMatrix = Unchecked.defaultof<ClMatrix<'elem>>
-    let mutable mask = Unchecked.defaultof<ClMask2D>
+    let mutable mask = Unchecked.defaultof<ClMatrix<_>>
 
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
-    let mutable maskHost = Unchecked.defaultof<Mask2D>
+    let mutable maskHost = Unchecked.defaultof<Matrix<_>>
 
     member val ResultMatrix = Unchecked.defaultof<ClMatrix<'elem>> with get, set
 
@@ -108,15 +108,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
         this.ResultMatrix.Dispose this.Processor
 
     member this.ReadMask(maskReader) =
-        match this.ReadMatrix maskReader with
-        | Matrix.COO m ->
-            maskHost <-
-                { IsComplemented = false
-                  RowCount = m.RowCount
-                  ColumnCount = m.ColumnCount
-                  Rows = m.Rows
-                  Columns = m.Columns }
-        | _ -> failwith "Unsupported matrix format"
+        maskHost <- this.ReadMatrix maskReader
 
     member this.ReadMatrices() =
         let matrixReader, maskReader = this.InputMatrixReader
@@ -127,7 +119,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.LoadMatricesToGPU () =
         firstMatrix <- buildMatrix this.OclContext firstMatrixHost
         secondMatrix <- buildMatrix this.OclContext secondMatrixHost
-        mask <- maskHost.ToBackend(this.OclContext)
+        mask <- maskHost.ToDevice this.OclContext
 
     member this.ConvertSecondMatrixToCSC() =
         secondMatrix <- this.FunCSR2CSC this.Processor HostInterop secondMatrix

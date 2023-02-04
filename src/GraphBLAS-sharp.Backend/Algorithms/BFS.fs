@@ -15,7 +15,7 @@ module BFS =
     let singleSource
         (clContext: ClContext)
         (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> 'b option -> int option>)
+        (mul: Expr<'a option -> int option -> int option>)
         workGroupSize
         =
 

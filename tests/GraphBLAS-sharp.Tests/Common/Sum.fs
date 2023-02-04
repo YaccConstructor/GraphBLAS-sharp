@@ -14,9 +14,13 @@ let logger = Log.create "Sum.Test"
 
 let context = defaultContext.ClContext
 
-let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a []) (array: 'a []) =
+let config = defaultConfig
+
+let wgSize = 128
+let q = defaultContext.Queue
+
+let makeTest sum plus zero (array: 'a []) =
     if array.Length > 0 then
-        let array = filter array
 
         logger.debug (
             eventX "Filtered array is {array}\n"
@@ -45,30 +49,24 @@ let makeTest (q: MailboxProcessor<_>) sum plus zero isEqual (filter: 'a [] -> 'a
         "Total sums should be equal"
         |> Expect.equal actualSum expectedSum
 
-let testFixtures config wgSize q plus (plusQ: Expr<'a -> 'a -> 'a>) zero isEqual filter name =
+let testFixtures plus (plusQ: Expr<'a -> 'a -> 'a>) zero name =
     let sum = Reduce.sum context wgSize plusQ zero
 
-    makeTest q sum plus zero isEqual filter
+    makeTest sum plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
-    let config = defaultConfig
 
-    let wgSize = 128
-    let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats =
-        Array.filter (System.Double.IsNaN >> not)
-
-    [ testFixtures config wgSize q (+) <@ (+) @> 0 (=) id "int add"
-      testFixtures config wgSize q (+) <@ (+) @> 0uy (=) id "byte add"
-      testFixtures config wgSize q max <@ max @> 0 (=) id "int max"
-      testFixtures config wgSize q max <@ max @> 0.0 (=) filterFloats "float max"
-      testFixtures config wgSize q max <@ max @> 0uy (=) id "byte max"
-      testFixtures config wgSize q min <@ min @> System.Int32.MaxValue (=) id "int min"
-      testFixtures config wgSize q min <@ min @> System.Double.MaxValue (=) filterFloats "float min"
-      testFixtures config wgSize q min <@ min @> System.Byte.MaxValue (=) id "byte min"
-      testFixtures config wgSize q (||) <@ (||) @> false (=) id "bool logic-or"
-      testFixtures config wgSize q (&&) <@ (&&) @> true (=) id "bool logic-and" ]
+    [ testFixtures (+) <@ (+) @> 0 "int add"
+      testFixtures (+) <@ (+) @> 0uy "byte add"
+      testFixtures max <@ max @> 0 "int max"
+      testFixtures max <@ max @> 0.0 "float max"
+      testFixtures max <@ max @> 0uy "byte max"
+      testFixtures min <@ min @> System.Int32.MaxValue "int min"
+      testFixtures min <@ min @> System.Double.MaxValue "float min"
+      testFixtures min <@ min @> System.Byte.MaxValue "byte min"
+      testFixtures (||) <@ (||) @> false "bool logic-or"
+      testFixtures (&&) <@ (&&) @> true "bool logic-and" ]
     |> testList "Backend.Common.Sum tests"

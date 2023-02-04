@@ -12,16 +12,12 @@ let logger = Log.create "Reduce.Tests"
 
 let context = Context.defaultContext.ClContext
 
-let makeTest
-    (q: MailboxProcessor<_>)
-    (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>)
-    plus
-    zero
-    (filter: 'a [] -> 'a [])
-    (array: 'a [])
-    =
+let config = defaultConfig
 
-    let array = filter array
+let wgSize = 32
+let q = Context.defaultContext.Queue
+
+let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zero (array: 'a []) =
 
     if array.Length > 0 then
         let reduce = reduce q
@@ -57,30 +53,25 @@ let makeTest
         "Total sums should be equal"
         |> Expect.equal actualSum expectedSum
 
-
-let testFixtures config wgSize q plus plusQ zero filter name =
+let testFixtures plus plusQ zero name =
     let reduce = Reduce.reduce context wgSize plusQ
 
-    makeTest q reduce plus zero filter
+    makeTest reduce plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
-    let config = defaultConfig
-
-    let wgSize = 32
-    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
     let filterFloats = Array.filter System.Double.IsNormal
 
-    [ testFixtures config wgSize q (+) <@ (+) @> 0 id "int add"
-      testFixtures config wgSize q (+) <@ (+) @> 0uy id "byte add"
-      testFixtures config wgSize q max <@ max @> System.Int32.MinValue id "int max"
-      testFixtures config wgSize q max <@ max @> System.Double.MinValue filterFloats "float max"
-      testFixtures config wgSize q max <@ max @> System.Byte.MinValue id "byte max"
-      testFixtures config wgSize q min <@ min @> System.Int32.MaxValue id "int min"
-      testFixtures config wgSize q min <@ min @> System.Double.MaxValue filterFloats "float min"
-      testFixtures config wgSize q min <@ min @> System.Byte.MaxValue id "byte min"
-      testFixtures config wgSize q (||) <@ (||) @> false id "bool logic-or"
-      testFixtures config wgSize q (&&) <@ (&&) @> true id "bool logic-and" ]
+    [ testFixtures (+) <@ (+) @> 0 "int add"
+      testFixtures (+) <@ (+) @> 0uy "byte add"
+      testFixtures max <@ max @> System.Int32.MinValue "int max"
+      testFixtures max <@ max @> System.Double.MinValue "float max"
+      testFixtures max <@ max @> System.Byte.MinValue "byte max"
+      testFixtures min <@ min @> System.Int32.MaxValue "int min"
+      testFixtures min <@ min @> System.Double.MaxValue "float min"
+      testFixtures min <@ min @> System.Byte.MaxValue "byte min"
+      testFixtures (||) <@ (||) @> false "bool logic-or"
+      testFixtures (&&) <@ (&&) @> true "bool logic-and" ]
     |> testList "Backend.Common.Reduce tests"

@@ -14,7 +14,7 @@ open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'b []) (actual: 'c array) =
+let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
     let rows = Array2D.length1 baseMtx
     let columns = Array2D.length2 baseMtx
 
@@ -48,11 +48,11 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'b option> -> ClArray<'c option>)
+    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'a option> -> ClArray<'a option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
-    (matrix: 'a [,], vector: 'a [], mask: bool [])
+    (matrix: 'a [,], vector: 'a [], _: bool [])
     =
 
     let mtx =
@@ -61,7 +61,7 @@ let correctnessGenericTest
     let vtr =
         createVectorFromArray Dense vector (isEqual zero)
 
-    if mtx.NNZCount > 0 && vtr.Size > 0 then
+    if mtx.NNZ > 0 && vtr.Size > 0 then
         try
             let m = mtx.ToDevice testContext.ClContext
 

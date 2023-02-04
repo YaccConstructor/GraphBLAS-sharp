@@ -22,7 +22,7 @@ module internal Scatter =
     /// > val result = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
     /// </code>
     /// </example>
-    let runInplace (clContext: ClContext) workGroupSize =
+    let runInplace<'a> (clContext: ClContext) workGroupSize =
 
         let run =
             <@ fun (ndRange: Range1D) (positions: ClArray<int>) (positionsLength: int) (values: ClArray<'a>) (result: ClArray<'a>) (resultLength: int) ->

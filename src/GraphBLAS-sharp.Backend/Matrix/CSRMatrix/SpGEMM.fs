@@ -107,7 +107,7 @@ module internal SpGEMM =
 
         let program = context.Compile(run)
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
             let values =
                 context.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, mask.NNZ)
@@ -157,7 +157,7 @@ module internal SpGEMM =
         let scanInplace =
             PrefixSum.standardExcludeInplace context workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
             let values, bitmap =
                 calculate queue matrixLeft matrixRight mask
