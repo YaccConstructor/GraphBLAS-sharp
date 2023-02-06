@@ -7,10 +7,11 @@ import platform
 
 from dataclasses import dataclass
 
+ROOT = pathlib.Path(__file__).parent.parent.parent.parent
 BENCHMARKS = pathlib.Path(__file__).parent.parent
 CONFIGS = BENCHMARKS / "Configs"
 BINARIES = BENCHMARKS / "bin" / "Release" / "net7.0"
-RESULTS = BENCHMARKS / "BenchmarkDotNet.Artifacts" / "results"
+RESULTS = ROOT / "BenchmarkDotNet.Artifacts" / "results"
 
 targets = [line.strip() for line in open(CONFIGS / "WorkflowTargets.txt", 'r').readlines()]
 
