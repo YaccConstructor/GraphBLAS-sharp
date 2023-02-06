@@ -4,9 +4,7 @@ open BenchmarkDotNet.Running
 [<EntryPoint>]
 let main argv =
     let benchmarks =
-        BenchmarkSwitcher [| typeof<BFSBenchmarksWithoutDataTransfer>
-                             typeof<EWiseAddAtLeastOneBenchmarks4Float32CSRWithoutDataTransfer>
-                              |]
+        BenchmarkSwitcher [| typeof<BFSBenchmarksWithoutDataTransfer> |]
 
     benchmarks.Run argv |> ignore
     0
