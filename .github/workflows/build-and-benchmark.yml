@@ -20,10 +20,7 @@ jobs:
         run: clinfo
         
       - name: Build GraphBLAS-sharp
-        run: |
-          cd deps/graphblas-sharp/
-          dotnet build -c Release
-          cd ../../
+        run: dotnet build -c Release
 
       - name: Benchmark
         run: python3 benchmarks/GraphBLAS-sharp.Benchmarks/Scripts/Benchmark.py
