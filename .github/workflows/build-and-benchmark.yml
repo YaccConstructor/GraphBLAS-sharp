@@ -1,6 +1,8 @@
 name: Benchmark GraphBLAS-sharp
 
-on: [push]
+on: 
+  push:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,6 +34,6 @@ jobs:
           tool: 'benchmarkdotnet'
           output-file-path: BenchmarkDotNet.Artifacts/results/GraphBLAS.FSharp.Benchmarks.BFSBenchmarksWithoutDataTransfer-report-brief.json
           # Access token to deploy GitHub Pages branch
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets._GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically
           auto-push: true
