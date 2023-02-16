@@ -12,8 +12,13 @@ BENCHMARKS = pathlib.Path(__file__).parent.parent
 CONFIGS = BENCHMARKS / "Configs"
 BINARIES = BENCHMARKS / "bin" / "Release" / "net7.0"
 RESULTS = ROOT / "BenchmarkDotNet.Artifacts" / "results"
+DATASET_TO_COPY = ROOT.parent.parent / "Datasets"
+DATASET = BENCHMARKS / "Datasets"
 
 targets = [line.strip() for line in open(CONFIGS / "WorkflowTargets.txt", 'r').readlines()]
+
+#Copying dataset folder to Datasets
+subprocess.call(f'rsync -a {DATASET_TO_COPY}/ {DATASET}', shell=True)
 
 #Clearing previous results
 subprocess.call(f'rm {RESULTS / "*"}', shell=True)
