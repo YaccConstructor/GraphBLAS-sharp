@@ -40,8 +40,9 @@ module SpMV =
                 let lid = ndRange.LocalID0
 
                 let localPtr = localArray<int> localPointersArraySize
+
                 let localValues =
-                        localArray<'c option> localValuesArraySize
+                    localArray<'c option> localValuesArraySize
 
                 if gid <= numberOfRows then
                     let threadsPerBlock =
