@@ -1,8 +1,6 @@
 name: Benchmark GraphBLAS-sharp
 
-on: 
-  push:
-  workflow_dispatch:
+on: [push, workflow_dispatch, pull_request]
 
 permissions:
   contents: write
