@@ -13,11 +13,6 @@ open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
 
-let zeroFilter array isZero =
-    Array.filter
-    <| (fun item -> not <| isZero item)
-    <| array
-
 let checkResult zero op (actual: 'a) (vector: 'a []) =
     let expected = Array.fold op zero vector
 
@@ -30,21 +25,16 @@ let correctnessGenericTest
     op
     opQ
     (reduce: Expr<'a -> 'a -> 'a> -> MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
-    filter
     case
     (array: 'a [])
     =
 
-    let array = filter array
+    let vector =
+        createVectorFromArray case.Format array (isEqual zero)
 
-    let arrayWithoutZeros = zeroFilter array (isEqual zero)
-
-    if arrayWithoutZeros.Length > 0 then
+    if vector.NNZ > 0 then
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
-
-        let vector =
-            createVectorFromArray case.Format array (isEqual zero)
 
         let clVector = vector.ToDevice context
 
@@ -74,66 +64,64 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats = Array.filter System.Double.IsNormal
-
     [ let intReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) 0 (+) <@ (+) @> intReduce id
+      |> correctnessGenericTest (=) 0 (+) <@ (+) @> intReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let byteReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) 0uy (+) <@ (+) @> byteReduce id
+      |> correctnessGenericTest (=) 0uy (+) <@ (+) @> byteReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       let intMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Int32.MinValue max <@ max @> intMaxReduce id
+      |> correctnessGenericTest (=) System.Int32.MinValue max <@ max @> intMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "int max")
 
       let floatMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Double.MinValue max <@ max @> floatMaxReduce filterFloats
+      |> correctnessGenericTest floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
       let byteMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Byte.MinValue max <@ max @> byteMaxReduce id
+      |> correctnessGenericTest (=) System.Byte.MinValue max <@ max @> byteMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "byte max")
 
       let intMinReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Int32.MaxValue min <@ min @> intMinReduce id
+      |> correctnessGenericTest (=) System.Int32.MaxValue min <@ min @> intMinReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "int min")
 
       let floatMinReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Double.MaxValue min <@ min @> floatMinReduce filterFloats
+      |> correctnessGenericTest floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "float min")
 
       let byteMinReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) System.Byte.MaxValue min <@ min @> byteMinReduce id
+      |> correctnessGenericTest (=) System.Byte.MaxValue min <@ min @> byteMinReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "byte min")
 
       let boolOrReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) false (||) <@ (||) @> boolOrReduce id
+      |> correctnessGenericTest (=) false (||) <@ (||) @> boolOrReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "bool or")
 
       let boolAndReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest (=) true (&&) <@ (&&) @> boolAndReduce id
+      |> correctnessGenericTest (=) true (&&) <@ (&&) @> boolAndReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
 
 let tests =

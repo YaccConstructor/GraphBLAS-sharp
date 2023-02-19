@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger =
     Log.create "Backend.Vector.Convert.Tests"
@@ -18,21 +19,25 @@ let logger =
 let config = defaultConfig
 let wgSize = 32
 
-let NNZCount array isZero =
-    Array.filter (fun item -> not <| isZero item) array
-    |> Array.length
+let makeTest
+    formatFrom
+    (convertFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
+    isZero
+    case
+    (array: 'a [])
+    =
 
-let makeTest formatFrom (convertFun: MailboxProcessor<_> -> ClVector<'a> -> ClVector<'a>) isZero case (array: 'a []) =
-    if array.Length > 0 && NNZCount array isZero > 0 then
+    let vector =
+        createVectorFromArray formatFrom array isZero
+
+    if vector.NNZ > 0 then
+
         let context = case.TestContext.ClContext
         let q = case.TestContext.Queue
 
-        let vector =
-            createVectorFromArray formatFrom array isZero
-
         let actual =
             let clVector = vector.ToDevice context
-            let convertedVector = convertFun q clVector
+            let convertedVector = convertFun q HostInterop clVector
 
             let res = convertedVector.ToHost q
 
@@ -42,7 +47,7 @@ let makeTest formatFrom (convertFun: MailboxProcessor<_> -> ClVector<'a> -> ClVe
             res
 
         logger.debug (
-            eventX "Actual is {actual}"
+            eventX $"Actual is {actual}"
             >> setField "actual" (sprintf "%A" actual)
         )
 

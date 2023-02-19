@@ -8,13 +8,14 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module BFS =
     let singleSource
         (clContext: ClContext)
         (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> 'b option -> int option>)
+        (mul: Expr<'a option -> int option -> int option>)
         workGroupSize
         =
 
@@ -24,13 +25,13 @@ module BFS =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
-        let ofList = Vector.ofList clContext Dense
+        let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
-            DenseVector.elementWiseTo clContext Mask.complementedMaskOp workGroupSize
+            DenseVector.map2Inplace clContext Mask.complementedOp workGroupSize
 
         let fillSubVectorTo =
-            DenseVector.standardFillSubVectorTo<int, int> clContext workGroupSize
+            DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
 
         let containsNonZero =
             ClArray.exists clContext workGroupSize Predicates.isSome
@@ -38,9 +39,10 @@ module BFS =
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue vertexCount
+            let levels = zeroCreate queue HostInterop vertexCount
 
-            let frontier = ofList vertexCount [ source, 1 ]
+            let frontier =
+                ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
 
             match frontier with
             | ClVector.Dense front ->

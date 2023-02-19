@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Matrix.Elementwise
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Map2
 
 open Expecto
 open Expecto.Logging
@@ -14,6 +14,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Elementwise.Tests"
 
@@ -49,7 +50,7 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> ClMatrix<'a> -> ClMatrix<'b> -> ClMatrix<'c>)
+    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClMatrix<'a> -> ClMatrix<'c>)
     toCOOFun
     (isEqual: 'a -> 'a -> bool)
     q
@@ -63,18 +64,18 @@ let correctnessGenericTest
     let mtx2 =
         createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
-    if mtx1.NNZCount > 0 && mtx2.NNZCount > 0 then
+    if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
         try
             let m1 = mtx1.ToDevice case.TestContext.ClContext
 
             let m2 = mtx2.ToDevice case.TestContext.ClContext
 
-            let res = addFun q m1 m2
+            let res = addFun q HostInterop m1 m2
 
             m1.Dispose q
             m2.Dispose q
 
-            let (cooRes: ClMatrix<'a>) = toCOOFun q res
+            let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
             let actual = cooRes.ToHost q
 
             cooRes.Dispose q
@@ -102,7 +103,7 @@ let testFixturesEWiseAdd case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.elementwise context ArithmeticOperations.boolSum wgSize
+          Matrix.map2 context ArithmeticOperations.boolSum wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -111,7 +112,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.elementwise context ArithmeticOperations.intSum wgSize
+          Matrix.map2 context ArithmeticOperations.intSum wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -120,7 +121,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.elementwise context ArithmeticOperations.floatSum wgSize
+          Matrix.map2 context ArithmeticOperations.floatSum wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -129,7 +130,7 @@ let testFixturesEWiseAdd case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.elementwise context ArithmeticOperations.byteSum wgSize
+          Matrix.map2 context ArithmeticOperations.byteSum wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -152,7 +153,7 @@ let testFixturesEWiseAddAtLeastOne case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -161,7 +162,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -170,7 +171,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -179,7 +180,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -202,7 +203,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolAdd =
-          Matrix.elementwiseAtLeastOneToCOO context ArithmeticOperations.boolSumAtLeastOne wgSize
+          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.boolSumAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -211,7 +212,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.elementwiseAtLeastOneToCOO context ArithmeticOperations.intSumAtLeastOne wgSize
+          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.intSumAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -220,7 +221,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.elementwiseAtLeastOneToCOO context ArithmeticOperations.floatSumAtLeastOne wgSize
+          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.floatSumAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -229,7 +230,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.elementwiseAtLeastOneToCOO context ArithmeticOperations.byteSumAtLeastOne wgSize
+          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.byteSumAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 
@@ -252,7 +253,7 @@ let testFixturesEWiseMulAtLeastOne case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let boolMul =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
 
       let boolToCOO = Matrix.toCOO context wgSize
 
@@ -261,7 +262,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let intAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
 
       let intToCOO = Matrix.toCOO context wgSize
 
@@ -270,7 +271,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
 
       let floatToCOO = Matrix.toCOO context wgSize
 
@@ -279,7 +280,7 @@ let testFixturesEWiseMulAtLeastOne case =
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
-          Matrix.elementwiseAtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
+          Matrix.map2AtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
 
       let byteToCOO = Matrix.toCOO context wgSize
 

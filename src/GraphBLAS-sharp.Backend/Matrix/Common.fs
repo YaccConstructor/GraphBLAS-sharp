@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Common =
     ///<param name="clContext">.</param>
@@ -20,7 +21,7 @@ module Common =
 
         let resultLength = Array.zeroCreate<int> 1
 
-        fun (processor: MailboxProcessor<_>) (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
             let resultLengthGpu = clContext.CreateClCell 0
 
             let _, r = sum processor positions resultLengthGpu
@@ -34,28 +35,14 @@ module Common =
                 res.[0]
 
             let resultRows =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
+
 
             let resultColumns =
-                clContext.CreateClArray<int>(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
             let resultValues =
-                clContext.CreateClArray(
-                    resultLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.WriteOnly,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
             indicesScatter processor positions allRows resultRows
 

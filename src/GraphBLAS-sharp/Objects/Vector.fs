@@ -43,6 +43,10 @@ module Vector =
 
             Sparse.FromTuples(indices, vals, array.Length)
 
+        member this.NNZ = this.Values.Length
+
+open Vector
+
 [<RequireQualifiedAccess>]
 type Vector<'a when 'a: struct> =
     | Sparse of Vector.Sparse<'a>
@@ -62,4 +66,7 @@ type Vector<'a when 'a: struct> =
         | Sparse vector -> ClVector.Sparse <| vector.ToDevice(context)
         | Dense vector -> ClVector.Dense <| vector.ToDevice(context)
 
-
+    member this.NNZ =
+        match this with
+        | Sparse vector -> vector.NNZ
+        | Dense vector -> (Array.filter Option.isSome vector).Length

@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Transpose.Tests"
 
@@ -77,10 +78,10 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D case.Format array (areEqual zero)
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let m = mtx.ToDevice context
-            let (mT: ClMatrix<'a>) = transposeFun q m
+            let (mT: ClMatrix<'a>) = transposeFun q HostInterop m
             let res = mT.ToHost q
             m.Dispose q
             mT.Dispose q
@@ -104,11 +105,11 @@ let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a 
     let mtx =
         createMatrixFromArray2D case.Format array (areEqual zero)
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let m = mtx.ToDevice context
-            let mT = transposeFun q m
-            let mTT = transposeFun q mT
+            let mT = transposeFun q HostInterop m
+            let mTT = transposeFun q HostInterop mT
             let res = mTT.ToHost q
             m.Dispose q
             mT.Dispose q

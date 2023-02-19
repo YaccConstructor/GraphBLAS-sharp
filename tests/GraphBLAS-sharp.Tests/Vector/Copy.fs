@@ -10,10 +10,9 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.copy.Tests"
-
-let clContext = Context.defaultContext.ClContext
 
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
 
@@ -31,27 +30,26 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
     | Vector.Sparse actual, Vector.Sparse expected ->
         compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
         compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
-    | _, _ -> failwith "Copy format must be the same"
+    | _ -> failwith "Copy format must be the same"
 
 let correctnessGenericTest<'a when 'a: struct>
-    filter
     isEqual
-    (isZero: 'a -> bool)
-    (copy: MailboxProcessor<Brahma.FSharp.Msg> -> ClVector<'a> -> ClVector<'a>)
+    zero
+    (copy: MailboxProcessor<Brahma.FSharp.Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (array: 'a [])
     =
-    if array.Length > 0 then
-        let array = filter array
+
+    let expected =
+        createVectorFromArray case.Format array (isEqual zero)
+
+    if array.Length > 0 && expected.NNZ > 0 then
 
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
 
-        let expected =
-            createVectorFromArray case.Format array isZero
-
         let clVector = expected.ToDevice context
-        let clVectorCopy = copy q clVector
+        let clVectorCopy = copy q HostInterop clVector
         let actual = clVectorCopy.ToHost q
 
         clVector.Dispose q
@@ -60,9 +58,6 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual actual expected
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let filterFloats =
-        Array.filter (System.Double.IsNaN >> not)
-
     let config = defaultConfig
 
     let getCorrectnessTestName datatype =
@@ -75,28 +70,26 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let isZero item = item = 0
 
       case
-      |> correctnessGenericTest<int> id (=) isZero intCopy
+      |> correctnessGenericTest<int> (=) 0 intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let floatCopy = Vector.copy context wgSize
-      let isZero item = item = 0.0
 
       case
-      |> correctnessGenericTest<float> filterFloats (=) isZero floatCopy
+      |> correctnessGenericTest<float> floatIsEqual 0.0 floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolCopy = Vector.copy context wgSize
-      let isZero item = item = true
 
       case
-      |> correctnessGenericTest<bool> id (=) isZero boolCopy
+      |> correctnessGenericTest<bool> (=) false boolCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let floatCopy = Vector.copy context wgSize
       let isZero item = item = 0uy
 
       case
-      |> correctnessGenericTest<byte> id (=) isZero floatCopy
+      |> correctnessGenericTest<byte> (=) 0uy floatCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
 let tests =

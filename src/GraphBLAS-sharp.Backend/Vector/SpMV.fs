@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module SpMV =
     let runTo
@@ -12,7 +13,9 @@ module SpMV =
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
-        let localMemorySize = int clContext.ClDevice.LocalMemSize
+
+        let localMemorySize =
+            clContext.ClDevice.LocalMemSize / 1<Byte>
 
         let localPointersArraySize = workGroupSize + 1
 
@@ -94,7 +97,7 @@ module SpMV =
         let multiplyValues = clContext.Compile multiplyValues
         let reduceValuesByRows = clContext.Compile reduceValuesByRows
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) (result: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) (result: ClArray<'c option>) ->
 
             let matrixLength = matrix.Values.Length
 
@@ -105,12 +108,7 @@ module SpMV =
                 Range1D.CreateValid(matrix.RowCount, workGroupSize)
 
             let intermediateArray =
-                clContext.CreateClArray<'c option>(
-                    matrixLength,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode<'c option>(DeviceOnly, matrixLength)
 
             let multiplyValues = multiplyValues.GetKernel()
 
@@ -153,15 +151,10 @@ module SpMV =
         =
         let runTo = runTo clContext add mul workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 
             let result =
-                clContext.CreateClArray<'b option>(
-                    matrix.RowCount,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode<'c option>(allocationMode, matrix.RowCount)
 
             runTo queue matrix vector result
 

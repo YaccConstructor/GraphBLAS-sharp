@@ -10,7 +10,13 @@ open GraphBLAS.FSharp.Tests.Context
 
 let logger = Log.create "BitonicSort.Tests"
 
-let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (array: ('n * 'n * 'a) []) =
+let context = defaultContext.ClContext
+let config = { defaultConfig with endSize = 1000000 }
+
+let wgSize = 32
+let q = defaultContext.Queue
+
+let makeTest sort (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
         let projection (row: 'n) (col: 'n) (v: 'a) = row, col
 
@@ -63,23 +69,18 @@ let makeTest (context: ClContext) (q: MailboxProcessor<_>) sort (array: ('n * 'n
             vals)
         |> compareArrays (=) actualVals expectedVals
 
-let testFixtures<'a when 'a: equality> config wgSize context q =
-    let sort: MailboxProcessor<_> -> ClArray<int> -> ClArray<int> -> ClArray<'a> -> unit =
-        BitonicSort.sortKeyValuesInplace context wgSize
+let testFixtures<'a when 'a: equality> =
+    let sort =
+        BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
 
-    makeTest context q sort
+    makeTest sort
     |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =
-    let context = defaultContext.ClContext
-    let config = { defaultConfig with endSize = 1000000 }
-
-    let wgSize = 32
-    let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ testFixtures<int> config wgSize context q
-      testFixtures<float> config wgSize context q
-      testFixtures<byte> config wgSize context q
-      testFixtures<bool> config wgSize context q ]
+    [ testFixtures<int>
+      testFixtures<float>
+      testFixtures<byte>
+      testFixtures<bool> ]
     |> testList "Backend.Common.BitonicSort tests"

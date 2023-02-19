@@ -12,13 +12,13 @@ module Convert =
             | Some left, None -> (%op) (Left left)
             | None, None -> None @>
 
-    let fillSubToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+    let assignToOption (op: Expr<'a option -> 'a option -> 'a option>) =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
             match rightItem with
             | Some _ -> (%op) leftItem (Some value)
             | None -> (%op) leftItem None @>
 
-    let fillSubComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
+    let assignComplementedToOption (op: Expr<'a option -> 'a option -> 'a option>) =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
             match rightItem with
             | Some _ -> (%op) leftItem None

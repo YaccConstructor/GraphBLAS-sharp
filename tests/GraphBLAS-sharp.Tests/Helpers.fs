@@ -78,7 +78,7 @@ module Generators =
     type SingleMatrix() =
         static let matrixGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrows, ncols) = dimension2DGenerator
+                let! nrows, ncols = dimension2DGenerator
                 let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
                 return matrix
             }
@@ -125,7 +125,7 @@ module Generators =
     type SingleSymmetricalMatrix() =
         static let matrixGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrows, _) = dimension2DGenerator
+                let! nrows, _ = dimension2DGenerator
                 let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, nrows)
 
                 for row in 1 .. nrows - 1 do
@@ -177,7 +177,7 @@ module Generators =
     type PairOfSparseMatricesOfEqualSize() =
         static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrows, ncols) = dimension2DGenerator
+                let! nrows, ncols = dimension2DGenerator
                 let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
                 let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
                 return (matrixA, matrixB)
@@ -225,7 +225,7 @@ module Generators =
     type PairOfSparseMatrixOAndVectorfCompatibleSize() =
         static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrows, ncols) = dimension2DGenerator
+                let! nrows, ncols = dimension2DGenerator
                 let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
                 let! vector = valuesGenerator |> Gen.arrayOfLength ncols
                 let! mask = Arb.generate<bool> |> Gen.arrayOfLength nrows
@@ -281,7 +281,7 @@ module Generators =
     type PairOfSparseVectorAndMatrixOfCompatibleSize() =
         static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrows, ncols) = dimension2DGenerator
+                let! nrows, ncols = dimension2DGenerator
                 let! vector = valuesGenerator |> Gen.arrayOfLength nrows
                 let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
                 let! mask = Arb.generate<bool> |> Gen.arrayOfLength ncols
@@ -330,7 +330,7 @@ module Generators =
     type PairOfMatricesOfCompatibleSize() =
         static let pairOfMatricesOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+                let! nrowsA, ncolsA, ncolsB = dimension3DGenerator
 
                 let! matrixA =
                     valuesGenerator
@@ -385,7 +385,7 @@ module Generators =
     type PairOfMatricesOfCompatibleSizeWithMask() =
         static let pairOfMatricesOfCompatibleSizeWithMaskGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! (nrowsA, ncolsA, ncolsB) = dimension3DGenerator
+                let! nrowsA, ncolsA, ncolsB = dimension3DGenerator
 
                 let! matrixA =
                     valuesGenerator
@@ -702,6 +702,15 @@ module Utils =
                     typeof<Generators.BufferCompatibleVector>
                     typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
+    let floatIsEqual x y =
+        abs (x - y) < Accuracy.medium.absolute
+        || x.Equals y
+
+    let vectorToDenseVector =
+        function
+        | Vector.Dense vector -> vector
+        | _ -> failwith "Vector format must be Dense."
+
     let undirectedAlgoConfig =
         { FsCheckConfig.defaultConfig with
               maxTest = 10
@@ -830,7 +839,7 @@ module Context =
                         .GetDeviceInfo(device, DeviceInfo.Type, &e)
                         .CastTo<DeviceType>()
 
-                let clDeviceType =
+                let _ =
                     match deviceType with
                     | DeviceType.Cpu -> ClDeviceType.Cpu
                     | DeviceType.Gpu -> ClDeviceType.Gpu

@@ -12,6 +12,7 @@
     <ProjectReference Include="..\..\src\GraphBLAS-sharp\GraphBLAS-sharp.fsproj">
       <Name>GraphBLAS-sharp.fsproj</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\tests\GraphBLAS-sharp.Tests\GraphBLAS-sharp.Tests.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
@@ -23,6 +24,7 @@
     <Compile Include="BenchmarksMxm.fs" />
     <!--Compile Include="BenchmarksTranspose.fs" /-->
     <Compile Include="BenchmarksMathNET.fs" />
+    <Compile Include="VectorEWiseAddGen.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

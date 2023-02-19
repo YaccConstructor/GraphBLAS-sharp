@@ -4,9 +4,10 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Reduce =
-    let private runGeneral (clContext: ClContext) (workGroupSize: int) scan scanToCell =
+    let private runGeneral (clContext: ClContext) workGroupSize scan scanToCell =
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -16,22 +17,12 @@ module Reduce =
                 (inputArray.Length - 1) / workGroupSize + 1
 
             let firstVerticesArray =
-                clContext.CreateClArray(
-                    firstLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, firstLength)
 
             let secondLength = (firstLength - 1) / workGroupSize + 1
 
             let secondVerticesArray =
-                clContext.CreateClArray(
-                    secondLength,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    deviceAccessMode = DeviceAccessMode.ReadWrite,
-                    allocationMode = AllocationMode.Default
-                )
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, secondLength)
 
             let mutable verticesArrays = firstVerticesArray, secondVerticesArray
             let swap (a, b) = (b, a)
@@ -59,7 +50,7 @@ module Reduce =
 
             result
 
-    let scanSum (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let private scanSum (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
 
         let subSum = SubSum.sequentialSum opAdd
 
@@ -96,7 +87,7 @@ module Reduce =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let scanToCellSum (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let private scanToCellSum (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) zero =
 
         let subSum = SubSum.sequentialSum opAdd
 

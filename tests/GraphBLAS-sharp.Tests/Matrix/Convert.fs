@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Convert.Tests"
 
@@ -20,10 +21,10 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     let mtx =
         createMatrixFromArray2D formatFrom array isZero
 
-    if mtx.NNZCount > 0 then
+    if mtx.NNZ > 0 then
         let actual =
             let mBefore = mtx.ToDevice context
-            let mAfter: ClMatrix<'a> = convertFun q mBefore
+            let mAfter: ClMatrix<'a> = convertFun q HostInterop mBefore
             let res = mAfter.ToHost q
             mBefore.Dispose q
             mAfter.Dispose q

@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
@@ -27,15 +28,18 @@ let checkResult size (actual: Vector<'a>) =
         Expect.equal vector.Indices [| 0 |] "The index array must contain the 0"
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality>
-    (zeroCreate: MailboxProcessor<_> -> int -> VectorFormat -> ClVector<'a>)
+    (zeroCreate: MailboxProcessor<_> -> AllocationFlag -> int -> VectorFormat -> ClVector<'a>)
     (case: OperationCase<VectorFormat>)
     (vectorSize: int)
     =
 
+    let vectorSize = abs vectorSize
+
     if vectorSize > 0 then
         let q = case.TestContext.Queue
 
-        let (clVector: ClVector<'a>) = zeroCreate q vectorSize case.Format
+        let clVector =
+            zeroCreate q HostInterop vectorSize case.Format
 
         let hostVector = clVector.ToHost q
 
@@ -67,7 +71,6 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       case
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
 
       let floatZeroCreate = Vector.zeroCreate context wgSize
 

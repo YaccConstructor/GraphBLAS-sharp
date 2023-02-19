@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal SpGEMM =
     let private calculate
@@ -106,21 +107,13 @@ module internal SpGEMM =
 
         let program = context.Compile(run)
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
             let values =
-                context.CreateClArray<'c>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                context.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, mask.NNZ)
 
             let bitmap =
-                context.CreateClArray<int>(
-                    mask.NNZ,
-                    hostAccessMode = HostAccessMode.NotAccessible,
-                    allocationMode = AllocationMode.Default
-                )
+                context.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, mask.NNZ)
 
             let kernel = program.GetKernel()
 
@@ -164,7 +157,7 @@ module internal SpGEMM =
         let scanInplace =
             PrefixSum.standardExcludeInplace context workGroupSize
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMask2D) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
             let values, bitmap =
                 calculate queue matrixLeft matrixRight mask
