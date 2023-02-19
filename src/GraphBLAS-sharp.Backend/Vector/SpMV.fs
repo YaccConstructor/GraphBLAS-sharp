@@ -12,8 +12,7 @@ module SpMV =
         (mul: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
-        //Until LocalMemSize added to ClDevice as member
-        let localMemorySize = Utils.getLocalMemorySize clContext
+        let localMemorySize = int clContext.ClDevice.LocalMemSize
 
         let localPointersArraySize = workGroupSize + 1
 
@@ -40,20 +39,20 @@ module SpMV =
                 let gid = ndRange.GlobalID0
                 let lid = ndRange.LocalID0
 
+                let localPtr = localArray<int> localPointersArraySize
+                let localValues =
+                        localArray<'c option> localValuesArraySize
+
                 if gid <= numberOfRows then
                     let threadsPerBlock =
                         min (numberOfRows - gid + lid) workGroupSize //If number of rows left is lesser than number of threads in a block
 
-                    let localPtr = localArray<int> localPointersArraySize
                     localPtr.[lid] <- matrixPtr.[gid]
 
                     if lid = 0 then
                         localPtr.[threadsPerBlock] <- matrixPtr.[gid + threadsPerBlock]
 
                     barrierLocal ()
-
-                    let localValues =
-                        localArray<'c option> localValuesArraySize
 
                     let workEnd = localPtr.[threadsPerBlock]
                     let mutable blockLowerBound = localPtr.[0]
