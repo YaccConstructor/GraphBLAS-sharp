@@ -8,7 +8,6 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
-open Utils
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
@@ -17,6 +16,9 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Elementwise.Tests"
+
+let config = Utils.defaultConfig
+let wgSize = 32
 
 let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
     let rows = Array2D.length1 baseMtx1
@@ -59,10 +61,10 @@ let correctnessGenericTest
     =
 
     let mtx1 =
-        createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
 
     let mtx2 =
-        createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
     if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
         try
@@ -92,10 +94,7 @@ let correctnessGenericTest
         | ex -> raise ex
 
 let testFixturesEWiseAdd case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
+    [ let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
       let context = case.TestContext.ClContext
@@ -120,14 +119,15 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd =
-          Matrix.map2 context ArithmeticOperations.floatSum wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatAdd =
+              Matrix.map2 context ArithmeticOperations.floatSum wgSize
 
-      let floatToCOO = Matrix.toCOO context wgSize
+          let floatToCOO = Matrix.toCOO context wgSize
 
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
           Matrix.map2 context ArithmeticOperations.byteSum wgSize
@@ -142,10 +142,7 @@ let elementwiseAddTests =
     operationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
 
 let testFixturesEWiseAddAtLeastOne case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
+    [ let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
       let context = case.TestContext.ClContext
@@ -170,14 +167,15 @@ let testFixturesEWiseAddAtLeastOne case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatAdd =
+              Matrix.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
 
-      let floatToCOO = Matrix.toCOO context wgSize
+          let floatToCOO = Matrix.toCOO context wgSize
 
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
           Matrix.map2AtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
@@ -192,10 +190,7 @@ let elementwiseAddAtLeastOneTests =
     operationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
+    [ let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
       let context = case.TestContext.ClContext
@@ -220,14 +215,15 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.floatSumAtLeastOne wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatAdd =
+              Matrix.map2AtLeastOneToCOO context ArithmeticOperations.floatSumAtLeastOne wgSize
 
-      let floatToCOO = Matrix.toCOO context wgSize
+          let floatToCOO = Matrix.toCOO context wgSize
 
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
           Matrix.map2AtLeastOneToCOO context ArithmeticOperations.byteSumAtLeastOne wgSize
@@ -242,10 +238,7 @@ let elementwiseAddAtLeastOneToCOOTests =
     operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
 let testFixturesEWiseMulAtLeastOne case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
+    [ let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype case
 
       let context = case.TestContext.ClContext
@@ -270,14 +263,15 @@ let testFixturesEWiseMulAtLeastOne case =
       |> correctnessGenericTest 0 (*) intAdd intToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatAdd =
+              Matrix.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
 
-      let floatToCOO = Matrix.toCOO context wgSize
+          let floatToCOO = Matrix.toCOO context wgSize
 
-      case
-      |> correctnessGenericTest 0.0 (*) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest 0.0 (*) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
           Matrix.map2AtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize

@@ -4,7 +4,7 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
@@ -56,10 +56,10 @@ let correctnessGenericTest
     =
 
     let mtx =
-        createMatrixFromArray2D CSR matrix (isEqual zero)
+        Utils.createMatrixFromArray2D CSR matrix (isEqual zero)
 
     let vtr =
-        createVectorFromArray Dense vector (isEqual zero)
+        Utils.createVectorFromArray Dense vector (isEqual zero)
 
     if mtx.NNZ > 0 && vtr.Size > 0 then
         try
@@ -83,7 +83,7 @@ let correctnessGenericTest
         | ex -> raise ex
 
 let testFixturesSpMV (testContext: TestContext) =
-    [ let config = defaultConfig
+    [ let config = Utils.defaultConfig
       let wgSize = 32
 
       let getCorrectnessTestName datatype =
@@ -107,12 +107,13 @@ let testFixturesSpMV (testContext: TestContext) =
       |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatSpMV =
-          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatSpMV =
+              SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
 
-      testContext
-      |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          testContext
+          |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let byteAdd =
           SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize

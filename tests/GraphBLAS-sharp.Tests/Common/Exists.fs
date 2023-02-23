@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open Context
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
@@ -20,7 +19,8 @@ let q = defaultContext.Queue
 let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (array: 'a []) =
 
     if array.Length > 0 then
-        let vector = createVectorFromArray Dense array isZero
+        let vector =
+            Utils.createVectorFromArray Dense array isZero
 
         let result =
             match vector.ToDevice context with
@@ -41,7 +41,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (a
         |> Expect.equal result (Array.exists (not << isZero) array)
 
 let testFixtures =
-    let config = defaultConfig
+    let config = Utils.defaultConfig
 
     let wgSize = 32
 
@@ -66,14 +66,15 @@ let testFixtures =
       correctnessGenericTest<byte> ((=) 0uy) exists (Array.create 1000 0uy)
       |> testPropertyWithConfig config (getCorrectnessTestName "byte zeros")
 
-      let exists =
-          ClArray.exists context wgSize Predicates.isSome
+      if Utils.isFloat64Available context.ClDevice then
+          let exists =
+              ClArray.exists context wgSize Predicates.isSome
 
-      correctnessGenericTest<float> ((=) 0.0) exists
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          correctnessGenericTest<float> ((=) 0.0) exists
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
-      correctnessGenericTest<float> ((=) 0.0) exists (Array.create 1000 0.0)
-      |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
+          correctnessGenericTest<float> ((=) 0.0) exists (Array.create 1000 0.0)
+          |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
 
       let exists =
           ClArray.exists context wgSize Predicates.isSome

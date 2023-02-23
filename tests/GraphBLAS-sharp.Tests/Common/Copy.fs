@@ -59,18 +59,17 @@ let testCases =
 
           fun (array: array<bool>) -> makeTest getCopyFun array id)
 
-      testProperty "Correctness test on random float arrays"
-      <| (let copy = ClArray.copy context
-          let getCopyFun = getCopyFun copy
+      if Utils.isFloat64Available context.ClDevice then
+          testProperty "Correctness test on random float arrays"
+          <| (let copy = ClArray.copy context
+              let getCopyFun = getCopyFun copy
 
-          fun (array: array<float>) -> makeTest getCopyFun array (Array.filter (System.Double.IsNaN >> not)))
+              fun (array: array<float>) -> makeTest getCopyFun array (Array.filter (System.Double.IsNaN >> not)))
 
       testProperty "Correctness test on random byte arrays"
       <| (let copy = ClArray.copy context
           let getCopyFun = getCopyFun copy
 
-          fun (array: array<byte>) -> makeTest getCopyFun array id)
-
-      ]
+          fun (array: array<byte>) -> makeTest getCopyFun array id) ]
 
 let tests = testCases |> testList "Array.copy tests"

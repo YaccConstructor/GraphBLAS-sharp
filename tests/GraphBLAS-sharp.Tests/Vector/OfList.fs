@@ -3,7 +3,7 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.OfList
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
 open Context
 open TestCases
@@ -27,8 +27,8 @@ let checkResult
 
     match actual with
     | Vector.Sparse actual ->
-        compareArrays (=) actual.Indices expectedIndices "indices must be the same"
-        compareArrays isEqual actual.Values expectedValues "values must be the same"
+        Utils.compareArrays (=) actual.Indices expectedIndices "indices must be the same"
+        Utils.compareArrays isEqual actual.Values expectedValues "values must be the same"
     | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest<'a when 'a: struct>
@@ -68,7 +68,7 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual indices values actual actualSize
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    [ let config = defaultConfig
+    [ let config = Utils.defaultConfig
 
       let wgSize = 32
 
@@ -104,13 +104,14 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<byte> (=) byteOfList toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let floatOfList = Vector.ofList context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatOfList = Vector.ofList context wgSize
 
-      let toCoo = Vector.toSparse context wgSize
+          let toCoo = Vector.toSparse context wgSize
 
-      case
-      |> correctnessGenericTest<float> floatIsEqual floatOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
+          case
+          |> correctnessGenericTest<float> Utils.floatIsEqual floatOfList toCoo
+          |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
 
 let tests =
     operationGPUTests "Backend.Vector.ofList tests" testFixtures

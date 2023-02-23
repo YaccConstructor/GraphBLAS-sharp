@@ -6,13 +6,13 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 
 let context = defaultContext.ClContext
 
-let config = defaultConfig
+let config = Tests.Utils.defaultConfig
 
 let wgSize = 128
 
@@ -58,7 +58,7 @@ let makeTest scan plus zero isEqual (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
         "Arrays should be the same"
-        |> compareArrays isEqual actual expected
+        |> Tests.Utils.compareArrays isEqual actual expected
 
 let testFixtures plus plusQ zero isEqual name =
     let scan =
@@ -76,7 +76,10 @@ let tests =
       testFixtures max <@ max @> 0.0 (=) "float max"
       testFixtures max <@ max @> 0uy (=) "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue (=) "int min"
-      testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+
+      if Tests.Utils.isFloat64Available context.ClDevice then
+          testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+
       testFixtures min <@ min @> System.Byte.MaxValue (=) "byte min"
       testFixtures (||) <@ (||) @> false (=) "bool logic-or"
       testFixtures (&&) <@ (&&) @> true (=) "bool logic-and" ]

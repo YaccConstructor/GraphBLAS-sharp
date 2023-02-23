@@ -64,19 +64,18 @@ let testCases =
 
           fun (array: array<bool>) -> makeTest getReplicateFun array id)
 
-      testProperty "Correctness test on random float arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
+      if Utils.isFloat64Available context.ClDevice then
+          testProperty "Correctness test on random float arrays"
+          <| (let replicate = ClArray.replicate context
+              let getReplicateFun = getReplicateFun replicate
 
-          fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter (System.Double.IsNaN >> not)))
+              fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter (System.Double.IsNaN >> not)))
 
       testProperty "Correctness test on random byte arrays"
       <| (let replicate = ClArray.replicate context
           let getReplicateFun = getReplicateFun replicate
 
-          fun (array: array<byte>) -> makeTest getReplicateFun array id)
-
-      ]
+          fun (array: array<byte>) -> makeTest getReplicateFun array id) ]
 
 let tests =
     testCases |> testList "Array.replicate tests"

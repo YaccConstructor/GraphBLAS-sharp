@@ -3,14 +3,17 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Scatter
 open Expecto
 open Expecto.Logging
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Common
 
 let logger = Log.create "Scatter.Tests"
 
 let context = defaultContext.ClContext
-let config = { defaultConfig with endSize = 1000000 }
+
+let config =
+    { Tests.Utils.defaultConfig with
+          endSize = 1000000 }
 
 let wgSize = 32
 
@@ -44,7 +47,7 @@ let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clResult, Array.zeroCreate result.Length, ch))
 
         (sprintf "Arrays should be equal. Actual is \n%A, expected \n%A" actual expected)
-        |> compareArrays (=) actual expected
+        |> Tests.Utils.compareArrays (=) actual expected
 
 let testFixtures<'a when 'a: equality> =
     let scatter = Scatter.runInplace<'a> context wgSize

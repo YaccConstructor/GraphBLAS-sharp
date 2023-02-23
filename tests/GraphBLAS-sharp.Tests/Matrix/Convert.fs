@@ -3,7 +3,7 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.Convert
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
@@ -14,12 +14,12 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Convert.Tests"
 
-let config = defaultConfig
+let config = Utils.defaultConfig
 let wgSize = 32
 
 let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     let mtx =
-        createMatrixFromArray2D formatFrom array isZero
+        Utils.createMatrixFromArray2D formatFrom array isZero
 
     if mtx.NNZ > 0 then
         let actual =
@@ -36,7 +36,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
         )
 
         let expected =
-            createMatrixFromArray2D formatTo array isZero
+            Utils.createMatrixFromArray2D formatTo array isZero
 
         "Matrices should be equal"
         |> Expect.equal actual expected
@@ -53,7 +53,7 @@ let testFixtures formatTo =
     | COO ->
         [ let convertFun = Matrix.toCOO context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
@@ -61,7 +61,7 @@ let testFixtures formatTo =
 
           let convertFun = Matrix.toCOO context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) false)
@@ -70,7 +70,7 @@ let testFixtures formatTo =
     | CSR ->
         [ let convertFun = Matrix.toCSR context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
@@ -78,7 +78,7 @@ let testFixtures formatTo =
 
           let convertFun = Matrix.toCSR context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) false)
@@ -87,7 +87,7 @@ let testFixtures formatTo =
     | CSC ->
         [ let convertFun = Matrix.toCSC context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
@@ -95,7 +95,7 @@ let testFixtures formatTo =
 
           let convertFun = Matrix.toCSC context wgSize
 
-          listOfUnionCases<MatrixFormat>
+          Utils.listOfUnionCases<MatrixFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest context q formatFrom formatTo convertFun ((=) false)
@@ -103,6 +103,6 @@ let testFixtures formatTo =
         |> List.concat
 
 let tests =
-    listOfUnionCases<MatrixFormat>
+    Utils.listOfUnionCases<MatrixFormat>
     |> List.collect testFixtures
     |> testList "Convert tests"

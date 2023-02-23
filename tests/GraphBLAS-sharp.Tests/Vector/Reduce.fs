@@ -4,7 +4,7 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
@@ -30,7 +30,7 @@ let correctnessGenericTest
     =
 
     let vector =
-        createVectorFromArray case.Format array (isEqual zero)
+        Utils.createVectorFromArray case.Format array (isEqual zero)
 
     if vector.NNZ > 0 then
         let q = case.TestContext.Queue
@@ -53,7 +53,7 @@ let correctnessGenericTest
         checkResult zero op result array
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = defaultConfig
+    let config = Utils.defaultConfig
 
     let getCorrectnessTestName dataType =
         $"Correctness on %A{dataType}, %A{case.Format}"
@@ -85,7 +85,7 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       let floatMaxReduce = Vector.reduce context wgSize
 
       case
-      |> correctnessGenericTest floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
+      |> correctnessGenericTest Utils.floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
       let byteMaxReduce = Vector.reduce context wgSize
@@ -100,11 +100,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest (=) System.Int32.MaxValue min <@ min @> intMinReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "int min")
 
-      let floatMinReduce = Vector.reduce context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatMinReduce = Vector.reduce context wgSize
 
-      case
-      |> correctnessGenericTest floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "float min")
+          case
+          |> correctnessGenericTest Utils.floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
+          |> testPropertyWithConfig config (getCorrectnessTestName "float min")
 
       let byteMinReduce = Vector.reduce context wgSize
 

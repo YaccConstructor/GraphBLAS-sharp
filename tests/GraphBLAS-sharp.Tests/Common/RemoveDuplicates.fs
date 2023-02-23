@@ -66,9 +66,7 @@ let testCases =
               let expected = Seq.distinct array |> Array.ofSeq
 
               "Array should be without duplicates"
-              |> Expect.sequenceEqual actual expected
-
-      ]
+              |> Expect.sequenceEqual actual expected ]
 
 let tests =
     testCases

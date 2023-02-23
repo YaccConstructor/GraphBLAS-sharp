@@ -35,4 +35,3 @@ module SubSum =
         sumGeneral<'a> <| sequentialAccess<'a> opAdd
 
     let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess<'a> opAdd
-

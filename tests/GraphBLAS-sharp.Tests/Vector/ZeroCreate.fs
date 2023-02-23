@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open Context
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
@@ -48,7 +47,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
         checkResult vectorSize hostVector
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = defaultConfig
+    let config = Utils.defaultConfig
 
     let getCorrectnessTestName dataType =
         $"Correctness on %A{dataType}, %A{case.Format}"
@@ -72,11 +71,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
-      let floatZeroCreate = Vector.zeroCreate context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatZeroCreate = Vector.zeroCreate context wgSize
 
-      case
-      |> correctnessGenericTest floatZeroCreate
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest floatZeroCreate
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolZeroCreate = Vector.zeroCreate context wgSize
 

@@ -684,6 +684,7 @@ module Generators =
             pairOfVectorsOfEqualSize <| Arb.generate<bool>
             |> Arb.fromGen
 
+[<RequireQualifiedAccess>]
 module Utils =
 
     let defaultConfig =
@@ -785,6 +786,13 @@ module Utils =
                 []
                 (cartesian t)
         | _ -> []
+
+    let isFloat64Available (context: ClDevice) =
+        Array.exists
+            (function
+            | CL_KHR_FP64 -> true
+            | _ -> false)
+            context.DeviceExtensions
 
 module Context =
     type TestContext =

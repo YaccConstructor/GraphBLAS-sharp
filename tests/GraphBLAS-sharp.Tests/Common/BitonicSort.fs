@@ -5,13 +5,16 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 
 let logger = Log.create "BitonicSort.Tests"
 
 let context = defaultContext.ClContext
-let config = { defaultConfig with endSize = 1000000 }
+
+let config =
+    { Utils.defaultConfig with
+          endSize = 1000000 }
 
 let wgSize = 32
 let q = defaultContext.Queue
@@ -53,21 +56,21 @@ let makeTest sort (array: ('n * 'n * 'a) []) =
             |> Array.unzip3
 
         (sprintf "Row arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualRows expectedRows rows)
-        |> compareArrays (=) actualRows expectedRows
+        |> Utils.compareArrays (=) actualRows expectedRows
 
         (sprintf
             "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
             actualCols
             expectedCols
             cols)
-        |> compareArrays (=) actualCols expectedCols
+        |> Utils.compareArrays (=) actualCols expectedCols
 
         (sprintf
             "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
             actualVals
             expectedVals
             vals)
-        |> compareArrays (=) actualVals expectedVals
+        |> Utils.compareArrays (=) actualVals expectedVals
 
 let testFixtures<'a when 'a: equality> =
     let sort =
@@ -80,7 +83,8 @@ let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ testFixtures<int>
-      testFixtures<float>
+      if Utils.isFloat64Available context.ClDevice then
+          testFixtures<float>
       testFixtures<byte>
       testFixtures<bool> ]
     |> testList "Backend.Common.BitonicSort tests"

@@ -6,7 +6,6 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open FSharp.Quotations
 open Context
 
@@ -14,7 +13,7 @@ let logger = Log.create "Sum.Test"
 
 let context = defaultContext.ClContext
 
-let config = defaultConfig
+let config = Utils.defaultConfig
 
 let wgSize = 128
 let q = defaultContext.Queue
@@ -65,7 +64,10 @@ let tests =
       testFixtures max <@ max @> 0.0 "float max"
       testFixtures max <@ max @> 0uy "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue "int min"
-      testFixtures min <@ min @> System.Double.MaxValue "float min"
+
+      if Utils.isFloat64Available context.ClDevice then
+          testFixtures min <@ min @> System.Double.MaxValue "float min"
+
       testFixtures min <@ min @> System.Byte.MaxValue "byte min"
       testFixtures (||) <@ (||) @> false "bool logic-or"
       testFixtures (&&) <@ (&&) @> true "bool logic-and" ]

@@ -4,7 +4,7 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
@@ -26,10 +26,10 @@ let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vect
             | None, None -> true
             | _, _ -> false
 
-        compareArrays isEqual actual expected "The values array must contain the default value"
+        Utils.compareArrays isEqual actual expected "The values array must contain the default value"
     | Vector.Sparse actual, Vector.Sparse expected ->
-        compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
-        compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
+        Utils.compareArrays isEqual actual.Values expected.Values "The values array must contain the default value"
+        Utils.compareArrays (=) actual.Indices expected.Indices "The index array must contain the 0"
     | _ -> failwith "Copy format must be the same"
 
 let correctnessGenericTest<'a when 'a: struct>
@@ -41,7 +41,7 @@ let correctnessGenericTest<'a when 'a: struct>
     =
 
     let expected =
-        createVectorFromArray case.Format array (isEqual zero)
+        Utils.createVectorFromArray case.Format array (isEqual zero)
 
     if array.Length > 0 && expected.NNZ > 0 then
 
@@ -58,7 +58,7 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual actual expected
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = defaultConfig
+    let config = Utils.defaultConfig
 
     let getCorrectnessTestName datatype =
         sprintf "Correctness on %s, %A" datatype case.Format
@@ -73,11 +73,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest<int> (=) 0 intCopy
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
-      let floatCopy = Vector.copy context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatCopy = Vector.copy context wgSize
 
-      case
-      |> correctnessGenericTest<float> floatIsEqual 0.0 floatCopy
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          case
+          |> correctnessGenericTest<float> Utils.floatIsEqual 0.0 floatCopy
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let boolCopy = Vector.copy context wgSize
 
@@ -86,7 +87,6 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool")
 
       let floatCopy = Vector.copy context wgSize
-      let isZero item = item = 0uy
 
       case
       |> correctnessGenericTest<byte> (=) 0uy floatCopy
