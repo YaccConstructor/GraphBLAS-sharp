@@ -39,7 +39,7 @@ let testCases =
 
             logger.debug (
                 eventX $"Actual is {actual}"
-                >> setField "actual" (sprintf "%A" actual)
+                >> setField "actual" $"%A{actual}"
             )
 
             let expected =
@@ -50,7 +50,7 @@ let testCases =
 
             let actual = filterFun actual
 
-            sprintf "Array should contains %i copies of the original one" i
+            $"Array should contains %i{i} copies of the original one"
             |> Expect.sequenceEqual actual expected
 
     [ testProperty "Correctness test on random int arrays"
@@ -69,7 +69,13 @@ let testCases =
           <| (let replicate = ClArray.replicate context
               let getReplicateFun = getReplicateFun replicate
 
-              fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter (System.Double.IsNaN >> not)))
+              fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter System.Double.IsNormal))
+
+      testProperty "Correctness test on random float32 arrays"
+      <| (let replicate = ClArray.replicate context
+          let getReplicateFun = getReplicateFun replicate
+
+          fun (array: array<float32>) -> makeTest getReplicateFun array (Array.filter System.Single.IsNormal))
 
       testProperty "Correctness test on random byte arrays"
       <| (let replicate = ClArray.replicate context

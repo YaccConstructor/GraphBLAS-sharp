@@ -122,7 +122,7 @@ let testFixtures isComplemented case =
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let float32Fill =
-         Vector.assignByMaskComplemented context Mask.assign wgSize
+          Vector.assignByMaskComplemented context Mask.assign wgSize
 
       let float32ToCoo = Vector.toDense context wgSize
 
@@ -149,7 +149,9 @@ let testFixtures isComplemented case =
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =
-    operationGPUTests "Backend.Vector.assignByMask tests" <| testFixtures false
+    operationGPUTests "Backend.Vector.assignByMask tests"
+    <| testFixtures false
 
 let complementedTests =
-    operationGPUTests "Backend.Vector.assignByMaskComplemented tests" <| testFixtures true
+    operationGPUTests "Backend.Vector.assignByMaskComplemented tests"
+    <| testFixtures true

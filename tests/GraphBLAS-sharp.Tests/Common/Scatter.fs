@@ -35,27 +35,27 @@ let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
         if 0 <= i && i < expected.Length then
             expected.[i] <- u
 
-        let positions, vals = Array.unzip array
+        let positions, values = Array.unzip array
 
         let actual =
             use clPositions = context.CreateClArray positions
-            use clVals = context.CreateClArray vals
+            use clValues = context.CreateClArray values
             use clResult = context.CreateClArray result
 
-            scatter q clPositions clVals clResult
+            scatter q clPositions clValues clResult
 
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clResult, Array.zeroCreate result.Length, ch))
 
-        (sprintf "Arrays should be equal. Actual is \n%A, expected \n%A" actual expected)
+        $"Arrays should be equal. Actual is \n%A{actual}, expected \n%A{expected}"
         |> Tests.Utils.compareArrays (=) actual expected
 
 let testFixtures<'a when 'a: equality> =
     Scatter.runInplace<'a> context wgSize
     |> makeTest
-    |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
+    |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
 let tests =
-    q.Error.Add(fun e -> failwithf "%A" e)
+    q.Error.Add(fun e -> failwithf $"%A{e}")
 
     [ testFixtures<int>
       testFixtures<byte>

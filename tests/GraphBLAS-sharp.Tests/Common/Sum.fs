@@ -67,6 +67,9 @@ let tests =
           testFixtures min <@ min @> System.Double.MaxValue "float min"
           testFixtures max <@ max @> 0.0 "float max"
 
+      testFixtures min <@ min @> System.Single.MaxValue "float32 min"
+      testFixtures max <@ max @> 0.0f "float32 max"
+
       testFixtures min <@ min @> System.Byte.MaxValue "byte min"
       testFixtures (||) <@ (||) @> false "bool logic-or"
       testFixtures (&&) <@ (&&) @> true "bool logic-and" ]

@@ -60,7 +60,7 @@ let testCases =
 
               logger.debug (
                   eventX "Actual is {actual}"
-                  >> setField "actual" (sprintf "%A" actual)
+                  >> setField "actual" $"%A{actual}"
               )
 
               let expected = Seq.distinct array |> Array.ofSeq

@@ -165,7 +165,7 @@ let mulTestFixtures case =
           |> testPropertyWithConfig config (getCorrectnessTestName case "float")
 
       let float32MulFun =
-         Vector.map2 context ArithmeticOperations.float32Mul wgSize
+          Vector.map2 context ArithmeticOperations.float32Mul wgSize
 
       let float32ToDense = Vector.toDense context wgSize
 
@@ -398,7 +398,7 @@ let mulGeneralTestFixtures case =
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
       let float32MulFun =
-         Vector.map2General context ArithmeticOperations.float32Mul wgSize
+          Vector.map2General context ArithmeticOperations.float32Mul wgSize
 
       let float32ToDense = Vector.toDense context wgSize
 
@@ -444,12 +444,13 @@ let complementedGeneralTestFixtures case =
 
       if Utils.isFloat64Available context.ClDevice then
           let floatMaskFun =
-            Vector.map2General context (fillSubVectorComplementedQ 1.0) wgSize
+              Vector.map2General context (fillSubVectorComplementedQ 1.0) wgSize
 
           let floatToDense = Vector.toDense context wgSize
 
           case
-          |> correctnessGenericTest Utils.floatIsEqual
+          |> correctnessGenericTest
+              Utils.floatIsEqual
               0.0
               (fillSubVectorFun 1.0 0.0 Utils.floatIsEqual)
               floatMaskFun
@@ -462,7 +463,8 @@ let complementedGeneralTestFixtures case =
       let float32ToDense = Vector.toDense context wgSize
 
       case
-      |> correctnessGenericTest Utils.float32IsEqual
+      |> correctnessGenericTest
+          Utils.float32IsEqual
           0.0f
           (fillSubVectorFun 1.0f 0.0f Utils.float32IsEqual)
           float32MaskFun

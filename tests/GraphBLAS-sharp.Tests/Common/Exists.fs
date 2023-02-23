@@ -16,6 +16,10 @@ let context = defaultContext.ClContext
 
 let q = defaultContext.Queue
 
+let config = Utils.defaultConfig
+
+let wgSize = 32
+
 let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (array: 'a []) =
 
     if array.Length > 0 then
@@ -41,9 +45,6 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (a
         |> Expect.equal result (Array.exists (not << isZero) array)
 
 let testFixtures =
-    let config = Utils.defaultConfig
-
-    let wgSize = 32
 
     let getCorrectnessTestName datatype =
         sprintf "Correctness on %s, %A" datatype Dense
@@ -75,6 +76,15 @@ let testFixtures =
 
           correctnessGenericTest<float> ((=) 0.0) exists (Array.create 1000 0.0)
           |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
+
+      let exists =
+          ClArray.exists context wgSize Predicates.isSome
+
+      correctnessGenericTest<float32> ((=) 0.0f) exists
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
+
+      correctnessGenericTest<float32> ((=) 0.0f) exists (Array.create 1000 0.0f)
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32 zeros")
 
       let exists =
           ClArray.exists context wgSize Predicates.isSome
