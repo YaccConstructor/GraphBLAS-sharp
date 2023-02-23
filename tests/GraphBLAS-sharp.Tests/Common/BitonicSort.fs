@@ -78,6 +78,8 @@ let tests =
       if Utils.isFloat64Available context.ClDevice then
           testFixtures<float>
 
+      testFixtures<float32>
+
       testFixtures<byte>
       testFixtures<bool> ]
     |> testList "Backend.Common.BitonicSort tests"

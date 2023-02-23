@@ -252,7 +252,7 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-    type PairOfSparseMatrixOAndVectorfCompatibleSize() =
+    type PairOfSparseMatrixOAndVectorsCompatibleSize() =
         static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
                 let! nrows, ncols = dimension2DGenerator
@@ -645,7 +645,7 @@ module Generators =
             <| Arb.generate<bool>
             |> Arb.fromGen
 
-    type BufferCompatibleVector() =
+    type BufferCompatibleArray() =
         static let compatibleVector (valuesGenerator: Gen<'a>) =
             gen {
                 let! length = Gen.sized <| fun size -> Gen.choose (1, size)
@@ -767,11 +767,11 @@ module Utils =
                   [ typeof<Generators.SingleMatrix>
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
-                    typeof<Generators.PairOfSparseMatrixOAndVectorfCompatibleSize>
+                    typeof<Generators.PairOfSparseMatrixOAndVectorsCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys>
                     typeof<Generators.ArrayOfAscendingKeys>
-                    typeof<Generators.BufferCompatibleVector>
+                    typeof<Generators.BufferCompatibleArray>
                     typeof<Generators.PairOfVectorsOfEqualSize> ] }
 
     let floatIsEqual x y =

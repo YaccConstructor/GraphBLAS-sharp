@@ -8,74 +8,51 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Copy.Tests"
+let logger = Log.create "ClArray.Copy.Tests"
 
 let context = Context.defaultContext.ClContext
 
+let wgSize = 32
+
+let q = Context.defaultContext.Queue
+
+let makeTest<'a when 'a: equality> copyFun (array: array<'a>) = // TODO()
+    if array.Length > 0 then
+        use clArray = context.CreateClArray array
+
+        let actual =
+            use clActual: ClArray<'a> = copyFun q HostInterop clArray
+
+            let actual = Array.zeroCreate clActual.Length
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
+
+        logger.debug (
+            eventX "Actual is {actual}"
+            >> setField "actual" $"%A{actual}"
+        )
+
+        let expected = array
+        let actual = actual
+
+        "Array should be equals to original"
+        |> Expect.sequenceEqual actual expected
+
+let creatTest<'a when 'a: equality> =
+    ClArray.copy context wgSize
+    |> makeTest<'a>
+    |> testProperty $"Correctness test on random %A{typeof<'a>} arrays"
+
 let testCases =
-    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let getCopyFun copy =
-        fun (array: array<_>) ->
-            let wgSize =
-                [| for i in 0 .. 5 -> pown 2 i |]
-                |> Array.filter (fun i -> array.Length % i = 0)
-                |> Array.max
-
-            copy wgSize q HostInterop
-
-    let makeTest getCopyFun (array: array<'a>) filterFun =
-        if array.Length > 0 then
-            use clArray = context.CreateClArray array
-
-            let copy = getCopyFun array
-
-            let actual =
-                use clActual: ClArray<'a> = copy clArray
-
-                let actual = Array.zeroCreate clActual.Length
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
-
-            logger.debug (
-                eventX "Actual is {actual}"
-                >> setField "actual" (sprintf "%A" actual)
-            )
-
-            let expected = filterFun array
-            let actual = filterFun actual
-
-            "Array should be equals to original"
-            |> Expect.sequenceEqual actual expected
-
-    [ testProperty "Correctness test on random int arrays"
-      <| (let copy = ClArray.copy context
-          let getCopyFun = getCopyFun copy
-          fun (array: array<int>) -> makeTest getCopyFun array id)
-
-      testProperty "Correctness test on random bool arrays"
-      <| (let copy = ClArray.copy context
-          let getCopyFun = getCopyFun copy
-
-          fun (array: array<bool>) -> makeTest getCopyFun array id)
+    [ creatTest<int>
+      creatTest<bool>
 
       if Utils.isFloat64Available context.ClDevice then
-          testProperty "Correctness test on random float arrays"
-          <| (let copy = ClArray.copy context
-              let getCopyFun = getCopyFun copy
+          creatTest<float>
 
-              fun (array: array<float>) -> makeTest getCopyFun array (Array.filter System.Double.IsNormal))
+      creatTest<float32>
+      creatTest<byte> ]
 
-      testProperty "Correctness test on random float32 arrays"
-      <| (let copy = ClArray.copy context
-          let getCopyFun = getCopyFun copy
-
-          fun (array: array<float32>) -> makeTest getCopyFun array (Array.filter System.Single.IsNormal))
-
-      testProperty "Correctness test on random byte arrays"
-      <| (let copy = ClArray.copy context
-          let getCopyFun = getCopyFun copy
-
-          fun (array: array<byte>) -> makeTest getCopyFun array id) ]
-
-let tests = testCases |> testList "Array.copy tests"
+let tests =
+    testCases |> testList "ClArray.copy tests"
