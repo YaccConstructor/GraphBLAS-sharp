@@ -64,11 +64,11 @@ let tests =
     [ testFixtures (+) <@ (+) @> 0 "int add"
       testFixtures (+) <@ (+) @> 0uy "byte add"
       testFixtures max <@ max @> System.Int32.MinValue "int max"
-      testFixtures max <@ max @> System.Double.MinValue "float max"
       testFixtures max <@ max @> System.Byte.MinValue "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue "int min"
 
       if Utils.isFloat64Available context.ClDevice then
+          testFixtures max <@ max @> System.Double.MinValue "float max"
           testFixtures min <@ min @> System.Double.MaxValue "float min"
 
       testFixtures min <@ min @> System.Byte.MaxValue "byte min"

@@ -73,18 +73,18 @@ let makeTest sort (array: ('n * 'n * 'a) []) =
         |> Utils.compareArrays (=) actualVals expectedVals
 
 let testFixtures<'a when 'a: equality> =
-    let sort =
-        BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
-
-    makeTest sort
+    BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
+    |> makeTest
     |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ testFixtures<int>
+
       if Utils.isFloat64Available context.ClDevice then
           testFixtures<float>
+
       testFixtures<byte>
       testFixtures<bool> ]
     |> testList "Backend.Common.BitonicSort tests"

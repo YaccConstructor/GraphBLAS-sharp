@@ -18,7 +18,7 @@ let config = Utils.defaultConfig
 let wgSize = 128
 let q = defaultContext.Queue
 
-let makeTest sum plus zero (array: 'a []) =
+let makeTest plus zero sum (array: 'a []) =
     if array.Length > 0 then
 
         logger.debug (
@@ -49,9 +49,8 @@ let makeTest sum plus zero (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus (plusQ: Expr<'a -> 'a -> 'a>) zero name =
-    let sum = Reduce.sum context wgSize plusQ zero
-
-    makeTest sum plus zero
+    Reduce.sum context wgSize plusQ zero
+    |> makeTest plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
@@ -61,12 +60,12 @@ let tests =
     [ testFixtures (+) <@ (+) @> 0 "int add"
       testFixtures (+) <@ (+) @> 0uy "byte add"
       testFixtures max <@ max @> 0 "int max"
-      testFixtures max <@ max @> 0.0 "float max"
       testFixtures max <@ max @> 0uy "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue "int min"
 
       if Utils.isFloat64Available context.ClDevice then
           testFixtures min <@ min @> System.Double.MaxValue "float min"
+          testFixtures max <@ max @> 0.0 "float max"
 
       testFixtures min <@ min @> System.Byte.MaxValue "byte min"
       testFixtures (||) <@ (||) @> false "bool logic-or"

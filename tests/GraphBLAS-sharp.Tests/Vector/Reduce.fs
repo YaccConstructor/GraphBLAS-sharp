@@ -82,11 +82,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
       |> correctnessGenericTest (=) System.Int32.MinValue max <@ max @> intMaxReduce
       |> testPropertyWithConfig config (getCorrectnessTestName "int max")
 
-      let floatMaxReduce = Vector.reduce context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatMaxReduce = Vector.reduce context wgSize
 
-      case
-      |> correctnessGenericTest Utils.floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "float max")
+          case
+          |> correctnessGenericTest Utils.floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
+          |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
       let byteMaxReduce = Vector.reduce context wgSize
 

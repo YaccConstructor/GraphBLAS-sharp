@@ -100,14 +100,15 @@ let addTestFixtures case =
       |> correctnessGenericTest (=) 0 (+) intAddFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
-      let floatAddFun =
-          Vector.map2 context ArithmeticOperations.floatSum wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatAddFun =
+              Vector.map2 context ArithmeticOperations.floatSum wgSize
 
-      let floatToDense = Vector.toDense context wgSize
+          let floatToDense = Vector.toDense context wgSize
 
-      case
-      |> correctnessGenericTest Utils.floatIsEqual 0.0 (+) floatAddFun floatToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
+          case
+          |> correctnessGenericTest Utils.floatIsEqual 0.0 (+) floatAddFun floatToDense
+          |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolAddFun =
           Vector.map2 context ArithmeticOperations.boolSum wgSize
@@ -144,17 +145,18 @@ let mulTestFixtures case =
       |> correctnessGenericTest (=) 0 (*) intMulFun intToDense
       |> testPropertyWithConfig config (getCorrectnessTestName case "int" "int" "int")
 
-      let floatMulFun =
-          Vector.map2 context ArithmeticOperations.floatMul wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatMulFun =
+              Vector.map2 context ArithmeticOperations.floatMul wgSize
 
-      let floatIsEqual =
-          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+          let floatIsEqual =
+              fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      let floatToDense = Vector.toDense context wgSize
+          let floatToDense = Vector.toDense context wgSize
 
-      case
-      |> correctnessGenericTest floatIsEqual 0.0 (*) floatMulFun floatToDense
-      |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
+          case
+          |> correctnessGenericTest floatIsEqual 0.0 (*) floatMulFun floatToDense
+          |> testPropertyWithConfig config (getCorrectnessTestName case "float" "float" "float")
 
       let boolMulFun =
           Vector.map2 context ArithmeticOperations.boolMul wgSize
@@ -195,14 +197,15 @@ let addAtLeastOneTestFixtures case =
       |> correctnessGenericTest (=) 0 (+) intAddFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toSparse context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatToCoo = Vector.toSparse context wgSize
 
-      let floatAddFun =
-          Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
+          let floatAddFun =
+              Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
 
-      case
-      |> correctnessGenericTest Utils.floatIsEqual 0.0 (+) floatAddFun floatToCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+          case
+          |> correctnessGenericTest Utils.floatIsEqual 0.0 (+) floatAddFun floatToCoo
+          |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toSparse context wgSize
 
@@ -242,17 +245,18 @@ let mulAtLeastOneTestFixtures case =
       |> correctnessGenericTest (=) 0 (*) intMulFun toCoo
       |> testPropertyWithConfig config (getCorrectnessTestName "int" "int" "int")
 
-      let floatToCoo = Vector.toSparse context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          let floatToCoo = Vector.toSparse context wgSize
 
-      let floatMulFun =
-          Vector.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
+          let floatMulFun =
+              Vector.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
 
-      let fIsEqual =
-          fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
+          let fIsEqual =
+              fun x y -> abs (x - y) < Accuracy.medium.absolute || x = y
 
-      case
-      |> correctnessGenericTest fIsEqual 0.0 (*) floatMulFun floatToCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
+          case
+          |> correctnessGenericTest fIsEqual 0.0 (*) floatMulFun floatToCoo
+          |> testPropertyWithConfig config (getCorrectnessTestName "float" "float" "float")
 
       let boolToCoo = Vector.toSparse context wgSize
 

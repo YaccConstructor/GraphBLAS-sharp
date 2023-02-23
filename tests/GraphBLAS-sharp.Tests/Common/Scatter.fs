@@ -50,9 +50,8 @@ let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
         |> Tests.Utils.compareArrays (=) actual expected
 
 let testFixtures<'a when 'a: equality> =
-    let scatter = Scatter.runInplace<'a> context wgSize
-
-    makeTest scatter
+    Scatter.runInplace<'a> context wgSize
+    |> makeTest
     |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
 
 let tests =

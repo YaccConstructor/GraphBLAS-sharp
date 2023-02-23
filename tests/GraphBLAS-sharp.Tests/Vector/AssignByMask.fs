@@ -18,6 +18,8 @@ let logger = Log.create "Vector.assignByMask.Tests"
 
 let alwaysTrue _ = true
 
+let config = Utils.defaultConfig
+
 let notNane x = not <| Double.IsNaN x
 
 let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask: 'a []) (value: 'a) =
@@ -95,8 +97,6 @@ let makeTest<'a when 'a: struct and 'a: equality>
         | ex -> raise ex
 
 let testFixtures case =
-    let config = Utils.defaultConfig
-
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, vector: %A{case.Format}"
 
@@ -146,8 +146,6 @@ let tests =
     operationGPUTests "Backend.Vector.assignByMask tests" testFixtures
 
 let testFixturesComplemented case =
-    let config = Utils.defaultConfig
-
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, vector: %A{case.Format}"
 

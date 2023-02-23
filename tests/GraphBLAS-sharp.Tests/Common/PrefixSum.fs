@@ -18,7 +18,7 @@ let wgSize = 128
 
 let q = defaultContext.Queue
 
-let makeTest scan plus zero isEqual (array: 'a []) =
+let makeTest plus zero isEqual scan (array: 'a []) =
     if array.Length > 0 then
 
         logger.debug (
@@ -61,10 +61,8 @@ let makeTest scan plus zero isEqual (array: 'a []) =
         |> Tests.Utils.compareArrays isEqual actual expected
 
 let testFixtures plus plusQ zero isEqual name =
-    let scan =
-        ClArray.prefixSumIncludeInplace plusQ context wgSize
-
-    makeTest scan plus zero isEqual
+    ClArray.prefixSumIncludeInplace plusQ context wgSize
+    |> makeTest plus zero isEqual
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
@@ -73,12 +71,12 @@ let tests =
     [ testFixtures (+) <@ (+) @> 0 (=) "int add"
       testFixtures (+) <@ (+) @> 0uy (=) "byte add"
       testFixtures max <@ max @> 0 (=) "int max"
-      testFixtures max <@ max @> 0.0 (=) "float max"
       testFixtures max <@ max @> 0uy (=) "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue (=) "int min"
 
       if Tests.Utils.isFloat64Available context.ClDevice then
           testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+          testFixtures max <@ max @> 0.0 (=) "float max"
 
       testFixtures min <@ min @> System.Byte.MaxValue (=) "byte min"
       testFixtures (||) <@ (||) @> false (=) "bool logic-or"

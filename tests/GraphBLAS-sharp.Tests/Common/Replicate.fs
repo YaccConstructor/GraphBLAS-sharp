@@ -38,7 +38,7 @@ let testCases =
                 q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
 
             logger.debug (
-                eventX "Actual is {actual}"
+                eventX $"Actual is {actual}"
                 >> setField "actual" (sprintf "%A" actual)
             )
 

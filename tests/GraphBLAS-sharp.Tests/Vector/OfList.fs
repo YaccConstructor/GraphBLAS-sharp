@@ -3,7 +3,6 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.OfList
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
 open Context
 open TestCases
