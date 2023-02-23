@@ -18,26 +18,26 @@ NUGET
       System.Reflection.Emit.Lightweight (>= 4.7) - restriction: >= netstandard2.0
       System.Threading.Tasks.Extensions (>= 4.5.4) - restriction: >= netstandard2.0
     BenchmarkDotNet.Annotations (0.13.2) - restriction: >= netstandard2.0
-    Brahma.FSharp (2.0.4)
-      Brahma.FSharp.OpenCL.Printer (>= 2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.Shared (>= 2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.Translator (>= 2.0.4) - restriction: >= net7.0
+    Brahma.FSharp (2.0.5)
+      Brahma.FSharp.OpenCL.Printer (>= 2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.Shared (>= 2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.Translator (>= 2.0.5) - restriction: >= net7.0
       FSharp.Core (7.0) - restriction: >= net7.0
       FSharp.Quotations.Evaluator (>= 2.1) - restriction: >= net7.0
-      YC.OpenCL.NET (>= 2.0.4) - restriction: >= net7.0
-    Brahma.FSharp.OpenCL.AST (2.0.4) - restriction: >= net7.0
+      YC.OpenCL.NET (>= 2.0.5) - restriction: >= net7.0
+    Brahma.FSharp.OpenCL.AST (2.0.5) - restriction: >= net7.0
       FSharp.Core (7.0) - restriction: >= net7.0
-    Brahma.FSharp.OpenCL.Printer (2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.AST (>= 2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.Translator (>= 2.0.4) - restriction: >= net7.0
+    Brahma.FSharp.OpenCL.Printer (2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.AST (>= 2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.Translator (>= 2.0.5) - restriction: >= net7.0
       FSharp.Core (7.0) - restriction: >= net7.0
       FSharpx.Collections (>= 3.1) - restriction: >= net7.0
       FSharpx.Text.StructuredFormat (>= 3.1) - restriction: >= net7.0
-    Brahma.FSharp.OpenCL.Shared (2.0.4) - restriction: >= net7.0
-      YC.OpenCL.NET (>= 2.0.4) - restriction: >= net7.0
-    Brahma.FSharp.OpenCL.Translator (2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.AST (>= 2.0.4) - restriction: >= net7.0
-      Brahma.FSharp.OpenCL.Shared (>= 2.0.4) - restriction: >= net7.0
+    Brahma.FSharp.OpenCL.Shared (2.0.5) - restriction: >= net7.0
+      YC.OpenCL.NET (>= 2.0.5) - restriction: >= net7.0
+    Brahma.FSharp.OpenCL.Translator (2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.AST (>= 2.0.5) - restriction: >= net7.0
+      Brahma.FSharp.OpenCL.Shared (>= 2.0.5) - restriction: >= net7.0
       FSharp.Core (7.0) - restriction: >= net7.0
       FSharp.Quotations.Evaluator (>= 2.1) - restriction: >= net7.0
       FSharpx.Collections (>= 3.1) - restriction: >= net7.0
@@ -744,7 +744,7 @@ NUGET
       System.Xml.XmlDocument (>= 4.3) - restriction: && (< monoandroid) (< monotouch) (< net45) (>= netstandard1.3) (< win8) (< wpa81) (< xamarinios) (< xamarinmac) (< xamarintvos) (< xamarinwatchos)
     TypeShape (9.0)
       FSharp.Core (>= 4.3.2) - restriction: >= netstandard2.0
-    YC.OpenCL.NET (2.0.4) - restriction: >= net7.0
+    YC.OpenCL.NET (2.0.5) - restriction: >= net7.0
       ExtraConstraints.Fody (1.14) - restriction: >= net7.0
       Microsoft.Build.Framework (16.10) - restriction: >= net7.0
       System.CodeDom (>= 7.0) - restriction: >= net7.0
