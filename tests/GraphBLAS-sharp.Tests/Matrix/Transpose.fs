@@ -127,10 +127,6 @@ let testFixtures case =
     let getCorrectnessTestName datatype =
         sprintf "Correctness on %s, %A, %A" datatype case.Format case.TestContext
 
-    let areEqualFloat x y =
-        System.Double.IsNaN x && System.Double.IsNaN y
-        || x = y
-
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
@@ -149,12 +145,22 @@ let testFixtures case =
           let transposeFun = Matrix.transpose context wgSize
 
           case
-          |> makeTestRegular context q transposeFun areEqualFloat 0.0
+          |> makeTestRegular context q transposeFun Utils.floatIsEqual 0.0
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
 
           case
-          |> makeTestTwiceTranspose context q transposeFun areEqualFloat 0.0
+          |> makeTestTwiceTranspose context q transposeFun Utils.floatIsEqual 0.0
           |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
+
+      let transposeFun = Matrix.transpose context wgSize
+
+      case
+      |> makeTestRegular context q transposeFun Utils.float32IsEqual 0.0f
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
+
+      case
+      |> makeTestTwiceTranspose context q transposeFun Utils.float32IsEqual 0.0f
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32 (twice transpose)")
 
       let transposeFun = Matrix.transpose context wgSize
 

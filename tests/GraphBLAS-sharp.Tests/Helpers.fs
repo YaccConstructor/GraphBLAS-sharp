@@ -778,6 +778,8 @@ module Utils =
         abs (x - y) < Accuracy.medium.absolute
         || x.Equals y
 
+    let float32IsEqual x y = abs (x - y) < 0.01f || x.Equals y
+
     let vectorToDenseVector =
         function
         | Vector.Dense vector -> vector
