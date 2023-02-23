@@ -138,7 +138,7 @@ let testFixturesEWiseAdd case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseAddTests =
+let addTests =
     operationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
 
 let testFixturesEWiseAddAtLeastOne case =
@@ -186,7 +186,7 @@ let testFixturesEWiseAddAtLeastOne case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseAddAtLeastOneTests =
+let addAtLeastOneTests =
     operationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
 
 let testFixturesEWiseAddAtLeastOneToCOO case =
@@ -234,7 +234,7 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseAddAtLeastOneToCOOTests =
+let addAtLeastOneToCOOTests =
     operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
 
 let testFixturesEWiseMulAtLeastOne case =
@@ -282,5 +282,5 @@ let testFixturesEWiseMulAtLeastOne case =
       |> correctnessGenericTest 0uy (*) byteAdd byteToCOO (=) q
       |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
 
-let elementwiseMulAtLeastOneTests =
+let mulAtLeastOneTests =
     operationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne
