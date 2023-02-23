@@ -12,76 +12,47 @@ let logger = Log.create "Replicate.Tests"
 
 let context = Context.defaultContext.ClContext
 
+let q = Context.defaultContext.Queue
+
+let workGroupSize = 32
+
+let makeTest<'a when 'a: equality> replicateFun (array: array<'a>) i =
+    if array.Length > 0 && i > 0 then
+        use clArray = context.CreateClArray array
+
+        let actual =
+            use clActual: ClArray<'a> = replicateFun q HostInterop clArray i
+
+            let actual = Array.zeroCreate clActual.Length
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
+
+        logger.debug (
+            eventX $"Actual is {actual}"
+            >> setField "actual" $"%A{actual}"
+        )
+
+        let expected =
+            array |> Array.replicate i |> Array.concat
+
+        $"Array should contains %i{i} copies of the original one"
+        |> Expect.sequenceEqual actual expected
+
+let createTest<'a when 'a: equality> =
+    ClArray.replicate context workGroupSize
+    |> makeTest<'a>
+    |> testProperty $"Correctness test on random %A{typeof<'a>} arrays"
+
 let testCases =
-    let q = Context.defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let getReplicateFun replicate =
-        fun (array: array<_>) ->
-            let wgSize =
-                [| for i in 0 .. 5 -> pown 2 i |]
-                |> Array.filter (fun i -> array.Length % i = 0)
-                |> Array.max
-
-            replicate wgSize q HostInterop
-
-    let makeTest getReplicateFun (array: array<'a>) filterFun i =
-        if array.Length > 0 && i > 0 then
-            use clArray = context.CreateClArray array
-
-            let replicate = getReplicateFun array
-
-            let actual =
-                use clActual: ClArray<'a> = replicate clArray i
-
-                let actual = Array.zeroCreate clActual.Length
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
-
-            logger.debug (
-                eventX $"Actual is {actual}"
-                >> setField "actual" $"%A{actual}"
-            )
-
-            let expected =
-                array
-                |> Array.replicate i
-                |> Array.concat
-                |> filterFun
-
-            let actual = filterFun actual
-
-            $"Array should contains %i{i} copies of the original one"
-            |> Expect.sequenceEqual actual expected
-
-    [ testProperty "Correctness test on random int arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-          fun (array: array<int>) -> makeTest getReplicateFun array id)
-
-      testProperty "Correctness test on random bool arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-
-          fun (array: array<bool>) -> makeTest getReplicateFun array id)
+    [ createTest<int>
+      createTest<bool>
 
       if Utils.isFloat64Available context.ClDevice then
-          testProperty "Correctness test on random float arrays"
-          <| (let replicate = ClArray.replicate context
-              let getReplicateFun = getReplicateFun replicate
+          createTest<float>
 
-              fun (array: array<float>) -> makeTest getReplicateFun array (Array.filter System.Double.IsNormal))
-
-      testProperty "Correctness test on random float32 arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-
-          fun (array: array<float32>) -> makeTest getReplicateFun array (Array.filter System.Single.IsNormal))
-
-      testProperty "Correctness test on random byte arrays"
-      <| (let replicate = ClArray.replicate context
-          let getReplicateFun = getReplicateFun replicate
-
-          fun (array: array<byte>) -> makeTest getReplicateFun array id) ]
+      createTest<float32>
+      createTest<byte> ]
 
 let tests =
-    testCases |> testList "Array.replicate tests"
+    testCases |> testList "ClArray.replicate tests"

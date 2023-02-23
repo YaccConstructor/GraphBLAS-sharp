@@ -14,6 +14,7 @@ let context = Context.defaultContext.ClContext
 let config = Utils.defaultConfig
 
 let wgSize = 32
+
 let q = Context.defaultContext.Queue
 
 let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zero (array: 'a []) =

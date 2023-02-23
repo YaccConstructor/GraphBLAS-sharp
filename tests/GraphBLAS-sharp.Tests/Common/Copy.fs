@@ -31,11 +31,8 @@ let makeTest<'a when 'a: equality> copyFun (array: array<'a>) = // TODO()
             >> setField "actual" $"%A{actual}"
         )
 
-        let expected = array
-        let actual = actual
-
         "Array should be equals to original"
-        |> Expect.sequenceEqual actual expected
+        |> Expect.sequenceEqual actual array
 
 let creatTest<'a when 'a: equality> =
     ClArray.copy context wgSize
