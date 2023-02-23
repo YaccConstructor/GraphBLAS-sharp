@@ -40,7 +40,7 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D CSR matrix (fun x -> x = 0)
+                  Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
               let matrix = matrixHost.ToDevice context
 

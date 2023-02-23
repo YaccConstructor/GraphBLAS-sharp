@@ -13,6 +13,10 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.copy.Tests"
 
+let config = Utils.defaultConfig
+
+let wgSize = 32
+
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
 
     Expect.equal actual.Size expected.Size "The size should be the same"
@@ -57,16 +61,13 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual actual expected
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = Utils.defaultConfig
 
     let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype case.Format
+        sprintf $"Correctness on %s{datatype}, %A{case.Format}"
 
-    let wgSize = 32
     let context = case.TestContext.ClContext
 
     [ let intCopy = Vector.copy context wgSize
-      let isZero item = item = 0
 
       case
       |> correctnessGenericTest<int> (=) 0 intCopy
@@ -78,6 +79,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
           case
           |> correctnessGenericTest<float> Utils.floatIsEqual 0.0 floatCopy
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let float32Copy = Vector.copy context wgSize
+
+      case
+      |> correctnessGenericTest<float32> Utils.float32IsEqual 0.0f float32Copy
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
 
       let boolCopy = Vector.copy context wgSize
 

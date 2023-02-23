@@ -14,6 +14,10 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.ofList.Tests"
 
+let config = Utils.defaultConfig
+
+let wgSize = 32
+
 let checkResult
     (isEqual: 'a -> 'a -> bool)
     (expectedIndices: int [])
@@ -67,11 +71,7 @@ let correctnessGenericTest<'a when 'a: struct>
         checkResult isEqual indices values actual actualSize
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    [ let config = Utils.defaultConfig
-
-      let wgSize = 32
-
-      let context = case.TestContext.ClContext
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
 
       q.Error.Add(fun e -> failwithf $"%A{e}")
@@ -110,7 +110,16 @@ let testFixtures (case: OperationCase<VectorFormat>) =
 
           case
           |> correctnessGenericTest<float> Utils.floatIsEqual floatOfList toCoo
-          |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
+          |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let float32OfList = Vector.ofList context wgSize
+
+      let toCoo = Vector.toSparse context wgSize
+
+      case
+      |> correctnessGenericTest<float32> Utils.float32IsEqual float32OfList toCoo
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32") ]
+
 
 let tests =
     operationGPUTests "Backend.Vector.ofList tests" testFixtures

@@ -14,6 +14,10 @@ open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
+let config = Utils.defaultConfig
+
+let wgSize = 32
+
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
     let rows = Array2D.length1 baseMtx
     let columns = Array2D.length2 baseMtx
@@ -83,10 +87,7 @@ let correctnessGenericTest
         | ex -> raise ex
 
 let testFixturesSpMV (testContext: TestContext) =
-    [ let config = Utils.defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
+    [ let getCorrectnessTestName datatype =
           sprintf "Correctness on %s, %A" datatype testContext.ClContext
 
       let context = testContext.ClContext
@@ -112,8 +113,15 @@ let testFixturesSpMV (testContext: TestContext) =
               SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
 
           testContext
-          |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
+          |> correctnessGenericTest 0.0 (+) (*) floatSpMV Utils.floatIsEqual q
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let float32SpMV =
+          SpMV.run context ArithmeticOperations.float32Sum ArithmeticOperations.float32Mul wgSize
+
+      testContext
+      |> correctnessGenericTest 0.0f (+) (*) float32SpMV Utils.float32IsEqual q
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
 
       let byteAdd =
           SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize

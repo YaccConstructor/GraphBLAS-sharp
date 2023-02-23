@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
@@ -12,6 +11,10 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
+
+let wgSize = 32
+
+let config = Utils.defaultConfig
 
 let checkResult zero op (actual: 'a) (vector: 'a []) =
     let expected = Array.fold op zero vector
@@ -53,12 +56,10 @@ let correctnessGenericTest
         checkResult zero op result array
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = Utils.defaultConfig
 
     let getCorrectnessTestName dataType =
         $"Correctness on %A{dataType}, %A{case.Format}"
 
-    let wgSize = 32
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
@@ -89,6 +90,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
           |> correctnessGenericTest Utils.floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
           |> testPropertyWithConfig config (getCorrectnessTestName "float max")
 
+      let float32MaxReduce = Vector.reduce context wgSize
+
+      case
+      |> correctnessGenericTest Utils.float32IsEqual System.Single.MinValue max <@ max @> float32MaxReduce
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32 max")
+
       let byteMaxReduce = Vector.reduce context wgSize
 
       case
@@ -107,6 +114,12 @@ let testFixtures (case: OperationCase<VectorFormat>) =
           case
           |> correctnessGenericTest Utils.floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
           |> testPropertyWithConfig config (getCorrectnessTestName "float min")
+
+      let float32MinReduce = Vector.reduce context wgSize
+
+      case
+      |> correctnessGenericTest Utils.float32IsEqual System.Single.MaxValue min <@ min @> float32MinReduce
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32 min")
 
       let byteMinReduce = Vector.reduce context wgSize
 

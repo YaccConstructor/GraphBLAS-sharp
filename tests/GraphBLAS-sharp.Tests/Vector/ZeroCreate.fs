@@ -14,6 +14,10 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 
+let config = Utils.defaultConfig
+
+let wgSize = 32
+
 let checkResult size (actual: Vector<'a>) =
     Expect.equal actual.Size size "The size should be the same"
 
@@ -47,12 +51,10 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
         checkResult vectorSize hostVector
 
 let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = Utils.defaultConfig
 
     let getCorrectnessTestName dataType =
         $"Correctness on %A{dataType}, %A{case.Format}"
 
-    let wgSize = 32
     let context = case.TestContext.ClContext
 
     let q = case.TestContext.Queue
@@ -62,26 +64,32 @@ let testFixtures (case: OperationCase<VectorFormat>) =
     [ let intZeroCreate = Vector.zeroCreate context wgSize
 
       case
-      |> correctnessGenericTest intZeroCreate
+      |> correctnessGenericTest<int> intZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
 
       let byteZeroCreat = Vector.zeroCreate context wgSize
 
       case
-      |> correctnessGenericTest byteZeroCreat
+      |> correctnessGenericTest<byte> byteZeroCreat
       |> testPropertyWithConfig config (getCorrectnessTestName "byte")
 
       if Utils.isFloat64Available context.ClDevice then
           let floatZeroCreate = Vector.zeroCreate context wgSize
 
           case
-          |> correctnessGenericTest floatZeroCreate
+          |> correctnessGenericTest<float> floatZeroCreate
           |> testPropertyWithConfig config (getCorrectnessTestName "float")
+
+      let float32ZeroCreate = Vector.zeroCreate context wgSize
+
+      case
+      |> correctnessGenericTest<float32> float32ZeroCreate
+      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
 
       let boolZeroCreate = Vector.zeroCreate context wgSize
 
       case
-      |> correctnessGenericTest boolZeroCreate
+      |> correctnessGenericTest<bool> boolZeroCreate
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
 
 let tests =

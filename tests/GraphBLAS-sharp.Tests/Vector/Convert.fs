@@ -16,6 +16,7 @@ let logger =
     Log.create "Backend.Vector.Convert.Tests"
 
 let config = Utils.defaultConfig
+
 let wgSize = 32
 
 let makeTest
@@ -46,8 +47,8 @@ let makeTest
             res
 
         logger.debug (
-            eventX $"Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            eventX "Actual is {actual}"
+            >> setField "actual" $"%A{actual}"
         )
 
         let expected =
@@ -57,7 +58,7 @@ let makeTest
 
 let testFixtures case =
     let getCorrectnessTestName datatype formatFrom =
-        sprintf "Correctness on %s, %A -> %A" datatype formatFrom case.Format
+        sprintf $"Correctness on %s{datatype}, %A{formatFrom} -> %A{case.Format}"
 
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
