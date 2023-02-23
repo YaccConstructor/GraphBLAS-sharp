@@ -42,7 +42,9 @@ module CustomDatatypes =
 module Generators =
     let logger = Log.create "Generators"
 
-    // TODO уточнить, что пустые матрицы тоже генерятся
+    /// <remarks>
+    /// Generates empty matrices as well.
+    /// </remarks>
     let dimension2DGenerator =
         Gen.sized
         <| fun size -> Gen.choose (1, size) |> Gen.two
@@ -50,6 +52,19 @@ module Generators =
     let dimension3DGenerator =
         Gen.sized
         <| fun size -> Gen.choose (1, size) |> Gen.three
+
+    let rec normalFloat32Generator (random: System.Random) =
+        gen {
+            let buffer = Array.zeroCreate<byte> 4
+            random.NextBytes buffer
+
+            let result = System.BitConverter.ToSingle(buffer, 0)
+
+            if System.Single.IsNormal result then
+                return result
+            else
+                return! normalFloat32Generator random
+        }
 
     let genericSparseGenerator zero valuesGen handler =
         let maxSparsity = 100
@@ -95,6 +110,11 @@ module Generators =
                 (Arb.Default.NormalFloat()
                  |> Arb.toGen
                  |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -149,6 +169,11 @@ module Generators =
                  |> Gen.map float)
             |> Arb.fromGen
 
+        static member Float32Type() =
+            matrixGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
         static member SByteType() =
             matrixGenerator
             |> genericSparseGenerator 0y Arb.generate<sbyte>
@@ -195,6 +220,11 @@ module Generators =
                 (Arb.Default.NormalFloat()
                  |> Arb.toGen
                  |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -244,6 +274,11 @@ module Generators =
                 (Arb.Default.NormalFloat()
                  |> Arb.toGen
                  |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfMatrixAndVectorOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -302,6 +337,11 @@ module Generators =
                  |> Gen.map float)
             |> Arb.fromGen
 
+        static member Float32Type() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
         static member SByteType() =
             pairOfVectorAndMatrixOfCompatibleSizeGenerator
             |> genericSparseGenerator 0y Arb.generate<sbyte>
@@ -355,6 +395,11 @@ module Generators =
                 (Arb.Default.NormalFloat()
                  |> Arb.toGen
                  |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfMatricesOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -414,6 +459,11 @@ module Generators =
                 (Arb.Default.NormalFloat()
                  |> Arb.toGen
                  |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfMatricesOfCompatibleSizeWithMaskGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -481,6 +531,12 @@ module Generators =
                 |> Gen.map float)
             |> Arb.fromGen
 
+        static member Float32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
         static member SByteType() =
             arrayOfDistinctKeysGenerator
             <| Arb.generate<int>
@@ -542,11 +598,16 @@ module Generators =
             arrayOfAscendingKeysGenerator <| Arb.generate<int>
             |> Arb.fromGen
 
-        static member FloatType() =
+        static member FloatType() = // (float32Generator <| System.Random())
             arrayOfAscendingKeysGenerator
             <| (Arb.Default.NormalFloat()
                 |> Arb.toGen
                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            arrayOfAscendingKeysGenerator
+            <| (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -585,7 +646,7 @@ module Generators =
             |> Arb.fromGen
 
     type BufferCompatibleVector() =
-        static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
+        static let compatibleVector (valuesGenerator: Gen<'a>) =
             gen {
                 let! length = Gen.sized <| fun size -> Gen.choose (1, size)
 
@@ -595,42 +656,47 @@ module Generators =
             }
 
         static member IntType() =
-            pairOfVectorsOfEqualSize <| Arb.generate<int>
+            compatibleVector <| Arb.generate<int>
             |> Arb.fromGen
 
         static member FloatType() =
-            pairOfVectorsOfEqualSize
+            compatibleVector
             <| (Arb.Default.NormalFloat()
                 |> Arb.toGen
                 |> Gen.map float)
             |> Arb.fromGen
 
+        static member Float32Type() =
+            compatibleVector
+            <| (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
         static member SByteType() =
-            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
+            compatibleVector <| Arb.generate<sbyte>
             |> Arb.fromGen
 
         static member ByteType() =
-            pairOfVectorsOfEqualSize <| Arb.generate<byte>
+            compatibleVector <| Arb.generate<byte>
             |> Arb.fromGen
 
         static member Int16Type() =
-            pairOfVectorsOfEqualSize <| Arb.generate<int16>
+            compatibleVector <| Arb.generate<int16>
             |> Arb.fromGen
 
         static member UInt16Type() =
-            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
+            compatibleVector <| Arb.generate<uint16>
             |> Arb.fromGen
 
         static member Int32Type() =
-            pairOfVectorsOfEqualSize <| Arb.generate<int32>
+            compatibleVector <| Arb.generate<int32>
             |> Arb.fromGen
 
         static member UInt32Type() =
-            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
+            compatibleVector <| Arb.generate<uint32>
             |> Arb.fromGen
 
         static member BoolType() =
-            pairOfVectorsOfEqualSize <| Arb.generate<bool>
+            compatibleVector <| Arb.generate<bool>
             |> Arb.fromGen
 
     type PairOfVectorsOfEqualSize() =
@@ -654,6 +720,11 @@ module Generators =
             <| (Arb.Default.NormalFloat()
                 |> Arb.toGen
                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfVectorsOfEqualSize
+            <| (normalFloat32Generator <| System.Random())
             |> Arb.fromGen
 
         static member SByteType() =
@@ -812,7 +883,7 @@ module Context =
                     .ToString())
         |> Seq.filter
             (fun device ->
-                let isAvaliable =
+                let isAvailable =
                     Cl
                         .GetDeviceInfo(device, DeviceInfo.Available, &e)
                         .CastTo<bool>()
@@ -828,7 +899,7 @@ module Context =
                         .ToString()
 
                 (Regex platformRegex).IsMatch platformName
-                && isAvaliable)
+                && isAvailable)
         |> Seq.map
             (fun device ->
                 let platform =
