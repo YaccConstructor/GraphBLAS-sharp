@@ -16,7 +16,9 @@ let wgSize = 32
 
 let q = Context.defaultContext.Queue
 
-let makeTest<'a when 'a: equality> copyFun (array: array<'a>) = // TODO()
+let config = Utils.defaultConfig
+
+let makeTest<'a when 'a: equality> copyFun (array: array<'a>) =
     if array.Length > 0 then
         use clArray = context.CreateClArray array
 
@@ -37,7 +39,7 @@ let makeTest<'a when 'a: equality> copyFun (array: array<'a>) = // TODO()
 let creatTest<'a when 'a: equality> =
     ClArray.copy context wgSize
     |> makeTest<'a>
-    |> testProperty $"Correctness test on random %A{typeof<'a>} arrays"
+    |> testPropertyWithConfig config $"Correctness test on random %A{typeof<'a>} arrays"
 
 let testCases =
     q.Error.Add(fun e -> failwithf "%A" e)

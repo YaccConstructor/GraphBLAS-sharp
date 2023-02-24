@@ -16,6 +16,8 @@ let q = Context.defaultContext.Queue
 
 let workGroupSize = 32
 
+let config = Utils.defaultConfig
+
 let makeTest<'a when 'a: equality> replicateFun (array: array<'a>) i =
     if array.Length > 0 && i > 0 then
         use clArray = context.CreateClArray array
@@ -40,7 +42,7 @@ let makeTest<'a when 'a: equality> replicateFun (array: array<'a>) i =
 let createTest<'a when 'a: equality> =
     ClArray.replicate context workGroupSize
     |> makeTest<'a>
-    |> testProperty $"Correctness test on random %A{typeof<'a>} arrays"
+    |> testPropertyWithConfig config $"Correctness test on random %A{typeof<'a>} arrays"
 
 let testCases =
     q.Error.Add(fun e -> failwithf "%A" e)
