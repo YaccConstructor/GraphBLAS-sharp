@@ -55,10 +55,7 @@ module Generators =
 
     let rec normalFloat32Generator (random: System.Random) =
         gen {
-            let buffer = Array.zeroCreate<byte> 4
-            random.NextBytes buffer
-
-            let result = System.BitConverter.ToSingle(buffer, 0)
+            let result = random.NextSingle()
 
             if System.Single.IsNormal result then
                 return result
@@ -75,7 +72,7 @@ module Generators =
                 let! sparsity = sparsityGen
 
                 logger.debug (
-                    eventX "Sparcity is {sp} of {ms}"
+                    eventX "Sparsity is {sp} of {ms}"
                     >> setField "sp" sparsity
                     >> setField "ms" maxSparsity
                 )
@@ -145,10 +142,10 @@ module Generators =
     type SingleSymmetricalMatrix() =
         static let matrixGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrows, _ = dimension2DGenerator
-                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, nrows)
+                let! nRows, _ = dimension2DGenerator
+                let! matrix = valuesGenerator |> Gen.array2DOfDim (nRows, nRows)
 
-                for row in 1 .. nrows - 1 do
+                for row in 1 .. nRows - 1 do
                     for col in 0 .. row - 1 do
                         matrix.[row, col] <- matrix.[col, row]
 
@@ -202,9 +199,16 @@ module Generators =
     type PairOfSparseMatricesOfEqualSize() =
         static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrows, ncols = dimension2DGenerator
-                let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-                let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+                let! nRows, nColumns = dimension2DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRows, nColumns)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRows, nColumns)
+
                 return (matrixA, matrixB)
             }
 
@@ -255,10 +259,14 @@ module Generators =
     type PairOfSparseMatrixOAndVectorsCompatibleSize() =
         static let pairOfMatrixAndVectorOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrows, ncols = dimension2DGenerator
-                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-                let! vector = valuesGenerator |> Gen.arrayOfLength ncols
-                let! mask = Arb.generate<bool> |> Gen.arrayOfLength nrows
+                let! nRows, nColumns = dimension2DGenerator
+
+                let! matrix =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRows, nColumns)
+
+                let! vector = valuesGenerator |> Gen.arrayOfLength nColumns
+                let! mask = Arb.generate<bool> |> Gen.arrayOfLength nRows
                 return (matrix, vector, mask)
             }
 
@@ -316,10 +324,14 @@ module Generators =
     type PairOfSparseVectorAndMatrixOfCompatibleSize() =
         static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrows, ncols = dimension2DGenerator
-                let! vector = valuesGenerator |> Gen.arrayOfLength nrows
-                let! matrix = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-                let! mask = Arb.generate<bool> |> Gen.arrayOfLength ncols
+                let! nRows, nColumns = dimension2DGenerator
+                let! vector = valuesGenerator |> Gen.arrayOfLength nRows
+
+                let! matrix =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRows, nColumns)
+
+                let! mask = Arb.generate<bool> |> Gen.arrayOfLength nColumns
                 return (vector, matrix, mask)
             }
 
@@ -370,15 +382,15 @@ module Generators =
     type PairOfMatricesOfCompatibleSize() =
         static let pairOfMatricesOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrowsA, ncolsA, ncolsB = dimension3DGenerator
+                let! nRowsA, nColsA, nColsB = dimension3DGenerator
 
                 let! matrixA =
                     valuesGenerator
-                    |> Gen.array2DOfDim (nrowsA, ncolsA)
+                    |> Gen.array2DOfDim (nRowsA, nColsA)
 
                 let! matrixB =
                     valuesGenerator
-                    |> Gen.array2DOfDim (ncolsA, ncolsB)
+                    |> Gen.array2DOfDim (nColsA, nColsB)
 
                 return (matrixA, matrixB)
             }
@@ -430,19 +442,19 @@ module Generators =
     type PairOfMatricesOfCompatibleSizeWithMask() =
         static let pairOfMatricesOfCompatibleSizeWithMaskGenerator (valuesGenerator: Gen<'a>) =
             gen {
-                let! nrowsA, ncolsA, ncolsB = dimension3DGenerator
+                let! nRowsA, nColumnsA, nColumnsB = dimension3DGenerator
 
                 let! matrixA =
                     valuesGenerator
-                    |> Gen.array2DOfDim (nrowsA, ncolsA)
+                    |> Gen.array2DOfDim (nRowsA, nColumnsA)
 
                 let! matrixB =
                     valuesGenerator
-                    |> Gen.array2DOfDim (ncolsA, ncolsB)
+                    |> Gen.array2DOfDim (nColumnsA, nColumnsB)
 
                 let! mask =
                     (genericSparseGenerator false Arb.generate<bool>)
-                    <| Gen.array2DOfDim (nrowsA, ncolsB)
+                    <| Gen.array2DOfDim (nRowsA, nColumnsB)
 
                 return (matrixA, matrixB, mask)
             }
@@ -598,7 +610,7 @@ module Generators =
             arrayOfAscendingKeysGenerator <| Arb.generate<int>
             |> Arb.fromGen
 
-        static member FloatType() = // (float32Generator <| System.Random())
+        static member FloatType() =
             arrayOfAscendingKeysGenerator
             <| (Arb.Default.NormalFloat()
                 |> Arb.toGen
@@ -778,7 +790,9 @@ module Utils =
         abs (x - y) < Accuracy.medium.absolute
         || x.Equals y
 
-    let float32IsEqual x y = abs (x - y) < 0.01f || x.Equals y
+    let inline float32IsEqual x y =
+        float (abs (x - y)) < Accuracy.medium.absolute
+        || x.Equals y
 
     let vectorToDenseVector =
         function
@@ -830,17 +844,13 @@ module Utils =
             array
 
     let compareArrays areEqual (actual: 'a []) (expected: 'a []) message =
-        sprintf "%s. Lengths should be equal. Actual is %A, expected %A" message actual expected
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
         |> Expect.equal actual.Length expected.Length
 
         for i in 0 .. actual.Length - 1 do
             if not (areEqual actual.[i] expected.[i]) then
-                sprintf "%s. Arrays differ at position %A of %A. Actual value is %A, expected %A"
-                <| message
-                <| i
-                <| (actual.Length - 1)
-                <| actual.[i]
-                <| expected.[i]
+                $"%s{message}. Arrays differ at position %A{i} of %A{actual.Length - 1}.
+                Actual value is %A{actual.[i]}, expected %A{expected.[i]}"
                 |> failtestf "%s"
 
     let listOfUnionCases<'a> =

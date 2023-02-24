@@ -252,15 +252,6 @@ let testFixturesEWiseAddAtLeastOneToCOO case =
       |> correctnessGenericTest 0.0f (+) float32Add floatToCOO Utils.float32IsEqual q
       |> testPropertyWithConfig config (getCorrectnessTestName "float32")
 
-      let float32Add =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.float32SumAtLeastOne wgSize
-
-      let floatToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0.0f (+) float32Add floatToCOO Utils.float32IsEqual q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
-
       let byteAdd =
           Matrix.map2AtLeastOneToCOO context ArithmeticOperations.byteSumAtLeastOne wgSize
 
