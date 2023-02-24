@@ -86,49 +86,48 @@ let correctnessGenericTest
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
-let testFixturesSpMV (testContext: TestContext) =
-    [ let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype testContext.ClContext
+let createTest testContext zero isEqual add mul addQ mulQ =
+    let context = testContext.ClContext
+    let q = testContext.Queue
 
-      let context = testContext.ClContext
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{testContext.ClContext}"
+
+    let spMV = SpMV.run context addQ mulQ wgSize
+
+    testContext
+    |> correctnessGenericTest zero add mul spMV isEqual q
+    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+
+
+let testFixturesSpMV (testContext: TestContext) =
+    [ let context = testContext.ClContext
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolSpMV =
-          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
-
-      testContext
-      |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      let intSpMV =
-          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
-
-      testContext
-      |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMul
+      createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
 
       if Utils.isFloat64Available context.ClDevice then
-          let floatSpMV =
-              SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
+          createTest
+              testContext
+              0.0
+              Utils.floatIsEqual
+              (+)
+              (*)
+              ArithmeticOperations.floatSum
+              ArithmeticOperations.floatMul
 
+      createTest
           testContext
-          |> correctnessGenericTest 0.0 (+) (*) floatSpMV Utils.floatIsEqual q
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
+          0.0f
+          Utils.float32IsEqual
+          (+)
+          (*)
+          ArithmeticOperations.float32Sum
+          ArithmeticOperations.float32Mul
 
-      let float32SpMV =
-          SpMV.run context ArithmeticOperations.float32Sum ArithmeticOperations.float32Mul wgSize
-
-      testContext
-      |> correctnessGenericTest 0.0f (+) (*) float32SpMV Utils.float32IsEqual q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
-
-      let byteAdd =
-          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
-
-      testContext
-      |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
+      createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSum ArithmeticOperations.byteMul ]
 
 let tests =
     gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV

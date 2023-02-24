@@ -70,56 +70,35 @@ let correctnessGenericTest<'a when 'a: struct>
 
         checkResult isEqual indices values actual actualSize
 
+let creatTest<'a> case =
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{datatype}, %A{case.Format}"
+
+    let context = case.TestContext.ClContext
+
+    let boolOfList = Vector.ofList context wgSize
+
+    let toCoo = Vector.toSparse context wgSize
+
+    case
+    |> correctnessGenericTest<bool> (=) boolOfList toCoo
+    |> testPropertyWithConfig config (getCorrectnessTestName $"%A{typeof<'a>}")
+
+
 let testFixtures (case: OperationCase<VectorFormat>) =
     [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
 
       q.Error.Add(fun e -> failwithf $"%A{e}")
 
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case.Format
-
-      let boolOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<bool> (=) boolOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      let intOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<int> (=) intOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let byteOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<byte> (=) byteOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+      creatTest<bool> case
+      creatTest<int> case
+      creatTest<byte> case
 
       if Utils.isFloat64Available context.ClDevice then
-          let floatOfList = Vector.ofList context wgSize
+          creatTest<float> case
 
-          let toCoo = Vector.toSparse context wgSize
-
-          case
-          |> correctnessGenericTest<float> Utils.floatIsEqual floatOfList toCoo
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let float32OfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<float32> Utils.float32IsEqual float32OfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32") ]
-
+      creatTest<float32> case ]
 
 let tests =
     operationGPUTests "Backend.Vector.ofList tests" testFixtures

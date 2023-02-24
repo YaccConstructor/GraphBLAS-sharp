@@ -44,56 +44,26 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (a
         $"The results should be the same, vector : {vector}"
         |> Expect.equal result (Array.exists (not << isZero) array)
 
+let createTest<'a when 'a: struct and 'a: equality> isEqual zero =
+    let exists =
+        ClArray.exists context wgSize Predicates.isSome
+
+    [ correctnessGenericTest<'a> (isEqual zero) exists
+      |> testPropertyWithConfig config "FSCheck data"
+
+      correctnessGenericTest<'a> (isEqual zero) exists (Array.create 1000 zero)
+      |> testPropertyWithConfig config "Zeros" ]
+    |> testList $"Correctness on %A{typeof<'a>}"
+
 let testFixtures =
-
-    let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A" datatype Dense
-
-    [ let exists =
-          ClArray.exists context wgSize Predicates.isSome
-
-      correctnessGenericTest<int> ((=) 0) exists
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      correctnessGenericTest<int> ((=) 0) exists (Array.create 1000 0)
-      |> testPropertyWithConfig config (getCorrectnessTestName "int zeros")
-
-      let exists =
-          ClArray.exists context wgSize Predicates.isSome
-
-      correctnessGenericTest<byte> ((=) 0uy) exists
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      correctnessGenericTest<byte> ((=) 0uy) exists (Array.create 1000 0uy)
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte zeros")
+    [ createTest<int> (=) 0
+      createTest<byte> (=) 0uy
 
       if Utils.isFloat64Available context.ClDevice then
-          let exists =
-              ClArray.exists context wgSize Predicates.isSome
+          createTest Utils.floatIsEqual 0.0
 
-          correctnessGenericTest<float> ((=) 0.0) exists
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-          correctnessGenericTest<float> ((=) 0.0) exists (Array.create 1000 0.0)
-          |> testPropertyWithConfig config (getCorrectnessTestName "float zeros")
-
-      let exists =
-          ClArray.exists context wgSize Predicates.isSome
-
-      correctnessGenericTest<float32> ((=) 0.0f) exists
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
-
-      correctnessGenericTest<float32> ((=) 0.0f) exists (Array.create 1000 0.0f)
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32 zeros")
-
-      let exists =
-          ClArray.exists context wgSize Predicates.isSome
-
-      correctnessGenericTest<bool> ((=) false) exists
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      correctnessGenericTest<bool> ((=) false) exists (Array.create 1000 false)
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool zeros") ]
+      createTest<float32> Utils.float32IsEqual 0.0f
+      createTest<bool> (=) false ]
 
 let tests =
     testList "Backend.Vector.containsNonZero tests" testFixtures

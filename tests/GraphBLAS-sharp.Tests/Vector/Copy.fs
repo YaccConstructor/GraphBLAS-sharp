@@ -18,7 +18,6 @@ let config = Utils.defaultConfig
 let wgSize = 32
 
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
-
     Expect.equal actual.Size expected.Size "The size should be the same"
 
     match actual, expected with
@@ -60,43 +59,30 @@ let correctnessGenericTest<'a when 'a: struct>
 
         checkResult isEqual actual expected
 
-let testFixtures (case: OperationCase<VectorFormat>) =
-
-    let getCorrectnessTestName datatype =
-        sprintf $"Correctness on %s{datatype}, %A{case.Format}"
-
+let createTest<'a when 'a: struct> case isEqual zero =
     let context = case.TestContext.ClContext
 
-    [ let intCopy = Vector.copy context wgSize
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{case.Format}"
 
-      case
-      |> correctnessGenericTest<int> (=) 0 intCopy
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+    let intCopy = Vector.copy context wgSize
+
+    case
+    |> correctnessGenericTest<'a> isEqual zero intCopy
+    |> testPropertyWithConfig config (getCorrectnessTestName $"%A{typeof<'a>}")
+
+
+let testFixtures (case: OperationCase<VectorFormat>) =
+    let context = case.TestContext.ClContext
+
+    [ createTest<int> case (=) 0
 
       if Utils.isFloat64Available context.ClDevice then
-          let floatCopy = Vector.copy context wgSize
+          createTest case Utils.floatIsEqual 0.0
 
-          case
-          |> correctnessGenericTest<float> Utils.floatIsEqual 0.0 floatCopy
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let float32Copy = Vector.copy context wgSize
-
-      case
-      |> correctnessGenericTest<float32> Utils.float32IsEqual 0.0f float32Copy
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
-
-      let boolCopy = Vector.copy context wgSize
-
-      case
-      |> correctnessGenericTest<bool> (=) false boolCopy
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      let floatCopy = Vector.copy context wgSize
-
-      case
-      |> correctnessGenericTest<byte> (=) 0uy floatCopy
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
+      createTest<float32> case Utils.float32IsEqual 0.0f
+      createTest<bool> case (=) false
+      createTest<byte> case (=) 0uy ]
 
 let tests =
     operationGPUTests "Backend.Vector.copy tests" testFixtures

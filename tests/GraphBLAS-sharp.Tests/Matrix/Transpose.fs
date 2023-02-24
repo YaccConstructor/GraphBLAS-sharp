@@ -15,7 +15,11 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 let logger = Log.create "Transpose.Tests"
 
 let config = Utils.defaultConfig
+
 let wgSize = 32
+
+let getCorrectnessTestName case datatype =
+    $"Correctness on %s{datatype}, %A{case.Format}, %A{case.TestContext}"
 
 let checkResult areEqual zero actual (expected2D: 'a [,]) =
     match actual with
@@ -74,9 +78,9 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
         "Value arrays should be equal"
         |> Utils.compareArrays areEqual actual.Values expected.Values
 
-let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
+let makeTestRegular context q transposeFun hostTranspose isEqual zero case (array: 'a [,]) =
     let mtx =
-        Utils.createMatrixFromArray2D case.Format array (areEqual zero)
+        Utils.createMatrixFromArray2D case.Format array (isEqual zero)
 
     if mtx.NNZ > 0 then
         let actual =
@@ -89,98 +93,46 @@ let makeTestRegular context q transposeFun areEqual zero case (array: 'a [,]) =
 
         logger.debug (
             eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            >> setField "actual" $"%A{actual}"
         )
 
-        let expected2D =
-            Array2D.create (Array2D.length2 array) (Array2D.length1 array) zero
+        let expected2D = hostTranspose array
 
-        for i in 0 .. Array2D.length1 expected2D - 1 do
-            for j in 0 .. Array2D.length2 expected2D - 1 do
-                expected2D.[i, j] <- array.[j, i]
+        checkResult isEqual zero actual expected2D
 
-        checkResult areEqual zero actual expected2D
+let createTest<'a when 'a: equality and 'a: struct> case (zero: 'a) isEqual =
+    let context = case.TestContext.ClContext
+    let q = case.TestContext.Queue
 
-let makeTestTwiceTranspose context q transposeFun areEqual zero case (array: 'a [,]) =
-    let mtx =
-        Utils.createMatrixFromArray2D case.Format array (areEqual zero)
+    let transposeFun = Matrix.transpose context wgSize
 
-    if mtx.NNZ > 0 then
-        let actual =
-            let m = mtx.ToDevice context
-            let mT = transposeFun q HostInterop m
-            let mTT = transposeFun q HostInterop mT
-            let res = mTT.ToHost q
-            m.Dispose q
-            mT.Dispose q
-            mTT.Dispose q
-            res
+    let twiceTranspose processor allocationFlag matrix =
+        transposeFun processor allocationFlag matrix
+        |> transposeFun processor allocationFlag
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
-        )
+    [ case
+      |> makeTestRegular context q transposeFun Utils.transpose2DArray isEqual zero
+      |> testPropertyWithConfig config "single transpose"
 
-        checkResult areEqual zero actual array
+      case
+      |> makeTestRegular context q twiceTranspose id isEqual zero
+      |> testPropertyWithConfig config "twice transpose" ]
+
+    |> testList (getCorrectnessTestName case $"{typeof<'a>}")
 
 let testFixtures case =
-    let getCorrectnessTestName datatype =
-        sprintf "Correctness on %s, %A, %A" datatype case.Format case.TestContext
-
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let transposeFun = Matrix.transpose context wgSize
-
-      case
-      |> makeTestRegular context q transposeFun (=) 0
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) 0
-      |> testPropertyWithConfig config (getCorrectnessTestName "int (twice transpose)")
+    [ createTest<int> case 0 (=)
 
       if Utils.isFloat64Available context.ClDevice then
-          let transposeFun = Matrix.transpose context wgSize
+          createTest<float> case 0.0 Utils.floatIsEqual
 
-          case
-          |> makeTestRegular context q transposeFun Utils.floatIsEqual 0.0
-          |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-          case
-          |> makeTestTwiceTranspose context q transposeFun Utils.floatIsEqual 0.0
-          |> testPropertyWithConfig config (getCorrectnessTestName "float (twice transpose)")
-
-      let transposeFun = Matrix.transpose context wgSize
-
-      case
-      |> makeTestRegular context q transposeFun Utils.float32IsEqual 0.0f
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32")
-
-      case
-      |> makeTestTwiceTranspose context q transposeFun Utils.float32IsEqual 0.0f
-      |> testPropertyWithConfig config (getCorrectnessTestName "float32 (twice transpose)")
-
-      let transposeFun = Matrix.transpose context wgSize
-
-      case
-      |> makeTestRegular context q transposeFun (=) 0uy
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) 0uy
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte (twice transpose)")
-
-      let transposeFun = Matrix.transpose context wgSize
-
-      case
-      |> makeTestRegular context q transposeFun (=) false
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      case
-      |> makeTestTwiceTranspose context q transposeFun (=) false
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool (twice transpose)") ]
+      createTest<float32> case 0.0f Utils.float32IsEqual
+      createTest<byte> case 0uy (=)
+      createTest<bool> case false (=) ]
 
 let tests =
-    operationGPUTests "Transpose tests" testFixtures
+    operationGPUTests "Matrix.Transpose tests" testFixtures

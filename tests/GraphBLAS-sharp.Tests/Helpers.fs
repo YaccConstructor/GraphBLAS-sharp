@@ -877,6 +877,16 @@ module Utils =
             | _ -> false)
             context.DeviceExtensions
 
+    let transpose2DArray array =
+        let result =
+            Array2D.zeroCreate (Array2D.length2 array) (Array2D.length1 array)
+
+        for i in 0 .. Array2D.length1 result - 1 do
+            for j in 0 .. Array2D.length2 result - 1 do
+                result.[i, j] <- array.[j, i]
+
+        result
+
 module Context =
     type TestContext =
         { ClContext: ClContext

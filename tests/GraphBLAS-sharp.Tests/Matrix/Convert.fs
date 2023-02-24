@@ -43,7 +43,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
 
 let testFixtures formatTo =
     let getCorrectnessTestName datatype formatFrom =
-        sprintf "Correctness on %s, %A to %A" datatype formatFrom formatTo
+        $"Correctness on %s{datatype}, %A{formatFrom} to %A{formatTo}"
 
     let context = defaultContext.ClContext
     let q = defaultContext.Queue
