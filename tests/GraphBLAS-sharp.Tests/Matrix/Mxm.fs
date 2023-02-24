@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Test
 
 let logger = Log.create "Mxm.Tests"
 
@@ -60,8 +61,7 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
             |> Expect.equal actual expected
 
 let tests =
-
-    let getCorrectnessTestName datatype = sprintf "Correctness on %s" datatype
+    let getCorrectnessTestName = sprintf "Correctness on %s"
 
     let config =
         { Utils.defaultConfig with

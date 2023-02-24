@@ -28,7 +28,8 @@ module Utils =
                     typeof<Generators.ArrayOfDistinctKeys>
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.BufferCompatibleArray>
-                    typeof<Generators.PairOfVectorsOfEqualSize> ] }
+                    typeof<Generators.PairOfVectorsOfEqualSize>
+                    typeof<Generators.PairOfArraysAndValue> ] }
 
     let floatIsEqual x y =
         abs (x - y) < Accuracy.medium.absolute

@@ -55,8 +55,7 @@ let makeTest<'a when 'a: struct and 'a: equality>
     (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
     isComplemented
     case
-    (vector: 'a [], mask: 'a [])
-    (value: 'a)
+    (vector: 'a [], mask: 'a [], value: 'a)
     =
 
     let leftVector =

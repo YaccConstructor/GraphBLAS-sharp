@@ -89,7 +89,7 @@ let testFixtures case =
       createTest<float32> case Utils.float32IsEqual System.Single.MaxValue min <@ min @> "min"
       createTest<byte> case (=) System.Byte.MaxValue min <@ min @> "min"
       createTest<bool> case (=) false (||) <@ (||) @> "add"
-      createTest<bool> case (=) true (&&) <@ (&&) @> "multiply"]
+      createTest<bool> case (=) true (&&) <@ (&&) @> "multiply" ]
 
 let tests =
     operationGPUTests "Reduce tests" testFixtures
