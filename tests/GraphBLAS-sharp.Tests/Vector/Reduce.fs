@@ -55,44 +55,41 @@ let correctnessGenericTest
 
         checkResult zero op result array
 
-let createTest<'a when 'a: equality and 'a: struct> case isEqual (zero: 'a) plus plusQ =
+let createTest<'a when 'a: equality and 'a: struct> case isEqual (zero: 'a) plus plusQ name =
     let context = case.TestContext.ClContext
-
-    let getCorrectnessTestName dataType =
-        $"Correctness on %A{dataType}, %A{case.Format}"
 
     let reduce = Vector.reduce context wgSize
 
     case
     |> correctnessGenericTest isEqual zero plus plusQ reduce
-    |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
+    |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}, %s{name} %A{case.Format}"
 
 
-let testFixtures (case: OperationCase<VectorFormat>) =
+let testFixtures case =
 
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ createTest<int> case (=) 0 (+) <@ (+) @>
-      createTest<byte> case (=) 0uy (+) <@ (+) @>
-      createTest<int> case (=) System.Int32.MinValue max <@ max @>
+    [ createTest<int> case (=) 0 (+) <@ (+) @> "add"
+      createTest<byte> case (=) 0uy (+) <@ (+) @> "add"
+      createTest<int> case (=) System.Int32.MinValue max <@ max @> "max"
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual System.Double.MinValue max <@ max @>
+          createTest case Utils.floatIsEqual System.Double.MinValue max <@ max @> "max"
 
-      createTest<float32> case Utils.float32IsEqual System.Single.MinValue max <@ max @>
-      createTest<byte> case (=) System.Byte.MinValue max <@ max @>
-      createTest<int> case (=) System.Int32.MaxValue min <@ min @>
+      createTest<float32> case Utils.float32IsEqual System.Single.MinValue max <@ max @> "max"
+      createTest<byte> case (=) System.Byte.MinValue max <@ max @> "max"
+      createTest<int> case (=) System.Int32.MaxValue min <@ min @> "min"
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual System.Double.MaxValue min <@ min @>
+          createTest case Utils.floatIsEqual System.Double.MaxValue min <@ min @> "min"
 
-      createTest<float32> case Utils.float32IsEqual System.Single.MaxValue min <@ min @>
-      createTest<byte> case (=) System.Byte.MaxValue min <@ min @>
-      createTest<bool> case (=) false (||) <@ (||) @>
-      createTest<bool> case (=) true (&&) <@ (&&) @> ]
+      createTest<float32> case Utils.float32IsEqual System.Single.MaxValue min <@ min @> "min"
+      createTest<byte> case (=) System.Byte.MaxValue min <@ min @> "min"
+      createTest<bool> case (=) false (||) <@ (||) @> "add"
+      createTest<bool> case (=) true (&&) <@ (&&) @> "multiply"]
 
 let tests =
-    operationGPUTests "Backend.Vector.reduce tests" testFixtures
+    operationGPUTests "Reduce tests" testFixtures

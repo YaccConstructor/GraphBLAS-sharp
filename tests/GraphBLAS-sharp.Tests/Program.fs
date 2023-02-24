@@ -55,8 +55,10 @@ let algorithmsTests =
 let allTests =
     testList
         "All tests"
-        [ Common.Copy.tests
-          Common.Replicate.tests ]
+        [ commonTests
+          matrixTests
+          vectorTests
+          algorithmsTests ]
     |> testSequenced
 
 [<EntryPoint>]

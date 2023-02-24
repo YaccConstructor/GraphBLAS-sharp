@@ -86,7 +86,7 @@ let correctnessGenericTest
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
-let createTest testContext zero isEqual add mul addQ mulQ =
+let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
     let context = testContext.ClContext
     let q = testContext.Queue
 
@@ -97,7 +97,7 @@ let createTest testContext zero isEqual add mul addQ mulQ =
 
     testContext
     |> correctnessGenericTest zero add mul spMV isEqual q
-    |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+    |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
 
 
 let testFixturesSpMV (testContext: TestContext) =
