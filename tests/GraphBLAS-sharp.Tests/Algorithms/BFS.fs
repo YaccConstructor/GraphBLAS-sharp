@@ -16,7 +16,7 @@ let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
       let context = testContext.ClContext
       let queue = testContext.Queue
-      let workGroupSize = 32
+      let workGroupSize = Utils.defaultWorkGroupSize
 
       let testName =
           sprintf "Test on %A" testContext.ClContext
@@ -40,7 +40,7 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D CSR matrix (fun x -> x = 0)
+                  Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
               let matrix = matrixHost.ToDevice context
 

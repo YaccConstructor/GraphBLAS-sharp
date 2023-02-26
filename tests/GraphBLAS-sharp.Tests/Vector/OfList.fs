@@ -3,7 +3,6 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.OfList
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
 open Context
 open TestCases
@@ -14,6 +13,10 @@ open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.ofList.Tests"
+
+let config = Utils.defaultConfig
+
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult
     (isEqual: 'a -> 'a -> bool)
@@ -27,8 +30,8 @@ let checkResult
 
     match actual with
     | Vector.Sparse actual ->
-        compareArrays (=) actual.Indices expectedIndices "indices must be the same"
-        compareArrays isEqual actual.Values expectedValues "values must be the same"
+        Utils.compareArrays (=) actual.Indices expectedIndices "indices must be the same"
+        Utils.compareArrays isEqual actual.Values expectedValues "values must be the same"
     | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest<'a when 'a: struct>
@@ -67,50 +70,35 @@ let correctnessGenericTest<'a when 'a: struct>
 
         checkResult isEqual indices values actual actualSize
 
+let creatTest<'a> case =
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{datatype}, %A{case.Format}"
+
+    let context = case.TestContext.ClContext
+
+    let boolOfList = Vector.ofList context wgSize
+
+    let toCoo = Vector.toSparse context wgSize
+
+    case
+    |> correctnessGenericTest<bool> (=) boolOfList toCoo
+    |> testPropertyWithConfig config (getCorrectnessTestName $"%A{typeof<'a>}")
+
+
 let testFixtures (case: OperationCase<VectorFormat>) =
-    [ let config = defaultConfig
-
-      let wgSize = 32
-
-      let context = case.TestContext.ClContext
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
 
       q.Error.Add(fun e -> failwithf $"%A{e}")
 
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case.Format
+      creatTest<bool> case
+      creatTest<int> case
+      creatTest<byte> case
 
-      let boolOfList = Vector.ofList context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          creatTest<float> case
 
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<bool> (=) boolOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
-
-      let intOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<int> (=) intOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let byteOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<byte> (=) byteOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      let floatOfList = Vector.ofList context wgSize
-
-      let toCoo = Vector.toSparse context wgSize
-
-      case
-      |> correctnessGenericTest<float> floatIsEqual floatOfList toCoo
-      |> testPropertyWithConfig config (getCorrectnessTestName "float") ]
+      creatTest<float32> case ]
 
 let tests =
     operationGPUTests "Backend.Vector.ofList tests" testFixtures

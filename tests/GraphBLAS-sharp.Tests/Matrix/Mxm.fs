@@ -2,30 +2,30 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.Mxm
 
 open Expecto
 open Expecto.Logging
-open GraphBLAS.FSharp.Tests.Utils
-open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Test
 
 let logger = Log.create "Mxm.Tests"
 
 let context = defaultContext.ClContext
-let workGroupSize = 32
+let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMatrix: 'a [,], mask: bool [,]) =
 
     let m1 =
-        createMatrixFromArray2D CSR leftMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D CSR leftMatrix (isEqual zero)
 
     let m2 =
-        createMatrixFromArray2D CSC rightMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D CSC rightMatrix (isEqual zero)
 
     let matrixMask =
-        createMatrixFromArray2D COO mask ((=) false)
+        Utils.createMatrixFromArray2D COO mask ((=) false)
 
     if m1.NNZ > 0 && m2.NNZ > 0 then
         let expected =
@@ -41,7 +41,7 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
                     zero
 
         let expected =
-            createMatrixFromArray2D COO expected (isEqual zero)
+            Utils.createMatrixFromArray2D COO expected (isEqual zero)
 
         if expected.NNZ > 0 then
             let m1 = m1.ToDevice context
@@ -61,11 +61,10 @@ let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMa
             |> Expect.equal actual expected
 
 let tests =
-
-    let getCorrectnessTestName datatype = sprintf "Correctness on %s" datatype
+    let getCorrectnessTestName = sprintf "Correctness on %s"
 
     let config =
-        { defaultConfig with
+        { Utils.defaultConfig with
               arbitrary = [ typeof<Generators.PairOfMatricesOfCompatibleSizeWithMask> ] }
 
     let q = defaultContext.Queue

@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open Context
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
@@ -14,6 +13,10 @@ open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.zeroCreate.Tests"
+
+let config = Utils.defaultConfig
+
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult size (actual: Vector<'a>) =
     Expect.equal actual.Size size "The size should be the same"
@@ -47,42 +50,32 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
 
         checkResult vectorSize hostVector
 
-let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = defaultConfig
-
+let createTest<'a> case =
     let getCorrectnessTestName dataType =
         $"Correctness on %A{dataType}, %A{case.Format}"
 
-    let wgSize = 32
     let context = case.TestContext.ClContext
 
+    let intZeroCreate = Vector.zeroCreate context wgSize
+
+    case
+    |> correctnessGenericTest<int> intZeroCreate
+    |> testPropertyWithConfig config (getCorrectnessTestName $"%A{typeof<'a>}")
+
+let testFixtures case =
+    let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intZeroCreate = Vector.zeroCreate context wgSize
+    [ createTest<int> case
+      createTest<byte> case
 
-      case
-      |> correctnessGenericTest intZeroCreate
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+      if Utils.isFloat64Available context.ClDevice then
+          createTest<float> case
 
-      let byteZeroCreat = Vector.zeroCreate context wgSize
-
-      case
-      |> correctnessGenericTest byteZeroCreat
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      let floatZeroCreate = Vector.zeroCreate context wgSize
-
-      case
-      |> correctnessGenericTest floatZeroCreate
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let boolZeroCreate = Vector.zeroCreate context wgSize
-
-      case
-      |> correctnessGenericTest boolZeroCreate
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+      createTest<float32> case
+      createTest<bool> case ]
 
 let tests =
     operationGPUTests "Backend.Vector.zeroCreate tests" testFixtures

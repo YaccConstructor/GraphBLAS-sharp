@@ -8,7 +8,6 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
-open Utils
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
@@ -16,7 +15,13 @@ open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Elementwise.Tests"
+let logger = Log.create "Map2.Tests"
+
+let config = Utils.defaultConfig
+let wgSize = Utils.defaultWorkGroupSize
+
+let getCorrectnessTestName case datatype =
+    $"Correctness on %s{datatype}, %A{case}"
 
 let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: Matrix<'a>) =
     let rows = Array2D.length1 baseMtx1
@@ -59,10 +64,10 @@ let correctnessGenericTest
     =
 
     let mtx1 =
-        createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
 
     let mtx2 =
-        createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
+        Utils.createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
     if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
         try
@@ -91,202 +96,112 @@ let correctnessGenericTest
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
-let testFixturesEWiseAdd case =
-    [ let config = defaultConfig
-      let wgSize = 32
+let creatTestMap2Add case (zero: 'a) add isEqual addQ map2 =
+    let getCorrectnessTestName = getCorrectnessTestName case
 
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case
+    let context = case.TestContext.ClContext
+    let q = case.TestContext.Queue
 
-      let context = case.TestContext.ClContext
+    let map2 = map2 context addQ wgSize
+
+    let toCOO = Matrix.toCOO context wgSize
+
+    case
+    |> correctnessGenericTest zero add map2 toCOO isEqual q
+    |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
+
+let testFixturesMap2Add case =
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd =
-          Matrix.map2 context ArithmeticOperations.boolSum wgSize
+      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSum Matrix.map2
+      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSum Matrix.map2
 
-      let boolToCOO = Matrix.toCOO context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          creatTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSum Matrix.map2
 
-      case
-      |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+      creatTestMap2Add case 0.0f (+) Utils.float32IsEqual ArithmeticOperations.float32Sum Matrix.map2
+      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSum Matrix.map2 ]
 
-      let intAdd =
-          Matrix.map2 context ArithmeticOperations.intSum wgSize
+let addTests =
+    operationGPUTests "Backend.Matrix.map2 add tests" testFixturesMap2Add
 
-      let intToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatAdd =
-          Matrix.map2 context ArithmeticOperations.floatSum wgSize
-
-      let floatToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteAdd =
-          Matrix.map2 context ArithmeticOperations.byteSum wgSize
-
-      let byteToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
-
-let elementwiseAddTests =
-    operationGPUTests "Backend.Matrix.EWiseAdd tests" testFixturesEWiseAdd
-
-let testFixturesEWiseAddAtLeastOne case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case
-
-      let context = case.TestContext.ClContext
+let testFixturesMap2AddAtLeastOne case =
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne wgSize
+      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSumAtLeastOne Matrix.map2AtLeastOne
+      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOne
 
-      let boolToCOO = Matrix.toCOO context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          creatTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumAtLeastOne Matrix.map2AtLeastOne
 
-      case
-      |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+      creatTestMap2Add
+          case
+          0.0f
+          (+)
+          Utils.float32IsEqual
+          ArithmeticOperations.float32SumAtLeastOne
+          Matrix.map2AtLeastOne
 
-      let intAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne wgSize
+      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumAtLeastOne Matrix.map2AtLeastOne ]
 
-      let intToCOO = Matrix.toCOO context wgSize
 
-      case
-      |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+let addAtLeastOneTests =
+    operationGPUTests "Backend.Matrix.map2AtLeastOne add tests" testFixturesMap2AddAtLeastOne
 
-      let floatAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne wgSize
-
-      let floatToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.byteSumAtLeastOne wgSize
-
-      let byteToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
-
-let elementwiseAddAtLeastOneTests =
-    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOne tests" testFixturesEWiseAddAtLeastOne
-
-let testFixturesEWiseAddAtLeastOneToCOO case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case
-
-      let context = case.TestContext.ClContext
+let testFixturesMap2AddAtLeastOneToCOO case =
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolAdd =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.boolSumAtLeastOne wgSize
+      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSumAtLeastOne Matrix.map2AtLeastOneToCOO
+      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOneToCOO
 
-      let boolToCOO = Matrix.toCOO context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          creatTestMap2Add
+              case
+              0.0
+              (+)
+              Utils.floatIsEqual
+              ArithmeticOperations.floatSumAtLeastOne
+              Matrix.map2AtLeastOneToCOO
 
-      case
-      |> correctnessGenericTest false (||) boolAdd boolToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+      creatTestMap2Add
+          case
+          0.0f
+          (+)
+          Utils.float32IsEqual
+          ArithmeticOperations.float32SumAtLeastOne
+          Matrix.map2AtLeastOneToCOO
 
-      let intAdd =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.intSumAtLeastOne wgSize
+      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumAtLeastOne Matrix.map2AtLeastOneToCOO ]
 
-      let intToCOO = Matrix.toCOO context wgSize
+let addAtLeastOneToCOOTests =
+    operationGPUTests "Backend.Matrix.map2AtLeastOneToCOO add tests" testFixturesMap2AddAtLeastOneToCOO
 
-      case
-      |> correctnessGenericTest 0 (+) intAdd intToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatAdd =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.floatSumAtLeastOne wgSize
-
-      let floatToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0.0 (+) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteAdd =
-          Matrix.map2AtLeastOneToCOO context ArithmeticOperations.byteSumAtLeastOne wgSize
-
-      let byteToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0uy (+) byteAdd byteToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
-
-let elementwiseAddAtLeastOneToCOOTests =
-    operationGPUTests "Backend.Matrix.EWiseAddAtLeastOneToCOO tests" testFixturesEWiseAddAtLeastOneToCOO
-
-let testFixturesEWiseMulAtLeastOne case =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype case
-
-      let context = case.TestContext.ClContext
+let testFixturesMap2MulAtLeastOne case =
+    [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolMul =
-          Matrix.map2AtLeastOne context ArithmeticOperations.boolMulAtLeastOne wgSize
+      creatTestMap2Add case false (&&) (=) ArithmeticOperations.boolMulAtLeastOne Matrix.map2AtLeastOne
+      creatTestMap2Add case 0 (*) (=) ArithmeticOperations.intMulAtLeastOne Matrix.map2AtLeastOne
 
-      let boolToCOO = Matrix.toCOO context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          creatTestMap2Add case 0.0 (*) Utils.floatIsEqual ArithmeticOperations.floatMulAtLeastOne Matrix.map2AtLeastOne
 
-      case
-      |> correctnessGenericTest false (&&) boolMul boolToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+      creatTestMap2Add
+          case
+          0.0f
+          (*)
+          Utils.float32IsEqual
+          ArithmeticOperations.float32MulAtLeastOne
+          Matrix.map2AtLeastOne
 
-      let intAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.intMulAtLeastOne wgSize
+      creatTestMap2Add case 0uy (*) (=) ArithmeticOperations.byteMulAtLeastOne Matrix.map2AtLeastOne ]
 
-      let intToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0 (*) intAdd intToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.floatMulAtLeastOne wgSize
-
-      let floatToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0.0 (*) floatAdd floatToCOO (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteAdd =
-          Matrix.map2AtLeastOne context ArithmeticOperations.byteMulAtLeastOne wgSize
-
-      let byteToCOO = Matrix.toCOO context wgSize
-
-      case
-      |> correctnessGenericTest 0uy (*) byteAdd byteToCOO (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
-
-let elementwiseMulAtLeastOneTests =
-    operationGPUTests "Backend.Matrix.eWiseMulAtLeastOne tests" testFixturesEWiseMulAtLeastOne
+let mulAtLeastOneTests =
+    operationGPUTests "Backend.Matrix.map2AtLeastOne multiplication tests" testFixturesMap2MulAtLeastOne

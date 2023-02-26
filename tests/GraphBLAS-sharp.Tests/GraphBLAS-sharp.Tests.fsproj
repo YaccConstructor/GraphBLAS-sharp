@@ -11,6 +11,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Generators.fs" />
         <Compile Include="Helpers.fs" />
         <Compile Include="QuickGraph/CreateGraph.fs" />
         <Compile Include="QuickGraph/Algorithms/ConnectedComponents.fs" />

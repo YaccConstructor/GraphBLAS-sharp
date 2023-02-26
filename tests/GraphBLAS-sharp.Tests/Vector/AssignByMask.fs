@@ -1,12 +1,10 @@
 module GraphBLAS.FSharp.Tests.Backend.Vector.AssignByMask
 
-open System
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
@@ -17,21 +15,24 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let logger = Log.create "Vector.assignByMask.Tests"
 
-let alwaysTrue _ = true
+let config = Utils.defaultConfig
 
-let notNane x = not <| Double.IsNaN x
+let wgSize = Utils.defaultWorkGroupSize
+
+let getCorrectnessTestName case datatype =
+    $"Correctness on %s{datatype}, vector: %A{case.Format}"
 
 let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask: 'a []) (value: 'a) =
 
     let expectedArray = Array.zeroCreate vector.Length
 
     let vector =
-        createVectorFromArray Dense vector isZero
-        |> vectorToDenseVector
+        Utils.createVectorFromArray Dense vector isZero
+        |> Utils.vectorToDenseVector
 
     let mask =
-        createVectorFromArray Dense mask isZero
-        |> vectorToDenseVector
+        Utils.createVectorFromArray Dense mask isZero
+        |> Utils.vectorToDenseVector
 
     for i in 0 .. vector.Length - 1 do
         expectedArray.[i] <-
@@ -50,24 +51,20 @@ let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask
 
 let makeTest<'a when 'a: struct and 'a: equality>
     (isZero: 'a -> bool)
-    isValueCompatible
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
     isComplemented
     case
-    (vector: 'a [], mask: 'a [])
-    (value: 'a)
+    (vector: 'a [], mask: 'a [], value: 'a)
     =
 
     let leftVector =
-        createVectorFromArray case.Format vector isZero
+        Utils.createVectorFromArray case.Format vector isZero
 
     let maskVector =
-        createVectorFromArray case.Format mask isZero
+        Utils.createVectorFromArray case.Format mask isZero
 
-    if isValueCompatible value
-       && leftVector.NNZ > 0
-       && maskVector.NNZ > 0 then
+    if leftVector.NNZ > 0 && maskVector.NNZ > 0 then
 
         let q = case.TestContext.Queue
         let context = case.TestContext.ClContext
@@ -95,102 +92,50 @@ let makeTest<'a when 'a: struct and 'a: equality>
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
+let createTest case (isZero: 'a -> bool) isComplemented fill =
+    let context = case.TestContext.ClContext
+    let getCorrectnessTestName = getCorrectnessTestName case
+
+    let fill = fill context Mask.assign wgSize
+
+    let toCoo = Vector.toDense context wgSize
+
+    case
+    |> makeTest isZero toCoo fill isComplemented
+    |> testPropertyWithConfig config (getCorrectnessTestName $"%A{typeof<'a>}")
+
 let testFixtures case =
-    let config = defaultConfig
-
-    let getCorrectnessTestName datatype =
-        $"Correctness on %s{datatype}, vector: %A{case.Format}"
-
-    let wgSize = 32
     let context = case.TestContext.ClContext
 
     let isComplemented = false
 
-    [ let intFill =
-          Vector.assignByMask context Mask.assign wgSize
+    [ createTest case ((=) 0) isComplemented Vector.assignByMask
 
-      let intToCoo = Vector.toDense context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          createTest case (Utils.floatIsEqual 0) isComplemented Vector.assignByMask
 
-      case
-      |> makeTest ((=) 0) alwaysTrue intToCoo intFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatFill =
-          Vector.assignByMask context Mask.assign wgSize
-
-      let floatToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest (floatIsEqual 0.0) notNane floatToCoo floatFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteFill =
-          Vector.assignByMask context Mask.assign wgSize
-
-      let byteToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest ((=) 0uy) alwaysTrue byteToCoo byteFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      let boolFill =
-          Vector.assignByMask context Mask.assign wgSize
-
-      let boolToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+      createTest case (Utils.float32IsEqual 0.0f) isComplemented Vector.assignByMask
+      createTest case ((=) 0uy) isComplemented Vector.assignByMask
+      createTest case ((=) false) isComplemented Vector.assignByMask ]
 
 let tests =
-    operationGPUTests "Backend.Vector.assignByMask tests" testFixtures
+    operationGPUTests "Backend.Vector.assignByMask tests"
+    <| testFixtures
 
 let testFixturesComplemented case =
-    let config = defaultConfig
-
-    let getCorrectnessTestName datatype =
-        $"Correctness on %s{datatype}, vector: %A{case.Format}"
-
-    let wgSize = 32
     let context = case.TestContext.ClContext
 
     let isComplemented = true
 
-    [ let intFill =
-          Vector.assignByMaskComplemented context Mask.assign wgSize
+    [ createTest case ((=) 0) isComplemented Vector.assignByMaskComplemented
 
-      let intToCoo = Vector.toDense context wgSize
+      if Utils.isFloat64Available context.ClDevice then
+          createTest case (Utils.floatIsEqual 0) isComplemented Vector.assignByMaskComplemented
 
-      case
-      |> makeTest ((=) 0) alwaysTrue intToCoo intFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatFill =
-          Vector.assignByMaskComplemented context Mask.assign wgSize
-
-      let floatToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest (floatIsEqual 0.0) notNane floatToCoo floatFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteFill =
-          Vector.assignByMaskComplemented context Mask.assign wgSize
-
-      let byteToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest ((=) 0uy) alwaysTrue byteToCoo byteFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
-
-      let boolFill =
-          Vector.assignByMaskComplemented context Mask.assign wgSize
-
-      let boolToCoo = Vector.toDense context wgSize
-
-      case
-      |> makeTest ((=) false) alwaysTrue boolToCoo boolFill isComplemented
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
+      createTest case (Utils.float32IsEqual 0.0f) isComplemented Vector.assignByMaskComplemented
+      createTest case ((=) 0uy) isComplemented Vector.assignByMaskComplemented
+      createTest case ((=) false) isComplemented Vector.assignByMaskComplemented ]
 
 let complementedTests =
-    operationGPUTests "Backend.Vector.assignByMaskComplemented tests" testFixturesComplemented
+    operationGPUTests "Backend.Vector.assignByMaskComplemented tests"
+    <| testFixturesComplemented

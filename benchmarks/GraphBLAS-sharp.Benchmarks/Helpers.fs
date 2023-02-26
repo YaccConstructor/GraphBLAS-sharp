@@ -14,6 +14,7 @@ open BenchmarkDotNet.Jobs
 open GraphBLAS.FSharp.Tests
 open FsCheck
 open Expecto
+open GraphBLAS.FSharp.Test
 
 type CommonConfig() =
     inherit ManualConfig()
@@ -258,7 +259,7 @@ module Utils =
 module VectorGenerator =
     let private pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) createVector =
         gen {
-            let! length = Gen.sized <| fun size -> Gen.constant size
+            let! length = Gen.sized <| Gen.constant
 
             let! leftArray = Gen.arrayOfLength length valuesGenerator
 

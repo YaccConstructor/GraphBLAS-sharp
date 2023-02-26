@@ -5,10 +5,10 @@ let matrixTests =
     testList
         "Matrix tests"
         [ Matrix.Convert.tests
-          Matrix.Map2.elementwiseAddTests
-          Matrix.Map2.elementwiseAddAtLeastOneTests
-          Matrix.Map2.elementwiseMulAtLeastOneTests
-          Matrix.Map2.elementwiseAddAtLeastOneToCOOTests
+          Matrix.Map2.addTests
+          Matrix.Map2.addAtLeastOneTests
+          Matrix.Map2.mulAtLeastOneTests
+          Matrix.Map2.addAtLeastOneToCOOTests
           Matrix.Mxm.tests
           Matrix.Transpose.tests ]
     |> testSequenced
