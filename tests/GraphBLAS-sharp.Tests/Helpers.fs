@@ -117,11 +117,7 @@ module Utils =
         | _ -> []
 
     let isFloat64Available (context: ClDevice) =
-        Array.exists
-            (function
-            | CL_KHR_FP64 -> true
-            | _ -> false)
-            context.DeviceExtensions
+        Array.contains CL_KHR_FP64 context.DeviceExtensions
 
     let transpose2DArray array =
         let result =
