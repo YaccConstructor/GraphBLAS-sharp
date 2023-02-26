@@ -328,7 +328,7 @@ module ClArray =
 
             result
 
-    let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
+    let map2Inplace<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
@@ -341,10 +341,7 @@ module ClArray =
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) flag (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
-
-            let resultArray =
-                clContext.CreateClArrayWithSpecificAllocationMode(flag, leftArray.Length)
+        fun (processor: MailboxProcessor<_>) (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
 
             let ndRange = Range1D.CreateValid(resultArray.Length, workGroupSize)
 
@@ -354,4 +351,12 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-            resultArray
+    let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize map =
+        let map2 = map2Inplace<'a, 'b, 'c> clContext workGroupSize map
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
+
+            let resultArray =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftArray.Length)
+
+            map2 processor leftArray rightArray resultArray

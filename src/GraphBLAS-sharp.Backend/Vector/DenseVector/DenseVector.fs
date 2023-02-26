@@ -15,29 +15,12 @@ module DenseVector =
         workGroupSize
         =
 
-        let map2 =
-            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < resultLength then
-                    resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
-
-        let kernel = clContext.Compile(map2)
+        let map2InPlace = ClArray.map2Inplace clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
-            let ndRange =
-                Range1D.CreateValid(leftVector.Length, workGroupSize)
+            map2InPlace processor leftVector rightVector resultVector
 
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector resultVector)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
@@ -45,16 +28,13 @@ module DenseVector =
         workGroupSize
         =
 
-        let elementWiseTo =
-            map2Inplace clContext opAdd workGroupSize
+        let map2 =
+            ClArray.map2 clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
-            let resultVector =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftVector.Length)
 
-            elementWiseTo processor leftVector rightVector resultVector
+            map2 processor allocationMode leftVector rightVector
 
-            resultVector
 
     let map2AtLeastOne clContext op workGroupSize =
         map2 clContext (Convert.atLeastOneToOption op) workGroupSize
