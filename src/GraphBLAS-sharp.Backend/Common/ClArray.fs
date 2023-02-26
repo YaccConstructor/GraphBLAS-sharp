@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -172,11 +173,13 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
 
             let outputArray = copy processor allocationMode inputArray
 
-            runExcludeInplace processor outputArray totalSum zero
+            let totalSum = runExcludeInplace processor outputArray zero
+
+            outputArray, totalSum
 
     let prefixSumInclude plus (clContext: ClContext) workGroupSize =
 
@@ -185,11 +188,13 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
 
             let outputArray = copy processor allocationMode inputArray
 
-            runIncludeInplace processor outputArray totalSum zero
+            let totalSum = runIncludeInplace processor outputArray zero
+
+            outputArray, totalSum
 
     let prefixSumBackwardsExcludeInplace plus =
         PrefixSum.runBackwardsExcludeInplace plus
@@ -242,32 +247,23 @@ module ClArray =
         let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
 
         let prefixSumExclude =
-            prefixSumExclude <@ (+) @> clContext workGroupSize
+            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let bitmap =
                 getUniqueBitmap processor DeviceOnly inputArray
 
-            let sum = clContext.CreateClCell 0
-
-            let positions, sum =
-                prefixSumExclude processor DeviceOnly bitmap sum 0
-
             let resultLength =
-                let a = [| 0 |]
-
-                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch))
-                |> ignore
-
-                processor.Post(Msg.CreateFreeMsg<_>(sum))
-
-                a.[0]
+                (prefixSumExclude processor bitmap 0)
+                    .ToHostAndFree(processor)
 
             let outputArray =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
-            scatter processor positions inputArray outputArray
+            scatter processor bitmap inputArray outputArray
+
+            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
 
             outputArray
 
@@ -360,3 +356,5 @@ module ClArray =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftArray.Length)
 
             map2 processor leftArray rightArray resultArray
+
+            resultArray

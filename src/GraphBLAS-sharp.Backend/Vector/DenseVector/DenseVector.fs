@@ -7,6 +7,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module DenseVector =
     let map2Inplace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -95,7 +96,7 @@ module DenseVector =
         let getBitmap = ClArray.map clContext workGroupSize <| Map.option 1 0
 
         let prefixSum =
-            PrefixSum.standardExcludeInplaceLengthToHost clContext workGroupSize
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let allIndices = ClArray.init clContext workGroupSize <@ id @>
 
@@ -105,7 +106,9 @@ module DenseVector =
 
             let positions = getBitmap processor DeviceOnly vector
 
-            let resultLength = prefixSum processor positions
+            let resultLength =
+                (prefixSum processor positions)
+                    .ToHostAndFree(processor)
 
             // compute result indices
             let resultIndices =
