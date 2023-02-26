@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
@@ -12,6 +11,10 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
+
+let wgSize = Utils.defaultWorkGroupSize
+
+let config = Utils.defaultConfig
 
 let checkResult zero op (actual: 'a) (vector: 'a []) =
     let expected = Array.fold op zero vector
@@ -30,7 +33,7 @@ let correctnessGenericTest
     =
 
     let vector =
-        createVectorFromArray case.Format array (isEqual zero)
+        Utils.createVectorFromArray case.Format array (isEqual zero)
 
     if vector.NNZ > 0 then
         let q = case.TestContext.Queue
@@ -52,77 +55,41 @@ let correctnessGenericTest
 
         checkResult zero op result array
 
-let testFixtures (case: OperationCase<VectorFormat>) =
-    let config = defaultConfig
+let createTest<'a when 'a: equality and 'a: struct> case isEqual (zero: 'a) plus plusQ name =
+    let context = case.TestContext.ClContext
 
-    let getCorrectnessTestName dataType =
-        $"Correctness on %A{dataType}, %A{case.Format}"
+    let reduce = Vector.reduce context wgSize
 
-    let wgSize = 32
+    case
+    |> correctnessGenericTest isEqual zero plus plusQ reduce
+    |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}, %s{name} %A{case.Format}"
+
+
+let testFixtures case =
+
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [ let intReduce = Vector.reduce context wgSize
+    [ createTest<int> case (=) 0 (+) <@ (+) @> "add"
+      createTest<byte> case (=) 0uy (+) <@ (+) @> "add"
+      createTest<int> case (=) System.Int32.MinValue max <@ max @> "max"
 
-      case
-      |> correctnessGenericTest (=) 0 (+) <@ (+) @> intReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
+      if Utils.isFloat64Available context.ClDevice then
+          createTest case Utils.floatIsEqual System.Double.MinValue max <@ max @> "max"
 
-      let byteReduce = Vector.reduce context wgSize
+      createTest<float32> case Utils.float32IsEqual System.Single.MinValue max <@ max @> "max"
+      createTest<byte> case (=) System.Byte.MinValue max <@ max @> "max"
+      createTest<int> case (=) System.Int32.MaxValue min <@ min @> "min"
 
-      case
-      |> correctnessGenericTest (=) 0uy (+) <@ (+) @> byteReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte")
+      if Utils.isFloat64Available context.ClDevice then
+          createTest case Utils.floatIsEqual System.Double.MaxValue min <@ min @> "min"
 
-      let intMaxReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) System.Int32.MinValue max <@ max @> intMaxReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "int max")
-
-      let floatMaxReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest floatIsEqual System.Double.MinValue max <@ max @> floatMaxReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "float max")
-
-      let byteMaxReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) System.Byte.MinValue max <@ max @> byteMaxReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte max")
-
-      let intMinReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) System.Int32.MaxValue min <@ min @> intMinReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "int min")
-
-      let floatMinReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest floatIsEqual System.Double.MaxValue min <@ min @> floatMinReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "float min")
-
-      let byteMinReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) System.Byte.MaxValue min <@ min @> byteMinReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte min")
-
-      let boolOrReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) false (||) <@ (||) @> boolOrReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool or")
-
-      let boolAndReduce = Vector.reduce context wgSize
-
-      case
-      |> correctnessGenericTest (=) true (&&) <@ (&&) @> boolAndReduce
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool and") ]
+      createTest<float32> case Utils.float32IsEqual System.Single.MaxValue min <@ min @> "min"
+      createTest<byte> case (=) System.Byte.MaxValue min <@ min @> "min"
+      createTest<bool> case (=) false (||) <@ (||) @> "add"
+      createTest<bool> case (=) true (&&) <@ (&&) @> "multiply" ]
 
 let tests =
-    operationGPUTests "Backend.Vector.reduce tests" testFixtures
+    operationGPUTests "Reduce tests" testFixtures

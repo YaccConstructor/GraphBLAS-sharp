@@ -5,82 +5,81 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 
 let logger = Log.create "BitonicSort.Tests"
 
 let context = defaultContext.ClContext
-let config = { defaultConfig with endSize = 1000000 }
 
-let wgSize = 32
+let config =
+    { Utils.defaultConfig with
+          endSize = 1000000 }
+
+let wgSize = Utils.defaultWorkGroupSize
+
 let q = defaultContext.Queue
 
 let makeTest sort (array: ('n * 'n * 'a) []) =
     if array.Length > 0 then
-        let projection (row: 'n) (col: 'n) (v: 'a) = row, col
+        let projection (row: 'n) (col: 'n) (_: 'a) = row, col
 
         logger.debug (
             eventX "Initial size is {size}"
-            >> setField "size" (sprintf "%A" array.Length)
+            >> setField "size" $"%A{array.Length}"
         )
 
         let rows, cols, vals = Array.unzip3 array
 
         use clRows = context.CreateClArray rows
-        use clCols = context.CreateClArray cols
-        use clVals = context.CreateClArray vals
+        use clColumns = context.CreateClArray cols
+        use clValues = context.CreateClArray vals
 
-        let actualRows, actualCols, actualVals =
-            sort q clRows clCols clVals
+        let actualRows, actualCols, actualValues =
+            sort q clRows clColumns clValues
 
             let rows = Array.zeroCreate<'n> clRows.Length
-            let cols = Array.zeroCreate<'n> clCols.Length
-            let vals = Array.zeroCreate<'a> clVals.Length
+            let columns = Array.zeroCreate<'n> clColumns.Length
+            let values = Array.zeroCreate<'a> clValues.Length
 
             q.Post(Msg.CreateToHostMsg(clRows, rows))
-            q.Post(Msg.CreateToHostMsg(clCols, cols))
+            q.Post(Msg.CreateToHostMsg(clColumns, columns))
 
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clVals, vals, ch))
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clValues, values, ch))
             |> ignore
 
-            rows, cols, vals
+            rows, columns, values
 
-        let expectedRows, expectedCols, expectedVals =
+        let expectedRows, expectedCols, expectedValues =
             (rows, cols, vals)
             |||> Array.zip3
             |> Array.sortBy ((<|||) projection)
             |> Array.unzip3
 
-        (sprintf "Row arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A" actualRows expectedRows rows)
-        |> compareArrays (=) actualRows expectedRows
+        $"Row arrays should be equal. Actual is \n%A{actualRows}, expected \n%A{expectedRows}, input is \n%A{rows}"
+        |> Utils.compareArrays (=) actualRows expectedRows
 
-        (sprintf
-            "Column arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
-            actualCols
-            expectedCols
-            cols)
-        |> compareArrays (=) actualCols expectedCols
+        $"Column arrays should be equal. Actual is \n%A{actualCols}, expected \n%A{expectedCols}, input is \n%A{cols}"
+        |> Utils.compareArrays (=) actualCols expectedCols
 
-        (sprintf
-            "Value arrays should be equal. Actual is \n%A, expected \n%A, input is \n%A"
-            actualVals
-            expectedVals
-            vals)
-        |> compareArrays (=) actualVals expectedVals
+        $"Value arrays should be equal. Actual is \n%A{actualValues}, expected \n%A{expectedValues}, input is \n%A{vals}"
+        |> Utils.compareArrays (=) actualValues expectedValues
 
 let testFixtures<'a when 'a: equality> =
-    let sort =
-        BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
-
-    makeTest sort
-    |> testPropertyWithConfig config (sprintf "Correctness on %A" typeof<'a>)
+    BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
+    |> makeTest
+    |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
 
     [ testFixtures<int>
-      testFixtures<float>
+
+      if Utils.isFloat64Available context.ClDevice then
+          testFixtures<float>
+
+      testFixtures<float32>
+
       testFixtures<byte>
       testFixtures<bool> ]
     |> testList "Backend.Common.BitonicSort tests"

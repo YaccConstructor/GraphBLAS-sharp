@@ -22,4 +22,3 @@ module ClVectorExtensions =
                      Values = values
                      Size = this.Size }
             | ClVector.Dense vector -> Vector.Dense <| vector.ToHost q
-

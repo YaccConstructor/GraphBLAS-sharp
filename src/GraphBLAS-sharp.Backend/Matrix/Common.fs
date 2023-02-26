@@ -51,5 +51,3 @@ module Common =
             valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, resultLength
-
-
