@@ -15,7 +15,7 @@ let config =
     { Tests.Utils.defaultConfig with
           endSize = 1000000 }
 
-let wgSize = 32
+let wgSize = Tests.Utils.defaultWorkGroupSize
 
 let q = defaultContext.Queue
 

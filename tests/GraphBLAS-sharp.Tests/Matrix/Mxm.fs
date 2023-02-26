@@ -14,7 +14,7 @@ open GraphBLAS.FSharp.Test
 let logger = Log.create "Mxm.Tests"
 
 let context = defaultContext.ClContext
-let workGroupSize = 32
+let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMatrix: 'a [,], mask: bool [,]) =
 

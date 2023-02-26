@@ -16,7 +16,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let config = Utils.defaultConfig
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
     let rows = Array2D.length1 baseMtx

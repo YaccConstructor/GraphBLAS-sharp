@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let config = Utils.defaultConfig
 

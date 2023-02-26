@@ -12,7 +12,7 @@ let logger = Log.create "ClArray.Copy.Tests"
 
 let context = Context.defaultContext.ClContext
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let q = Context.defaultContext.Queue
 

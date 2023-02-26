@@ -14,7 +14,7 @@ let context = Context.defaultContext.ClContext
 
 let q = Context.defaultContext.Queue
 
-let workGroupSize = 32
+let workGroupSize = Utils.defaultWorkGroupSize
 
 let config = Utils.defaultConfig
 

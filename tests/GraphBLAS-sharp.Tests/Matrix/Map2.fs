@@ -18,7 +18,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 let logger = Log.create "Map2.Tests"
 
 let config = Utils.defaultConfig
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, %A{case}"

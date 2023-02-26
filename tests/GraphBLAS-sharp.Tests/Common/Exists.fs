@@ -18,7 +18,7 @@ let q = defaultContext.Queue
 
 let config = Utils.defaultConfig
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (array: 'a []) =
 
@@ -66,4 +66,4 @@ let testFixtures =
       createTest<bool> (=) false ]
 
 let tests =
-    testList "Backend.Vector.containsNonZero tests" testFixtures
+    testList "Common.ClArray.exists tests" testFixtures

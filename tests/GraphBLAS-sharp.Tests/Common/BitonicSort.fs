@@ -16,7 +16,7 @@ let config =
     { Utils.defaultConfig with
           endSize = 1000000 }
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let q = defaultContext.Queue
 

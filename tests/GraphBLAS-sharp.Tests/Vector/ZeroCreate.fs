@@ -16,7 +16,7 @@ let logger = Log.create "Vector.zeroCreate.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult size (actual: Vector<'a>) =
     Expect.equal actual.Size size "The size should be the same"

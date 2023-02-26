@@ -15,7 +15,8 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 let logger = Log.create "Convert.Tests"
 
 let config = Utils.defaultConfig
-let wgSize = 32
+
+let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     let mtx =
@@ -51,7 +52,7 @@ let testFixtures formatTo =
 
     match formatTo with
     | COO ->
-        [ let convertFun = Matrix.toCOO context wgSize
+        [ let convertFun = Matrix.toCOO context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map
@@ -59,7 +60,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCOO context wgSize
+          let convertFun = Matrix.toCOO context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map
@@ -68,7 +69,7 @@ let testFixtures formatTo =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | CSR ->
-        [ let convertFun = Matrix.toCSR context wgSize
+        [ let convertFun = Matrix.toCSR context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map
@@ -76,7 +77,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSR context wgSize
+          let convertFun = Matrix.toCSR context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map
@@ -85,7 +86,7 @@ let testFixtures formatTo =
                   |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
         |> List.concat
     | CSC ->
-        [ let convertFun = Matrix.toCSC context wgSize
+        [ let convertFun = Matrix.toCSC context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map
@@ -93,7 +94,7 @@ let testFixtures formatTo =
                   makeTest context q formatFrom formatTo convertFun ((=) 0)
                   |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSC context wgSize
+          let convertFun = Matrix.toCSC context workGroupSize
 
           Utils.listOfUnionCases<MatrixFormat>
           |> List.map

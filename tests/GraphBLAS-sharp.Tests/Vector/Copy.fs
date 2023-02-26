@@ -15,7 +15,7 @@ let logger = Log.create "Vector.copy.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult (isEqual: 'a -> 'a -> bool) (actual: Vector<'a>) (expected: Vector<'a>) =
     Expect.equal actual.Size expected.Size "The size should be the same"
