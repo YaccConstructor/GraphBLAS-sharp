@@ -38,3 +38,25 @@ module internal PrefixSum =
         fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<int>) (totalSum: ClCell<int>) ->
 
             scan processor allocationMode inputArray totalSum 0
+
+    let standardExcludeInplaceLengthToHost clContext workGroupSize =
+
+        let scan = standardExcludeInplace clContext workGroupSize
+
+        let resultLength = Array.zeroCreate<int> 1
+
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) ->
+
+            let resultLengthGpu = clContext.CreateClCell 0
+
+            let _, r =
+                scan processor positions resultLengthGpu
+
+            let res =
+                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+
+            processor.Post(Msg.CreateFreeMsg<_>(r))
+
+            res.[0]
+
+

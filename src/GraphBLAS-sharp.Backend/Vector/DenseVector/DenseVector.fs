@@ -95,30 +95,17 @@ module DenseVector =
         let getBitmap = ClArray.map clContext workGroupSize <| Map.option 1 0
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInplaceLengthToHost clContext workGroupSize
 
         let allIndices = ClArray.init clContext workGroupSize <@ id @>
 
         let allValues = ClArray.map clContext workGroupSize Map.optionToValueOrZero
 
-        let resultLength = Array.zeroCreate<int> 1
-
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
             let positions = getBitmap processor DeviceOnly vector
 
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r =
-                prefixSum processor positions resultLengthGpu
-
-            let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
+            let resultLength = prefixSum processor positions
 
             // compute result indices
             let resultIndices =
@@ -131,10 +118,10 @@ module DenseVector =
             processor.Post <| Msg.CreateFreeMsg<_>(allIndices)
 
             // compute result values
-            let allValues = allValues processor DeviceOnly vector
-
             let resultValues =
                 clContext.CreateClArrayWithSpecificAllocationMode<'a>(allocationMode, resultLength)
+
+            let allValues = allValues processor DeviceOnly vector
 
             scatterValues processor positions allValues resultValues
 
