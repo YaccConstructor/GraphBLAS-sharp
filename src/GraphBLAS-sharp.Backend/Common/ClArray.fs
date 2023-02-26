@@ -141,11 +141,7 @@ module ClArray =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
     let prefixSumExcludeInplace = PrefixSum.runExcludeInplace
@@ -164,11 +160,7 @@ module ClArray =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
     let prefixSumIncludeInplace = PrefixSum.runIncludeInplace
@@ -335,3 +327,31 @@ module ClArray =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             result
+
+    let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+
+                    resultArray.[gid] <- (%map) leftArray.[gid] rightArray.[gid] @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) flag (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
+
+            let resultArray =
+                clContext.CreateClArrayWithSpecificAllocationMode(flag, leftArray.Length)
+
+            let ndRange = Range1D.CreateValid(resultArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultArray.Length leftArray rightArray resultArray))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            resultArray
