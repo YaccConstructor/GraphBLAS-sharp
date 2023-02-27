@@ -25,6 +25,8 @@
         <Compile Include="Common/Sum.fs" />
         <Compile Include="Common/Reduce.fs" />
         <Compile Include="Common/Exists.fs" />
+        <Compile Include="Common\Map.fs" />
+        <Compile Include="Common\Map2.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->

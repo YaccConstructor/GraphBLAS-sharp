@@ -24,7 +24,10 @@ let commonTests =
           Common.Replicate.tests
           Common.Reduce.tests
           Common.Sum.tests
-          Common.Exists.tests ]
+          Common.Exists.tests
+          Common.Map.tests
+          Common.Map2.addTests
+          Common.Map2.mulTests ]
     |> testSequenced
 
 let vectorTests =

@@ -27,8 +27,7 @@ module SparseVector =
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
             let resultLength =
-                (sum processor positions)
-                    .ToHostAndFree(processor)
+                (sum processor positions).ToHostAndFree(processor)
 
             let resultValues =
                 clContext.CreateClArrayWithSpecificAllocationMode<'a>(allocationMode, resultLength)

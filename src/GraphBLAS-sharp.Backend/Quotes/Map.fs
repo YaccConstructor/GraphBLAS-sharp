@@ -1,13 +1,15 @@
-module GraphBLAS.FSharp.Backend.Quotes
+namespace GraphBLAS.FSharp.Backend.Quotes
 
 module Map =
-    let optionToValueOrZero<'a> =
+    let optionToValueOrZero<'a> zero =
         <@ fun (item: 'a option) ->
             match item with
             | Some value -> value
-            | None -> Unchecked.defaultof<'a> @>
+            | None -> zero @>
 
     let option onSome onNone =
         <@ function
-            | Some _ -> onSome
-            | None -> onNone @>
+        | Some _ -> onSome
+        | None -> onNone @>
+
+    let id<'a> = <@ fun (item: 'a) -> item @>

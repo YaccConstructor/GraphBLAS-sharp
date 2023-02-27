@@ -164,8 +164,7 @@ module internal SpGEMM =
                 calculate queue matrixLeft matrixRight mask
 
             let resultNNZ =
-                (scanInplace queue positions)
-                    .ToHostAndFree(queue)
+                (scanInplace queue positions).ToHostAndFree(queue)
 
             let resultRows = context.CreateClArray<int> resultNNZ
             let resultCols = context.CreateClArray<int> resultNNZ

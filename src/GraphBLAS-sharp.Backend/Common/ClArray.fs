@@ -177,7 +177,8 @@ module ClArray =
 
             let outputArray = copy processor allocationMode inputArray
 
-            let totalSum = runExcludeInplace processor outputArray zero
+            let totalSum =
+                runExcludeInplace processor outputArray zero
 
             outputArray, totalSum
 
@@ -192,7 +193,8 @@ module ClArray =
 
             let outputArray = copy processor allocationMode inputArray
 
-            let totalSum = runIncludeInplace processor outputArray zero
+            let totalSum =
+                runIncludeInplace processor outputArray zero
 
             outputArray, totalSum
 
@@ -339,16 +341,21 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
 
-            let ndRange = Range1D.CreateValid(resultArray.Length, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(resultArray.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultArray.Length leftArray rightArray resultArray))
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange resultArray.Length leftArray rightArray resultArray)
+            )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize map =
-        let map2 = map2Inplace<'a, 'b, 'c> clContext workGroupSize map
+        let map2 =
+            map2Inplace<'a, 'b, 'c> clContext workGroupSize map
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
 

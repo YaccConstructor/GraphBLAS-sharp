@@ -7,6 +7,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 
@@ -28,13 +29,11 @@ let makeTest plus zero isEqual scan (array: 'a []) =
 
         let actual, actualSum =
             use clArray = context.CreateClArray array
-            use total = context.CreateClCell()
-            scan q clArray total zero |> ignore
+            let (total: ClCell<_>) = scan q clArray zero
 
             let actual = Array.zeroCreate<'a> clArray.Length
-            let actualSum = [| zero |]
-            q.Post(Msg.CreateToHostMsg(total, actualSum))
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum.[0]
+            let actualSum = total.ToHostAndFree(q)
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
 
         logger.debug (
             eventX "Actual is {actual}\n"

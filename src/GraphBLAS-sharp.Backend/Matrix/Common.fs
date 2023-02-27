@@ -23,8 +23,7 @@ module Common =
         fun (processor: MailboxProcessor<_>) allocationMode (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
             let resultLength =
-                (sum processor positions)
-                    .ToHostAndFree(processor)
+                (sum processor positions).ToHostAndFree(processor)
 
             let resultRows =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)

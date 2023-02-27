@@ -16,7 +16,8 @@ module DenseVector =
         workGroupSize
         =
 
-        let map2InPlace = ClArray.map2Inplace clContext workGroupSize opAdd
+        let map2InPlace =
+            ClArray.map2Inplace clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
@@ -89,18 +90,25 @@ module DenseVector =
 
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let scatterValues = Scatter.runInplace clContext workGroupSize
+        let scatterValues =
+            Scatter.runInplace clContext workGroupSize
 
-        let scatterIndices = Scatter.runInplace clContext workGroupSize
+        let scatterIndices =
+            Scatter.runInplace clContext workGroupSize
 
-        let getBitmap = ClArray.map clContext workGroupSize <| Map.option 1 0
+        let getBitmap =
+            ClArray.map clContext workGroupSize
+            <| Map.option 1 0
 
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let allIndices = ClArray.init clContext workGroupSize <@ id @>
+        let allIndices =
+            ClArray.init clContext workGroupSize Map.id
 
-        let allValues = ClArray.map clContext workGroupSize Map.optionToValueOrZero
+        let allValues =
+            ClArray.map clContext workGroupSize
+            <| Map.optionToValueOrZero Unchecked.defaultof<'a>
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
@@ -114,7 +122,8 @@ module DenseVector =
             let resultIndices =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
-            let allIndices = allIndices processor DeviceOnly vector.Length
+            let allIndices =
+                allIndices processor DeviceOnly vector.Length
 
             scatterIndices processor positions allIndices resultIndices
 
@@ -139,8 +148,9 @@ module DenseVector =
 
     let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
-        let getValuesAndIndices =
-            ClArray.map clContext workGroupSize Map.optionToValueOrZero
+        let map =
+            ClArray.map clContext workGroupSize
+            <| Map.optionToValueOrZero Unchecked.defaultof<'a>
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd
@@ -148,8 +158,7 @@ module DenseVector =
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             try
-                let values =
-                    getValuesAndIndices processor DeviceOnly vector
+                let values = map processor DeviceOnly vector
 
                 let result = reduce processor values
 
