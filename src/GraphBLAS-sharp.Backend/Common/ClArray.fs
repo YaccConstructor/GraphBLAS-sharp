@@ -4,6 +4,7 @@ open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Quotes
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -365,3 +366,35 @@ module ClArray =
             map2 processor leftArray rightArray resultArray
 
             resultArray
+
+    let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
+        let getBitmap = map<'a, int> clContext workGroupSize <| Map.chooseBitmap predicate
+
+        let getOptionValues = map<'a, 'b option> clContext workGroupSize predicate
+
+        let getValues = map<'b option, 'b> clContext workGroupSize <| Map.optionToValueOrZero Unchecked.defaultof<'b>
+
+        let prefixSum = prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
+
+        let scatter = Scatter.runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a>) ->
+
+            let positions = getBitmap processor DeviceOnly array
+
+            let resultLength =
+                (prefixSum processor positions 0)
+                    .ToHostAndFree(processor)
+
+            let optionValues = getOptionValues processor DeviceOnly array
+
+            let values = getValues processor DeviceOnly optionValues
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            scatter processor positions values result
+
+            result
+
+

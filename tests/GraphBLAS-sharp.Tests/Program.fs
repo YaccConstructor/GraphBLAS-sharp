@@ -27,7 +27,8 @@ let commonTests =
           Common.Exists.tests
           Common.Map.tests
           Common.Map2.addTests
-          Common.Map2.mulTests ]
+          Common.Map2.mulTests
+          Common.Choose.tests ]
     |> testSequenced
 
 let vectorTests =
