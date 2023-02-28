@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.Exists
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Exists
 
 open Expecto
 open Expecto.Logging

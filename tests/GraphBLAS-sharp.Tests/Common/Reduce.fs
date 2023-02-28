@@ -57,7 +57,7 @@ let testFixtures plus plusQ zero name =
     let reduce = Reduce.reduce context wgSize plusQ
 
     makeTest reduce plus zero
-    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+    |> testPropertyWithConfig config $"Correctness on %s{name}"
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)

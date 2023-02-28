@@ -17,6 +17,7 @@
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects/AtLeastOne.fs" />
     <Compile Include="Objects/ClContextExtensions.fs" />
+    <Compile Include="Objects/ClCell.fs" />
     <Compile Include="Quotes/SubReduce.fs" />
     <Compile Include="Quotes/Arithmetic.fs" />
     <Compile Include="Quotes/Convert.fs" />
@@ -24,6 +25,7 @@
     <Compile Include="Quotes/SubSum.fs" />
     <Compile Include="Quotes/PreparePositions.fs" />
     <Compile Include="Quotes/Predicates.fs" />
+    <Compile Include="Quotes/Map.fs" />
     <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />

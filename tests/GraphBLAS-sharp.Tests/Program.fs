@@ -14,17 +14,26 @@ let matrixTests =
     |> testSequenced
 
 let commonTests =
+    let clArrayTests =
+        testList
+            "ClArray"
+            [ Common.ClArray.PrefixSum.tests
+              Common.ClArray.RemoveDuplicates.tests
+              Common.ClArray.Copy.tests
+              Common.ClArray.Replicate.tests
+              Common.ClArray.Exists.tests
+              Common.ClArray.Map.tests
+              Common.ClArray.Map2.addTests
+              Common.ClArray.Map2.mulTests
+              Common.ClArray.Choose.tests ]
+
     testList
         "Common tests"
-        [ Common.BitonicSort.tests
-          Common.PrefixSum.tests
+        [ clArrayTests
+          Common.BitonicSort.tests
           Common.Scatter.tests
-          Common.RemoveDuplicates.tests
-          Common.Copy.tests
-          Common.Replicate.tests
           Common.Reduce.tests
-          Common.Sum.tests
-          Common.Exists.tests ]
+          Common.Sum.tests ]
     |> testSequenced
 
 let vectorTests =

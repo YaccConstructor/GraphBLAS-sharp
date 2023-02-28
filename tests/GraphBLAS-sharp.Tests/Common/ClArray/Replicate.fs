@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.Replicate
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Replicate
 
 open Expecto
 open Expecto.Logging

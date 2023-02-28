@@ -365,9 +365,8 @@ module COOMatrix =
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowIndices nnz rowPointers))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let total = clContext.CreateClCell()
-            let _ = scan processor rowPointers total nnz
-            processor.Post(Msg.CreateFreeMsg(total))
+            let result = scan processor rowPointers nnz
+            processor.Post <| Msg.CreateFreeMsg(result)
 
             rowPointers
 
