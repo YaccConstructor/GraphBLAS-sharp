@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.Map2
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Map2
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests

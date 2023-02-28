@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.RemoveDuplicates
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.RemoveDuplicates
 
 open Expecto
 open Expecto.Logging

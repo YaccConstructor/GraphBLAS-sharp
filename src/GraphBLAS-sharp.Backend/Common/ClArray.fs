@@ -368,15 +368,22 @@ module ClArray =
             resultArray
 
     let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
-        let getBitmap = map<'a, int> clContext workGroupSize <| Map.chooseBitmap predicate
+        let getBitmap =
+            map<'a, int> clContext workGroupSize
+            <| Map.chooseBitmap predicate
 
-        let getOptionValues = map<'a, 'b option> clContext workGroupSize predicate
+        let getOptionValues =
+            map<'a, 'b option> clContext workGroupSize predicate
 
-        let getValues = map<'b option, 'b> clContext workGroupSize <| Map.optionToValueOrZero Unchecked.defaultof<'b>
+        let getValues =
+            map<'b option, 'b> clContext workGroupSize
+            <| Map.optionToValueOrZero Unchecked.defaultof<'b>
 
-        let prefixSum = prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
+        let prefixSum =
+            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
 
-        let scatter = Scatter.runInplace clContext workGroupSize
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a>) ->
 
@@ -386,9 +393,11 @@ module ClArray =
                 (prefixSum processor positions 0)
                     .ToHostAndFree(processor)
 
-            let optionValues = getOptionValues processor DeviceOnly array
+            let optionValues =
+                getOptionValues processor DeviceOnly array
 
-            let values = getValues processor DeviceOnly optionValues
+            let values =
+                getValues processor DeviceOnly optionValues
 
             let result =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
@@ -396,5 +405,3 @@ module ClArray =
             scatter processor positions values result
 
             result
-
-

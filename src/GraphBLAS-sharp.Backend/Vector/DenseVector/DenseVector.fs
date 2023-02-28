@@ -148,23 +148,29 @@ module DenseVector =
 
     let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
-        let map =
-            ClArray.map clContext workGroupSize
-            <| Map.optionToValueOrZero Unchecked.defaultof<'a>
+        let choose =
+            ClArray.choose clContext workGroupSize Map.id
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd
 
+        let containsNonZero =
+            ClArray.exists clContext workGroupSize Predicates.isSome
+
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
-            try
-                let values = map processor DeviceOnly vector
+            let notEmpty =
+                (containsNonZero processor vector)
+                    .ToHostAndFree processor
+
+            if notEmpty then
+                let values = choose processor DeviceOnly vector
 
                 let result = reduce processor values
 
                 processor.Post(Msg.CreateFreeMsg<_>(values))
 
                 result
-            with
-            | ex when ex.Message = "InvalidBufferSize" -> clContext.CreateClCell Unchecked.defaultof<'a>
-            | ex -> raise ex
+
+            else
+                clContext.CreateClCell Unchecked.defaultof<'a>
