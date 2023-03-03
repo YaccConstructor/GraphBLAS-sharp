@@ -26,14 +26,14 @@ module CSRMatrix =
 
         let program = clContext.Compile(expandRowPointers)
 
-        let create = ClArray.create clContext workGroupSize
+        let create = ClArray.zeroCreate clContext workGroupSize
 
         let scan =
             ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
 
-            let rows = create processor allocationMode nnz 0
+            let rows = create processor allocationMode nnz
 
             let kernel = program.GetKernel()
 
@@ -63,7 +63,7 @@ module CSRMatrix =
             let cols =
                 copy processor allocationMode matrix.Columns
 
-            let vals =
+            let values =
                 copyData processor allocationMode matrix.Values
 
             { Context = clContext
@@ -71,7 +71,7 @@ module CSRMatrix =
               ColumnCount = matrix.ColumnCount
               Rows = rows
               Columns = cols
-              Values = vals }
+              Values = values }
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let prepare =
@@ -96,7 +96,7 @@ module CSRMatrix =
         let prepareRows =
             expandRowPointers clContext workGroupSize
 
-        let eWiseCOO =
+        let map2COO =
             COOMatrix.map2 clContext opAdd workGroupSize
 
         let toCSRInplace =
@@ -120,7 +120,7 @@ module CSRMatrix =
                   Values = m2.Values }
 
             let m3COO =
-                eWiseCOO processor allocationMode m1COO m2COO
+                map2COO processor allocationMode m1COO m2COO
 
             processor.Post(Msg.CreateFreeMsg(m1COO.Rows))
             processor.Post(Msg.CreateFreeMsg(m2COO.Rows))

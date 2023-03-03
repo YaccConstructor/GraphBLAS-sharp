@@ -248,19 +248,19 @@ module Matrix =
                 |> ClMatrix.CSC
 
     let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
-        let COOElementwise =
+        let map2COO =
             COOMatrix.map2 clContext opAdd workGroupSize
 
-        let CSRElementwise =
+        let map2CSR =
             CSRMatrix.map2 clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
             | ClMatrix.COO m1, ClMatrix.COO m2 ->
-                COOElementwise processor allocationMode m1 m2
+                map2COO processor allocationMode m1 m2
                 |> ClMatrix.COO
             | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
-                CSRElementwise processor allocationMode m1 m2
+                map2CSR processor allocationMode m1 m2
                 |> ClMatrix.CSR
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
                 let csrT1 =
@@ -280,7 +280,7 @@ module Matrix =
                       Values = m2.Values }
 
                 let resT =
-                    CSRElementwise processor allocationMode csrT1 csrT2
+                    map2CSR processor allocationMode csrT1 csrT2
 
                 { Context = resT.Context
                   RowCount = resT.ColumnCount
