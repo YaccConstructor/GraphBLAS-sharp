@@ -4,6 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Common =
     ///<param name="clContext">.</param>
@@ -19,24 +20,13 @@ module Common =
         let sum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate<int> 1
-
         fun (processor: MailboxProcessor<_>) allocationMode (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r = sum processor positions resultLengthGpu
 
             let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
-
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
+                (sum processor positions).ToHostAndFree(processor)
 
             let resultRows =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
-
 
             let resultColumns =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
@@ -51,5 +41,3 @@ module Common =
             valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, resultLength
-
-

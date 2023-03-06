@@ -6,15 +6,15 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 
 let logger = Log.create "Reduce.Tests"
 
 let context = Context.defaultContext.ClContext
 
-let config = defaultConfig
+let config = Utils.defaultConfig
 
-let wgSize = 32
+let wgSize = Utils.defaultWorkGroupSize
+
 let q = Context.defaultContext.Queue
 
 let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zero (array: 'a []) =
@@ -57,20 +57,24 @@ let testFixtures plus plusQ zero name =
     let reduce = Reduce.reduce context wgSize plusQ
 
     makeTest reduce plus zero
-    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+    |> testPropertyWithConfig config $"Correctness on %s{name}"
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    let filterFloats = Array.filter System.Double.IsNormal
-
     [ testFixtures (+) <@ (+) @> 0 "int add"
       testFixtures (+) <@ (+) @> 0uy "byte add"
       testFixtures max <@ max @> System.Int32.MinValue "int max"
-      testFixtures max <@ max @> System.Double.MinValue "float max"
       testFixtures max <@ max @> System.Byte.MinValue "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue "int min"
-      testFixtures min <@ min @> System.Double.MaxValue "float min"
+
+      if Utils.isFloat64Available context.ClDevice then
+          testFixtures max <@ max @> System.Double.MinValue "float max"
+          testFixtures min <@ min @> System.Double.MaxValue "float min"
+
+      testFixtures max <@ max @> System.Single.MinValue "float32 max"
+      testFixtures min <@ min @> System.Single.MaxValue "float32 min"
+
       testFixtures min <@ min @> System.Byte.MaxValue "byte min"
       testFixtures (||) <@ (||) @> false "bool logic-or"
       testFixtures (&&) <@ (&&) @> true "bool logic-and" ]

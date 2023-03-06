@@ -43,8 +43,7 @@ module CSRMatrix =
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowPointers rowCount rows))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let total = clContext.CreateClCell()
-            ignore <| scan processor rows total 0
+            let total = scan processor rows 0
             processor.Post(Msg.CreateFreeMsg(total))
 
             rows

@@ -11,19 +11,23 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Generators.fs" />
         <Compile Include="Helpers.fs" />
         <Compile Include="QuickGraph/CreateGraph.fs" />
         <Compile Include="QuickGraph/Algorithms/ConnectedComponents.fs" />
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Common/BitonicSort.fs" />
-        <Compile Include="Common/RemoveDuplicates.fs" />
-        <Compile Include="Common/Copy.fs" />
-        <Compile Include="Common/Replicate.fs" />
-        <Compile Include="Common/PrefixSum.fs" />
         <Compile Include="Common/Scatter.fs" />
         <Compile Include="Common/Sum.fs" />
         <Compile Include="Common/Reduce.fs" />
-        <Compile Include="Common/Exists.fs" />
+        <Compile Include="Common/ClArray/Choose.fs" />
+        <Compile Include="Common/ClArray/Exists.fs" />
+        <Compile Include="Common/ClArray/Map.fs" />
+        <Compile Include="Common/ClArray/Map2.fs" />
+        <Compile Include="Common/ClArray/RemoveDuplicates.fs" />
+        <Compile Include="Common/ClArray/Copy.fs" />
+        <Compile Include="Common/ClArray/Replicate.fs" />
+        <Compile Include="Common/ClArray/PrefixSum.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->

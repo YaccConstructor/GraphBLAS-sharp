@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.RemoveDuplicates
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.RemoveDuplicates
 
 open Expecto
 open Expecto.Logging
@@ -60,15 +60,13 @@ let testCases =
 
               logger.debug (
                   eventX "Actual is {actual}"
-                  >> setField "actual" (sprintf "%A" actual)
+                  >> setField "actual" $"%A{actual}"
               )
 
               let expected = Seq.distinct array |> Array.ofSeq
 
               "Array should be without duplicates"
-              |> Expect.sequenceEqual actual expected
-
-      ]
+              |> Expect.sequenceEqual actual expected ]
 
 let tests =
     testCases

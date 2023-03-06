@@ -23,4 +23,3 @@ module Convert =
             match rightItem with
             | Some _ -> (%op) leftItem None
             | None -> (%op) leftItem (Some value) @>
-

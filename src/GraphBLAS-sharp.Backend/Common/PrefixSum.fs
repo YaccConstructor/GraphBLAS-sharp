@@ -164,7 +164,7 @@ module PrefixSum =
 
         let update = update opAdd clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) (zero: 'a) ->
 
             let firstVertices =
                 clContext.CreateClArray<'a>(
@@ -177,6 +177,8 @@ module PrefixSum =
                     (firstVertices.Length - 1) / workGroupSize + 1,
                     hostAccessMode = HostAccessMode.NotAccessible
                 )
+
+            let totalSum = clContext.CreateClCell<'a>()
 
             let mutable verticesArrays = firstVertices, secondVertices
             let swap (a, b) = (b, a)
@@ -207,7 +209,7 @@ module PrefixSum =
             processor.Post(Msg.CreateFreeMsg(firstVertices))
             processor.Post(Msg.CreateFreeMsg(secondVertices))
 
-            inputArray, totalSum
+            totalSum
 
     let runExcludeInplace plus = runInplace false scanExclusive plus
 

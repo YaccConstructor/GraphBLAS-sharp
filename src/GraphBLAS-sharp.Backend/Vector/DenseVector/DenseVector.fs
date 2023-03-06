@@ -7,6 +7,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module DenseVector =
     let map2Inplace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -15,29 +16,13 @@ module DenseVector =
         workGroupSize
         =
 
-        let map2 =
-            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < resultLength then
-                    resultVector.[gid] <- (%opAdd) leftVector.[gid] rightVector.[gid] @>
-
-        let kernel = clContext.Compile(map2)
+        let map2InPlace =
+            ClArray.map2Inplace clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
-            let ndRange =
-                Range1D.CreateValid(leftVector.Length, workGroupSize)
+            map2InPlace processor leftVector rightVector resultVector
 
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector rightVector resultVector)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
@@ -45,16 +30,13 @@ module DenseVector =
         workGroupSize
         =
 
-        let elementWiseTo =
-            map2Inplace clContext opAdd workGroupSize
+        let map2 =
+            ClArray.map2 clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
-            let resultVector =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftVector.Length)
 
-            elementWiseTo processor leftVector rightVector resultVector
+            map2 processor allocationMode leftVector rightVector
 
-            resultVector
 
     let map2AtLeastOne clContext op workGroupSize =
         map2 clContext (Convert.atLeastOneToOption op) workGroupSize
@@ -106,136 +88,89 @@ module DenseVector =
 
             resultVector
 
-    let private getBitmap<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
-        let getPositions =
-            <@ fun (ndRange: Range1D) length (vector: ClArray<'a option>) (positions: ClArray<int>) ->
+        let scatterValues =
+            Scatter.runInplace clContext workGroupSize
 
-                let gid = ndRange.GlobalID0
+        let scatterIndices =
+            Scatter.runInplace clContext workGroupSize
 
-                if gid < length then
-                    match vector.[gid] with
-                    | Some _ -> positions.[gid] <- 1
-                    | None -> positions.[gid] <- 0 @>
-
-        let kernel = clContext.Compile(getPositions)
-
-        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
-            let positions =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, vector.Length)
-
-            let ndRange =
-                Range1D.CreateValid(vector.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector positions))
-
-            processor.Post(Msg.CreateRunMsg(kernel))
-
-            positions
-
-    let private getValuesAndIndices<'a when 'a: struct> (clContext: ClContext) workGroupSize =
-
-        let getValuesAndIndices =
-            <@ fun (ndRange: Range1D) length (denseVector: ClArray<'a option>) (positions: ClArray<int>) (resultValues: ClArray<'a>) (resultIndices: ClArray<int>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid = length - 1
-                   || gid < length
-                      && positions.[gid] <> positions.[gid + 1] then
-                    let index = positions.[gid]
-
-                    match denseVector.[gid] with
-                    | Some value ->
-                        resultValues.[index] <- value
-                        resultIndices.[index] <- gid
-                    | None -> () @>
-
-        let kernel = clContext.Compile(getValuesAndIndices)
-
-        let getPositions = getBitmap clContext workGroupSize
+        let getBitmap =
+            ClArray.map clContext workGroupSize
+            <| Map.option 1 0
 
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let resultLength = Array.zeroCreate<int> 1
+        let allIndices =
+            ClArray.init clContext workGroupSize Map.id
+
+        let allValues =
+            ClArray.map clContext workGroupSize
+            <| Map.optionToValueOrZero Unchecked.defaultof<'a>
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
-            let positions = getPositions processor DeviceOnly vector
-
-            let resultLengthGpu = clContext.CreateClCell 0
-
-            let _, r =
-                prefixSum processor positions resultLengthGpu
+            let positions = getBitmap processor DeviceOnly vector
 
             let resultLength =
-                let res =
-                    processor.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(r, resultLength, ch))
+                (prefixSum processor positions)
+                    .ToHostAndFree(processor)
 
-                processor.Post(Msg.CreateFreeMsg<_>(r))
-
-                res.[0]
-
-            let resultValues =
-                clContext.CreateClArrayWithSpecificAllocationMode<'a>(allocationMode, resultLength)
-
+            // compute result indices
             let resultIndices =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
 
-            let ndRange =
-                Range1D.CreateValid(vector.Length, workGroupSize)
+            let allIndices =
+                allIndices processor DeviceOnly vector.Length
 
-            let kernel = kernel.GetKernel()
+            scatterIndices processor positions allIndices resultIndices
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange vector.Length vector positions resultValues resultIndices)
-            )
+            processor.Post <| Msg.CreateFreeMsg<_>(allIndices)
 
-            processor.Post(Msg.CreateRunMsg(kernel))
+            // compute result values
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(allocationMode, resultLength)
 
-            processor.Post(Msg.CreateFreeMsg<_>(positions))
+            let allValues = allValues processor DeviceOnly vector
 
-            resultValues, resultIndices
+            scatterValues processor positions allValues resultValues
 
-    let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+            processor.Post <| Msg.CreateFreeMsg<_>(allValues)
 
-        let getValuesAndIndices =
-            getValuesAndIndices clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
-
-            let values, indices =
-                getValuesAndIndices processor allocationMode vector
+            processor.Post <| Msg.CreateFreeMsg<_>(positions)
 
             { Context = clContext
-              Indices = indices
-              Values = values
+              Indices = resultIndices
+              Values = resultValues
               Size = vector.Length }
 
     let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
 
-        let getValuesAndIndices =
-            getValuesAndIndices clContext workGroupSize
+        let choose =
+            ClArray.choose clContext workGroupSize Map.id
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd
 
+        let containsNonZero =
+            ClArray.exists clContext workGroupSize Predicates.isSome
+
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
-            try
-                let values, indices =
-                    getValuesAndIndices processor DeviceOnly vector
+            let notEmpty =
+                (containsNonZero processor vector)
+                    .ToHostAndFree processor
+
+            if notEmpty then
+                let values = choose processor DeviceOnly vector
 
                 let result = reduce processor values
 
-                processor.Post(Msg.CreateFreeMsg<_>(indices))
                 processor.Post(Msg.CreateFreeMsg<_>(values))
 
                 result
-            with
-            | ex when ex.Message = "InvalidBufferSize" -> clContext.CreateClCell Unchecked.defaultof<'a>
-            | ex -> raise ex
+
+            else
+                clContext.CreateClCell Unchecked.defaultof<'a>

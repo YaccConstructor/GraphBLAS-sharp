@@ -7,6 +7,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module internal SpGEMM =
     let private calculate
@@ -159,18 +160,11 @@ module internal SpGEMM =
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
-            let values, bitmap =
+            let values, positions =
                 calculate queue matrixLeft matrixRight mask
 
-            let total = context.CreateClCell 0
-            let positions, total = scanInplace queue bitmap total
-
             let resultNNZ =
-                let res =
-                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(total, [| 0 |], ch))
-
-                queue.Post(Msg.CreateFreeMsg<_>(total))
-                res.[0]
+                (scanInplace queue positions).ToHostAndFree(queue)
 
             let resultRows = context.CreateClArray<int> resultNNZ
             let resultCols = context.CreateClArray<int> resultNNZ

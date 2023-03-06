@@ -3,6 +3,8 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Quotes
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -141,11 +143,7 @@ module ClArray =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
     let prefixSumExcludeInplace = PrefixSum.runExcludeInplace
@@ -164,11 +162,7 @@ module ClArray =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="processor">.</param>
-    ///<param name="inputArray">.</param>
-    ///<param name="totalSum">.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
     let prefixSumIncludeInplace = PrefixSum.runIncludeInplace
@@ -180,11 +174,14 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
 
             let outputArray = copy processor allocationMode inputArray
 
-            runExcludeInplace processor outputArray totalSum zero
+            let totalSum =
+                runExcludeInplace processor outputArray zero
+
+            outputArray, totalSum
 
     let prefixSumInclude plus (clContext: ClContext) workGroupSize =
 
@@ -193,11 +190,14 @@ module ClArray =
 
         let copy = copy clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (totalSum: ClCell<'a>) (zero: 'a) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
 
             let outputArray = copy processor allocationMode inputArray
 
-            runIncludeInplace processor outputArray totalSum zero
+            let totalSum =
+                runIncludeInplace processor outputArray zero
+
+            outputArray, totalSum
 
     let prefixSumBackwardsExcludeInplace plus =
         PrefixSum.runBackwardsExcludeInplace plus
@@ -250,32 +250,23 @@ module ClArray =
         let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
 
         let prefixSumExclude =
-            prefixSumExclude <@ (+) @> clContext workGroupSize
+            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
             let bitmap =
                 getUniqueBitmap processor DeviceOnly inputArray
 
-            let sum = clContext.CreateClCell 0
-
-            let positions, sum =
-                prefixSumExclude processor DeviceOnly bitmap sum 0
-
             let resultLength =
-                let a = [| 0 |]
-
-                processor.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, a, ch))
-                |> ignore
-
-                processor.Post(Msg.CreateFreeMsg<_>(sum))
-
-                a.[0]
+                (prefixSumExclude processor bitmap 0)
+                    .ToHostAndFree(processor)
 
             let outputArray =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
-            scatter processor positions inputArray outputArray
+            scatter processor bitmap inputArray outputArray
+
+            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
 
             outputArray
 
@@ -333,5 +324,84 @@ module ClArray =
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length inputArray result))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result
+
+    let map2Inplace<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+
+                    resultArray.[gid] <- (%map) leftArray.[gid] rightArray.[gid] @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
+
+            let ndRange =
+                Range1D.CreateValid(resultArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange resultArray.Length leftArray rightArray resultArray)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize map =
+        let map2 =
+            map2Inplace<'a, 'b, 'c> clContext workGroupSize map
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
+
+            let resultArray =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftArray.Length)
+
+            map2 processor leftArray rightArray resultArray
+
+            resultArray
+
+    let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
+        let getBitmap =
+            map<'a, int> clContext workGroupSize
+            <| Map.chooseBitmap predicate
+
+        let getOptionValues =
+            map<'a, 'b option> clContext workGroupSize predicate
+
+        let getValues =
+            map<'b option, 'b> clContext workGroupSize
+            <| Map.optionToValueOrZero Unchecked.defaultof<'b>
+
+        let prefixSum =
+            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
+
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a>) ->
+
+            let positions = getBitmap processor DeviceOnly array
+
+            let resultLength =
+                (prefixSum processor positions 0)
+                    .ToHostAndFree(processor)
+
+            let optionValues =
+                getOptionValues processor DeviceOnly array
+
+            let values =
+                getValues processor DeviceOnly optionValues
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            scatter processor positions values result
 
             result

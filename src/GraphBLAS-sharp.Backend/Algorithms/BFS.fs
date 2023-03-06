@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module BFS =
     let singleSource
@@ -62,13 +63,9 @@ module BFS =
                     maskComplementedTo queue front levels front
 
                     //Checking if front is empty
-                    let frontNotEmpty = Array.zeroCreate 1
-                    let sum = containsNonZero queue front
-
-                    queue.PostAndReply(fun ch -> Msg.CreateToHostMsg(sum, frontNotEmpty, ch))
-                    |> ignore
-
-                    stop <- not frontNotEmpty.[0]
+                    stop <-
+                        not
+                        <| (containsNonZero queue front).ToHostAndFree queue
 
                 front.Dispose queue
 

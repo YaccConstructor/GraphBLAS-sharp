@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.PrefixSum
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.PrefixSum
 
 open Expecto
 open Expecto.Logging
@@ -6,19 +6,20 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 
 let context = defaultContext.ClContext
 
-let config = defaultConfig
+let config = Tests.Utils.defaultConfig
 
 let wgSize = 128
 
 let q = defaultContext.Queue
 
-let makeTest scan plus zero isEqual (array: 'a []) =
+let makeTest plus zero isEqual scan (array: 'a []) =
     if array.Length > 0 then
 
         logger.debug (
@@ -28,13 +29,11 @@ let makeTest scan plus zero isEqual (array: 'a []) =
 
         let actual, actualSum =
             use clArray = context.CreateClArray array
-            use total = context.CreateClCell()
-            scan q clArray total zero |> ignore
+            let (total: ClCell<_>) = scan q clArray zero
 
             let actual = Array.zeroCreate<'a> clArray.Length
-            let actualSum = [| zero |]
-            q.Post(Msg.CreateToHostMsg(total, actualSum))
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum.[0]
+            let actualSum = total.ToHostAndFree(q)
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
 
         logger.debug (
             eventX "Actual is {actual}\n"
@@ -58,13 +57,11 @@ let makeTest scan plus zero isEqual (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
         "Arrays should be the same"
-        |> compareArrays isEqual actual expected
+        |> Tests.Utils.compareArrays isEqual actual expected
 
 let testFixtures plus plusQ zero isEqual name =
-    let scan =
-        ClArray.prefixSumIncludeInplace plusQ context wgSize
-
-    makeTest scan plus zero isEqual
+    ClArray.prefixSumIncludeInplace plusQ context wgSize
+    |> makeTest plus zero isEqual
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
 let tests =
@@ -73,10 +70,16 @@ let tests =
     [ testFixtures (+) <@ (+) @> 0 (=) "int add"
       testFixtures (+) <@ (+) @> 0uy (=) "byte add"
       testFixtures max <@ max @> 0 (=) "int max"
-      testFixtures max <@ max @> 0.0 (=) "float max"
       testFixtures max <@ max @> 0uy (=) "byte max"
       testFixtures min <@ min @> System.Int32.MaxValue (=) "int min"
-      testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+
+      if Tests.Utils.isFloat64Available context.ClDevice then
+          testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+          testFixtures max <@ max @> 0.0 (=) "float max"
+
+      testFixtures min <@ min @> System.Single.MaxValue (=) "float32 min"
+      testFixtures max <@ max @> 0.0f (=) "float32 max"
+
       testFixtures min <@ min @> System.Byte.MaxValue (=) "byte min"
       testFixtures (||) <@ (||) @> false (=) "bool logic-or"
       testFixtures (&&) <@ (&&) @> true (=) "bool logic-and" ]

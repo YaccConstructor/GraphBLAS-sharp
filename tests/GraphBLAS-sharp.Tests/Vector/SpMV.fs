@@ -4,7 +4,7 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Tests.Utils
+open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
@@ -13,6 +13,10 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+
+let config = Utils.defaultConfig
+
+let wgSize = Utils.defaultWorkGroupSize
 
 let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
     let rows = Array2D.length1 baseMtx
@@ -56,10 +60,10 @@ let correctnessGenericTest
     =
 
     let mtx =
-        createMatrixFromArray2D CSR matrix (isEqual zero)
+        Utils.createMatrixFromArray2D CSR matrix (isEqual zero)
 
     let vtr =
-        createVectorFromArray Dense vector (isEqual zero)
+        Utils.createVectorFromArray Dense vector (isEqual zero)
 
     if mtx.NNZ > 0 && vtr.Size > 0 then
         try
@@ -82,44 +86,48 @@ let correctnessGenericTest
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
+let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
+    let context = testContext.ClContext
+    let q = testContext.Queue
+
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{testContext.ClContext}"
+
+    let spMV = SpMV.run context addQ mulQ wgSize
+
+    testContext
+    |> correctnessGenericTest zero add mul spMV isEqual q
+    |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
+
+
 let testFixturesSpMV (testContext: TestContext) =
-    [ let config = defaultConfig
-      let wgSize = 32
-
-      let getCorrectnessTestName datatype =
-          sprintf "Correctness on %s, %A" datatype testContext.ClContext
-
-      let context = testContext.ClContext
+    [ let context = testContext.ClContext
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let boolSpMV =
-          SpMV.run context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize
+      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMul
+      createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
 
-      testContext
-      |> correctnessGenericTest false (||) (&&) boolSpMV (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool")
+      if Utils.isFloat64Available context.ClDevice then
+          createTest
+              testContext
+              0.0
+              Utils.floatIsEqual
+              (+)
+              (*)
+              ArithmeticOperations.floatSum
+              ArithmeticOperations.floatMul
 
-      let intSpMV =
-          SpMV.run context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize
+      createTest
+          testContext
+          0.0f
+          Utils.float32IsEqual
+          (+)
+          (*)
+          ArithmeticOperations.float32Sum
+          ArithmeticOperations.float32Mul
 
-      testContext
-      |> correctnessGenericTest 0 (+) (*) intSpMV (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "int")
-
-      let floatSpMV =
-          SpMV.run context ArithmeticOperations.floatSum ArithmeticOperations.floatMul wgSize
-
-      testContext
-      |> correctnessGenericTest 0.0 (+) (*) floatSpMV (fun x y -> abs (x - y) < Accuracy.medium.absolute) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "float")
-
-      let byteAdd =
-          SpMV.run context ArithmeticOperations.byteSum ArithmeticOperations.byteMul wgSize
-
-      testContext
-      |> correctnessGenericTest 0uy (+) (*) byteAdd (=) q
-      |> testPropertyWithConfig config (getCorrectnessTestName "byte") ]
+      createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSum ArithmeticOperations.byteMul ]
 
 let tests =
     gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV

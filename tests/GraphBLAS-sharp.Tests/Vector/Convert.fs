@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Tests.Utils
 open GraphBLAS.FSharp.Backend
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
@@ -16,8 +15,9 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 let logger =
     Log.create "Backend.Vector.Convert.Tests"
 
-let config = defaultConfig
-let wgSize = 32
+let config = Utils.defaultConfig
+
+let wgSize = Utils.defaultWorkGroupSize
 
 let makeTest
     formatFrom
@@ -28,7 +28,7 @@ let makeTest
     =
 
     let vector =
-        createVectorFromArray formatFrom array isZero
+        Utils.createVectorFromArray formatFrom array isZero
 
     if vector.NNZ > 0 then
 
@@ -47,18 +47,18 @@ let makeTest
             res
 
         logger.debug (
-            eventX $"Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
+            eventX "Actual is {actual}"
+            >> setField "actual" $"%A{actual}"
         )
 
         let expected =
-            createVectorFromArray case.Format array isZero
+            Utils.createVectorFromArray case.Format array isZero
 
         Expect.equal actual expected "Vectors must be the same"
 
 let testFixtures case =
     let getCorrectnessTestName datatype formatFrom =
-        sprintf "Correctness on %s, %A -> %A" datatype formatFrom case.Format
+        sprintf $"Correctness on %s{datatype}, %A{formatFrom} -> %A{case.Format}"
 
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
@@ -69,7 +69,7 @@ let testFixtures case =
     | Sparse ->
         [ let convertFun = Vector.toSparse context wgSize
 
-          listOfUnionCases<VectorFormat>
+          Utils.listOfUnionCases<VectorFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest formatFrom convertFun ((=) 0) case
@@ -77,7 +77,7 @@ let testFixtures case =
 
           let convertFun = Vector.toSparse context wgSize
 
-          listOfUnionCases<VectorFormat>
+          Utils.listOfUnionCases<VectorFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest formatFrom convertFun ((=) false) case
@@ -86,7 +86,7 @@ let testFixtures case =
     | Dense ->
         [ let convertFun = Vector.toDense context wgSize
 
-          listOfUnionCases<VectorFormat>
+          Utils.listOfUnionCases<VectorFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest formatFrom convertFun ((=) 0) case
@@ -94,7 +94,7 @@ let testFixtures case =
 
           let convertFun = Vector.toDense context wgSize
 
-          listOfUnionCases<VectorFormat>
+          Utils.listOfUnionCases<VectorFormat>
           |> List.map
               (fun formatFrom ->
                   makeTest formatFrom convertFun ((=) false) case

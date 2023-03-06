@@ -1,7 +1,5 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open Brahma.FSharp
-
 module internal Utils =
     let defaultWorkGroupSize = 32
 
