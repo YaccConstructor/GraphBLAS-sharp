@@ -1,6 +1,10 @@
 name: Benchmark GraphBLAS-sharp
 
-on: [push, workflow_dispatch, pull_request]
+on:
+  push:
+    paths-ignore:
+      - 'docs/benchmarks/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,7 +22,7 @@ jobs:
 
       - name: OpenCL Info
         run: clinfo
-        
+
       - name: Build GraphBLAS-sharp
         run: dotnet build -c Release
 
@@ -35,3 +39,6 @@ jobs:
           github-token: ${{ secrets._GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically
           auto-push: true
+          gh-pages-branch: ${{ github.ref_name }}
+          benchmark-data-dir-path: docs/benchmarks
+          skip-fetch-gh-pages: true
