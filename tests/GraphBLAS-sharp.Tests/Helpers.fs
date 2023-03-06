@@ -99,6 +99,17 @@ module Utils =
                 Actual value is %A{actual.[i]}, expected %A{expected.[i]}"
                 |> failtestf "%s"
 
+    let compare2DArrays areEqual (actual: 'a [,]) (expected: 'a [,]) message =
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. Array2D.length1 actual - 1 do
+            for j in 0 .. Array2D.length2 actual - 1 do
+                if not (areEqual actual.[i, j] expected.[i, j]) then
+                    $"%s{message}. Arrays differ at position [%d{i}, %d{j}] of [%A{Array2D.length1 actual}, %A{Array2D.length2 actual}].
+                    Actual value is %A{actual.[i, j]}, expected %A{expected.[i, j]}"
+                    |> failtestf "%s"
+
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)

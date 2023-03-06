@@ -155,7 +155,7 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
     override this.GlobalCleanup() = ()
 
 /// Without data transfer
-
+/// AtLeastOne
 type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
@@ -173,13 +173,13 @@ type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context -> Vector.map2General context ArithmeticOperations.floatSum),
+        (fun context -> Vector.map2 context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context -> Vector.map2General context ArithmeticOperations.intSum),
+        (fun context -> Vector.map2 context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)
 
 /// With data transfer
@@ -201,11 +201,11 @@ type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
 type VectorEWiseGeneralBenchmarks4FloatSparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context -> Vector.map2General context ArithmeticOperations.floatSum),
+        (fun context -> Vector.map2 context ArithmeticOperations.floatSum),
         VectorGenerator.floatPair Sparse)
 
 type VectorEWiseGeneralBenchmarks4Int32SparseWithDataTransfer() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context -> Vector.map2General context ArithmeticOperations.intSum),
+        (fun context -> Vector.map2 context ArithmeticOperations.intSum),
         VectorGenerator.intPair Sparse)
