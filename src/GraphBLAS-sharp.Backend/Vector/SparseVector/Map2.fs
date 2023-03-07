@@ -54,74 +54,76 @@ module internal Map2 =
                         resultBitmap.[gid] <- 1
                     | None -> resultBitmap.[gid] <- 0 @>
 
-        let kernel = clContext.Compile <| preparePositions opAdd
+        let kernel =
+            clContext.Compile <| preparePositions opAdd
 
         fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
 
-                let resultBitmap =
-                    clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-                let resultIndices =
-                    clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-                let resultValues =
-                    clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
 
-                let ndRange =
-                    Range1D.CreateValid(vectorLenght, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
 
-                let kernel = kernel.GetKernel()
+            let kernel = kernel.GetKernel()
 
-                processor.Post(
-                    Msg.MsgSetArguments
-                        (fun () ->
-                            kernel.KernelFunc
-                                ndRange
-                                vectorLenght
-                                leftValues.Length
-                                rightValues.Length
-                                leftValues
-                                leftIndices
-                                rightValues
-                                rightIndices
-                                resultBitmap
-                                resultValues
-                                resultIndices)
-                )
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftIndices
+                            rightValues
+                            rightIndices
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
 
-                processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-                resultBitmap, resultValues, resultIndices
+            resultBitmap, resultValues, resultIndices
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
         let prepare =
-                preparePositions<'a, 'b, 'c> clContext workGroupSize op
+            preparePositions<'a, 'b, 'c> clContext workGroupSize op
 
-        let setPositions = Common.setPositions clContext workGroupSize
+        let setPositions =
+            Common.setPositions clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
-                let bitmap, allValues, allIndices =
-                    prepare
-                        processor
-                        leftVector.Size
-                        leftVector.Values
-                        leftVector.Indices
-                        rightVector.Values
-                        rightVector.Indices
+            let bitmap, allValues, allIndices =
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
 
-                let resultValues, resultIndices =
-                    setPositions processor allocationMode allValues allIndices bitmap
+            let resultValues, resultIndices =
+                setPositions processor allocationMode allValues allIndices bitmap
 
-                processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-                processor.Post(Msg.CreateFreeMsg<_>(allValues))
-                processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+            processor.Post(Msg.CreateFreeMsg<_>(allValues))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
 
-                { Context = clContext
-                  Values = resultValues
-                  Indices = resultIndices
-                  Size = max leftVector.Size rightVector.Size }
+            { Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = max leftVector.Size rightVector.Size }
 
     let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
@@ -200,7 +202,8 @@ module internal Map2 =
         let prepare =
             preparePositionsAssignByMask clContext op workGroupSize
 
-        let setPositions = Common.setPositions clContext workGroupSize
+        let setPositions =
+            Common.setPositions clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 

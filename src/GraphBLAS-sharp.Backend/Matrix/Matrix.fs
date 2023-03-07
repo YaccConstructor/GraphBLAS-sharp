@@ -207,7 +207,8 @@ module Matrix =
                 map2CSR processor allocationMode m1 m2
                 |> ClMatrix.CSR
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
-                (map2CSR processor allocationMode m1.ToCSR m2.ToCSR).ToCSC
+                (map2CSR processor allocationMode m1.ToCSR m2.ToCSR)
+                    .ToCSC
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 

@@ -40,32 +40,33 @@ module internal Map2 =
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
 
-                    let gid = ndRange.GlobalID0
+                let gid = ndRange.GlobalID0
 
-                    if gid < rowCount * columnCount then
+                if gid < rowCount * columnCount then
 
-                        let columnIndex = gid % columnCount
-                        let rowIndex = gid / columnCount
+                    let columnIndex = gid % columnCount
+                    let rowIndex = gid / columnCount
 
-                        let index = (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
+                    let index =
+                        (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
-                        let leftValue =
-                            (%binSearch) leftValuesLength index leftRows leftColumns leftValues
+                    let leftValue =
+                        (%binSearch) leftValuesLength index leftRows leftColumns leftValues
 
-                        let rightValue =
-                            (%binSearch) rightValuesLength index rightRows rightColumn rightValues
+                    let rightValue =
+                        (%binSearch) rightValuesLength index rightRows rightColumn rightValues
 
-                        match (%op) leftValue rightValue with
-                        | Some value ->
-                            resultValues.[gid] <- value
-                            resultRows.[gid] <- rowIndex
-                            resultColumns.[gid] <- columnIndex
+                    match (%op) leftValue rightValue with
+                    | Some value ->
+                        resultValues.[gid] <- value
+                        resultRows.[gid] <- rowIndex
+                        resultColumns.[gid] <- columnIndex
 
-                            resultBitmap.[gid] <- 1
-                        | None ->
-                            resultBitmap.[gid] <- 0 @>
+                        resultBitmap.[gid] <- 1
+                    | None -> resultBitmap.[gid] <- 0 @>
 
-        let kernel = clContext.Compile <| preparePositions opAdd
+        let kernel =
+            clContext.Compile <| preparePositions opAdd
 
         fun (processor: MailboxProcessor<_>) rowCount columnCount (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumns: ClArray<int>) ->
 
@@ -83,51 +84,64 @@ module internal Map2 =
             let resultValues =
                 clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, resultLength)
 
-            let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(resultLength, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(
-                fun () ->
-                    kernel.KernelFunc
-                        ndRange
-                        rowCount
-                        columnCount
-                        leftValues.Length
-                        rightValues.Length
-                        leftValues
-                        leftRows
-                        leftColumns
-                        rightValues
-                        rightRows
-                        rightColumns
-                        resultBitmap
-                        resultValues
-                        resultRows
-                        resultColumns))
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            rowCount
+                            columnCount
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftRows
+                            leftColumns
+                            rightValues
+                            rightRows
+                            rightColumns
+                            resultBitmap
+                            resultValues
+                            resultRows
+                            resultColumns)
+            )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             resultBitmap, resultValues, resultRows, resultColumns
 
-        ///<param name="clContext">.</param>
-        ///<param name="opAdd">.</param>
-        ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
         =
 
-        let map2 = preparePositions clContext workGroupSize opAdd
+        let map2 =
+            preparePositions clContext workGroupSize opAdd
 
-        let setPositions = Common.setPositions<'c> clContext workGroupSize
+        let setPositions =
+            Common.setPositions<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 
             let bitmap, values, rows, columns =
-                map2 queue matrixLeft.RowCount matrixLeft.ColumnCount matrixLeft.Values matrixLeft.Rows matrixLeft.Columns matrixRight.Values matrixRight.Rows matrixRight.Columns
+                map2
+                    queue
+                    matrixLeft.RowCount
+                    matrixLeft.ColumnCount
+                    matrixLeft.Values
+                    matrixLeft.Rows
+                    matrixLeft.Columns
+                    matrixRight.Values
+                    matrixRight.Rows
+                    matrixRight.Columns
 
             let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allocationMode rows columns values bitmap

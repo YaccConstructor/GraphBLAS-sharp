@@ -260,9 +260,9 @@ module internal Map2AtLeastOne =
 
             allRows, allColumns, leftMergedValues, rightMergedValues, isLeft
 
-        ///<param name="clContext">.</param>
-        ///<param name="opAdd">.</param>
-        ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="clContext">.</param>
+    ///<param name="opAdd">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)

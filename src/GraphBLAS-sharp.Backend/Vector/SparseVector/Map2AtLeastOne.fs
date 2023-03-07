@@ -195,8 +195,7 @@ module internal Map2AtLeastOne =
 
                     (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>
 
-        let kernel =
-            clContext.Compile <| preparePositions op
+        let kernel = clContext.Compile <| preparePositions op
 
         fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
 
@@ -233,7 +232,8 @@ module internal Map2AtLeastOne =
         let prepare =
             preparePositions<'a, 'b, 'c> clContext op workGroupSize
 
-        let setPositions = Common.setPositions clContext workGroupSize
+        let setPositions =
+            Common.setPositions clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -258,4 +258,3 @@ module internal Map2AtLeastOne =
               Values = resultValues
               Indices = resultIndices
               Size = max leftVector.Size rightVector.Size }
-

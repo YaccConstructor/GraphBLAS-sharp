@@ -25,7 +25,8 @@ module Matrix =
 
         let program = clContext.Compile(expandRowPointers)
 
-        let create = ClArray.zeroCreate clContext workGroupSize
+        let create =
+            ClArray.zeroCreate clContext workGroupSize
 
         let scan =
             ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
@@ -99,14 +100,18 @@ module Matrix =
 
         let secondToCOO = toCOO clContext workGroupSize
 
-        let COOMap2 = COO.Matrix.map2 clContext opAdd workGroupSize
+        let COOMap2 =
+            COO.Matrix.map2 clContext opAdd workGroupSize
 
-        let toCSR = COO.Matrix.toCSRInplace clContext workGroupSize
+        let toCSR =
+            COO.Matrix.toCSRInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-            let leftCOOMatrix = firstToCOO processor DeviceOnly leftMatrix
+            let leftCOOMatrix =
+                firstToCOO processor DeviceOnly leftMatrix
 
-            let rightCOOMatrix = secondToCOO processor DeviceOnly rightMatrix
+            let rightCOOMatrix =
+                secondToCOO processor DeviceOnly rightMatrix
 
             COOMap2 processor DeviceOnly leftCOOMatrix rightCOOMatrix
             |> toCSR processor allocationMode
@@ -117,7 +122,7 @@ module Matrix =
         workGroupSize
         =
 
-       Map2AtLeastOne.runToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        Map2AtLeastOne.runToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
