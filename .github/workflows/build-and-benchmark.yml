@@ -30,7 +30,7 @@ jobs:
 
       - name: Benchmark
         run: python3 benchmarks/GraphBLAS-sharp.Benchmarks/Scripts/Benchmark.py
-          
+
       - name: Charts
         uses: rhysd/github-action-benchmark@v1
         with:
@@ -41,6 +41,6 @@ jobs:
           github-token: ${{ secrets._GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically
           auto-push: true
-          gh-pages-branch: ${{ github.ref_name }}
+          gh-pages-branch: master
           benchmark-data-dir-path: docs/benchmarks
           skip-fetch-gh-pages: true
