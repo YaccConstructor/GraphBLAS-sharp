@@ -38,7 +38,7 @@ module internal Map2 =
     let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
-            <@ fun (ndRange: Range1D) rowCount columnCount length (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rowCount columnCount leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
 
                     let gid = ndRange.GlobalID0
 
@@ -50,10 +50,10 @@ module internal Map2 =
                         let index = (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                         let leftValue =
-                            (%binSearch) length index leftRows leftColumns leftValues
+                            (%binSearch) leftValuesLength index leftRows leftColumns leftValues
 
                         let rightValue =
-                            (%binSearch) length index rightRows rightColumn rightValues
+                            (%binSearch) rightValuesLength index rightRows rightColumn rightValues
 
                         match (%op) leftValue rightValue with
                         | Some value ->
@@ -95,6 +95,7 @@ module internal Map2 =
                         rowCount
                         columnCount
                         leftValues.Length
+                        rightValues.Length
                         leftValues
                         leftRows
                         leftColumns
