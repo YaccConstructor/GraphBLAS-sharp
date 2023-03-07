@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1678171382517,
+  "lastUpdate": 1678177704263,
   "repoUrl": "https://github.com/YaccConstructor/GraphBLAS-sharp",
   "entries": {
     "BFS": [
@@ -96,6 +96,54 @@ window.BENCHMARK_DATA = {
             "value": 74053240.7,
             "unit": "ns",
             "range": "± 6156789.947659613"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rsdpisuy@gmail.com",
+            "name": "gsv",
+            "username": "gsvgit"
+          },
+          "committer": {
+            "email": "rsdpisuy@gmail.com",
+            "name": "gsv",
+            "username": "gsvgit"
+          },
+          "distinct": true,
+          "id": "b9ef28731a1f9a4549e7b88d1b88437de2db1a21",
+          "message": "commit benchmark results to master branch",
+          "timestamp": "2023-03-07T10:56:49+03:00",
+          "tree_id": "f9b95290be45e2fce0fce054dc8a739f8a22b532",
+          "url": "https://github.com/YaccConstructor/GraphBLAS-sharp/commit/b9ef28731a1f9a4549e7b88d1b88437de2db1a21"
+        },
+        "date": 1678177704142,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "coAuthorsCiteseer.mtx",
+            "value": 26678315.555555556,
+            "unit": "ns",
+            "range": "± 785372.6072255626"
+          },
+          {
+            "name": "hollywood-2009.mtx",
+            "value": 244261708.8,
+            "unit": "ns",
+            "range": "± 584185.6477264455"
+          },
+          {
+            "name": "roadNet-CA.mtx",
+            "value": 420174955,
+            "unit": "ns",
+            "range": "± 1677026.0595830712"
+          },
+          {
+            "name": "wing.mtx",
+            "value": 65677016.5,
+            "unit": "ns",
+            "range": "± 3553506.7302814256"
           }
         ]
       }
