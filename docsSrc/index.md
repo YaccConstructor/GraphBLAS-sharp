@@ -10,6 +10,10 @@ GraphBLAS-sharp is a library that does this specific thing.
 
 I created it because I had to solve an issue with this other thing.
 
+## Benchmark results
+
+[Results]({{siteBaseUrl}}/benchmarks/index.html)
+
 ---
 
 <div class="row row-cols-1 row-cols-md-2">
