@@ -21,11 +21,11 @@ type CommonConfig() =
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn("NNZ", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            MatrixShapeColumn("SqrNNZ", (fun (_, mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            TEPSColumn() :> IColumn,
+            MatrixShapeColumn<MtxReader * MtxReader>("RowCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn<MtxReader * MtxReader>("ColumnCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn<MtxReader * MtxReader>("NNZ", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            MatrixShapeColumn<MtxReader * MtxReader>("SqrNNZ", (fun (_, mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            TEPSColumn(fun (parameters: obj) -> parameters :?> MtxReader * MtxReader |> fst) :> IColumn,
             StatisticColumn.Min,
             StatisticColumn.Max
         )
@@ -40,36 +40,30 @@ type CommonConfig() =
         )
         |> ignore
 
-type Config() =
+type AlgorithmConfig() =
     inherit ManualConfig()
 
     do
         base.AddColumn(
-            MatrixShapeColumn("RowCount", (fun (matrix,_) -> matrix.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn("ColumnCount", (fun (matrix,_) -> matrix.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn(
-                "NNZ",
-                fun (matrix,_) ->
-                    match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
-                    | Array -> 0
-            )
-            :> IColumn,
-            MatrixShapeColumn(
-                "SqrNNZ",
-                fun (_,matrix) ->
-                    match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
-                    | Array -> 0
-            )
-            :> IColumn,
-            TEPSColumn() :> IColumn,
+            MatrixShapeColumn<MtxReader>("RowCount", (fun (mtxReader) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
+            MatrixShapeColumn<MtxReader>("ColumnCount", (fun (mtxReader) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
+            MatrixShapeColumn<MtxReader>("NNZ", (fun (mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
+            TEPSColumn(fun (parameters: obj) -> parameters :?> MtxReader) :> IColumn,
             StatisticColumn.Min,
             StatisticColumn.Max
         )
         |> ignore
 
-type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> int) =
+        base.AddJob(
+            Job
+                .Dry
+                .WithWarmupCount(3)
+                .WithIterationCount(10)
+                .WithInvocationCount(3)
+        )
+        |> ignore
+
+type MatrixShapeColumn<'shape>(columnName: string, getShape: 'shape -> int) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Params
@@ -77,7 +71,7 @@ type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> 
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
             let inputMatrix =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
+                benchmarkCase.Parameters.["InputMatrixReader"] :?> 'shape
 
             sprintf "%i" <| getShape inputMatrix
 
@@ -94,16 +88,14 @@ type MatrixShapeColumn(columnName: string, getShape: (MtxReader * MtxReader) -> 
         member this.PriorityInCategory: int = 1
         member this.UnitType: UnitType = UnitType.Size
 
-type TEPSColumn() =
+type TEPSColumn(getMtxReader: obj -> MtxReader) =
     interface IColumn with
         member this.AlwaysShow: bool = true
         member this.Category: ColumnCategory = ColumnCategory.Statistics
         member this.ColumnName: string = "TEPS"
 
         member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
-            let inputMatrixReader =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> MtxReader * MtxReader
-                |> fst
+            let inputMatrixReader = getMtxReader benchmarkCase.Parameters.["InputMatrixReader"]
 
             let matrixShape = inputMatrixReader.ReadMatrixShape()
 
@@ -256,6 +248,9 @@ module Utils =
         random.NextBytes buffer
         System.BitConverter.ToSingle(buffer, 0)
 
+    let nextInt (random: System.Random) =
+        random.Next()
+
 module VectorGenerator =
     let private pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) createVector =
         gen {
@@ -307,5 +302,3 @@ module MatrixGenerator =
 
         fun array -> Utils.createMatrixFromArray2D format array (fIsEqual 0.0)
         |> pairOfMatricesOfEqualSizeGenerator normalFloatGenerator
-
-

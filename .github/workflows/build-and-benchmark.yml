@@ -1,0 +1,46 @@
+name: Benchmark GraphBLAS-sharp
+
+on:
+  push:
+    paths-ignore:
+      - 'docs/benchmarks/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  build-and-bench-self-hosted:
+    runs-on: self-hosted
+    steps:
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          clean: false
+
+      - name: OpenCL Info
+        run: clinfo
+
+      - name: Build GraphBLAS-sharp
+        run: |
+          dotnet tool restore
+          dotnet build -c Release
+
+      - name: Benchmark
+        run: python3 benchmarks/GraphBLAS-sharp.Benchmarks/Scripts/Benchmark.py
+
+      - name: Charts
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          name: BFS
+          tool: 'benchmarkdotnet'
+          output-file-path: BenchmarkDotNet.Artifacts/results/GraphBLAS.FSharp.Benchmarks.BFSBenchmarksWithoutDataTransfer-report-brief.json
+          # Access token to deploy GitHub Pages branch
+          github-token: ${{ secrets._GITHUB_TOKEN }}
+          # Push and deploy GitHub pages branch automatically
+          auto-push: true
+          gh-pages-branch: master
+          benchmark-data-dir-path: docs/benchmarks
+          skip-fetch-gh-pages: true

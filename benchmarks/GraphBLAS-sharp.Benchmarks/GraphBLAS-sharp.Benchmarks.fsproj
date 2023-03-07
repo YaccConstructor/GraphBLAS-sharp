@@ -18,7 +18,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="MatrixExtensions.fs" />
     <Compile Include="Helpers.fs" />
-    <!--Compile Include="BenchmarksBFS.fs" /-->
+    <Compile Include="BenchmarksBFS.fs" />
     <Compile Include="BenchmarksMxv.fs" />
     <Compile Include="BenchmarksEWiseAdd.fs" />
     <Compile Include="BenchmarksMxm.fs" />

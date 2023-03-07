@@ -17,7 +17,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Config>)>]
+[<Config(typeof<CommonConfig>)>]
 type EWiseAddBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,

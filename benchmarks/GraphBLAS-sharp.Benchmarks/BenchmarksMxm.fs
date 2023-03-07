@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Config>)>]
+[<Config(typeof<CommonConfig>)>]
 type MxmBenchmarks<'elem when 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,

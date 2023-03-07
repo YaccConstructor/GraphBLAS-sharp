@@ -205,7 +205,7 @@ module GenerateDocs =
                     { opts
                         with
                             OutputPath = Some cfg.PublishPath.FullName
-                            Framework = Some "net5.0"
+                            Framework = Some "net7.0"
                     })
                 p
         )
@@ -282,7 +282,7 @@ module GenerateDocs =
             }
 
         dotnetPublish cfg
-        Async.Parallel [generateDocs; generateAPI]
+        Async.Parallel [generateDocs(*; generateAPI*)]
         |> Async.RunSynchronously
         |> Array.toList
         |> List.collect id

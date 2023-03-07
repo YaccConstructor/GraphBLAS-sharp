@@ -1,97 +1,164 @@
-namespace GraphBLAS.FSharp.Benchmarks
+﻿namespace GraphBLAS.FSharp.Benchmarks
 
-open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Algorithms
+open System.IO
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Configs
 open BenchmarkDotNet.Columns
-open System.IO
-open System
-open System.Text.RegularExpressions
-open Brahma.FSharp.OpenCL
-open OpenCL.Net
-open GraphBLAS.FSharp.IO
-open QuickGraph
+open Brahma.FSharp
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Algorithms
+open MatrixExtensions
+open ArraysExtensions
 
-[<Config(typeof<CommonConfig>)>]
-type BFSBenchmarks() =
-    let random = Random()
+[<AbstractClass>]
+[<IterationCount(10)>]
+[<WarmupCount(5)>]
+[<Config(typeof<AlgorithmConfig>)>]
+type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix) =
 
-    let mutable source = 0
+    let mutable funToBenchmark = None
+    let mutable matrix = Unchecked.defaultof<'matrixT>
+    let mutable matrixHost = Unchecked.defaultof<_>
 
-    // gb
-    let mutable matrix = Unchecked.defaultof<Matrix<int>>
+    let source = 0
 
-    // qg
-    let graph = AdjacencyGraph<int, Edge<int>>(false)
-    let mutable bfs = Unchecked.defaultof<Algorithms.Search.BreadthFirstSearchAlgorithm<int, Edge<int>>>
+    member val ResultVector = Unchecked.defaultof<ClArray<'elem option>> with get,set
 
-    [<ParamsSource("AvaliableContextsProvider")>]
-    member val OclContext = Unchecked.defaultof<ClContext> with get, set
-    member this.Context =
-        failwith "fix me"
-        //let (ClContext context) = this.OclContext
-        //context
+    [<ParamsSource("AvaliableContexts")>]
+    member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
     [<ParamsSource("InputMatricesProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
-    [<GlobalSetup>]
-    member this.BuildGraph() =
-        let inputMatrix = this.InputMatrixReader.ReadMatrix(fun _ -> 1)
+    member this.OclContext:ClContext = (fst this.OclContextInfo).ClContext
+    member this.WorkGroupSize = snd this.OclContextInfo
 
-        failwith "fix me"
-        (*matrix <-
-            graphblas {
-                failwith "fix me"
-                //return! Matrix.switch CSR inputMatrix
-                //>>= Matrix.synchronizeAndReturn
-            }
-            |> EvalGB.withClContext this.Context
-            |> EvalGB.runSync
-        *)
-        match inputMatrix with
-        | MatrixCSR csr -> failwith "Not implemented"
-        | MatrixCOO coo ->
-            for i = 0 to coo.Values.Length - 1 do
-                graph.AddVerticesAndEdge(Edge(coo.Rows.[i], coo.Columns.[i])) |> ignore
+    member this.Processor =
+        let p = (fst this.OclContextInfo).Queue
+        p.Error.Add(fun e -> failwithf "%A" e)
+        p
 
-        bfs <- Algorithms.Search.BreadthFirstSearchAlgorithm(graph)
+    static member AvaliableContexts = Utils.avaliableContexts
 
-    [<IterationSetup>]
-    member this.SetSource() =
-        source <- random.Next <| Matrix.rowCount matrix
-
-    [<Benchmark>]
-    member this.GraphblasLevelBFS() =
-        BFS.levelSingleSource matrix source
-        |> EvalGB.withClContext this.Context
-        |> EvalGB.runSync
-
-    [<Benchmark>]
-    member this.QuickGraphBFS() =
-        bfs.Compute(source)
-
-    //TODO fix me
-    (*[<IterationCleanup>]
-    member this.ClearBuffers() =
-        this.Context.Provider.CloseAllBuffers()
-
-    [<GlobalCleanup>]
-    member this.ClearContext() =
-        let (ClContext context) = this.OclContext
-        context.Provider.Dispose()
-
-        *)
-
-    static member AvaliableContextsProvider = Utils.avaliableContexts
-
-    static member InputMatricesProvider =
-        "Common.txt"
+    static member InputMatricesProviderBuilder pathToConfig =
+        let datasetFolder = ""
+        pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map
             (fun matrixFilename ->
+                printfn "%A" matrixFilename
+
                 match Path.GetExtension matrixFilename with
-                | ".mtx" -> MtxReader(Utils.getFullPathToMatrix "Common" matrixFilename)
-                | _ -> failwith "Unsupported matrix format"
-            )
+                | ".mtx" ->
+                    MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename)
+                | _ -> failwith "Unsupported matrix format")
+
+    member this.FunToBenchmark =
+        match funToBenchmark with
+        | None ->
+            let x = buildFunToBenchmark this.OclContext this.WorkGroupSize
+            funToBenchmark <- Some x
+            x
+        | Some x -> x
+
+    member this.ReadMatrix (reader:MtxReader) =
+        let converter =
+            match reader.Field with
+            | Pattern -> converterBool
+            | _ -> converter
+
+        reader.ReadMatrix converter
+
+    member this.BFS() =
+        this.ResultVector <- this.FunToBenchmark this.Processor matrix source
+
+    member this.ClearInputMatrix() =
+        (matrix :> IDeviceMemObject).Dispose this.Processor
+
+    member this.ClearResult() =
+        this.ResultVector.Dispose this.Processor
+
+    member this.ReadMatrix() =
+        let matrixReader = this.InputMatrixReader
+        matrixHost <- this.ReadMatrix matrixReader
+
+    member this.LoadMatrixToGPU() =
+        matrix <- buildMatrix this.OclContext matrixHost
+
+    abstract member GlobalSetup : unit -> unit
+
+    abstract member IterationCleanup : unit -> unit
+
+    abstract member GlobalCleanup : unit -> unit
+
+    abstract member Benchmark : unit -> unit
+
+type BFSBenchmarksWithoutDataTransfer() =
+
+    inherit BFSBenchmarks<ClMatrix.CSR<int>, int>(
+        (fun context wgSize -> BFS.singleSource context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize),
+        int,
+        (fun _ -> Utils.nextInt (System.Random())),
+        Matrix.ToBackendCSR)
+
+    static member InputMatricesProvider =
+        BFSBenchmarks<_,_>.InputMatricesProviderBuilder "BFSBenchmarks.txt"
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix ()
+        this.LoadMatrixToGPU ()
+
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearResult()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearInputMatrix()
+
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.BFS()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+type BFSBenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+        buildFunToBenchmark,
+        converter: string -> 'elem,
+        converterBool,
+        buildMatrix,
+        resultToHost) =
+
+    inherit BFSBenchmarks<'matrixT, 'elem>(
+        buildFunToBenchmark,
+        converter,
+        converterBool,
+        buildMatrix)
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() = ()
+
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearInputMatrix()
+        this.ClearResult()
+
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.LoadMatrixToGPU()
+        this.BFS()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
+        let res = resultToHost this.ResultVector this.Processor
+        this.Processor.PostAndReply Msg.MsgNotifyMe
+

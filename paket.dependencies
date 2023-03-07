@@ -11,12 +11,12 @@ nuget altcover ~> 7
 
 nuget System.Collections.Immutable 7.0
 nuget ExtraConstraints.Fody 1.14.0
-nuget Microsoft.Build.Framework ~> 16.10
+nuget Microsoft.Build.Framework 16.10
 nuget System.CodeDom >= 7.0
 nuget FSharp.Quotations.Evaluator 2.1.0
 nuget FSharpx.Collections >= 3.1
 nuget FSharpx.Text.StructuredFormat >= 3.1
-nuget Brahma.FSharp >= 2.0.4
+nuget Brahma.FSharp 2.0.5
 nuget BenchmarkDotNet
 nuget MathNet.Numerics.FSharp 4.0.0
 nuget MathNet.Numerics.MKL.Win-x64 2.5.0
