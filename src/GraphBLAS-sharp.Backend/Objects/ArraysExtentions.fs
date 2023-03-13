@@ -5,7 +5,7 @@ open Brahma.FSharp
 module ArraysExtensions =
 
     type ClArray<'a> with
-        member this.Dispose(q: MailboxProcessor<Msg>) =
+        member this.Free(q: MailboxProcessor<Msg>) =
             q.Post(Msg.CreateFreeMsg this)
             q.PostAndReply(Msg.MsgNotifyMe)
 
@@ -15,7 +15,7 @@ module ArraysExtensions =
 
         member this.ToHostAndFree(q: MailboxProcessor<Msg>) =
             let result = this.ToHost q
-            this.Dispose q
+            this.Free q
 
             result
 

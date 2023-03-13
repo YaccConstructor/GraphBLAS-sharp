@@ -83,7 +83,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
         (matrix :> IDeviceMemObject).Dispose this.Processor
 
     member this.ClearResult() =
-        this.ResultVector.Dispose this.Processor
+        this.ResultVector.Free this.Processor
 
     member this.ReadMatrix() =
         let matrixReader = this.InputMatrixReader

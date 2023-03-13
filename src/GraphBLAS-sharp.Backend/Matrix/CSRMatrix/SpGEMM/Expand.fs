@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 type Indices = ClArray<int>
 
@@ -72,29 +73,7 @@ module Expand =
 
             requiredRawsLengths
 
-    let getGlobalPositions (clContext: ClContext) workGroupSize =
-
-        let zeroCreate = ClArray.zeroCreate<int> clContext workGroupSize
-
-        let assignUnits = ClArray.assignManyInit clContext workGroupSize <@ fun _ -> 1 @>
-
-        let prefixSum = PrefixSum.standardIncludeInplace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) resultLength (globalRightMatrixValuesPositions: Indices) ->
-
-            /// We get an array of zeros
-            let globalPositions = zeroCreate processor DeviceOnly resultLength
-
-            // Insert units at the beginning of new lines (source positions)
-            assignUnits processor globalRightMatrixValuesPositions globalPositions
-
-            // Apply the prefix sum,
-            // get an array where different sub-arrays of pointers to elements of the same row differ in values
-            (prefixSum processor globalPositions).Free processor
-
-            globalPositions
-
-    let getRightMatrixPointers (clContext: ClContext) workGroupSize =
+    let expandRightMatrixValuesIndices (clContext: ClContext) workGroupSize =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (globalRightMatrixValuesPositions: Indices) (requiredRightMatrixValuesPointers: Indices) (globalPositions: Indices) (result: Indices) ->
@@ -121,7 +100,7 @@ module Expand =
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) (resultLength: int) (globalRightMatrixValuesPositions: Indices) (requiredRightMatrixValuesPointers: Indices) (globalPositions: Indices) ->
+        fun (processor: MailboxProcessor<_>) (resultLength: int) (globalRightMatrixRawsStartPositions: Indices) (requiredRightMatrixValuesPointers: Indices) (globalPositions: Indices) ->
 
             let globalRightMatrixValuesPointers =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
@@ -137,7 +116,7 @@ module Expand =
                         kernel.KernelFunc
                             ndRange
                             resultLength
-                            globalRightMatrixValuesPositions
+                            globalRightMatrixRawsStartPositions
                             requiredRightMatrixValuesPointers
                             globalPositions
                             globalRightMatrixValuesPointers)
@@ -146,46 +125,6 @@ module Expand =
             processor.Post <| Msg.CreateRunMsg<_, _> kernel
 
             globalRightMatrixValuesPointers
-
-    let getLeftMatrixValuesCorrespondinglyToPositionsPattern<'a> (clContext: ClContext) workGroupSize =
-
-        let kernel =
-            <@ fun (ndRange: Range1D) globalLength (globalPositions: Indices) (rightMatrixValues: ClArray<'a>) (result: ClArray<'a>) ->
-
-                 let gid = ndRange.GlobalID0
-
-                 if gid < globalLength then
-                     let valuePosition = globalPositions.[gid] - 1
-
-                     result.[gid] <- rightMatrixValues.[valuePosition] @>
-
-        let kernel = clContext.Compile kernel
-
-        fun (processor: MailboxProcessor<_>) (globalLength: int) (globalPositions: Indices) (rightMatrixValues: Values<'a>)->
-
-            // globalLength == globalPositions.Length
-            let resultLeftMatrixValues =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalLength)
-
-            let kernel = kernel.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(globalLength, workGroupSize)
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            globalLength
-                            globalPositions
-                            rightMatrixValues
-                            resultLeftMatrixValues)
-            )
-
-            processor.Post <| Msg.CreateRunMsg<_, _> kernel
-
-            resultLeftMatrixValues
 
     let getResultRowPointers (clContext: ClContext) workGroupSize =
 
@@ -228,28 +167,196 @@ module Expand =
 
             result
 
-    let run (clContext: ClContext) workGroupSize (multiplication: Expr<'a -> 'b -> 'c>) =
+    let getGlobalMap (clContext: ClContext) workGroupSize =
 
-        let getRequiredRawsLengths =
-            processLeftMatrixColumnsAndRightMatrixRawPointers clContext workGroupSize requiredRawsLengths
+        let zeroCreate = ClArray.zeroCreate<int> clContext workGroupSize
+
+        let assignUnits = ClArray.assignManyInit clContext workGroupSize <@ fun _ -> 1 @>
+
+        let prefixSum = PrefixSum.standardIncludeInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) resultLength (globalRightMatrixValuesPositions: Indices) ->
+
+            /// We get an array of zeros
+            let globalPositions = zeroCreate processor DeviceOnly resultLength
+
+            // Insert units at the beginning of new lines (source positions)
+            assignUnits processor globalRightMatrixValuesPositions globalPositions
+
+            // Apply the prefix sum,
+            // get an array where different sub-arrays of pointers to elements of the same row differ in values
+            (prefixSum processor globalPositions).Free processor
+
+            globalPositions
+
+    let extractLeftMatrixRequiredValuesAndColumns (clContext: ClContext) workGroupSize =
+
+        let getUniqueBitmap =
+            ClArray.getUniqueBitmap clContext workGroupSize
 
         let prefixSumExclude =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let dataScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (globalRightMatrixRawsStartPositions: Indices) ->
+
+            let leftMatrixRequiredPositions, resultLength  =
+                let bitmap =
+                    getUniqueBitmap processor DeviceOnly globalRightMatrixRawsStartPositions
+
+                let length = (prefixSumExclude processor bitmap).ToHostAndFree processor
+
+                bitmap, length
+
+            let requiredLeftMatrixValues =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            indicesScatter processor leftMatrixRequiredPositions leftMatrix.Values requiredLeftMatrixValues
+
+            let requiredLeftMatrixColumns =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            dataScatter processor leftMatrixRequiredPositions leftMatrix.Columns requiredLeftMatrixColumns
+
+            leftMatrixRequiredPositions.Free processor
+
+            requiredLeftMatrixColumns, requiredLeftMatrixValues
+
+    let processPositions (clContext: ClContext) workGroupSize =
+
+        let getRequiredRawsLengths =
+            processLeftMatrixColumnsAndRightMatrixRawPointers clContext workGroupSize requiredRawsLengths
+
+        let removeDuplications = ClArray.removeDuplications clContext workGroupSize
+
+        let prefixSumExclude =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let extractLeftMatrixRequiredValuesAndColumns =
+            extractLeftMatrixRequiredValuesAndColumns clContext workGroupSize
+
+        let getGlobalPositions = getGlobalMap clContext workGroupSize
+
         let getRequiredRightMatrixValuesPointers =
             processLeftMatrixColumnsAndRightMatrixRawPointers clContext workGroupSize requiredRawPointers
 
-        let getGlobalPositions = getGlobalPositions clContext workGroupSize
+        fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+            // array of required right matrix rows length obtained by left matrix columns
+            let requiredRawsLengths =
+                getRequiredRawsLengths processor leftMatrix.Columns rightMatrix.RowPointers
 
-        let getRightMatrixValuesPointers =
-            getRightMatrixPointers clContext workGroupSize
+            // global expanded array length (sum of previous length)
+            let globalLength =
+                (prefixSumExclude processor requiredRawsLengths).ToHostAndFree processor
 
+            // rename array after side effect of prefix sum include
+            // positions in global array for right matrix raws with duplicates
+            let globalRightMatrixRowsStartPositions = requiredRawsLengths
+
+
+            /// Extract required left matrix columns and values by global right matrix pointers.
+            /// Then get required right matrix rows (pointers to rows) by required left matrix columns.
+
+            // extract required left matrix columns and rows by right matrix rows positions
+            let requiredLeftMatrixColumns, requiredLeftMatrixValues =
+                extractLeftMatrixRequiredValuesAndColumns processor leftMatrix globalRightMatrixRowsStartPositions
+
+            // pointers to required raws in right matrix values
+            // rows to be placed by globalRightMatrixRowsStartPositionsWithoutDuplicates
+            let requiredRightMatrixRawPointers =
+                getRequiredRightMatrixValuesPointers processor requiredLeftMatrixColumns rightMatrix.RowPointers
+
+            requiredLeftMatrixColumns.Free processor
+
+            // remove duplications in right matrix rows positions in global extended array
+            let globalRightMatrixRawsPointersWithoutDuplicates =
+                removeDuplications processor globalRightMatrixRowsStartPositions
+
+            globalRightMatrixRowsStartPositions.Free processor
+
+            // int map to distinguish different raws in a general array. 1 for first, 2 for second and so forth...
+            let globalMap =
+                getGlobalPositions processor globalLength globalRightMatrixRawsPointersWithoutDuplicates
+
+            globalMap, globalRightMatrixRawsPointersWithoutDuplicates, requiredLeftMatrixValues, requiredRightMatrixRawPointers
+
+    let expandLeftMatrixValues (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) resultLength (globalBitmap: Indices) (leftMatrixValues: Values<'a>) (resultValues: Values<'a>) ->
+
+                let gid = ndRange.GlobalID0
+
+                // globalBitmap.Length == resultValues.Length
+                if gid < resultLength then
+                    let valueIndex = globalBitmap.[gid] - 1
+
+                    resultValues.[gid] <- leftMatrixValues.[valueIndex] @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (globalMap: Indices) (leftMatrixValues: Values<'a>) ->
+
+            let expandedLeftMatrixValues =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalMap.Length)
+
+            let kernel = kernel.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid(globalMap.Length, workGroupSize)
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            globalMap.Length
+                            globalMap
+                            leftMatrixValues
+                            expandedLeftMatrixValues)
+            )
+
+            processor.Post <| Msg.CreateRunMsg<_, _> kernel
+
+            expandedLeftMatrixValues
+
+    let getRightMatrixColumnsAndValues (clContext: ClContext) workGroupSize =
         let gatherRightMatrixData = Gather.run clContext workGroupSize
 
         let gatherIndices = Gather.run clContext workGroupSize
 
-        let getLeftMatrixValues =
-            getLeftMatrixValuesCorrespondinglyToPositionsPattern clContext workGroupSize
+        fun (processor: MailboxProcessor<_>) (globalLength: int) (globalPositions: Indices) (rightMatrixValues: Values<'a>) (rightMatrixColumns: Indices) ->
+            // gather all required right matrix values
+            let extendedRightMatrixValues =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalLength)
+
+            gatherRightMatrixData processor globalPositions rightMatrixValues extendedRightMatrixValues
+
+            // gather all required right matrix column indices
+            let extendedRightMatrixColumns =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalLength)
+
+            gatherIndices processor globalPositions rightMatrixColumns extendedRightMatrixColumns
+
+            extendedRightMatrixValues, extendedRightMatrixColumns
+
+    let run (clContext: ClContext) workGroupSize (multiplication: Expr<'a -> 'b -> 'c>) =
+
+        let processPositions = processPositions clContext workGroupSize
+
+        let getRightMatrixValuesPointers =
+            expandRightMatrixValuesIndices clContext workGroupSize
+
+        let getRightMatrixColumnsAndValues =
+            getRightMatrixColumnsAndValues clContext workGroupSize
+
+        let expandLeftMatrixValues =
+            expandLeftMatrixValues clContext workGroupSize
 
         let map2 = ClArray.map2 clContext workGroupSize multiplication
 
@@ -257,49 +364,25 @@ module Expand =
 
         fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
-            let requiredRawsLengths =
-                getRequiredRawsLengths processor leftMatrix.Columns rightMatrix.RowPointers
+            let globalMap, globalRightMatrixRowsPointers, requiredLeftMatrixValues, requiredRightMatrixRowPointers
+                = processPositions processor leftMatrix rightMatrix
 
-            // global expanded array length
-            let globalLength =
-                (prefixSumExclude processor requiredRawsLengths).ToHostAndFree processor
+            // left matrix values correspondingly to right matrix values // TODO()
+            let extendedLeftMatrixValues =
+                expandLeftMatrixValues processor globalMap leftMatrix.Values
 
-            // since prefix sum include
-            // positions in global array for right matrix
-            let globalRightMatrixRawsStartPositions = requiredRawsLengths
-
-            // pointers to required raws in right matrix values
-            let requiredRightMatrixValuesPointers =
-                getRequiredRightMatrixValuesPointers processor leftMatrix.Columns rightMatrix.RowPointers
-
-            // bitmap to distinguish different raws in a general array
-            let globalPositions =
-                getGlobalPositions processor globalLength globalRightMatrixRawsStartPositions
+            let resultRowPointers =
+                getRawPointers processor leftMatrix.RowPointers globalRightMatrixRowsPointers
 
             // extended pointers to all required right matrix numbers
             let globalRightMatrixValuesPointers =
-                getRightMatrixValuesPointers processor globalLength globalPositions globalRightMatrixRawsStartPositions requiredRightMatrixValuesPointers
+                getRightMatrixValuesPointers processor globalMap.Length globalRightMatrixRowsPointers requiredRightMatrixRowPointers globalMap
 
-            // gather all required right matrix values
-            let extendedRightMatrixValues =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalLength)
+            let extendedRightMatrixValues, extendedRightMatrixColumns =
+                getRightMatrixColumnsAndValues processor globalMap.Length globalRightMatrixValuesPointers rightMatrix.Values rightMatrix.Columns
 
-            gatherRightMatrixData processor globalRightMatrixValuesPointers rightMatrix.Values extendedRightMatrixValues
-
-            // gather all required right matrix column indices
-            let extendedRightMatrixColumns =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalLength)
-
-            gatherIndices processor globalRightMatrixValuesPointers rightMatrix.Columns extendedRightMatrixColumns
-
-            // left matrix values correspondingly to right matrix values
-            let extendedLeftMatrixValues =
-                getLeftMatrixValues processor globalLength globalPositions leftMatrix.Values
-
+            /// Multiplication
             let multiplicationResult  =
                 map2 processor DeviceOnly extendedLeftMatrixValues extendedRightMatrixValues
 
-            let rowPointers =
-                getRawPointers processor leftMatrix.RowPointers globalRightMatrixRawsStartPositions
-
-            multiplicationResult, extendedRightMatrixColumns, rowPointers
+            multiplicationResult, extendedRightMatrixColumns, resultRowPointers

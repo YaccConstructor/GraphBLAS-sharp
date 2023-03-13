@@ -8,6 +8,7 @@ open Expecto
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let context = Context.defaultContext
 
@@ -28,7 +29,7 @@ let leftMatrix =
     { RowCount = 5
       ColumnCount = 5
       RowPointers = [| 0; 2; 2; 5; 6; 8 |]
-      ColumnIndices = [| 2; 3; 1; 3; 4; 2; 0; 1|]
+      ColumnIndices = [| 2; 3; 1; 3; 4; 2; 0; 1 |]
       Values = [| 2; 3; 8; 5; 4; 2; 1; 7 |] }
 
 /// <remarks>
@@ -110,7 +111,7 @@ let getRequiredRightMatrixValuesPointersTest =
         |> Expect.equal result [| 3; 5; 0; 5; 8; 3; 0; 0; |]
 
 let getGlobalPositions () =
-    let getGlobalPositions = Expand.getGlobalPositions clContext Utils.defaultWorkGroupSize
+    let getGlobalPositions = Expand.getGlobalMap clContext Utils.defaultWorkGroupSize
 
     getGlobalPositions processor globalLength (getGlobalRightMatrixRawsStartPositions ())
 
@@ -124,13 +125,13 @@ let getGlobalPositionsTest =
 
 let getRightMatrixValuesPointers () =
     let getRightMatrixValuesPointers =
-        Expand.getRightMatrixPointers clContext Utils.defaultWorkGroupSize
+        Expand.expandRightMatrixValuesIndices clContext Utils.defaultWorkGroupSize
 
     let globalPositions = getGlobalPositions ()
     let globalRightMatrixRawsStartPositions = getGlobalRightMatrixRawsStartPositions ()
     let requiredRightMatrixValuesPointers = getRequiredRightMatrixValuesPointers ()
 
-    getRightMatrixValuesPointers processor globalLength globalPositions globalRightMatrixRawsStartPositions requiredRightMatrixValuesPointers
+    getRightMatrixValuesPointers processor globalLength globalRightMatrixRawsStartPositions requiredRightMatrixValuesPointers globalPositions
 
 let rightMatrixValuesPointersTest =
     testCase "RightMatrixValuesPointers"
@@ -139,3 +140,42 @@ let rightMatrixValuesPointersTest =
 
         "Result must be the same"
         |> Expect.equal result [| 3; 4; 5; 6; 7; 0; 1; 2; 5; 6; 7; 8; 9; 3; 4; 0; 1; 2; |]
+
+let gatherRightMatrixData () =
+    let getRightMatrixColumnsAndValues =
+            Expand.getRightMatrixColumnsAndValues clContext Utils.defaultWorkGroupSize
+
+    let rightMatrixValuesPointers = getRightMatrixValuesPointers ()
+
+    getRightMatrixColumnsAndValues processor globalLength rightMatrixValuesPointers deviceRightMatrix.Values deviceRightMatrix.Columns
+
+let checkGatherRightMatrixData =
+    testCase "gather right matrix data test"
+    <| fun () ->
+        let values, columns = gatherRightMatrixData ()
+
+        let hostValues = values.ToHostAndFree processor
+
+        "Result must be the same"
+        |> Expect.equal hostValues [| 2; 2; 5; 9; 1; 3; 4; 4; 5; 9; 1; 1; 8; 2; 2; 3; 4; 4; |]
+
+        let hostColumns = columns.ToHostAndFree processor
+
+        "Result must be the same"
+        |> Expect.equal hostColumns [| 2; 5; 1; 5; 6; 1; 4; 6; 1; 5; 6; 4; 6; 2; 5; 1; 4; 6; |]
+
+let getLeftMatrixValues () =
+    let getLeftMatrixValues =
+        Expand.getLeftMatrixValuesCorrespondinglyToPositionsPattern clContext Utils.defaultWorkGroupSize
+
+    let globalPositions = getGlobalPositions ()
+
+    getLeftMatrixValues processor globalLength globalPositions deviceLeftMatrix.Values
+
+let getLeftMatrixValuesTest =
+    testCase "get left matrix values"
+    <| fun () ->
+        let result = (getLeftMatrixValues ()).ToHostAndFree processor
+
+        "Left matrix values must be the same"
+        |> Expect.equal result [| 2; 2; 3; 3; 3; 8; 8; 8; 5; 5; 5; 4; 4; 2; 2; 7; 7; 7 |]

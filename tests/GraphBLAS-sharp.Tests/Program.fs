@@ -69,7 +69,9 @@ let allTests =
           Matrix.SpGEMM.Expand.globalRightMatrixRawsStartPositionsTest
           Matrix.SpGEMM.Expand.getRequiredRightMatrixValuesPointersTest
           Matrix.SpGEMM.Expand.getGlobalPositionsTest
-          Matrix.SpGEMM.Expand.rightMatrixValuesPointersTest ]
+          Matrix.SpGEMM.Expand.rightMatrixValuesPointersTest
+          Matrix.SpGEMM.Expand.checkGatherRightMatrixData
+          Matrix.SpGEMM.Expand.getLeftMatrixValuesTest ]
     |> testSequenced
 
 [<EntryPoint>]
