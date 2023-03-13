@@ -64,7 +64,12 @@ open GraphBLAS.FSharp.Tests.Backend
 let allTests =
     testList
         "All tests"
-        [ Matrix.SpGEMM.Expand.requiredRowLength ]
+        [ Matrix.SpGEMM.Expand.requiredRowLengthTest
+          Matrix.SpGEMM.Expand.globalLengthTest
+          Matrix.SpGEMM.Expand.globalRightMatrixRawsStartPositionsTest
+          Matrix.SpGEMM.Expand.getRequiredRightMatrixValuesPointersTest
+          Matrix.SpGEMM.Expand.getGlobalPositionsTest
+          Matrix.SpGEMM.Expand.rightMatrixValuesPointersTest ]
     |> testSequenced
 
 [<EntryPoint>]

@@ -13,6 +13,12 @@ module ArraysExtensions =
             let dst = Array.zeroCreate this.Length
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this, dst, ch))
 
+        member this.ToHostAndFree(q: MailboxProcessor<Msg>) =
+            let result = this.ToHost q
+            this.Dispose q
+
+            result
+
         member this.Size = this.Length
 
     type 'a ``[]`` with

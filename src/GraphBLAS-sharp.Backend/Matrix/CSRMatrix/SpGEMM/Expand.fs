@@ -266,7 +266,7 @@ module Expand =
 
             // since prefix sum include
             // positions in global array for right matrix
-            let globalRightMatrixValuesRawsStartPositions = requiredRawsLengths
+            let globalRightMatrixRawsStartPositions = requiredRawsLengths
 
             // pointers to required raws in right matrix values
             let requiredRightMatrixValuesPointers =
@@ -274,11 +274,11 @@ module Expand =
 
             // bitmap to distinguish different raws in a general array
             let globalPositions =
-                getGlobalPositions processor globalLength globalRightMatrixValuesRawsStartPositions
+                getGlobalPositions processor globalLength globalRightMatrixRawsStartPositions
 
             // extended pointers to all required right matrix numbers
             let globalRightMatrixValuesPointers =
-                getRightMatrixValuesPointers processor globalLength globalPositions globalRightMatrixValuesRawsStartPositions requiredRightMatrixValuesPointers
+                getRightMatrixValuesPointers processor globalLength globalPositions globalRightMatrixRawsStartPositions requiredRightMatrixValuesPointers
 
             // gather all required right matrix values
             let extendedRightMatrixValues =
@@ -300,6 +300,6 @@ module Expand =
                 map2 processor DeviceOnly extendedLeftMatrixValues extendedRightMatrixValues
 
             let rowPointers =
-                getRawPointers processor leftMatrix.RowPointers globalRightMatrixValuesRawsStartPositions
+                getRawPointers processor leftMatrix.RowPointers globalRightMatrixRawsStartPositions
 
             multiplicationResult, extendedRightMatrixColumns, rowPointers
