@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 
-module internal SpGEMM =
+module internal SpGEMMMasked =
     let private calculate
         (context: ClContext)
         workGroupSize

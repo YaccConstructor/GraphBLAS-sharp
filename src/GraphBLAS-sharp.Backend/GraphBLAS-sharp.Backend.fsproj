@@ -38,7 +38,7 @@
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COOMatrix/COOMatrix.fs" />
     <Compile Include="Matrix/CSRMatrix/Map2.fs" />
-    <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
+    <Compile Include="Matrix\CSRMatrix\SpGEMMMasked.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
     <Compile Include="Matrix\CSRMatrix\SpGEMM\Expand.fs" />
     <Compile Include="Matrix/Matrix.fs" />

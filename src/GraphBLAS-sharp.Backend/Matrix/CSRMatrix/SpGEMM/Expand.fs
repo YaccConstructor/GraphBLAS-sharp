@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.CSRMatrix.SpGEMM
+namespace GraphBLAS.FSharp.Backend.Matrix.CSR.SpGEMM
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open FSharp.Quotations
 
 type Indices = ClArray<int>
 
@@ -143,7 +144,6 @@ module Expand =
             )
 
             processor.Post <| Msg.CreateRunMsg<_, _> kernel
-            processor.Post <| Msg.CreateFreeMsg globalPositions
 
             globalRightMatrixValuesPointers
 
@@ -157,7 +157,7 @@ module Expand =
                  if gid < globalLength then
                      let valuePosition = globalPositions.[gid] - 1
 
-                     result.[gid] <- rightMatrixValues.[valuePosition]@>
+                     result.[gid] <- rightMatrixValues.[valuePosition] @>
 
         let kernel = clContext.Compile kernel
 
@@ -184,11 +184,51 @@ module Expand =
             )
 
             processor.Post <| Msg.CreateRunMsg<_, _> kernel
-            processor.Post <| Msg.CreateFreeMsg globalPositions
 
             resultLeftMatrixValues
 
-    let run (clContext: ClContext) workGroupSize multiplication =
+    let getResultRowPointers (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) length (leftMatrixRowPointers: Indices) (globalArrayRightMatrixRawPointers: Indices) (result: Indices) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let rowPointer = leftMatrixRowPointers.[gid]
+                    let globalPointer = globalArrayRightMatrixRawPointers.[rowPointer]
+
+                    result.[gid] <- globalPointer
+                    @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (leftMatrixRowPointers: Indices) (globalArrayRightMatrixRawPointers: Indices) ->
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrixRowPointers.Length)
+
+            let kernel = kernel.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid( leftMatrixRowPointers.Length, workGroupSize)
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            leftMatrixRowPointers.Length
+                            leftMatrixRowPointers
+                            globalArrayRightMatrixRawPointers
+                            result)
+            )
+
+            processor.Post <| Msg.CreateRunMsg<_, _> kernel
+
+            result
+
+    let run (clContext: ClContext) workGroupSize (multiplication: Expr<'a -> 'b -> 'c>) =
 
         let getRequiredRawsLengths =
             processLeftMatrixColumnsAndRightMatrixRawPointers clContext workGroupSize requiredRawsLengths
@@ -199,10 +239,10 @@ module Expand =
         let getRequiredRightMatrixValuesPointers =
             processLeftMatrixColumnsAndRightMatrixRawPointers clContext workGroupSize requiredRawPointers
 
+        let getGlobalPositions = getGlobalPositions clContext workGroupSize
+
         let getRightMatrixValuesPointers =
             getRightMatrixPointers clContext workGroupSize
-
-        let getGlobalPositions = getGlobalPositions clContext workGroupSize
 
         let gatherRightMatrixData = Gather.run clContext workGroupSize
 
@@ -212,6 +252,8 @@ module Expand =
             getLeftMatrixValuesCorrespondinglyToPositionsPattern clContext workGroupSize
 
         let map2 = ClArray.map2 clContext workGroupSize multiplication
+
+        let getRawPointers = getResultRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
@@ -252,9 +294,12 @@ module Expand =
 
             // left matrix values correspondingly to right matrix values
             let extendedLeftMatrixValues =
-                getLeftMatrixValues processor globalLength globalPositions rightMatrix.Values
+                getLeftMatrixValues processor globalLength globalPositions leftMatrix.Values
 
             let multiplicationResult  =
                 map2 processor DeviceOnly extendedLeftMatrixValues extendedRightMatrixValues
 
-            multiplicationResult, extendedRightMatrixColumns
+            let rowPointers =
+                getRawPointers processor leftMatrix.RowPointers globalRightMatrixValuesRawsStartPositions
+
+            multiplicationResult, extendedRightMatrixColumns, rowPointers
