@@ -40,6 +40,7 @@
     <Compile Include="Matrix/CSRMatrix/Map2.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/CSRMatrix.fs" />
+    <Compile Include="Matrix\CSRMatrix\SpGEMM\Expand.fs" />
     <Compile Include="Matrix/Matrix.fs" />
     <Compile Include="Vector/SparseVector/Map2.fs" />
     <Compile Include="Vector/SparseVector/SparseVector.fs" />

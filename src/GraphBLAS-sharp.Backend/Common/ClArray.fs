@@ -33,6 +33,30 @@ module ClArray =
 
             outputArray
 
+    let assignManyInit (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
+
+        let init =
+            <@ fun (range: Range1D) indicesLength (indices: ClArray<int>) (outputBuffer: ClArray<'a>) ->
+
+                let gid = range.GlobalID0
+
+                if gid < indicesLength then
+                    let targetIndex = indices.[gid]
+
+                    outputBuffer.[targetIndex] <- (%initializer) gid @>
+
+        let program = clContext.Compile(init)
+
+        fun (processor: MailboxProcessor<_>) (indices: ClArray<int>) (result: ClArray<'a>) ->
+
+            let kernel = program.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid(indices.Length, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange indices.Length indices result))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
     let create (clContext: ClContext) workGroupSize =
 
         let create =
@@ -62,7 +86,7 @@ module ClArray =
 
             outputArray
 
-    let zeroCreate (clContext: ClContext) workGroupSize =
+    let zeroCreate<'a> (clContext: ClContext) workGroupSize =
 
         let create = create clContext workGroupSize
 

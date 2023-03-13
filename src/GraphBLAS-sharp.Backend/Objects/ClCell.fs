@@ -11,3 +11,6 @@ module ClCell =
             processor.Post(Msg.CreateFreeMsg<_>(this))
 
             res.[0]
+
+        member this.Free(processor: MailboxProcessor<_>) =
+            processor.Post(Msg.CreateFreeMsg<_>(this))
