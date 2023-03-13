@@ -6,8 +6,6 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
-open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let context = Context.defaultContext
@@ -52,130 +50,136 @@ let rightMatrix =
 let deviceLeftMatrix = leftMatrix.ToDevice clContext
 let deviceRightMatrix = rightMatrix.ToDevice clContext
 
-let requiredRawsLengths () =
-    let getRequiredRawsLengths =
-        Expand.processLeftMatrixColumnsAndRightMatrixRawPointers clContext Utils.defaultWorkGroupSize Expand.requiredRawsLengths
+let processPosition () =
+    let processPositions = Expand.processPositions clContext Utils.defaultWorkGroupSize
 
-    getRequiredRawsLengths processor deviceLeftMatrix.Columns deviceRightMatrix.RowPointers
+    processPositions processor deviceLeftMatrix deviceRightMatrix
 
-let requiredRowLengthTest =
-    testCase "requiredRowLength"
+let processPositionsTest =
+    testCase "ProcessPositions test"
     <| fun () ->
-        let actual = requiredRawsLengths().ToHostAndFree processor
+        let globalMap, globalRightMatrixRowsPointers, requiredLeftMatrixValues, requiredRightMatrixRowPointers, resultRowPointers
+                = processPosition ()
 
-        "Results must be the same"
-        |> Expect.equal actual [| 2; 3; 3; 3; 2; 2; 0; 3 |]
+        "Global map must be the same"
+        |> Expect.equal (globalMap.ToHostAndFree processor) [| 1; 1; 2; 2; 2; 3; 3; 3; 4; 4; 4; 5; 5; 6; 6; 7; 7; 7; |]
 
-let globalLength =
-    let prefixSumExclude =
-        PrefixSum.standardExcludeInplace clContext Utils.defaultWorkGroupSize
+        "global right matrix rows pointers must be the same"
+        |> Expect.equal (globalRightMatrixRowsPointers.ToHostAndFree processor) [| 0; 2; 5; 8; 11; 13; 15; |]
 
-    let requiredRawsLengths = requiredRawsLengths ()
+        "required left matrix values must be the same"
+        |> Expect.equal (requiredLeftMatrixValues.ToHostAndFree processor) [| 2; 3; 8; 5; 4; 2; 7; |]
 
-    (prefixSumExclude processor requiredRawsLengths).ToHostAndFree processor
+        "required right matrix row pointers"
+        |> Expect.equal (requiredRightMatrixRowPointers.ToHostAndFree processor) [| 3; 5; 0; 5; 8; 3; 0; |]
 
-let globalLengthTest =
-    testCase "global length test"
-    <| fun () -> Expect.equal globalLength 18 "Results must be the same"
+        "row pointers must be the same"
+        |> Expect.equal (resultRowPointers.ToHostAndFree processor) [| 0; 5; 5; 13; 15; 18 |]
 
-let getGlobalRightMatrixRawsStartPositions () =
-    let prefixSumExclude =
-        PrefixSum.standardExcludeInplace clContext Utils.defaultWorkGroupSize
+let expandLeftMatrixValues () =
+    let expandLeftMatrixValues = Expand.expandLeftMatrixValues clContext Utils.defaultWorkGroupSize
 
-    let requiredRawsLengths = requiredRawsLengths ()
+    let globalMap, globalRightMatrixRowsPointers, requiredLeftMatrixValues, requiredRightMatrixRowPointers, resultRowPointers
+            = processPosition ()
 
-    (prefixSumExclude processor requiredRawsLengths).Free processor
+    let result = expandLeftMatrixValues processor globalMap requiredLeftMatrixValues
 
-    requiredRawsLengths
+    globalMap.Free processor
+    globalRightMatrixRowsPointers.Free processor
+    requiredLeftMatrixValues.Free processor
+    requiredRightMatrixRowPointers.Free processor
+    resultRowPointers.Free processor
 
-let globalRightMatrixRawsStartPositionsTest =
-    testCase "global right matrix raws start positions"
+    result
+
+let expandLeftMatrixValuesTest =
+    testCase "expandLeftMatrixValues test"
     <| fun () ->
-        let result = (getGlobalRightMatrixRawsStartPositions ()).ToHostAndFree processor
+        let expandedLeftMatrixValues = (expandLeftMatrixValues ()).ToHostAndFree processor
 
-        "Results must be the same"
-        |> Expect.equal result [| 0; 2; 5; 8; 11; 13; 15; 15; |]
+        "Expand left matrix values must be the same"
+        |> Expect.equal expandedLeftMatrixValues [| 2; 2; 3; 3; 3; 8; 8; 8; 5; 5; 5; 4; 4; 2; 2; 7; 7; 7 |]
 
-let getRequiredRightMatrixValuesPointers () =
-    let getRequiredRightMatrixValuesPointers =
-        Expand.processLeftMatrixColumnsAndRightMatrixRawPointers clContext Utils.defaultWorkGroupSize Expand.requiredRawPointers
-
-    getRequiredRightMatrixValuesPointers processor deviceLeftMatrix.Columns deviceRightMatrix.RowPointers
-
-let getRequiredRightMatrixValuesPointersTest =
-    testCase "get required right matrix values pointers"
-    <| fun () ->
-        let result = (getRequiredRightMatrixValuesPointers ()).ToHostAndFree processor
-
-        "Result must be the same"
-        |> Expect.equal result [| 3; 5; 0; 5; 8; 3; 0; 0; |]
-
-let getGlobalPositions () =
-    let getGlobalPositions = Expand.getGlobalMap clContext Utils.defaultWorkGroupSize
-
-    getGlobalPositions processor globalLength (getGlobalRightMatrixRawsStartPositions ())
-
-let getGlobalPositionsTest =
-    testCase "getGlobalPositions test"
-    <| fun () ->
-        let result = (getGlobalPositions ()).ToHostAndFree processor
-
-        "Result must be the same"
-        |> Expect.equal result [| 1; 1; 2; 2; 2; 3; 3; 3; 4; 4; 4; 5; 5; 6; 6; 7; 7; 7; |]
-
-let getRightMatrixValuesPointers () =
-    let getRightMatrixValuesPointers =
+let expandGlobalRightMatrixPointers () =
+    let expandRightMatrixValuesPointers =
         Expand.expandRightMatrixValuesIndices clContext Utils.defaultWorkGroupSize
 
-    let globalPositions = getGlobalPositions ()
-    let globalRightMatrixRawsStartPositions = getGlobalRightMatrixRawsStartPositions ()
-    let requiredRightMatrixValuesPointers = getRequiredRightMatrixValuesPointers ()
+    let globalMap, globalRightMatrixRowsPointers, requiredLeftMatrixValues, requiredRightMatrixRowPointers, resultRowPointers = processPosition ()
 
-    getRightMatrixValuesPointers processor globalLength globalRightMatrixRawsStartPositions requiredRightMatrixValuesPointers globalPositions
+    let globalRightMatrixValuesPointers =
+        expandRightMatrixValuesPointers processor globalRightMatrixRowsPointers requiredRightMatrixRowPointers globalMap
 
-let rightMatrixValuesPointersTest =
-    testCase "RightMatrixValuesPointers"
+    globalMap.Free processor
+    globalRightMatrixRowsPointers.Free processor
+    requiredLeftMatrixValues.Free processor
+    requiredRightMatrixRowPointers.Free processor
+    resultRowPointers.Free processor
+
+    globalRightMatrixValuesPointers
+
+let extendGlobalRightMatrixPointersTest =
+    testCase "expandRightMatrixRowPointers test "
     <| fun () ->
-        let result = (getRightMatrixValuesPointers ()).ToHostAndFree processor
+        let expandedRowPointers = (expandGlobalRightMatrixPointers ()).ToHostAndFree processor
 
-        "Result must be the same"
-        |> Expect.equal result [| 3; 4; 5; 6; 7; 0; 1; 2; 5; 6; 7; 8; 9; 3; 4; 0; 1; 2; |]
+        "row pointers must be the same"
+        |> Expect.equal expandedRowPointers [| 3; 4; 5; 6; 7; 0; 1; 2; 5; 6; 7; 8; 9; 3; 4; 0; 1; 2; |]
 
-let gatherRightMatrixData () =
+let getRightMatrixValuesAndColumns () =
     let getRightMatrixColumnsAndValues =
-            Expand.getRightMatrixColumnsAndValues clContext Utils.defaultWorkGroupSize
+        Expand.getRightMatrixColumnsAndValues clContext Utils.defaultWorkGroupSize
 
-    let rightMatrixValuesPointers = getRightMatrixValuesPointers ()
+    let globalRightMatrixValuesPointers = expandGlobalRightMatrixPointers ()
 
-    getRightMatrixColumnsAndValues processor globalLength rightMatrixValuesPointers deviceRightMatrix.Values deviceRightMatrix.Columns
+    getRightMatrixColumnsAndValues processor globalRightMatrixValuesPointers deviceRightMatrix
 
-let checkGatherRightMatrixData =
-    testCase "gather right matrix data test"
+let getRightMatrixValuesAndPointersTest =
+    testCase "expandRightMatrixValuesAndColumns"
     <| fun () ->
-        let values, columns = gatherRightMatrixData ()
+        let extendedRightMatrixValues, extendedRightMatrixColumns = getRightMatrixValuesAndColumns ()
 
-        let hostValues = values.ToHostAndFree processor
+        "extendedRightMatrixValues must be the same"
+        |> Expect.equal (extendedRightMatrixValues.ToHostAndFree processor) [| 2; 2; 5; 9; 1; 3; 4; 4; 5; 9; 1; 1; 8; 2; 2; 3; 4; 4; |]
 
-        "Result must be the same"
-        |> Expect.equal hostValues [| 2; 2; 5; 9; 1; 3; 4; 4; 5; 9; 1; 1; 8; 2; 2; 3; 4; 4; |]
+        "extendedRightMatrixColumns must be the same"
+        |> Expect.equal (extendedRightMatrixColumns.ToHostAndFree processor) [| 2; 5; 1; 5; 6; 1; 4; 6; 1; 5; 6; 4; 6; 2; 5; 1; 4; 6; |]
 
-        let hostColumns = columns.ToHostAndFree processor
+let multiplication () =
+    let map2 = ClArray.map2 clContext Utils.defaultWorkGroupSize <@ (*) @>
 
-        "Result must be the same"
-        |> Expect.equal hostColumns [| 2; 5; 1; 5; 6; 1; 4; 6; 1; 5; 6; 4; 6; 2; 5; 1; 4; 6; |]
+    let expandedLeftMatrixValues = expandLeftMatrixValues ()
 
-let getLeftMatrixValues () =
-    let getLeftMatrixValues =
-        Expand.getLeftMatrixValuesCorrespondinglyToPositionsPattern clContext Utils.defaultWorkGroupSize
+    let extendedRightMatrixValues, extendedRightMatrixColumns = getRightMatrixValuesAndColumns ()
+    extendedRightMatrixColumns.Free processor
 
-    let globalPositions = getGlobalPositions ()
+    let multiplicationResult  =
+        map2 processor DeviceOnly expandedLeftMatrixValues extendedRightMatrixValues
 
-    getLeftMatrixValues processor globalLength globalPositions deviceLeftMatrix.Values
+    expandedLeftMatrixValues.Free processor
+    extendedRightMatrixValues.Free processor
 
-let getLeftMatrixValuesTest =
-    testCase "get left matrix values"
-    <| fun () ->
-        let result = (getLeftMatrixValues ()).ToHostAndFree processor
+    multiplicationResult
 
-        "Left matrix values must be the same"
-        |> Expect.equal result [| 2; 2; 3; 3; 3; 8; 8; 8; 5; 5; 5; 4; 4; 2; 2; 7; 7; 7 |]
+let multiplicationTest =
+    testCase "multiplication test" <| fun () ->
+        let result = (multiplication ()).ToHostAndFree processor
+
+        "Results must be the same"
+        |> Expect.equal result [| 4; 4; 15; 27; 3; 24; 32; 32; 25; 45; 5; 4; 32; 4; 4; 21; 28; 28 |]
+
+let runExtendTest =
+    testCase "Expand.run test" <| fun () ->
+        let run = Expand.run clContext Utils.defaultWorkGroupSize <@ (*) @>
+
+        let multiplicationResult, extendedRightMatrixColumns, resultRowPointers =
+            run processor deviceLeftMatrix deviceRightMatrix
+
+        "Results must be the same"
+        |> Expect.equal (multiplicationResult.ToHostAndFree processor) [| 4; 4; 15; 27; 3; 24; 32; 32; 25; 45; 5; 4; 32; 4; 4; 21; 28; 28 |]
+
+        "extendedRightMatrixColumns must be the same"
+        |> Expect.equal (extendedRightMatrixColumns.ToHostAndFree processor) [| 2; 5; 1; 5; 6; 1; 4; 6; 1; 5; 6; 4; 6; 2; 5; 1; 4; 6; |]
+
+        "row pointers must be the same"
+        |> Expect.equal (resultRowPointers.ToHostAndFree processor) [| 0; 5; 5; 13; 15; 18 |]
+
