@@ -25,6 +25,39 @@ module ClMatrix =
 
         member this.NNZ = this.Values.Length
 
+        member this.ToCSC =
+            { Context = this.Context
+              RowCount = this.ColumnCount
+              ColumnCount = this.RowCount
+              Rows = this.Columns
+              ColumnPointers = this.RowPointers
+              Values = this.Values }
+
+    and CSC<'elem when 'elem: struct> =
+        { Context: ClContext
+          RowCount: int
+          ColumnCount: int
+          Rows: ClArray<int>
+          ColumnPointers: ClArray<int>
+          Values: ClArray<'elem> }
+
+        interface IDeviceMemObject with
+            member this.Dispose q =
+                q.Post(Msg.CreateFreeMsg<_>(this.Values))
+                q.Post(Msg.CreateFreeMsg<_>(this.Rows))
+                q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
+                q.PostAndReply(Msg.MsgNotifyMe)
+
+        member this.NNZ = this.Values.Length
+
+        member this.ToCSR =
+            { Context = this.Context
+              RowCount = this.ColumnCount
+              ColumnCount = this.RowCount
+              RowPointers = this.ColumnPointers
+              Columns = this.Rows
+              Values = this.Values }
+
     type COO<'elem when 'elem: struct> =
         { Context: ClContext
           RowCount: int
@@ -38,23 +71,6 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Columns))
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
-                q.PostAndReply(Msg.MsgNotifyMe)
-
-        member this.NNZ = this.Values.Length
-
-    type CSC<'elem when 'elem: struct> =
-        { Context: ClContext
-          RowCount: int
-          ColumnCount: int
-          Rows: ClArray<int>
-          ColumnPointers: ClArray<int>
-          Values: ClArray<'elem> }
-
-        interface IDeviceMemObject with
-            member this.Dispose q =
-                q.Post(Msg.CreateFreeMsg<_>(this.Values))
-                q.Post(Msg.CreateFreeMsg<_>(this.Rows))
-                q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
                 q.PostAndReply(Msg.MsgNotifyMe)
 
         member this.NNZ = this.Values.Length

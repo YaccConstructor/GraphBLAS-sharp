@@ -46,11 +46,8 @@ let checkResult isEqual op zero (baseMtx1: 'a [,]) (baseMtx2: 'a [,]) (actual: M
             actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
     | _ -> failwith "Resulting matrix should be converted to COO format."
 
-    for i in 0 .. rows - 1 do
-        for j in 0 .. columns - 1 do
-            Expect.isTrue
-                (isEqual actual2D.[i, j] expected2D.[i, j])
-                $"Values should be the same. Actual is {actual2D.[i, j]}, expected {expected2D.[i, j]}."
+    "Arrays must be the same"
+    |> Utils.compare2DArrays isEqual actual2D expected2D
 
 let correctnessGenericTest
     zero

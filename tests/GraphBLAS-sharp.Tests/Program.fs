@@ -48,8 +48,6 @@ let vectorTests =
           Vector.Map2.mulTests
           Vector.Map2.addAtLeastOneTests
           Vector.Map2.mulAtLeastOneTests
-          Vector.Map2.addGeneralTests
-          Vector.Map2.mulGeneralTests
           Vector.Map2.complementedGeneralTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
@@ -64,8 +62,8 @@ let algorithmsTests =
 let allTests =
     testList
         "All tests"
-        [ commonTests
-          matrixTests
+        [ matrixTests
+          commonTests
           vectorTests
           algorithmsTests ]
     |> testSequenced

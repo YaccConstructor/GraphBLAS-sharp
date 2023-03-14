@@ -5,8 +5,12 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Matrix.COO
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
-module internal Map2 =
+module internal Map2AtLeastOne =
     let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
@@ -276,3 +280,67 @@ module internal Map2 =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allRows, allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
+
+    let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let merge = merge clContext workGroupSize
+
+        let preparePositions =
+            preparePositions clContext opAdd workGroupSize
+
+        let setPositions =
+            Matrix.Common.setPositions<'c> clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+
+            let allRows, allColumns, leftMergedValues, rightMergedValues, isRowEnd, isLeft =
+                merge
+                    queue
+                    matrixLeft.RowPointers
+                    matrixLeft.Columns
+                    matrixLeft.Values
+                    matrixRight.RowPointers
+                    matrixRight.Columns
+                    matrixRight.Values
+
+            let positions, allValues =
+                preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
+
+            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
+            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+
+            let resultRows, resultColumns, resultValues, _ =
+                setPositions queue allocationMode allRows allColumns allValues positions
+
+            queue.Post(Msg.CreateFreeMsg<_>(allRows))
+            queue.Post(Msg.CreateFreeMsg<_>(isLeft))
+            queue.Post(Msg.CreateFreeMsg<_>(isRowEnd))
+            queue.Post(Msg.CreateFreeMsg<_>(positions))
+            queue.Post(Msg.CreateFreeMsg<_>(allColumns))
+            queue.Post(Msg.CreateFreeMsg<_>(allValues))
+
+            { Context = clContext
+              RowCount = matrixLeft.RowCount
+              ColumnCount = matrixLeft.ColumnCount
+              Rows = resultRows
+              Columns = resultColumns
+              Values = resultValues }
+
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let elementwiseToCOO = runToCOO clContext opAdd workGroupSize
+
+        let toCSRInplace =
+            Matrix.toCSRInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+            elementwiseToCOO queue allocationMode matrixLeft matrixRight
+            |> toCSRInplace queue allocationMode
