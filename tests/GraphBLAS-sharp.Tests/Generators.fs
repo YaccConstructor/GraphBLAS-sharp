@@ -38,12 +38,14 @@ module Generators =
     /// Generates empty matrices as well.
     /// </remarks>
     let dimension2DGenerator =
-        Gen.sized
-        <| fun size -> Gen.choose (1, size) |> Gen.two
+        fun size -> Gen.choose (1, size)
+        |> Gen.sized
+        |> Gen.two
 
     let dimension3DGenerator =
-        Gen.sized
-        <| fun size -> Gen.choose (1, size) |> Gen.three
+        fun size -> Gen.choose (1, size)
+        |> Gen.sized
+        |> Gen.three
 
     let rec normalFloat32Generator (random: System.Random) =
         gen {
@@ -383,6 +385,9 @@ module Generators =
                 let! matrixB =
                     valuesGenerator
                     |> Gen.array2DOfDim (nColsA, nColsB)
+
+                printf $"left matrix column count: %A{Array2D.length1 matrixA}"
+                printf $"right matrix row count: %A{Array2D.length2 matrixA}"
 
                 return (matrixA, matrixB)
             }

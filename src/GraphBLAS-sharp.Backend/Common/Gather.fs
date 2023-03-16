@@ -17,12 +17,15 @@ module internal Gather =
     let run (clContext: ClContext) workGroupSize =
 
         let gather =
-            <@ fun (ndRange: Range1D) (positions: ClArray<int>) (inputArray: ClArray<'a>) (outputArray: ClArray<'a>) (size: int) ->
+            <@ fun (ndRange: Range1D) (positions: ClArray<int>) (values: ClArray<'a>) (outputArray: ClArray<'a>) (size: int) ->
 
                 let i = ndRange.GlobalID0
 
                 if i < size then
-                    outputArray.[i] <- inputArray.[positions.[i]] @>
+                    let position = positions.[i]
+                    let value = values.[position]
+
+                    outputArray.[i] <- value @>
 
         let program = clContext.Compile(gather)
 

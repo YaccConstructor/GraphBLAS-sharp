@@ -27,17 +27,17 @@ module internal Scatter =
         let run =
             <@ fun (ndRange: Range1D) (positions: ClArray<int>) (positionsLength: int) (values: ClArray<'a>) (result: ClArray<'a>) (resultLength: int) ->
 
-                let i = ndRange.GlobalID0
+                let gid = ndRange.GlobalID0
 
-                if i < positionsLength then
-                    let index = positions.[i]
+                if gid < positionsLength then
+                    let index = positions.[gid]
 
                     if 0 <= index && index < resultLength then
-                        if i < positionsLength - 1 then
-                            if index <> positions.[i + 1] then
-                                result.[index] <- values.[i]
+                        if gid < positionsLength - 1 then
+                            if index <> positions.[gid + 1] then
+                                result.[index] <- values.[gid]
                         else
-                            result.[index] <- values.[i] @>
+                            result.[index] <- values.[gid] @>
 
         let program = clContext.Compile(run)
 

@@ -230,6 +230,8 @@ module Expand =
                 removeDuplications processor globalRightMatrixRowsStartPositions
 
             // RESULT row pointers into result expanded (obtained by multiplication) array
+            // printfn "GLOBAL LENGTH: %A" globalLength
+
             let resultRowPointers =
                 getRowPointers processor globalLength leftMatrix.RowPointers globalRightMatrixRowsStartPositions
 
@@ -238,6 +240,8 @@ module Expand =
             // int map to distinguish different raws in a general array. 1 for first, 2 for second and so forth...
             let globalMap =
                 getGlobalPositions processor globalLength globalRightMatrixRawsPointersWithoutDuplicates
+
+            // printfn "global clmap: %A" <| globalMap.ToHost processor
 
             globalMap, globalRightMatrixRawsPointersWithoutDuplicates, requiredLeftMatrixValues, requiredRightMatrixRawPointers, resultRowPointers
 
@@ -250,7 +254,7 @@ module Expand =
 
                 if gid < length then
                     // index corresponding to the position of pointers
-                    let positionIndex = globalPositions.[gid] - 1
+                    let positionIndex = globalPositions.[gid] - 1 // TODO()
 
                     // the position of the beginning of a new line of pointers
                     let sourcePosition = globalRightMatrixValuesPositions.[positionIndex]
@@ -303,7 +307,7 @@ module Expand =
 
                 // globalBitmap.Length == resultValues.Length
                 if gid < resultLength then
-                    let valueIndex = globalBitmap.[gid] - 1
+                    let valueIndex = globalBitmap.[gid] - 1 //TODO()
 
                     resultValues.[gid] <- leftMatrixValues.[valueIndex] @>
 

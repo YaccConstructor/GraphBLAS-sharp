@@ -1,5 +1,6 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 
 // let matrixTests =
 //     testList
@@ -60,17 +61,21 @@ open GraphBLAS.FSharp.Tests.Backend
 //     testList "Algorithms tests" [ Algorithms.BFS.tests ]
 //     |> testSequenced
 
-[<Tests>]
-let allTests =
-    testList
-        "All tests"
-        [ Matrix.SpGEMM.Expand.processPositionsTest
-          Matrix.SpGEMM.Expand.expandLeftMatrixValuesTest
-          Matrix.SpGEMM.Expand.extendGlobalRightMatrixPointersTest
-          Matrix.SpGEMM.Expand.getRightMatrixValuesAndPointersTest
-          Matrix.SpGEMM.Expand.multiplicationTest
-          Matrix.SpGEMM.Expand.runExtendTest ]
-    |> testSequenced
+// [<Tests>]
+// let allTests =
+//     testList
+//         "All tests"
+//         [ Matrix.SpGEMM.Expand.processPositionsTest
+//           Matrix.SpGEMM.Expand.expandLeftMatrixValuesTest
+//           Matrix.SpGEMM.Expand.extendGlobalRightMatrixPointersTest
+//           Matrix.SpGEMM.Expand.getRightMatrixValuesAndPointersTest
+//           Matrix.SpGEMM.Expand.multiplicationTest
+//           Matrix.SpGEMM.Expand.runExtendTest ]
+    // |> testSequenced
+
+
 
 [<EntryPoint>]
-let main argv = allTests |> runTestsWithCLIArgs [] argv
+let main argv = Expand.testFixtures |> runTestsWithCLIArgs [] argv
+
+

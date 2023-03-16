@@ -129,6 +129,63 @@ module Utils =
 
         result
 
+    let prefixSumExclude (array: 'a []) zero plus =
+        let mutable sum = zero
+
+        for i in 0 .. array.Length - 1 do
+            let currentItem = array.[i]
+            array.[i] <- sum
+
+            sum <- plus currentItem sum
+
+        sum
+
+    let prefixSumInclude (array: 'a []) zero plus =
+        let mutable sum = zero
+
+        for i in 0 .. array.Length - 1 do
+            sum <- plus array.[i] sum
+
+            array.[i] <- sum
+
+        sum
+
+    let getUniqueBitmap<'a when 'a: equality> (array: 'a []) =
+        let bitmap = Array.zeroCreate array.Length
+
+        for i in 0 .. array.Length - 2 do
+            if array.[i] <> array.[i + 1] then bitmap.[i] <- 1
+
+        // set last 1
+        bitmap.[bitmap.Length - 1] <- 1
+
+        bitmap
+
+    let scatter (positions: int array) (values: 'a array) (resultValues: 'a array) =
+        for i in 0 .. positions.Length - 2 do
+            if positions.[i] <> positions.[i + 1] then
+                let valuePosition = positions.[i]
+                let value = values.[i]
+
+                resultValues.[valuePosition] <- value
+
+        // set last value
+        let lastPosition = positions.[positions.Length - 1]
+        let lastValue = values.[values.Length - 1]
+
+        resultValues.[lastPosition] <- lastValue
+
+    let gather (positions: int []) (values: 'a []) (result: 'a []) =
+        for i in 0 .. positions.Length do
+            let position = positions.[i]
+            let value = values.[position]
+
+            result.[position] <- value
+
+    let castMatrixToCSR = function
+        | Matrix.CSR matrix -> matrix
+        | _ -> failwith "matrix format must be CSR"
+
 module Context =
     type TestContext =
         { ClContext: ClContext
