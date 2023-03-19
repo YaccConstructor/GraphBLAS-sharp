@@ -34,4 +34,4 @@ type ClVector<'a when 'a: struct> =
     member this.Dispose(q) =
         match this with
         | Sparse vector -> vector.Dispose(q)
-        | Dense vector -> vector.Dispose(q)
+        | Dense vector -> vector.Free(q)

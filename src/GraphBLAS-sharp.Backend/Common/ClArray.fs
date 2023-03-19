@@ -3,8 +3,9 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -129,82 +130,6 @@ module ClArray =
 
             outputArray
 
-    /// <summary>
-    /// Exclude inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 0; 1; 2; 3 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
-    let prefixSumExcludeInplace = PrefixSum.runExcludeInplace
-
-    /// <summary>
-    /// Include inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 1; 2; 3; 4 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
-    let prefixSumIncludeInplace = PrefixSum.runIncludeInplace
-
-    let prefixSumExclude plus (clContext: ClContext) workGroupSize =
-
-        let runExcludeInplace =
-            prefixSumExcludeInplace plus clContext workGroupSize
-
-        let copy = copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
-
-            let outputArray = copy processor allocationMode inputArray
-
-            let totalSum =
-                runExcludeInplace processor outputArray zero
-
-            outputArray, totalSum
-
-    let prefixSumInclude plus (clContext: ClContext) workGroupSize =
-
-        let runIncludeInplace =
-            prefixSumIncludeInplace plus clContext workGroupSize
-
-        let copy = copy clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (zero: 'a) ->
-
-            let outputArray = copy processor allocationMode inputArray
-
-            let totalSum =
-                runIncludeInplace processor outputArray zero
-
-            outputArray, totalSum
-
-    let prefixSumBackwardsExcludeInplace plus =
-        PrefixSum.runBackwardsExcludeInplace plus
-
-    let prefixSumBackwardsIncludeInplace plus =
-        PrefixSum.runBackwardsIncludeInplace plus
-
     let getUniqueBitmap (clContext: ClContext) workGroupSize =
 
         let getUniqueBitmap =
@@ -250,7 +175,7 @@ module ClArray =
         let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
 
         let prefixSumExclude =
-            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
+            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -380,7 +305,7 @@ module ClArray =
             <| Map.optionToValueOrZero Unchecked.defaultof<'b>
 
         let prefixSum =
-            prefixSumExcludeInplace <@ (+) @> clContext workGroupSize
+            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
 
         let scatter =
             Scatter.runInplace clContext workGroupSize

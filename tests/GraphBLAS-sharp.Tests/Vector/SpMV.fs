@@ -76,9 +76,9 @@ let correctnessGenericTest
                 let res = spMV testContext.Queue HostInterop m v
 
                 (ClMatrix.CSR m).Dispose q
-                v.Dispose q
+                v.Free q
                 let hostRes = res.ToHost q
-                res.Dispose q
+                res.Free q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes
             | _ -> failwith "Impossible"

@@ -4,7 +4,6 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
@@ -160,8 +159,7 @@ module DenseVector =
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let notEmpty =
-                (containsNonZero processor vector)
-                    .ToHostAndFree processor
+                (containsNonZero processor vector).ToHostAndFree processor
 
             if notEmpty then
                 let values = choose processor DeviceOnly vector
