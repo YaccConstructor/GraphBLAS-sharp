@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.BitonicSort
+module GraphBLAS.FSharp.Tests.Backend.Common.Sort.Bitonic
 
 open Expecto
 open Expecto.Logging
