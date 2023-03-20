@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "BitonicSort.Tests"
 
@@ -38,15 +39,9 @@ let makeTest sort (array: ('n * 'n * 'a) []) =
         let actualRows, actualCols, actualValues =
             sort q clRows clColumns clValues
 
-            let rows = Array.zeroCreate<'n> clRows.Length
-            let columns = Array.zeroCreate<'n> clColumns.Length
-            let values = Array.zeroCreate<'a> clValues.Length
-
-            q.Post(Msg.CreateToHostMsg(clRows, rows))
-            q.Post(Msg.CreateToHostMsg(clColumns, columns))
-
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clValues, values, ch))
-            |> ignore
+            let rows = clRows.ToHostAndFree q
+            let columns = clColumns.ToHostAndFree q
+            let values = clValues.ToHostAndFree q
 
             rows, columns, values
 

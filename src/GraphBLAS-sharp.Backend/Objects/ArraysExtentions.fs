@@ -14,8 +14,7 @@ module ArraysExtensions =
             q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this, dst, ch))
 
         member this.ToHostAndFree(q: MailboxProcessor<_>) =
-            let dst = Array.zeroCreate this.Length
-            let result = q.PostAndReply(fun ch -> Msg.CreateToHostMsg(this, dst, ch))
+            let result = this.ToHost q
             this.Free q
 
             result

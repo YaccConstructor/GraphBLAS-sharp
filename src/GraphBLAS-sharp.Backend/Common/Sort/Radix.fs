@@ -9,11 +9,14 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 type Indices = ClArray<int>
 
 module Radix =
+    let defaultBitCount = 4
+
     let localPrefixSum =
         <@ fun (lid: int) (workGroupSize: int) (array: int []) ->
             let mutable offset = 1
 
             while offset < workGroupSize do
+                barrierLocal ()
                 let mutable value = array.[lid]
 
                 if lid >= offset then value <- value + array.[lid - offset]
@@ -21,10 +24,11 @@ module Radix =
                 offset <- offset * 2
 
                 barrierLocal ()
-                array.[lid] <- value
-                barrierLocal () @>
+                array.[lid] <- value @>
 
-    let count (clContext: ClContext) workGroupSize mask bitCount =
+    let count (clContext: ClContext) workGroupSize mask =
+
+        let bitCount = mask + 1
 
         let kernel =
             <@ fun (ndRange: Range1D) length (indices: Indices) (workGroupCount: ClCell<int>) (shift: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) ->
@@ -34,51 +38,47 @@ module Radix =
 
                 let position = (indices.[gid] >>> shift.Value) &&& mask
 
-                if gid < length then printf "position %i for lid = %i" position lid
-
                 let localMask = localArray<int> workGroupSize
 
-                if gid < length then localMask.[lid] <- position else localMask.[lid] <- 0
-
-                if gid < length then
-                    printf "local mask value = %i for lid = %i" localMask.[lid] lid
+                if gid < length
+                    then localMask.[lid] <- position
+                    else localMask.[lid] <- 0
 
                 let localPositions = localArray<int> workGroupSize
 
                 for currentBit in 0 .. bitCount - 1 do
-                    let isCurrentPosition = if localMask.[lid] = currentBit then 1 else 0
-                    if gid < length then printf "is current position %i for lid = %i, localMask of i = %i, currentBit = %i" isCurrentPosition lid localMask.[lid] currentBit
+                    let isCurrentPosition = localMask.[lid] = currentBit
 
-                    localPositions.[lid] <- if isCurrentPosition = 1 && gid < length then 1 else 0
+                    if isCurrentPosition && gid < length
+                        then localPositions.[lid] <- 1
+                        else localPositions.[lid] <- 0
 
                     barrierLocal ()
 
                     (%localPrefixSum) lid workGroupSize localPositions
 
-                    if gid < length && isCurrentPosition = 1 then
+                    barrierLocal ()
+
+                    if gid < length && isCurrentPosition then
                         localOffsets.[gid] <- localPositions.[lid] - 1
 
                     if lid = 0 then
                         let processedItemsCount = localPositions.[workGroupSize - 1]
-                        printf "%i processed items count" processedItemsCount
-                        let workGroupNumber = gid / workGroupSize
+                        let wgId = gid / workGroupSize
 
-                        globalOffsets.[position * workGroupCount.Value + workGroupNumber] <- processedItemsCount @>
+                        globalOffsets.[workGroupCount.Value * currentBit + wgId] <- processedItemsCount @>
 
         let kernel = clContext.Compile kernel
-        printfn $"code: {kernel.Code}"
 
         fun (processor: MailboxProcessor<_>) (indices: Indices) (clWorkGroupCount: ClCell<int>) (shift: ClCell<int>) ->
             let ndRange = Range1D.CreateValid(indices.Length, workGroupSize)
 
             let workGroupCount = (indices.Length - 1) / workGroupSize + 1
 
-            let globalOffsetsLength = (pown 2 bitCount) * workGroupCount
+            let globalOffsetsLength = bitCount * workGroupCount
 
             let globalOffsets =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, globalOffsetsLength)
-
-            printfn "local offset length = %d" indices.Length
 
             let localOffsets =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, indices.Length)
@@ -92,7 +92,7 @@ module Radix =
 
             globalOffsets, localOffsets
 
-    let scatter (clContext: ClContext) workGroupSize mask bitCount =
+    let scatter (clContext: ClContext) workGroupSize mask =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (keys: Indices) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) (result: ClArray<int>) ->
@@ -110,8 +110,7 @@ module Radix =
 
                     let offset = globalOffset + localOffset
 
-                    result.[offset] <- keys.[gid]
-                    shift.Value <- shift.Value <<< bitCount @>
+                    result.[offset] <- keys.[gid] @>
 
         let kernel = clContext.Compile kernel
 
@@ -126,42 +125,146 @@ module Radix =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let run (clContext: ClContext) workGroupSize =
+    let run (clContext: ClContext) workGroupSize bitCount =
+        let copy = ClArray.copy clContext workGroupSize
 
-        let bitCount = 2
-        let mask = (pown 2 bitCount) - 1   // TODO()
+        let mask = (pown 2 bitCount) - 1
 
-        let count = count clContext workGroupSize mask bitCount
+        let count = count clContext workGroupSize mask
 
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let scatter = scatter clContext workGroupSize mask bitCount
+        let scatter = scatter clContext workGroupSize mask
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) ->
+            let firstKeys = copy processor DeviceOnly keys
 
-            let secondKeys = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
-            let workGroupCount = clContext.CreateClCell((keys.Length - 1) / workGroupSize - 1)
-            let shift = clContext.CreateClCell 0
+            let secondKeys =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
 
-            let mutable pair = (keys, secondKeys)
+            let workGroupCount = clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
+
+            let mutable pair = (firstKeys, secondKeys)
             let swap (x, y) = y, x
 
-            //for i in 0 .. 4 do
-            printfn "keys: %A" <| keys.ToHost processor
+            if keys.Length <= 1 then
+                keys
+            else
+                for i in 0 .. 15 do // TODO()
+                    let shift = clContext.CreateClCell(bitCount * i)
 
-            let globalOffset, localOffset = count processor (fst pair) workGroupCount shift
+                    // printfn "keys: %A" <| (fst pair).ToHost processor
+                    // printfn "shift: %i" <| shift.ToHost processor
 
-            printfn "globalOffset: %A" <| globalOffset.ToHost processor
-            printfn "localOffset: %A" <| localOffset.ToHost processor
+                    let globalOffset, localOffset = count processor (fst pair) workGroupCount shift
 
-            (prefixSum processor globalOffset).Free processor
+                    // printfn "globalOffset: %A" <| globalOffset.ToHost processor
+                    // printfn "localOffset: %A" <| localOffset.ToHost processor
 
-            scatter processor (fst pair) shift workGroupCount globalOffset localOffset (snd pair)
+                    (prefixSum processor globalOffset).Free processor
+                    // printfn "globalOffset after prefix sum: %A" <| globalOffset.ToHost processor
 
-            //pair <- swap pair
+                    scatter processor (fst pair) shift workGroupCount globalOffset localOffset (snd pair)
 
-            globalOffset.Free processor
-            localOffset.Free processor
+                    pair <- swap pair
 
-            keys
+                    // printfn "secondKeys: %A" <| secondKeys.ToHost processor
 
+                    globalOffset.Free processor
+                    localOffset.Free processor
+                    shift.Free processor
+
+                //printfn "result keys: %A" <| (snd pair).ToHost processor
+                fst pair
+
+    let standardRun clContext workGroupSize = run clContext workGroupSize defaultBitCount
+
+    let scatter1D (clContext: ClContext) workGroupSize mask =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) length (keys: Indices) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
+
+                let gid = ndRange.GlobalID0
+                let wgId = gid / workGroupSize
+
+                let workGroupCount = workGroupCount.Value
+
+                if gid < length then
+                    let slot = (keys.[gid] >>> shift.Value) &&& mask
+
+                    let localOffset = localOffsets.[gid]
+                    let globalOffset = globalOffsets.[workGroupCount * slot + wgId]
+
+                    let offset = globalOffset + localOffset
+
+                    resultKeys.[offset] <- keys.[gid]
+                    resultValues.[offset] <- values.[gid] @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffset: Indices) (localOffsets: Indices) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
+
+            let ndRange =
+                Range1D.CreateValid(keys.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange keys.Length keys values shift workGroupCount globalOffset localOffsets resultKeys resultValues))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let run1DInplace (clContext: ClContext) workGroupSize bitCount =
+        let copy = ClArray.copy clContext workGroupSize
+
+        let dataCopy = ClArray.copy clContext workGroupSize
+
+        let mask = (pown 2 bitCount) - 1
+
+        let count = count clContext workGroupSize mask
+
+        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let scatter1D = scatter1D clContext workGroupSize mask
+
+        fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) ->
+            let firstKeys = copy processor DeviceOnly keys
+
+            let secondKeys =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
+
+            let secondValues = dataCopy processor DeviceOnly values
+
+            let workGroupCount = clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
+
+            let mutable keysPair = (firstKeys, secondKeys)
+            let mutable valuesPair = (values, secondValues)
+
+            let swap (x, y) = y, x
+
+            if keys.Length <= 1 then
+                keys, values
+            else
+                for i in 0 .. 15 do
+                    let shift = clContext.CreateClCell(bitCount * i)
+
+                    let currentKeys = fst keysPair
+                    let resultKeysBuffer = snd keysPair
+
+                    let currentValues = fst valuesPair
+                    let resultValuesBuffer = snd valuesPair
+
+                    let globalOffset, localOffset = count processor currentKeys workGroupCount shift
+
+                    (prefixSum processor globalOffset).Free processor
+
+                    scatter1D processor currentKeys currentValues shift workGroupCount globalOffset localOffset resultKeysBuffer resultValuesBuffer
+
+                    keysPair <- swap keysPair
+                    valuesPair <- swap valuesPair
+
+                    localOffset.Free processor
+                    shift.Free processor
+
+                (fst keysPair), (fst valuesPair)
+
+    let run1DInplaceStandard clContext workGroupSize = run1DInplace clContext workGroupSize defaultBitCount
