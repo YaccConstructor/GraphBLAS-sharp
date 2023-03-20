@@ -260,10 +260,13 @@ module Radix =
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let scatterByKey = scatterByKey clContext workGroupSize mask
+        let scatterByKey =
+            scatterByKey clContext workGroupSize mask
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) ->
-            if values.Length <> keys.Length then failwith "Mismatch of key lengths and value. Lengths must be the same"
+            if values.Length <> keys.Length then
+                failwith "Mismatch of key lengths and value. Lengths must be the same"
+
             if values.Length <= 1 then
                 values
             else

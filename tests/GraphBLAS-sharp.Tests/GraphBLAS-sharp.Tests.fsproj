@@ -27,8 +27,8 @@
         <Compile Include="Common/ClArray/Copy.fs" />
         <Compile Include="Common/ClArray/Replicate.fs" />
         <Compile Include="Common/ClArray/PrefixSum.fs" />
-        <Compile Include="Common\Sort\Radix.fs" />
-        <Compile Include="Common\Sort\Bitonic.fs" />
+        <Compile Include="Common/Sort/Radix.fs" />
+        <Compile Include="Common/Sort/Bitonic.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->

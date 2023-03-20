@@ -15,9 +15,7 @@ module ClVectorExtensions =
             | ClVector.Dense vector -> Vector.Dense <| vector.ToHost q
 
         member this.ToHostAndFree(q: MailboxProcessor<_>) =
-           let result = this.ToHost q
-           this.Dispose q
+            let result = this.ToHost q
+            this.Dispose q
 
-           result
-
-
+            result

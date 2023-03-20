@@ -67,7 +67,8 @@ let algorithmsTests =
 
 [<Tests>]
 let allTests =
-    testList "All tests"
+    testList
+        "All tests"
         [ matrixTests
           commonTests
           vectorTests

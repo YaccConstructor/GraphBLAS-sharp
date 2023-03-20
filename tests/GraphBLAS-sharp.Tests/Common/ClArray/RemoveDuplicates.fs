@@ -24,7 +24,8 @@ let testCases =
 
           let clArray = context.CreateClArray array
 
-          let actual = (removeDuplicates_wg_2 q clArray).ToHostAndFree q
+          let actual =
+              (removeDuplicates_wg_2 q clArray).ToHostAndFree q
 
           logger.debug (
               eventX "Actual is {actual}"
@@ -49,7 +50,8 @@ let testCases =
                   else
                       removeDuplicates_wg_2
 
-              let actual = (removeDuplicates q clArray).ToHostAndFree q
+              let actual =
+                  (removeDuplicates q clArray).ToHostAndFree q
 
               logger.debug (
                   eventX "Actual is {actual}"
