@@ -16,17 +16,15 @@ let processor = Context.defaultContext.Queue
 
 let context = Context.defaultContext.ClContext
 
-let checkResult (inputArray: (int * 'a) []) (actualKeys: int []) (actualValues: 'a []) =
-    let expectedKeys, expectedValues =
-        Array.sortBy fst inputArray |> Array.unzip
-
-    "Keys must be the same"
-    |> Expect.sequenceEqual expectedKeys actualKeys
+let checkResultByKeys (inputArray: (int * 'a) []) (actualValues: 'a []) =
+    let expectedValues =
+        Array.sortBy fst inputArray
+        |> Array.map snd
 
     "Values must be the same"
     |> Expect.sequenceEqual expectedValues actualValues
 
-let makeTest<'a when 'a: equality> sortFun (array: (int * 'a) []) =
+let makeTestByKeys<'a when 'a: equality> sortFun (array: (int * 'a) []) =
     // since Array.sort not stable
     let array = Array.distinctBy fst array
 
@@ -38,28 +36,58 @@ let makeTest<'a when 'a: equality> sortFun (array: (int * 'a) []) =
         let clKeys = keys.ToDevice context
         let clValues = values.ToDevice context
 
-        let clActualKeys, clActualValues: ClArray<int> * ClArray<'a> = sortFun processor clKeys clValues
+        let clActualValues: ClArray<'a> = sortFun processor clKeys clValues
 
-        let actualKeys = clActualKeys.ToHostAndFree processor
         let actualValues = clActualValues.ToHostAndFree processor
 
-        checkResult array actualKeys actualValues
+        checkResultByKeys array actualValues
 
-let createTest<'a when 'a: equality and 'a: struct> =
+let createTestByKeys<'a when 'a: equality and 'a: struct> =
     let sort =
-        Radix.run1DInplaceStandard context workGroupSize
+        Radix.runByKeysStandard context workGroupSize
 
-    makeTest<'a> sort
+    makeTestByKeys<'a> sort
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
-let testFixtures =
-    [ createTest<int>
-      createTest<uint>
+let testFixturesByKeys =
+    [ createTestByKeys<int>
+      createTestByKeys<uint>
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest<float>
+          createTestByKeys<float>
 
-      createTest<float32>
-      createTest<bool> ]
+      createTestByKeys<float32>
+      createTestByKeys<bool> ]
 
-let tests = testList "Radix sort" testFixtures
+let testsByKeys = testList "Radix sort by keys" testFixturesByKeys
+
+let makeTestKeysOnly sort (keys: uint []) =
+    if keys.Length > 0 then
+        let keys = Array.map int keys
+
+        let clKeys = keys.ToDevice context
+
+        let actual = (sort processor clKeys: ClArray<int>).ToHostAndFree processor
+
+        let expected = Array.sort keys
+
+        "Keys must be the same"
+        |> Expect.sequenceEqual expected actual
+
+let createTestKeysOnly<'a when 'a : equality and 'a : struct> =
+    let sort = Radix.runByKeysStandard context workGroupSize
+
+    makeTestByKeys<'a> sort
+    |> testPropertyWithConfig config $"test on {typeof<'a>}"
+
+let testFixturesKeysOnly =
+    [ createTestKeysOnly<int>
+      createTestKeysOnly<uint>
+
+      if Utils.isFloat64Available context.ClDevice then
+          createTestKeysOnly<float>
+
+      createTestKeysOnly<float32>
+      createTestKeysOnly<bool> ]
+
+let testsKeysOnly = testList "Radix sort keys only" testFixturesKeysOnly

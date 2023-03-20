@@ -30,7 +30,8 @@ let commonTests =
     let sortTests =
         testList
             "Sort"
-            [ Common.Sort.Radix.tests
+            [ Common.Sort.Radix.testsByKeys
+              Common.Sort.Radix.testsKeysOnly
               Common.Sort.Bitonic.tests ]
 
     testList

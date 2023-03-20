@@ -9,7 +9,10 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 type Indices = ClArray<int>
 
 module Radix =
+    // the number of bits considered per iteration
     let defaultBitCount = 4
+
+    let keyBitCount = 32
 
     let localPrefixSum =
         <@ fun (lid: int) (workGroupSize: int) (array: int []) ->
@@ -158,21 +161,23 @@ module Radix =
         let scatter = scatter clContext workGroupSize mask
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) ->
-            let firstKeys = copy processor DeviceOnly keys
-
-            let secondKeys =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
-
-            let workGroupCount =
-                clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
-
-            let mutable pair = (firstKeys, secondKeys)
-            let swap (x, y) = y, x
-
             if keys.Length <= 1 then
                 keys
             else
-                for i in 0 .. 15 do
+                let firstKeys = copy processor DeviceOnly keys
+
+                let secondKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
+
+                let workGroupCount =
+                    clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
+
+                let mutable pair = (firstKeys, secondKeys)
+                let swap (x, y) = y, x
+
+                let highBound = keyBitCount / bitCount - 1
+
+                for i in 0 .. highBound do
                     let shift = clContext.CreateClCell(bitCount * i)
 
                     let globalOffset, localOffset =
@@ -193,7 +198,7 @@ module Radix =
     let standardRunKeysOnly clContext workGroupSize =
         runKeysOnly clContext workGroupSize defaultBitCount
 
-    let scatter1D (clContext: ClContext) workGroupSize mask =
+    let scatterByKey (clContext: ClContext) workGroupSize mask =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (keys: Indices) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
@@ -243,7 +248,7 @@ module Radix =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let run1DInplace (clContext: ClContext) workGroupSize bitCount =
+    let runByKeys (clContext: ClContext) workGroupSize bitCount =
         let copy = ClArray.copy clContext workGroupSize
 
         let dataCopy = ClArray.copy clContext workGroupSize
@@ -255,28 +260,31 @@ module Radix =
         let prefixSum =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let scatter1D = scatter1D clContext workGroupSize mask
+        let scatterByKey = scatterByKey clContext workGroupSize mask
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) ->
-            let firstKeys = copy processor DeviceOnly keys
-
-            let secondKeys =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
-
-            let secondValues = dataCopy processor DeviceOnly values
-
-            let workGroupCount =
-                clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
-
-            let mutable keysPair = (firstKeys, secondKeys)
-            let mutable valuesPair = (values, secondValues)
-
-            let swap (x, y) = y, x
-
-            if keys.Length <= 1 then
-                keys, values
+            if values.Length <> keys.Length then failwith "Mismatch of key lengths and value. Lengths must be the same"
+            if values.Length <= 1 then
+                values
             else
-                for i in 0 .. 15 do
+                let firstKeys = copy processor DeviceOnly keys
+
+                let secondKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
+
+                let secondValues = dataCopy processor DeviceOnly values
+
+                let workGroupCount =
+                    clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
+
+                let mutable keysPair = (firstKeys, secondKeys)
+                let mutable valuesPair = (values, secondValues)
+
+                let swap (x, y) = y, x
+                // compute bound of iterations
+                let highBound = keyBitCount / bitCount - 1
+
+                for i in 0 .. highBound do
                     let shift = clContext.CreateClCell(bitCount * i)
 
                     let currentKeys = fst keysPair
@@ -290,7 +298,7 @@ module Radix =
 
                     (prefixSum processor globalOffset).Free processor
 
-                    scatter1D
+                    scatterByKey
                         processor
                         currentKeys
                         currentValues
@@ -307,7 +315,11 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
-                (fst keysPair), (fst valuesPair)
+                (fst keysPair).Free processor
+                (snd keysPair).Free processor
+                (snd valuesPair).Free processor
 
-    let run1DInplaceStandard clContext workGroupSize =
-        run1DInplace clContext workGroupSize defaultBitCount
+                (fst valuesPair)
+
+    let runByKeysStandard clContext workGroupSize =
+        runByKeys clContext workGroupSize defaultBitCount
