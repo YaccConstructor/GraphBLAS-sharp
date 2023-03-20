@@ -6,6 +6,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "Scatter.Tests"
 
@@ -44,7 +45,7 @@ let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
 
             scatter q clPositions clValues clResult
 
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clResult, Array.zeroCreate result.Length, ch))
+            clResult.ToHostAndFree q
 
         $"Arrays should be equal. Actual is \n%A{actual}, expected \n%A{expected}"
         |> Tests.Utils.compareArrays (=) actual expected

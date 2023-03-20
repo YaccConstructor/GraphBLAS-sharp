@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
 open FSharp.Quotations
 open Context
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger = Log.create "Sum.Test"
 
@@ -28,10 +29,9 @@ let makeTest plus zero sum (array: 'a []) =
 
         let actualSum =
             use clArray = context.CreateClArray array
-            use total = sum q clArray
+            use (total: ClCell<_>) = sum q clArray
 
-            let actualSum = [| zero |]
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(total, actualSum, ch)).[0]
+            total.ToHostAndFree q
 
         logger.debug (
             eventX "Actual is {actual}\n"

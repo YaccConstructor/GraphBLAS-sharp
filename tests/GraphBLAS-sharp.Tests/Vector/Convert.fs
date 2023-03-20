@@ -39,12 +39,8 @@ let makeTest
             let clVector = vector.ToDevice context
             let convertedVector = convertFun q HostInterop clVector
 
-            let res = convertedVector.ToHost q
-
             clVector.Dispose q
-            convertedVector.Dispose q
-
-            res
+            convertedVector.ToHostAndFree q
 
         logger.debug (
             eventX "Actual is {actual}"

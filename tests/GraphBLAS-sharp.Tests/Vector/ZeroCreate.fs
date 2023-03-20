@@ -44,9 +44,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
         let clVector =
             zeroCreate q HostInterop vectorSize case.Format
 
-        let hostVector = clVector.ToHost q
-
-        clVector.Dispose q
+        let hostVector = clVector.ToHostAndFree q
 
         checkResult vectorSize hostVector
 

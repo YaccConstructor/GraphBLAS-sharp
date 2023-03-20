@@ -75,12 +75,11 @@ let correctnessGenericTest
             firstVector.Dispose q
             secondVector.Dispose q
 
-            let denseActual = toDense q HostInterop res
+            let clActual = toDense q HostInterop res
 
-            let actual = denseActual.ToHost q
+            let actual = clActual.ToHostAndFree q
 
             res.Dispose q
-            denseActual.Dispose q
 
             checkResult isEqual zero op actual leftArray rightArray
         with

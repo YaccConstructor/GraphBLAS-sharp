@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
@@ -22,10 +23,7 @@ let makeTest<'a, 'b> testContext choose mapFun isEqual (array: 'a []) =
 
         let (clResult: ClArray<'b>) = choose q HostInterop clArray
 
-        let hostResult = Array.zeroCreate clResult.Length
-
-        q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clResult, hostResult, ch))
-        |> ignore
+        let hostResult = clResult.ToHostAndFree q
 
         let expectedResult = Array.choose mapFun array
 

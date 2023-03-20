@@ -80,12 +80,11 @@ let makeTest<'a when 'a: struct and 'a: equality>
 
             let cooClActual = toDense q HostInterop clActual
 
-            let actual = cooClActual.ToHost q
+            let actual = cooClActual.ToHostAndFree q
 
             clLeftVector.Dispose q
             clMaskVector.Dispose q
             clActual.Dispose q
-            cooClActual.Dispose q
 
             checkResult isZero isComplemented actual vector mask value
         with

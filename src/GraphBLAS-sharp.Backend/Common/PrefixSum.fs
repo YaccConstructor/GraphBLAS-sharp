@@ -255,7 +255,8 @@ module PrefixSum =
 
     let standardExcludeInplace (clContext: ClContext) workGroupSize =
 
-        let scan = runExcludeInplace <@ (+) @> clContext workGroupSize
+        let scan =
+            runExcludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 
@@ -263,7 +264,8 @@ module PrefixSum =
 
     let standardIncludeInplace (clContext: ClContext) workGroupSize =
 
-        let scan = runIncludeInplace <@ (+) @> clContext workGroupSize
+        let scan =
+            runIncludeInplace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 

@@ -159,7 +159,8 @@ module DenseVector =
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
             let notEmpty =
-                (containsNonZero processor vector).ToHostAndFree processor
+                (containsNonZero processor vector)
+                    .ToHostAndFree processor
 
             if notEmpty then
                 let values = choose processor DeviceOnly vector

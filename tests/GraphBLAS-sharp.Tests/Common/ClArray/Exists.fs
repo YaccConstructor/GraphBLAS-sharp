@@ -8,6 +8,7 @@ open Context
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger =
     Log.create "ClArray.containsNonZero.Tests"
@@ -28,17 +29,7 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (a
 
         let result =
             match vector.ToDevice context with
-            | ClVector.Dense clArray ->
-                let resultCell = exists q clArray
-                let result = Array.zeroCreate 1
-
-                let res =
-                    q.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultCell, result, ch))
-
-                q.Post(Msg.CreateFreeMsg<_>(resultCell))
-
-                res.[0]
-
+            | ClVector.Dense clArray -> (exists q clArray: ClCell<_>).ToHostAndFree q
             | _ -> failwith "Unsupported vector format"
 
         $"The results should be the same, vector : {vector}"

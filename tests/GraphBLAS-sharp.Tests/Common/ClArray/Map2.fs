@@ -4,9 +4,9 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Quotes
 open Expecto
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let context = defaultContext.Queue
 
@@ -28,10 +28,7 @@ let makeTest<'a when 'a: equality> testContext clMapFun hostMapFun isEqual (left
         let (actualDevice: ClArray<'a>) =
             clMapFun q HostInterop leftClArray rightClArray
 
-        let actualHost = Array.zeroCreate actualDevice.Length
-
-        q.PostAndReply(fun ch -> Msg.CreateToHostMsg(actualDevice, actualHost, ch))
-        |> ignore
+        let actualHost = actualDevice.ToHostAndFree q
 
         let expected =
             Array.map2 hostMapFun leftArray rightArray

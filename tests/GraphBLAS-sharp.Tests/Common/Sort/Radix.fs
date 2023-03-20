@@ -6,26 +6,27 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
 
-let config = { Utils.defaultConfig with startSize = 1000000 }
+let config =
+    { Utils.defaultConfig with
+          startSize = 1000000 }
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
-let processor =  Context.defaultContext.Queue
+let processor = Context.defaultContext.Queue
 
 let context = Context.defaultContext.ClContext
 
 let checkResult (inputArray: (int * 'a) []) (actualKeys: int []) (actualValues: 'a []) =
     let expectedKeys, expectedValues =
-        Array.sortBy fst inputArray
-        |> Array.unzip
+        Array.sortBy fst inputArray |> Array.unzip
 
     "Keys must be the same"
-    |>Expect.sequenceEqual expectedKeys actualKeys
+    |> Expect.sequenceEqual expectedKeys actualKeys
 
     "Values must be the same"
-    |>Expect.sequenceEqual expectedValues actualValues
+    |> Expect.sequenceEqual expectedValues actualValues
 
-let makeTest<'a when 'a : equality> sortFun (array: (int * 'a) []) =
+let makeTest<'a when 'a: equality> sortFun (array: (int * 'a) []) =
     // since Array.sort not stable
     let array = Array.distinctBy fst array
 
@@ -44,8 +45,9 @@ let makeTest<'a when 'a : equality> sortFun (array: (int * 'a) []) =
 
         checkResult array actualKeys actualValues
 
-let createTest<'a when 'a : equality and 'a : struct> =
-    let sort = Radix.run1DInplaceStandard context workGroupSize
+let createTest<'a when 'a: equality and 'a: struct> =
+    let sort =
+        Radix.run1DInplaceStandard context workGroupSize
 
     makeTest<'a> sort
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
@@ -55,9 +57,9 @@ let testFixtures =
       createTest<uint>
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float>
+          createTest<float>
 
       createTest<float32>
       createTest<bool> ]
 
-
+let tests = testList "Radix sort" testFixtures

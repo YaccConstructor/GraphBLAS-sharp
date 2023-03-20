@@ -52,10 +52,9 @@ let correctnessGenericTest<'a when 'a: struct>
 
         let clVector = expected.ToDevice context
         let clVectorCopy = copy q HostInterop clVector
-        let actual = clVectorCopy.ToHost q
+        let actual = clVectorCopy.ToHostAndFree q
 
         clVector.Dispose q
-        clVectorCopy.Dispose q
 
         checkResult isEqual actual expected
 

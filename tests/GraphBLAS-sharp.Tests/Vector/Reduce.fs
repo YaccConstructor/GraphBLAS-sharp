@@ -9,6 +9,7 @@ open FSharp.Quotations
 open TestCases
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger = Log.create "Vector.reduce.Tests"
 
@@ -42,16 +43,9 @@ let correctnessGenericTest
         let clVector = vector.ToDevice context
 
         let resultCell = reduce opQ q clVector
+        clVector.Dispose q
 
-        let result = Array.zeroCreate 1
-
-        let result =
-            let res =
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultCell, result, ch))
-
-            q.Post(Msg.CreateFreeMsg<_>(resultCell))
-
-            res.[0]
+        let result = resultCell.ToHostAndFree q
 
         checkResult zero op result array
 

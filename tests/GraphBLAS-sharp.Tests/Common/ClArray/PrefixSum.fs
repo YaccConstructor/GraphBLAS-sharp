@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 
@@ -31,9 +32,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
             use clArray = context.CreateClArray array
             let (total: ClCell<_>) = scan q clArray zero
 
-            let actual = Array.zeroCreate<'a> clArray.Length
-            let actualSum = total.ToHostAndFree(q)
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
+            clArray.ToHostAndFree(q), total.ToHostAndFree(q)
 
         logger.debug (
             eventX "Actual is {actual}\n"

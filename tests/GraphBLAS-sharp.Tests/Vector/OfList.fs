@@ -62,11 +62,9 @@ let correctnessGenericTest<'a when 'a: struct>
             ofList q HostInterop case.Format actualSize elements
 
         let clCooActual = toCoo q HostInterop clActual
-
-        let actual = clCooActual.ToHost q
-
         clActual.Dispose q
-        clCooActual.Dispose q
+
+        let actual = clCooActual.ToHostAndFree q
 
         checkResult isEqual indices values actual actualSize
 
