@@ -9,6 +9,9 @@ let matrixTests =
           Matrix.Map2.addAtLeastOneTests
           Matrix.Map2.mulAtLeastOneTests
           Matrix.Map2.addAtLeastOneToCOOTests
+          Matrix.Map.notTests
+          Matrix.Map.addTests
+          Matrix.Map.mulTests
           Matrix.Mxm.tests
           Matrix.Transpose.tests ]
     |> testSequenced

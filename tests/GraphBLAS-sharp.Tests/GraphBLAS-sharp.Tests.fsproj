@@ -45,6 +45,7 @@
         <Compile Include="Matrix/Map2.fs" />
         <Compile Include="Matrix/Mxm.fs" />
         <Compile Include="Matrix/Transpose.fs" />
+        <Compile Include="Matrix/Map.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

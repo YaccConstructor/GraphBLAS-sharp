@@ -8,6 +8,8 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module Matrix =
+    let map = Map.run
+
     let map2 = Map2.run
 
     ///<param name="clContext">.</param>

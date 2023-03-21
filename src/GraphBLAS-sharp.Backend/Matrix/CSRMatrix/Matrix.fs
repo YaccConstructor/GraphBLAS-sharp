@@ -90,6 +90,8 @@ module Matrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
+    let map = CSR.Map.run
+
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
