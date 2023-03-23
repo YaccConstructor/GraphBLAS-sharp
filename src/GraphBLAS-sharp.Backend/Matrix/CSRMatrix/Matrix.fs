@@ -92,31 +92,7 @@ module Matrix =
 
     let map = CSR.Map.run
 
-    let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<'a option -> 'b option -> 'c option>)
-        workGroupSize
-        =
-
-        let firstToCOO = toCOO clContext workGroupSize
-
-        let secondToCOO = toCOO clContext workGroupSize
-
-        let COOMap2 =
-            COO.Matrix.map2 clContext opAdd workGroupSize
-
-        let toCSR =
-            COO.Matrix.toCSRInplace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-            let leftCOOMatrix =
-                firstToCOO processor DeviceOnly leftMatrix
-
-            let rightCOOMatrix =
-                secondToCOO processor DeviceOnly rightMatrix
-
-            COOMap2 processor DeviceOnly leftCOOMatrix rightCOOMatrix
-            |> toCSR processor allocationMode
+    let map2 = Map2.run
 
     let map2AtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)

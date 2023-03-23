@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Map =
-    let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
+    let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize op =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -38,8 +38,7 @@ module internal Map =
                         resultBitmap.[gid] <- 1
                     | None -> resultBitmap.[gid] <- 0 @>
 
-        let kernel =
-            clContext.Compile <| preparePositions opAdd
+        let kernel = clContext.Compile <| preparePositions op
 
         fun (processor: MailboxProcessor<_>) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) ->
 

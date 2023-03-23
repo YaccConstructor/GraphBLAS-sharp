@@ -3,13 +3,13 @@
 open GraphBLAS.FSharp.Backend.Objects
 
 module ArithmeticOperations =
-    let inline mkOpWithConst zero op constant =
+    let inline mkUnaryOp zero unaryOp =
         <@ fun x ->
             let mutable res = zero
 
             match x with
-            | Some v -> res <- (op v constant)
-            | None -> res <- constant
+            | Some v -> res <- (%unaryOp) v
+            | None -> res <- (%unaryOp) zero
 
             if res = zero then None else Some res @>
 

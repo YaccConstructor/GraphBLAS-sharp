@@ -26,7 +26,7 @@
     <Compile Include="Quotes/PreparePositions.fs" />
     <Compile Include="Quotes/Predicates.fs" />
     <Compile Include="Quotes/Map.fs" />
-    <Compile Include="Quotes\BinSearch.fs" />
+    <Compile Include="Quotes/BinSearch.fs" />
     <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/Sum.fs" />
@@ -40,6 +40,7 @@
     <Compile Include="Matrix/COOMatrix/Map2AtLeastOne.fs" />
     <Compile Include="Matrix/COOMatrix/Map.fs" />
     <Compile Include="Matrix/COOMatrix/Matrix.fs" />
+    <Compile Include="Matrix/CSRMatrix/Map2.fs" />
     <Compile Include="Matrix/CSRMatrix/Map2AtLeastOne.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/Map.fs" />

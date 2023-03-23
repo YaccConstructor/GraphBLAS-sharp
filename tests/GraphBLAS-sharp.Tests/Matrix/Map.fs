@@ -102,8 +102,7 @@ let createTestMap case (zero: 'a) op isEqual opQ map =
     |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
 
 let testFixturesMapNot case =
-    [ let context = case.TestContext.ClContext
-      let q = case.TestContext.Queue
+    [ let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
       createTestMap case false not (=) ArithmeticOperations.notQ Matrix.map ]
@@ -117,13 +116,13 @@ let testFixturesMapAdd case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let addFloat64Q =
-          ArithmeticOperations.mkOpWithConst 0.0 (+) 10.0
+          ArithmeticOperations.mkUnaryOp 0.0 <@ fun x -> x + 10.0 @>
 
       let addFloat32Q =
-          ArithmeticOperations.mkOpWithConst 0.0f (+) 10.0f
+          ArithmeticOperations.mkUnaryOp 0.0f <@ fun x -> x + 10.0f @>
 
       let addByte =
-          ArithmeticOperations.mkOpWithConst 0uy (+) 10uy
+          ArithmeticOperations.mkUnaryOp 0uy <@ fun x -> x + 10uy @>
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual addFloat64Q Matrix.map
@@ -140,13 +139,13 @@ let testFixturesMapMul case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       let mulFloat64Q =
-          ArithmeticOperations.mkOpWithConst 0.0 (*) 10.0
+          ArithmeticOperations.mkUnaryOp 0.0 <@ fun x -> x * 10.0 @>
 
       let mulFloat32Q =
-          ArithmeticOperations.mkOpWithConst 0.0f (*) 10.0f
+          ArithmeticOperations.mkUnaryOp 0.0f <@ fun x -> x * 10.0f @>
 
       let mulByte =
-          ArithmeticOperations.mkOpWithConst 0uy (*) 10uy
+          ArithmeticOperations.mkUnaryOp 0uy <@ fun x -> x * 10uy @>
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual mulFloat64Q Matrix.map

@@ -3,6 +3,15 @@
 open Brahma.FSharp
 
 module BinSearch =
+    /// <summary>
+    /// Searches a section of the array of indices, bounded by the given left and right edges, for an index, using a binary search algorithm.
+    /// In case searched section contains source index, the value at the same position in the array of values is returned.
+    /// </summary>
+    /// <remarks>
+    /// Searched section of index array should be sorted in ascending order.
+    /// The index array should have the same length as the array of values.
+    /// left edge and right edge should be less than the length of the index array.
+    /// </remarks>
     let searchInRange<'a> =
         <@ fun leftEdge rightEdge sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
 
@@ -27,6 +36,13 @@ module BinSearch =
 
             result @>
 
+    /// <summary>
+    /// Searches matrix in COO format for a value, using a binary search algorithm.
+    /// In case there is a value at the given position, it is returned.
+    /// </summary>
+    /// <remarks>
+    /// Position is uint64 and it should be written in such format: first 32 bits is row, second 32 bits is column.
+    /// </remarks>
     let searchCOO<'a> =
         <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
