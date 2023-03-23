@@ -5,6 +5,7 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
@@ -105,13 +106,7 @@ let testFixturesMapNot case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let notQ =
-          <@ fun x ->
-              match x with
-              | Some true -> None
-              | _ -> Some true @>
-
-      createTestMap case false not (=) notQ Matrix.map ]
+      createTestMap case false not (=) ArithmeticOperations.notQ Matrix.map ]
 
 let notTests =
     operationGPUTests "Backend.Matrix.map not tests" testFixturesMapNot
@@ -121,35 +116,9 @@ let testFixturesMapAdd case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let addFloat64Q =
-          <@ fun x ->
-              let mutable res = 0.0
-
-              match x with
-              | Some v -> res <- (v + 10.0)
-              | None -> res <- 10.0
-
-              if res = 0.0 then None else Some res @>
-
-      let addFloat32Q =
-          <@ fun x ->
-              let mutable res = 0.0f
-
-              match x with
-              | Some v -> res <- (v + 10.0f)
-              | None -> res <- 10.0f
-
-              if res = 0.0f then None else Some res @>
-
-      let addByte =
-          <@ fun x ->
-              let mutable res = 0uy
-
-              match x with
-              | Some v -> res <- (v + 10uy)
-              | None -> res <- 10uy
-
-              if res = 0uy then None else Some res @>
+      let addFloat64Q = ArithmeticOperations.mkOpWithConst 0.0 (+) 10.0
+      let addFloat32Q = ArithmeticOperations.mkOpWithConst 0.0f (+) 10.0f
+      let addByte = ArithmeticOperations.mkOpWithConst 0uy (+) 10uy
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual addFloat64Q Matrix.map
@@ -165,36 +134,9 @@ let testFixturesMapMul case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let mulFloat64Q =
-          <@ fun x ->
-              let mutable res = 0.0
-
-              match x with
-              | Some v -> res <- (v * 10.0)
-              | _ -> ()
-
-              if res = 0.0 then None else Some res @>
-
-      let mulFloat32Q =
-          <@ fun x ->
-              let mutable res = 0.0f
-
-              match x with
-              | Some v -> res <- (v * 10.0f)
-              | _ -> ()
-
-              if res = 0.0f then None else Some res @>
-
-
-      let mulByte =
-          <@ fun x ->
-              let mutable res = 0uy
-
-              match x with
-              | Some v -> res <- (v * 10uy)
-              | _ -> ()
-
-              if res = 0uy then None else Some res @>
+      let mulFloat64Q = ArithmeticOperations.mkOpWithConst 0.0 (*) 10.0
+      let mulFloat32Q = ArithmeticOperations.mkOpWithConst 0.0f (*) 10.0f
+      let mulByte = ArithmeticOperations.mkOpWithConst 0uy (*) 10uy
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual mulFloat64Q Matrix.map

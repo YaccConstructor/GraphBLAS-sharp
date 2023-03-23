@@ -5,36 +5,11 @@ open GraphBLAS.FSharp.Backend.Matrix
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Map2 =
-    let binSearch<'a> =
-        <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
-
-            let mutable leftEdge = 0
-            let mutable rightEdge = lenght - 1
-
-            let mutable result = None
-
-            while leftEdge <= rightEdge do
-                let middleIdx = (leftEdge + rightEdge) / 2
-
-                let currentIndex: uint64 =
-                    ((uint64 rowIndices.[middleIdx]) <<< 32)
-                    ||| (uint64 columnIndices.[middleIdx])
-
-                if sourceIndex = currentIndex then
-                    result <- Some values.[middleIdx]
-
-                    rightEdge <- -1 // TODO() break
-                elif sourceIndex < currentIndex then
-                    rightEdge <- middleIdx - 1
-                else
-                    leftEdge <- middleIdx + 1
-
-            result @>
-
     let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
@@ -51,10 +26,10 @@ module internal Map2 =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let leftValue =
-                        (%binSearch) leftValuesLength index leftRows leftColumns leftValues
+                        (%BinSearch.searchCOO) leftValuesLength index leftRows leftColumns leftValues
 
                     let rightValue =
-                        (%binSearch) rightValuesLength index rightRows rightColumn rightValues
+                        (%BinSearch.searchCOO) rightValuesLength index rightRows rightColumn rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->

@@ -2,6 +2,7 @@
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
@@ -9,11 +10,11 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 
-module Map =
+module internal Map =
     let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
-            <@ fun (ndRange: Range1D) rowCount columnCount valuesLength (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rowCount columnCount valuesLength (values: ClArray<'a>) (rows: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -26,7 +27,7 @@ module Map =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let value =
-                        (%Map2.binSearch) valuesLength index rowPointers columns values
+                        (%BinSearch.searchCOO) valuesLength index rows columns values
 
                     match (%op) value with
                     | Some resultValue ->
@@ -36,7 +37,6 @@ module Map =
 
                         resultBitmap.[gid] <- 1
                     | None -> resultBitmap.[gid] <- 0 @>
-
 
         let kernel =
             clContext.Compile <| preparePositions opAdd
@@ -82,7 +82,6 @@ module Map =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             resultBitmap, resultValues, resultRows, resultColumns
-
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
         (clContext: ClContext)

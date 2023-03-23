@@ -3,37 +3,14 @@
 open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-module Map =
-    let binSearch<'a> =
-        <@ fun startIndex nnzInRow sourceColumn (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
-
-            let mutable leftEdge = startIndex
-            let mutable rightEdge = startIndex + nnzInRow - 1
-
-            let mutable result = None
-
-            while leftEdge <= rightEdge do
-                let middleIdx = (leftEdge + rightEdge) / 2
-
-                let currentColumn = columnIndices.[middleIdx]
-
-                if sourceColumn = currentColumn then
-                    result <- Some values.[middleIdx]
-
-                    rightEdge <- -1 // TODO() break
-                elif sourceColumn < currentColumn then
-                    rightEdge <- middleIdx - 1
-                else
-                    leftEdge <- middleIdx + 1
-
-            result @>
-
+module internal Map =
     let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
@@ -46,12 +23,11 @@ module Map =
                     let columnIndex = gid % columnCount
                     let rowIndex = gid / columnCount
 
-                    let nnzInRow =
-                        rowPointers.[rowIndex + 1]
-                        - rowPointers.[rowIndex]
+                    let startIndex = rowPointers.[rowIndex]
+                    let lastIndex = rowPointers.[rowIndex + 1] - 1
 
                     let value =
-                        (%binSearch) rowPointers.[rowIndex] nnzInRow columnIndex columns values
+                        (%BinSearch.searchInRange) startIndex lastIndex columnIndex columns values
 
                     match (%op) value with
                     | Some resultValue ->
@@ -106,7 +82,6 @@ module Map =
 
             resultBitmap, resultValues, resultRows, resultColumns
 
-
     let runToCOO<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option>)
@@ -145,11 +120,11 @@ module Map =
         workGroupSize
         =
 
-        let elementwiseToCOO = runToCOO clContext opAdd workGroupSize
+        let mapToCOO = runToCOO clContext opAdd workGroupSize
 
         let toCSRInplace =
             Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
-            elementwiseToCOO queue allocationMode matrix
+            mapToCOO queue allocationMode matrix
             |> toCSRInplace queue allocationMode
