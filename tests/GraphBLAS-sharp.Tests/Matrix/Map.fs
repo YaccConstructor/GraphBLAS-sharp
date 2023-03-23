@@ -116,9 +116,14 @@ let testFixturesMapAdd case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let addFloat64Q = ArithmeticOperations.mkOpWithConst 0.0 (+) 10.0
-      let addFloat32Q = ArithmeticOperations.mkOpWithConst 0.0f (+) 10.0f
-      let addByte = ArithmeticOperations.mkOpWithConst 0uy (+) 10uy
+      let addFloat64Q =
+          ArithmeticOperations.mkOpWithConst 0.0 (+) 10.0
+
+      let addFloat32Q =
+          ArithmeticOperations.mkOpWithConst 0.0f (+) 10.0f
+
+      let addByte =
+          ArithmeticOperations.mkOpWithConst 0uy (+) 10uy
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual addFloat64Q Matrix.map
@@ -134,9 +139,14 @@ let testFixturesMapMul case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let mulFloat64Q = ArithmeticOperations.mkOpWithConst 0.0 (*) 10.0
-      let mulFloat32Q = ArithmeticOperations.mkOpWithConst 0.0f (*) 10.0f
-      let mulByte = ArithmeticOperations.mkOpWithConst 0uy (*) 10uy
+      let mulFloat64Q =
+          ArithmeticOperations.mkOpWithConst 0.0 (*) 10.0
+
+      let mulFloat32Q =
+          ArithmeticOperations.mkOpWithConst 0.0f (*) 10.0f
+
+      let mulByte =
+          ArithmeticOperations.mkOpWithConst 0uy (*) 10uy
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual mulFloat64Q Matrix.map

@@ -52,4 +52,3 @@ module BinSearch =
                     leftEdge <- middleIdx + 1
 
             result @>
-

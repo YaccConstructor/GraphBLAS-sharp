@@ -5,13 +5,13 @@ open GraphBLAS.FSharp.Backend.Objects
 module ArithmeticOperations =
     let inline mkOpWithConst zero op constant =
         <@ fun x ->
-          let mutable res = zero
+            let mutable res = zero
 
-          match x with
-          | Some v -> res <- (op v constant)
-          | None -> res <- constant
+            match x with
+            | Some v -> res <- (op v constant)
+            | None -> res <- constant
 
-          if res = zero then None else Some res @>
+            if res = zero then None else Some res @>
 
     let inline mkNumericSum zero =
         <@ fun (x: 't option) (y: 't option) ->
