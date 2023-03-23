@@ -6,31 +6,9 @@ open Microsoft.FSharp.Control
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Map2 =
-    let binSearch<'a> =
-        <@ fun lenght sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
-
-            let mutable leftEdge = 0
-            let mutable rightEdge = lenght - 1
-
-            let mutable result = None
-
-            while leftEdge <= rightEdge do
-                let middleIdx = (leftEdge + rightEdge) / 2
-                let currentIndex = indices.[middleIdx]
-
-                if sourceIndex = currentIndex then
-                    result <- Some values.[middleIdx]
-
-                    rightEdge <- -1 // TODO() break
-                elif sourceIndex < currentIndex then
-                    rightEdge <- middleIdx - 1
-                else
-                    leftEdge <- middleIdx + 1
-
-            result @>
-
     let private preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
@@ -41,10 +19,10 @@ module internal Map2 =
                 if gid < length then
 
                     let (leftValue: 'a option) =
-                        (%binSearch) leftValuesLength gid leftIndices leftValues
+                        (%Search.Bin.byKey) leftValuesLength gid leftIndices leftValues
 
                     let (rightValue: 'b option) =
-                        (%binSearch) rightValuesLength gid rightIndices rightValues
+                        (%Search.Bin.byKey) rightValuesLength gid rightIndices rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->
@@ -141,10 +119,10 @@ module internal Map2 =
                 if gid < length then
 
                     let (leftValue: 'a option) =
-                        (%binSearch) leftValuesLength gid leftIndices leftValues
+                        (%Search.Bin.byKey) leftValuesLength gid leftIndices leftValues
 
                     let (rightValue: 'b option) =
-                        (%binSearch) rightValuesLength gid rightIndices rightValues
+                        (%Search.Bin.byKey) rightValuesLength gid rightIndices rightValues
 
                     match (%op) leftValue rightValue value with
                     | Some value ->

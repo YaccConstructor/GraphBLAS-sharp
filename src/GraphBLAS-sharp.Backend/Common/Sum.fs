@@ -5,6 +5,8 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Reduce =
     let private runGeneral (clContext: ClContext) workGroupSize scan scanToCell =
@@ -235,3 +237,166 @@ module Reduce =
             runGeneral clContext workGroupSize scan scanToCell
 
         fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) -> run processor array
+
+    module ByKey =
+        let sequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid = 0  then
+                         let mutable currentKey = keys.[gid]
+                         let mutable segmentResult = values.[gid]
+                         let mutable segmentCount = 0
+
+                         for i in 1 .. length - 1 do
+                             if currentKey = keys.[i] then
+                                 segmentResult <- (%reduceOp) segmentResult values.[i]
+                             else
+                                 reducedValues.[segmentCount] <- segmentResult
+                                 reducedKeys.[segmentCount] <- currentKey
+
+                                 segmentCount <- segmentCount + 1
+                                 currentKey <- keys.[i]
+                                 segmentResult <- values.[i]
+
+                         reducedKeys.[segmentCount] <- currentKey
+                         reducedValues.[segmentCount] <- segmentResult @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (keys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys values reducedValues reducedKeys))
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+        let segmentSequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) uniqueKeyCount (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeyCount then
+                        let startPosition = offsets.[gid]
+                        let sourceKey = keys.[startPosition]
+
+                        let mutable nextPosition = startPosition + 1 // TODO()
+                        let mutable nextKey = keys.[nextPosition]
+                        let mutable sum = values.[startPosition]
+
+                        while nextKey = sourceKey do
+                            sum <- (%reduceOp) sum values.[nextPosition]
+
+                            nextPosition <- nextPosition + 1
+                            nextKey <- keys.[nextPosition]
+
+                        reducedValues.[gid] <- sum
+                        reducedKeys.[gid] <- sourceKey @>
+
+            let kernel = clContext.Compile kernel
+
+            let getUniqueBitmap = ClArray.getUniqueBitmap clContext workGroupSize
+
+            let prefixSum = PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
+
+            let removeDuplicates = ClArray.removeDuplications clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let bitmap = getUniqueBitmap processor DeviceOnly keys
+
+                let resultLength = (prefixSum processor bitmap 0).ToHostAndFree processor
+
+                let offsets = removeDuplicates processor bitmap
+
+                bitmap.Free processor
+
+                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength offsets keys values reducedValues reducedKeys))
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+        let oneWorkGroupSegments (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
+
+                    let lid = ndRange.GlobalID0
+
+                    // load values to local memory (may be without it)
+                    let localValues = localArray<'a> length
+                    if lid < length then localValues.[lid] <- values.[lid]
+
+                    // load keys to local memory (mb without it)
+                    let localKeys = localArray<int> length
+                    if lid < length then localKeys.[lid] <- keys.[lid]
+
+                    // get unique keys bitmap
+                    let localBitmap = localArray<int> length
+                    (%PreparePositions.getUniqueBitmapLocal<int>) localKeys length lid localBitmap
+
+                    // get positions from bitmap by prefix sum
+                    // ??? get bitmap by prefix sum in another kernel ???
+                    (%SubSum.localIntPrefixSum) lid workGroupSize localBitmap
+                    let localPositions = localBitmap
+
+                    let uniqueKeysCount = localPositions.[length - 1]
+
+                    if lid < uniqueKeysCount then
+                        let itemKeyId = lid + 1
+                        // we can count start position by itemKeyId
+                        // but loose coalesced memory read pattern
+
+                        let startKeyIndex =
+                            (%Search.Bin.lowerPosition) length itemKeyId localPositions
+
+                        match startKeyIndex with
+                        | Some startPosition ->
+                            let sourcePosition = localPositions.[startPosition]
+                            let mutable currentSum = localValues.[startPosition]
+                            let mutable currentIndex = startPosition + 1
+
+                            while currentIndex < length
+                                  && localPositions.[currentIndex]  = sourcePosition do
+
+                                currentSum <- (%reduceOp) currentSum localValues.[currentIndex]
+                                currentIndex <- currentIndex + 1
+
+                            reducedKeys.[lid] <- localKeys.[startPosition]
+                            reducedValues.[lid] <- currentSum
+                        | None -> () @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (keys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys values reducedValues reducedKeys))
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))

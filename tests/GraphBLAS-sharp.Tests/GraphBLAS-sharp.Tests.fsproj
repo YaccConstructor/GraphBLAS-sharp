@@ -18,8 +18,6 @@
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Common/BitonicSort.fs" />
         <Compile Include="Common/Scatter.fs" />
-        <Compile Include="Common/Sum.fs" />
-        <Compile Include="Common/Reduce.fs" />
         <Compile Include="Common/ClArray/Choose.fs" />
         <Compile Include="Common/ClArray/Exists.fs" />
         <Compile Include="Common/ClArray/Map.fs" />
@@ -28,6 +26,9 @@
         <Compile Include="Common/ClArray/Copy.fs" />
         <Compile Include="Common/ClArray/Replicate.fs" />
         <Compile Include="Common/ClArray/PrefixSum.fs" />
+        <Compile Include="Common\Reduce\Sum.fs" />
+        <Compile Include="Common\Reduce\Reduce.fs" />
+        <Compile Include="Common\Reduce\ReduceByKey.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
