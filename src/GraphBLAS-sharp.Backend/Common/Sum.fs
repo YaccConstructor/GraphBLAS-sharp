@@ -316,9 +316,8 @@ module Reduce =
 
                 reducedKeys, reducedValues
 
-
         /// <summary>
-        /// Reduces values by key. Each segment is reduced by one working item.
+        /// Reduces values by key. Each segment is reduced by one work item.
         /// </summary>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Work group size.</param>
@@ -384,7 +383,7 @@ module Reduce =
                 reducedKeys, reducedValues
 
         /// <summary>
-        /// Reduces values by key. One working group participates in the reduction.
+        /// Reduces values by key. One work group participates in the reduction.
         /// </summary>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Work group size.</param>
