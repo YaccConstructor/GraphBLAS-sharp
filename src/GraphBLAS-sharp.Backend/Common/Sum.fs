@@ -247,8 +247,8 @@ module Reduce =
                     let gid = ndRange.GlobalID0
 
                     if gid = 0  then
-                         let mutable currentKey = keys.[gid]
-                         let mutable segmentResult = values.[gid]
+                         let mutable currentKey = keys.[0]
+                         let mutable segmentResult = values.[0]
                          let mutable segmentCount = 0
 
                          for i in 1 .. length - 1 do
@@ -277,51 +277,39 @@ module Reduce =
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys values reducedValues reducedKeys))
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys))
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                reducedKeys, reducedValues
 
         let segmentSequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
 
             let kernel =
-                <@ fun (ndRange: Range1D) uniqueKeyCount (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
+                <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
 
                     let gid = ndRange.GlobalID0
 
                     if gid < uniqueKeyCount then
                         let startPosition = offsets.[gid]
-                        let sourceKey = keys.[startPosition]
 
-                        let mutable nextPosition = startPosition + 1 // TODO()
-                        let mutable nextKey = keys.[nextPosition]
+                        let sourceKey = keys.[startPosition]
                         let mutable sum = values.[startPosition]
 
-                        while nextKey = sourceKey do
-                            sum <- (%reduceOp) sum values.[nextPosition]
+                        let mutable currentPosition = startPosition + 1
 
-                            nextPosition <- nextPosition + 1
-                            nextKey <- keys.[nextPosition]
+                        while currentPosition < keysLength
+                              && sourceKey = keys.[currentPosition] do
+
+                            sum <- (%reduceOp) sum values.[currentPosition]
+                            currentPosition <- currentPosition + 1
 
                         reducedValues.[gid] <- sum
                         reducedKeys.[gid] <- sourceKey @>
 
             let kernel = clContext.Compile kernel
 
-            let getUniqueBitmap = ClArray.getUniqueBitmap clContext workGroupSize
-
-            let prefixSum = PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
-
-            let removeDuplicates = ClArray.removeDuplications clContext workGroupSize
-
-            fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
-
-                let bitmap = getUniqueBitmap processor DeviceOnly keys
-
-                let resultLength = (prefixSum processor bitmap 0).ToHostAndFree processor
-
-                let offsets = removeDuplicates processor bitmap
-
-                bitmap.Free processor
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) ->
 
                 let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
@@ -331,9 +319,11 @@ module Reduce =
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength offsets keys values reducedValues reducedKeys))
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys.Length offsets keys values reducedValues reducedKeys))
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                reducedKeys, reducedValues
 
         let oneWorkGroupSegments (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
 
@@ -343,40 +333,39 @@ module Reduce =
                     let lid = ndRange.GlobalID0
 
                     // load values to local memory (may be without it)
-                    let localValues = localArray<'a> length
+                    let localValues = localArray<'a> workGroupSize
                     if lid < length then localValues.[lid] <- values.[lid]
 
                     // load keys to local memory (mb without it)
-                    let localKeys = localArray<int> length
+                    let localKeys = localArray<int> workGroupSize
                     if lid < length then localKeys.[lid] <- keys.[lid]
 
                     // get unique keys bitmap
-                    let localBitmap = localArray<int> length
-                    (%PreparePositions.getUniqueBitmapLocal<int>) localKeys length lid localBitmap
+                    let localBitmap = localArray<int> workGroupSize
+                    localBitmap.[lid] <- 0
+                    (%PreparePositions.getUniqueBitmapLocal<int>) localKeys workGroupSize lid localBitmap
 
                     // get positions from bitmap by prefix sum
                     // ??? get bitmap by prefix sum in another kernel ???
+                    // ??? we can restrict prefix sum for 0 .. length ???
                     (%SubSum.localIntPrefixSum) lid workGroupSize localBitmap
-                    let localPositions = localBitmap
 
-                    let uniqueKeysCount = localPositions.[length - 1]
+                    let uniqueKeysCount = localBitmap.[length - 1]
 
                     if lid < uniqueKeysCount then
                         let itemKeyId = lid + 1
-                        // we can count start position by itemKeyId
-                        // but loose coalesced memory read pattern
 
                         let startKeyIndex =
-                            (%Search.Bin.lowerPosition) length itemKeyId localPositions
+                            (%Search.Bin.lowerPosition) length itemKeyId localBitmap
 
                         match startKeyIndex with
                         | Some startPosition ->
-                            let sourcePosition = localPositions.[startPosition]
+                            let sourceKeyPosition = localBitmap.[startPosition]
                             let mutable currentSum = localValues.[startPosition]
                             let mutable currentIndex = startPosition + 1
 
                             while currentIndex < length
-                                  && localPositions.[currentIndex]  = sourcePosition do
+                                  && localBitmap.[currentIndex] = sourceKeyPosition do
 
                                 currentSum <- (%reduceOp) currentSum localValues.[currentIndex]
                                 currentIndex <- currentIndex + 1
@@ -388,6 +377,7 @@ module Reduce =
             let kernel = clContext.Compile kernel
 
             fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (keys: ClArray<int>) (values: ClArray<'a>) ->
+                if keys.Length > workGroupSize then failwith "The length of the value should not exceed the size of the workgroup"
 
                 let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
@@ -397,6 +387,9 @@ module Reduce =
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys values reducedValues reducedKeys))
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys))
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                reducedKeys, reducedValues
+
