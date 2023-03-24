@@ -56,7 +56,7 @@ module Search =
         /// <summary>
         /// Find lower position of item in array.
         /// </summary>
-        let lowerPosition<'a when 'a : equality and 'a: comparison> =
+        let lowerPosition<'a when 'a: equality and 'a: comparison> =
             <@ fun lenght sourceItem (keys: 'a []) ->
 
                 let mutable leftEdge = 0

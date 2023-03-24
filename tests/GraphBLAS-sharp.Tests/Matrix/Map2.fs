@@ -134,7 +134,13 @@ module Map2 =
           creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOne
 
           if Utils.isFloat64Available context.ClDevice then
-              creatTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumAtLeastOne Matrix.map2AtLeastOne
+              creatTestMap2Add
+                  case
+                  0.0
+                  (+)
+                  Utils.floatIsEqual
+                  ArithmeticOperations.floatSumAtLeastOne
+                  Matrix.map2AtLeastOne
 
           creatTestMap2Add
               case
@@ -189,7 +195,13 @@ module Map2 =
           creatTestMap2Add case 0 (*) (=) ArithmeticOperations.intMulAtLeastOne Matrix.map2AtLeastOne
 
           if Utils.isFloat64Available context.ClDevice then
-              creatTestMap2Add case 0.0 (*) Utils.floatIsEqual ArithmeticOperations.floatMulAtLeastOne Matrix.map2AtLeastOne
+              creatTestMap2Add
+                  case
+                  0.0
+                  (*)
+                  Utils.floatIsEqual
+                  ArithmeticOperations.floatMulAtLeastOne
+                  Matrix.map2AtLeastOne
 
           creatTestMap2Add
               case

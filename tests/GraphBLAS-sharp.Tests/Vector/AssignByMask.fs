@@ -53,7 +53,12 @@ module AssignByMask =
     let makeTest<'a when 'a: struct and 'a: equality>
         (isZero: 'a -> bool)
         (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
-        (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
+        (fillVector: MailboxProcessor<Msg>
+                         -> AllocationFlag
+                         -> ClVector<'a>
+                         -> ClVector<'a>
+                         -> ClCell<'a>
+                         -> ClVector<'a>)
         isComplemented
         case
         (vector: 'a [], mask: 'a [], value: 'a)

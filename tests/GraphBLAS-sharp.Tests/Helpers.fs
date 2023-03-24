@@ -143,19 +143,24 @@ module Utils =
 module HostPrimitives =
     let prefixSumInclude array =
         Array.scan (+) 0 array
-        |> fun scanned -> scanned.[1 ..]
+        |> fun scanned -> scanned.[1..]
 
     let prefixSumExclude sourceArray =
         prefixSumInclude sourceArray
         |> Array.insertAt 0 0
-        |> fun array ->
-            Array.take sourceArray.Length array, Array.last array
+        |> fun array -> Array.take sourceArray.Length array, Array.last array
 
     let getUniqueBitmapLastOccurrence array =
         Array.pairwise array
         |> fun pairs ->
-            Array.init array.Length (fun index ->
-                if index = array.Length - 1 || fst pairs.[index] <> snd pairs.[index] then 1 else 0)
+            Array.init
+                array.Length
+                (fun index ->
+                    if index = array.Length - 1
+                       || fst pairs.[index] <> snd pairs.[index] then
+                        1
+                    else
+                        0)
 
     let getUniqueBitmapFirstOccurrence (sourceArray: _ []) =
         let resultArray = Array.zeroCreate sourceArray.Length
@@ -168,16 +173,19 @@ module HostPrimitives =
 
     let getBitPositions bitmap =
         bitmap
-        |> Array.mapi (fun index bit -> if bit = 1 then Some index else None )
+        |> Array.mapi (fun index bit -> if bit = 1 then Some index else None)
         |> Array.choose id
 
     let reduceByKey keys value reduceOp =
         let zipped = Array.zip keys value
 
         Array.distinct keys
-        |> Array.map (fun key ->
-            // extract elements corresponding to key
-            (key, Array.map snd <| Array.filter ((=) key << fst)  zipped))
+        |> Array.map
+            (fun key ->
+                // extract elements corresponding to key
+                (key,
+                 Array.map snd
+                 <| Array.filter ((=) key << fst) zipped))
         // reduce elements
         |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
         |> Array.unzip

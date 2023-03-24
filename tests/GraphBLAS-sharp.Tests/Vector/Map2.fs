@@ -22,7 +22,14 @@ module Map2 =
     let getCorrectnessTestName<'a> (case: OperationCase<'a>) dataType =
         $"Correctness on '{dataType} option -> '{dataType} option -> '{dataType} option, {case.Format}"
 
-    let checkResult isEqual resultZero (op: 'a -> 'b -> 'c) (actual: Vector<'c>) (leftArray: 'a []) (rightArray: 'b []) =
+    let checkResult
+        isEqual
+        resultZero
+        (op: 'a -> 'b -> 'c)
+        (actual: Vector<'c>)
+        (leftArray: 'a [])
+        (rightArray: 'b [])
+        =
 
         let expectedArrayLength = leftArray.Length
 

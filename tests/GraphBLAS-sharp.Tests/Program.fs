@@ -21,7 +21,7 @@ let commonTests =
               Common.Reduce.ByKey.sequentialSegmentTests
               Common.Reduce.ByKey.oneWorkGroupTest
               Common.Reduce.Reduce.tests
-              Common.Reduce.Sum.tests]
+              Common.Reduce.Sum.tests ]
 
     let clArrayTests =
         testList

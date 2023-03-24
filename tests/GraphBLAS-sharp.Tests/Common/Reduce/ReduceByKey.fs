@@ -16,7 +16,8 @@ module ByKey =
 
     let checkResult isEqual actualKeys actualValues keys values reduceOp =
 
-        let expectedKeys, expectedValues = HostPrimitives.reduceByKey keys values reduceOp
+        let expectedKeys, expectedValues =
+            HostPrimitives.reduceByKey keys values reduceOp
 
         "Keys must be the same"
         |> Utils.compareArrays (=) actualKeys expectedKeys
@@ -26,8 +27,7 @@ module ByKey =
 
     let makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
         let keys, values =
-            Array.sortBy fst arrayAndKeys
-            |> Array.unzip
+            Array.sortBy fst arrayAndKeys |> Array.unzip
 
         if keys.Length > 0 then
             let clKeys =
@@ -38,8 +38,8 @@ module ByKey =
 
             let resultLength = Array.length <| Array.distinct keys
 
-            let clActualKeys, clActualValues: ClArray<int> * ClArray<'a>
-                = reduce processor HostInterop resultLength clKeys clValues
+            let clActualKeys, clActualValues: ClArray<int> * ClArray<'a> =
+                reduce processor HostInterop resultLength clKeys clValues
 
             clValues.Free processor
             clKeys.Free processor
@@ -65,7 +65,7 @@ module ByKey =
                   createTestSequential<byte> (=) (+) <@ (+) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestSequential<float> Utils.floatIsEqual (+) <@ (+) @>
+                      createTestSequential<float> Utils.floatIsEqual (+) <@ (+) @>
 
                   createTestSequential<float32> Utils.float32IsEqual (+) <@ (+) @>
                   createTestSequential<bool> (=) (||) <@ (||) @> ]
@@ -77,19 +77,22 @@ module ByKey =
                   createTestSequential<byte> (=) (*) <@ (*) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestSequential<float> Utils.floatIsEqual (*) <@ (*) @>
+                      createTestSequential<float> Utils.floatIsEqual (*) <@ (*) @>
 
                   createTestSequential<float32> Utils.float32IsEqual (*) <@ (*) @>
                   createTestSequential<bool> (=) (&&) <@ (&&) @> ]
 
-        testList "Sequential" [addTests; mulTests]
+        testList "Sequential" [ addTests; mulTests ]
 
     let createTestOneWorkGroup<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
         let reduce =
             Reduce.ByKey.oneWorkGroupSegments context Utils.defaultWorkGroupSize reduceOpQ
 
         makeTest isEqual reduce reduceOp
-        |> testPropertyWithConfig { config with endSize = Utils.defaultWorkGroupSize } $"test on {typeof<'a>}"
+        |> testPropertyWithConfig
+            { config with
+                  endSize = Utils.defaultWorkGroupSize }
+            $"test on {typeof<'a>}"
 
     let oneWorkGroupTest =
         let addTests =
@@ -99,7 +102,7 @@ module ByKey =
                   createTestOneWorkGroup<byte> (=) (+) <@ (+) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestOneWorkGroup<float> Utils.floatIsEqual (+) <@ (+) @>
+                      createTestOneWorkGroup<float> Utils.floatIsEqual (+) <@ (+) @>
 
                   createTestOneWorkGroup<float32> Utils.float32IsEqual (+) <@ (+) @>
                   createTestOneWorkGroup<bool> (=) (||) <@ (||) @> ]
@@ -111,12 +114,12 @@ module ByKey =
                   createTestOneWorkGroup<byte> (=) (*) <@ (*) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestOneWorkGroup<float> Utils.floatIsEqual (*) <@ (*) @>
+                      createTestOneWorkGroup<float> Utils.floatIsEqual (*) <@ (*) @>
 
                   createTestOneWorkGroup<float32> Utils.float32IsEqual (*) <@ (*) @>
                   createTestOneWorkGroup<bool> (=) (&&) <@ (&&) @> ]
 
-        testList "One work group" [addTests; mulTests]
+        testList "One work group" [ addTests; mulTests ]
 
     let makeTestSequentialSegments isEqual reduce reduceOp (valuesAndKeys: (int * 'a) []) =
 
@@ -132,7 +135,8 @@ module ByKey =
 
             let keys, values = Array.unzip valuesAndKeys
 
-            let clOffsets = context.CreateClArrayWithSpecificAllocationMode(HostInterop, offsets)
+            let clOffsets =
+                context.CreateClArrayWithSpecificAllocationMode(HostInterop, offsets)
 
             let clKeys =
                 context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys)
@@ -164,7 +168,7 @@ module ByKey =
                   createTestSequentialSegments<byte> (=) (+) <@ (+) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestSequentialSegments<float> Utils.floatIsEqual (+) <@ (+) @>
+                      createTestSequentialSegments<float> Utils.floatIsEqual (+) <@ (+) @>
 
                   createTestSequentialSegments<float32> Utils.float32IsEqual (+) <@ (+) @>
                   createTestSequentialSegments<bool> (=) (||) <@ (||) @> ]
@@ -176,17 +180,9 @@ module ByKey =
                   createTestSequentialSegments<byte> (=) (*) <@ (*) @>
 
                   if Utils.isFloat64Available context.ClDevice then
-                    createTestSequentialSegments<float> Utils.floatIsEqual (*) <@ (*) @>
+                      createTestSequentialSegments<float> Utils.floatIsEqual (*) <@ (*) @>
 
                   createTestSequentialSegments<float32> Utils.float32IsEqual (*) <@ (*) @>
                   createTestSequentialSegments<bool> (=) (&&) <@ (&&) @> ]
 
-        testList "Sequential segments" [addTests; mulTests]
-
-
-
-
-
-
-
-
+        testList "Sequential segments" [ addTests; mulTests ]

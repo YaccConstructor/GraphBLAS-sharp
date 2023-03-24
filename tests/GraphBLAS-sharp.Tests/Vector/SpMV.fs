@@ -43,7 +43,9 @@ module SpMV =
         for i in 0 .. actual.Size - 1 do
             match actual.[i] with
             | Some v ->
-                Expect.isTrue (isEqual v expected.[i]) $"Values should be the same. Actual is {v}, expected {expected.[i]}."
+                Expect.isTrue
+                    (isEqual v expected.[i])
+                    $"Values should be the same. Actual is {v}, expected {expected.[i]}."
             | None ->
                 Expect.isTrue
                     (isEqual zero expected.[i])

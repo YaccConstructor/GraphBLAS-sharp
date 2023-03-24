@@ -5,10 +5,12 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Reduce =
+    /// <summary>
+    /// Generalized reduction pattern.
+    /// </summary>
     let private runGeneral (clContext: ClContext) workGroupSize scan scanToCell =
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
@@ -47,8 +49,8 @@ module Reduce =
             let result =
                 scanToCell processor fstVertices verticesLength
 
-            processor.Post(Msg.CreateFreeMsg(firstVerticesArray))
-            processor.Post(Msg.CreateFreeMsg(secondVerticesArray))
+            firstVerticesArray.Free processor
+            secondVerticesArray.Free processor
 
             result
 
@@ -129,6 +131,13 @@ module Reduce =
 
             resultCell
 
+    /// <summary>
+    /// Summarize array elements.
+    /// </summary>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="op">Summation operation.</param>
+    /// <param name="zero">Neutral element for summation.</param>
     let sum (clContext: ClContext) workGroupSize op zero =
 
         let scan = scanSum clContext workGroupSize op zero
@@ -226,6 +235,12 @@ module Reduce =
 
             resultCell
 
+    /// <summary>
+    /// Reduce an array of values.
+    /// </summary>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="op">Reduction operation.</param>
     let reduce (clContext: ClContext) workGroupSize op =
 
         let scan = scanReduce clContext workGroupSize op
@@ -238,7 +253,19 @@ module Reduce =
 
         fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) -> run processor array
 
+    /// <summary>
+    /// Reduction of an array of values by an array of keys.
+    /// </summary>
     module ByKey =
+        /// <summary>
+        /// Reduce an array of values by key using a single work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let sequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
 
             let kernel =
@@ -246,43 +273,59 @@ module Reduce =
 
                     let gid = ndRange.GlobalID0
 
-                    if gid = 0  then
-                         let mutable currentKey = keys.[0]
-                         let mutable segmentResult = values.[0]
-                         let mutable segmentCount = 0
+                    if gid = 0 then
+                        let mutable currentKey = keys.[0]
+                        let mutable segmentResult = values.[0]
+                        let mutable segmentCount = 0
 
-                         for i in 1 .. length - 1 do
-                             if currentKey = keys.[i] then
-                                 segmentResult <- (%reduceOp) segmentResult values.[i]
-                             else
-                                 reducedValues.[segmentCount] <- segmentResult
-                                 reducedKeys.[segmentCount] <- currentKey
+                        for i in 1 .. length - 1 do
+                            if currentKey = keys.[i] then
+                                segmentResult <- (%reduceOp) segmentResult values.[i]
+                            else
+                                reducedValues.[segmentCount] <- segmentResult
+                                reducedKeys.[segmentCount] <- currentKey
 
-                                 segmentCount <- segmentCount + 1
-                                 currentKey <- keys.[i]
-                                 segmentResult <- values.[i]
+                                segmentCount <- segmentCount + 1
+                                currentKey <- keys.[i]
+                                segmentResult <- values.[i]
 
-                         reducedKeys.[segmentCount] <- currentKey
-                         reducedValues.[segmentCount] <- segmentResult @>
+                        reducedKeys.[segmentCount] <- currentKey
+                        reducedValues.[segmentCount] <- segmentResult @>
 
             let kernel = clContext.Compile kernel
 
             fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (keys: ClArray<int>) (values: ClArray<'a>) ->
 
-                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys))
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys)
+                )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 reducedKeys, reducedValues
 
+
+        /// <summary>
+        /// Reduces values by key. Each segment is reduced by one working item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let segmentSequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
 
             let kernel =
@@ -311,20 +354,45 @@ module Reduce =
 
             fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) ->
 
-                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange resultLength keys.Length offsets keys values reducedValues reducedKeys))
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                resultLength
+                                keys.Length
+                                offsets
+                                keys
+                                values
+                                reducedValues
+                                reducedKeys)
+                )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 reducedKeys, reducedValues
 
+        /// <summary>
+        /// Reduces values by key. One working group participates in the reduction.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// Reduces an array of values that does not exceed the size of the workgroup.
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let oneWorkGroupSegments (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
 
             let kernel =
@@ -334,11 +402,15 @@ module Reduce =
 
                     // load values to local memory (may be without it)
                     let localValues = localArray<'a> workGroupSize
-                    if lid < length then localValues.[lid] <- values.[lid]
+
+                    if lid < length then
+                        localValues.[lid] <- values.[lid]
 
                     // load keys to local memory (mb without it)
                     let localKeys = localArray<int> workGroupSize
-                    if lid < length then localKeys.[lid] <- keys.[lid]
+
+                    if lid < length then
+                        localKeys.[lid] <- keys.[lid]
 
                     // get unique keys bitmap
                     let localBitmap = localArray<int> workGroupSize
@@ -377,19 +449,25 @@ module Reduce =
             let kernel = clContext.Compile kernel
 
             fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (keys: ClArray<int>) (values: ClArray<'a>) ->
-                if keys.Length > workGroupSize then failwith "The length of the value should not exceed the size of the workgroup"
+                if keys.Length > workGroupSize then
+                    failwith "The length of the value should not exceed the size of the workgroup"
 
-                let reducedValues = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let reducedKeys = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                let reducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                let ndRange = Range1D.CreateValid(resultLength, workGroupSize)
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
 
                 let kernel = kernel.GetKernel()
 
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys))
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange keys.Length keys values reducedValues reducedKeys)
+                )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 reducedKeys, reducedValues
-
