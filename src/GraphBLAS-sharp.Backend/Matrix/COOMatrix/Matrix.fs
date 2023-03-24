@@ -124,7 +124,7 @@ module Matrix =
     let transposeInplace (clContext: ClContext) workGroupSize =
 
         let sort =
-            BitonicSort.sortKeyValuesInplace clContext workGroupSize
+            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values
