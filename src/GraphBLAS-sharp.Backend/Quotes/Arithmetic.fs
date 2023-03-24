@@ -66,6 +66,12 @@ module ArithmeticOperations =
 
             if res then Some true else None @>
 
+    let inline addLeftConst zero constant =
+        mkUnaryOp zero <@ fun x -> constant + x @>
+
+    let inline addRightConst zero constant =
+        mkUnaryOp zero <@ fun x -> x + constant @>
+
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
     let floatSum = mkNumericSum 0.0
@@ -88,6 +94,12 @@ module ArithmeticOperations =
             | _ -> ()
 
             if res then Some true else None @>
+
+    let inline mulLeftConst zero constant =
+        mkUnaryOp zero <@ fun x -> constant * x @>
+
+    let inline mulRightConst zero constant =
+        mkUnaryOp zero <@ fun x -> x * constant @>
 
     let intMul = mkNumericMul 0
     let byteMul = mkNumericMul 0uy

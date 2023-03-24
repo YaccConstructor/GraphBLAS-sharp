@@ -115,20 +115,12 @@ let testFixturesMapAdd case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let addFloat64Q =
-          ArithmeticOperations.mkUnaryOp 0.0 <@ fun x -> x + 10.0 @>
-
-      let addFloat32Q =
-          ArithmeticOperations.mkUnaryOp 0.0f <@ fun x -> x + 10.0f @>
-
-      let addByte =
-          ArithmeticOperations.mkUnaryOp 0uy <@ fun x -> x + 10uy @>
-
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual addFloat64Q Matrix.map
+          createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual (ArithmeticOperations.addLeftConst 0.0 10.0) Matrix.map
 
-      createTestMap case 0.0f ((+) 10.0f) Utils.float32IsEqual addFloat32Q Matrix.map
-      createTestMap case 0uy ((+) 10uy) (=) addByte Matrix.map ]
+      createTestMap case 0.0f ((+) 10.0f) Utils.float32IsEqual (ArithmeticOperations.addLeftConst 0.0f 10.0f) Matrix.map
+
+      createTestMap case 0uy ((+) 10uy) (=) (ArithmeticOperations.addLeftConst 0uy 10uy) Matrix.map ]
 
 let addTests =
     operationGPUTests "Backend.Matrix.map add tests" testFixturesMapAdd
@@ -138,20 +130,12 @@ let testFixturesMapMul case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      let mulFloat64Q =
-          ArithmeticOperations.mkUnaryOp 0.0 <@ fun x -> x * 10.0 @>
-
-      let mulFloat32Q =
-          ArithmeticOperations.mkUnaryOp 0.0f <@ fun x -> x * 10.0f @>
-
-      let mulByte =
-          ArithmeticOperations.mkUnaryOp 0uy <@ fun x -> x * 10uy @>
-
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual mulFloat64Q Matrix.map
+          createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual (ArithmeticOperations.mulLeftConst 0.0 10.0) Matrix.map
 
-      createTestMap case 0.0f ((*) 10.0f) Utils.float32IsEqual mulFloat32Q Matrix.map
-      createTestMap case 0uy ((*) 10uy) (=) mulByte Matrix.map ]
+      createTestMap case 0.0f ((*) 10.0f) Utils.float32IsEqual (ArithmeticOperations.mulLeftConst 0.0f 10.0f) Matrix.map
+
+      createTestMap case 0uy ((*) 10uy) (=) (ArithmeticOperations.mulLeftConst 0uy 10uy) Matrix.map ]
 
 let mulTests =
     operationGPUTests "Backend.Matrix.map mul tests" testFixturesMapMul
