@@ -61,7 +61,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
+            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 

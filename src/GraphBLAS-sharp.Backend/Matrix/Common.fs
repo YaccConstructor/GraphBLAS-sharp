@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 

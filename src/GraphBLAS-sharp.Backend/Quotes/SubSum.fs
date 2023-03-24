@@ -4,7 +4,7 @@ open Brahma.FSharp
 
 module SubSum =
     let private treeAccess<'a> opAdd =
-        <@ fun step lid wgSize (localBuffer: 'a []) ->
+        <@ fun step lid _ (localBuffer: 'a []) ->
             let i = step * (lid + 1) - 1
 
             let firstValue = localBuffer.[i - (step >>> 1)]

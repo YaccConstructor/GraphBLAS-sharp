@@ -218,3 +218,55 @@ module PrefixSum =
     let runBackwardsExcludeInplace plus = runInplace true scanExclusive plus
 
     let runBackwardsIncludeInplace plus = runInplace true scanInclusive plus
+
+    /// <summary>
+    /// Exclude inplace prefix sum.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 0; 1; 2; 3 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
+    let standardExcludeInplace (clContext: ClContext) workGroupSize =
+
+        let scan =
+            runExcludeInplace <@ (+) @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
+
+            scan processor inputArray 0
+
+    /// <summary>
+    /// Include inplace prefix sum.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 1; 2; 3; 4 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="plus">Associative binary operation.</param>
+    ///<param name="zero">Zero element for binary operation.</param>
+    let standardIncludeInplace (clContext: ClContext) workGroupSize =
+
+        let scan =
+            runIncludeInplace <@ (+) @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
+
+            scan processor inputArray 0

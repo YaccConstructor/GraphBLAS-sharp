@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Control
-open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 

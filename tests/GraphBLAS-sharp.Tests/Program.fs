@@ -27,10 +27,17 @@ let commonTests =
               Common.ClArray.Map2.mulTests
               Common.ClArray.Choose.tests ]
 
+    let sortTests =
+        testList
+            "Sort"
+            [ Common.Sort.Bitonic.tests
+              Common.Sort.Radix.testsByKeys
+              Common.Sort.Radix.testKeysOnly ]
+
     testList
         "Common tests"
         [ clArrayTests
-          Common.BitonicSort.tests
+          sortTests
           Common.Scatter.tests
           Common.Reduce.tests
           Common.Sum.tests ]

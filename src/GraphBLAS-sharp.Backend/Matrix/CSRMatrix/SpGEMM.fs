@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Predefined
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
