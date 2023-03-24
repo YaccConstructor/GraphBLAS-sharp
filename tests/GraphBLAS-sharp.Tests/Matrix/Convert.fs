@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Matrix.Convert
+namespace GraphBLAS.FSharp.Tests.Backend.Matrix
 
 open Expecto
 open Expecto.Logging
@@ -12,98 +12,99 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-let logger = Log.create "Convert.Tests"
+module Convert =
+    let logger = Log.create "Convert.Tests"
 
-let config = Utils.defaultConfig
+    let config = Utils.defaultConfig
 
-let workGroupSize = Utils.defaultWorkGroupSize
+    let workGroupSize = Utils.defaultWorkGroupSize
 
-let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
-    let mtx =
-        Utils.createMatrixFromArray2D formatFrom array isZero
+    let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
+        let mtx =
+            Utils.createMatrixFromArray2D formatFrom array isZero
 
-    if mtx.NNZ > 0 then
-        let actual =
-            let mBefore = mtx.ToDevice context
-            let mAfter: ClMatrix<'a> = convertFun q HostInterop mBefore
-            let res = mAfter.ToHost q
-            mBefore.Dispose q
-            mAfter.Dispose q
-            res
+        if mtx.NNZ > 0 then
+            let actual =
+                let mBefore = mtx.ToDevice context
+                let mAfter: ClMatrix<'a> = convertFun q HostInterop mBefore
+                let res = mAfter.ToHost q
+                mBefore.Dispose q
+                mAfter.Dispose q
+                res
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" (sprintf "%A" actual)
-        )
+            logger.debug (
+                eventX "Actual is {actual}"
+                >> setField "actual" (sprintf "%A" actual)
+            )
 
-        let expected =
-            Utils.createMatrixFromArray2D formatTo array isZero
+            let expected =
+                Utils.createMatrixFromArray2D formatTo array isZero
 
-        "Matrices should be equal"
-        |> Expect.equal actual expected
+            "Matrices should be equal"
+            |> Expect.equal actual expected
 
-let testFixtures formatTo =
-    let getCorrectnessTestName datatype formatFrom =
-        $"Correctness on %s{datatype}, %A{formatFrom} to %A{formatTo}"
+    let testFixtures formatTo =
+        let getCorrectnessTestName datatype formatFrom =
+            $"Correctness on %s{datatype}, %A{formatFrom} to %A{formatTo}"
 
-    let context = defaultContext.ClContext
-    let q = defaultContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
+        let context = defaultContext.ClContext
+        let q = defaultContext.Queue
+        q.Error.Add(fun e -> failwithf "%A" e)
 
-    match formatTo with
-    | COO ->
-        [ let convertFun = Matrix.toCOO context workGroupSize
+        match formatTo with
+        | COO ->
+            [ let convertFun = Matrix.toCOO context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) 0)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCOO context workGroupSize
+              let convertFun = Matrix.toCOO context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
-    | CSR ->
-        [ let convertFun = Matrix.toCSR context workGroupSize
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) false)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
+            |> List.concat
+        | CSR ->
+            [ let convertFun = Matrix.toCSR context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) 0)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSR context workGroupSize
+              let convertFun = Matrix.toCSR context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
-    | CSC ->
-        [ let convertFun = Matrix.toCSC context workGroupSize
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) false)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
+            |> List.concat
+        | CSC ->
+            [ let convertFun = Matrix.toCSC context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) 0)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
 
-          let convertFun = Matrix.toCSC context workGroupSize
+              let convertFun = Matrix.toCSC context workGroupSize
 
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
+              Utils.listOfUnionCases<MatrixFormat>
+              |> List.map
+                  (fun formatFrom ->
+                      makeTest context q formatFrom formatTo convertFun ((=) false)
+                      |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
+            |> List.concat
 
-let tests =
-    Utils.listOfUnionCases<MatrixFormat>
-    |> List.collect testFixtures
-    |> testList "Convert tests"
+    let tests =
+        Utils.listOfUnionCases<MatrixFormat>
+        |> List.collect testFixtures
+        |> testList "Convert tests"
