@@ -4,8 +4,12 @@ open Brahma.FSharp
 
 module Search =
     module Bin =
+        /// <summary>
+        /// Searches value in array by key.
+        /// In case there is a value at the given key position, it is returned.
+        /// </summary>
         let byKey<'a> =
-            <@ fun lenght sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
+            <@ fun lenght sourceIndex (keys: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
                 let mutable rightEdge = lenght - 1
@@ -14,7 +18,7 @@ module Search =
 
                 while leftEdge <= rightEdge do
                     let middleIdx = (leftEdge + rightEdge) / 2
-                    let currentIndex = indices.[middleIdx]
+                    let currentIndex = keys.[middleIdx]
 
                     if sourceIndex = currentIndex then
                         result <- Some values.[middleIdx]
@@ -27,6 +31,10 @@ module Search =
 
                 result @>
 
+        /// <summary>
+        /// Searches value in array by two keys.
+        /// In case there is a value at the given keys position, it is returned.
+        /// </summary>
         let byKey2<'a> =
             <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
