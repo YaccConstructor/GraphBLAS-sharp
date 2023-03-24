@@ -31,8 +31,8 @@
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/PrefixSum.fs" />
     <Compile Include="Common/ClArray.fs" />
-    <Compile Include="Common/BitonicSort.fs" />
     <Compile Include="Common/Sort/Radix.fs" />
+    <Compile Include="Common/Sort/Bitonic.fs" />
     <!--Compile Include="Matrices.fs" /-->
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COOMatrix/Map2.fs" />

@@ -67,7 +67,7 @@ module Bitonic =
             |> Utils.compareArrays (=) actualValues expectedValues
 
     let testFixtures<'a when 'a: equality> =
-        BitonicSort.sortKeyValuesInplace<int, 'a> context wgSize
+        Sort.Bitonic.sortKeyValuesInplace<int, 'a> context wgSize
         |> makeTest
         |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
