@@ -118,6 +118,8 @@ let testFixturesMapAdd case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
+      createTestMap case 0 10 (+) (=) ArithmeticOperations.addLeftConst
+
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 10.0 (+) Utils.floatIsEqual ArithmeticOperations.addLeftConst
 
@@ -132,6 +134,8 @@ let testFixturesMapMul case =
     [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
+
+      createTestMap case 0 10 (+) (=) ArithmeticOperations.mulLeftConst
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 10.0 (*) Utils.floatIsEqual ArithmeticOperations.mulLeftConst
