@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1679763288489,
+  "lastUpdate": 1679768113203,
   "repoUrl": "https://github.com/YaccConstructor/GraphBLAS-sharp",
   "entries": {
     "BFS": [
@@ -288,6 +288,54 @@ window.BENCHMARK_DATA = {
             "value": 69485855.7,
             "unit": "ns",
             "range": "± 2810357.923700578"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rsdpisuy@gmail.com",
+            "name": "Semyon",
+            "username": "gsvgit"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7885e8ae7c843c91d05171fda13bd0adb45e4cf8",
+          "message": "Merge pull request #68 from artemiipatov/map\n\nMatrix.map",
+          "timestamp": "2023-03-25T18:36:09+01:00",
+          "tree_id": "9492a851a121fe7717f5e3fa64747cf9f4dc781a",
+          "url": "https://github.com/YaccConstructor/GraphBLAS-sharp/commit/7885e8ae7c843c91d05171fda13bd0adb45e4cf8"
+        },
+        "date": 1679768113184,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "coAuthorsCiteseer.mtx",
+            "value": 26909964.2,
+            "unit": "ns",
+            "range": "± 1049217.1722355725"
+          },
+          {
+            "name": "hollywood-2009.mtx",
+            "value": 244774463.44444445,
+            "unit": "ns",
+            "range": "± 527799.2603715714"
+          },
+          {
+            "name": "roadNet-CA.mtx",
+            "value": 322244127.6666667,
+            "unit": "ns",
+            "range": "± 1013922.0193185471"
+          },
+          {
+            "name": "wing.mtx",
+            "value": 74442988.4,
+            "unit": "ns",
+            "range": "± 6109231.5676889345"
           }
         ]
       }
