@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Tests.Backend.Common.ClArray
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.PrefixSum
 
 open Expecto
 open Expecto.Logging
@@ -9,79 +9,78 @@ open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 
-module PrefixSum =
-    let logger = Log.create "ClArray.PrefixSum.Tests"
+let logger = Log.create "ClArray.PrefixSum.Tests"
 
-    let context = defaultContext.ClContext
+let context = defaultContext.ClContext
 
-    let config = Tests.Utils.defaultConfig
+let config = Tests.Utils.defaultConfig
 
-    let wgSize = 128
+let wgSize = 128
 
-    let q = defaultContext.Queue
+let q = defaultContext.Queue
 
-    let makeTest plus zero isEqual scan (array: 'a []) =
-        if array.Length > 0 then
+let makeTest plus zero isEqual scan (array: 'a []) =
+    if array.Length > 0 then
 
-            logger.debug (
-                eventX $"Array is %A{array}\n"
-                >> setField "array" (sprintf "%A" array)
-            )
+        logger.debug (
+            eventX $"Array is %A{array}\n"
+            >> setField "array" (sprintf "%A" array)
+        )
 
-            let actual, actualSum =
-                use clArray = context.CreateClArray array
-                let (total: ClCell<_>) = scan q clArray zero
+        let actual, actualSum =
+            use clArray = context.CreateClArray array
+            let (total: ClCell<_>) = scan q clArray zero
 
-                let actual = Array.zeroCreate<'a> clArray.Length
-                let actualSum = total.ToHostAndFree(q)
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
+            let actual = Array.zeroCreate<'a> clArray.Length
+            let actualSum = total.ToHostAndFree(q)
+            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
 
-            logger.debug (
-                eventX "Actual is {actual}\n"
-                >> setField "actual" (sprintf "%A" actual)
-            )
+        logger.debug (
+            eventX "Actual is {actual}\n"
+            >> setField "actual" (sprintf "%A" actual)
+        )
 
-            let expected, expectedSum =
-                array
-                |> Array.mapFold
-                    (fun s t ->
-                        let a = plus s t
-                        a, a)
-                    zero
+        let expected, expectedSum =
+            array
+            |> Array.mapFold
+                (fun s t ->
+                    let a = plus s t
+                    a, a)
+                zero
 
-            logger.debug (
-                eventX "Expected is {expected}\n"
-                >> setField "expected" (sprintf "%A" expected)
-            )
+        logger.debug (
+            eventX "Expected is {expected}\n"
+            >> setField "expected" (sprintf "%A" expected)
+        )
 
-            "Total sums should be equal"
-            |> Expect.equal actualSum expectedSum
+        "Total sums should be equal"
+        |> Expect.equal actualSum expectedSum
 
-            "Arrays should be the same"
-            |> Tests.Utils.compareArrays isEqual actual expected
+        "Arrays should be the same"
+        |> Tests.Utils.compareArrays isEqual actual expected
 
-    let testFixtures plus plusQ zero isEqual name =
-        ClArray.prefixSumIncludeInplace plusQ context wgSize
-        |> makeTest plus zero isEqual
-        |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+let testFixtures plus plusQ zero isEqual name =
+    ClArray.prefixSumIncludeInplace plusQ context wgSize
+    |> makeTest plus zero isEqual
+    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 
-    let tests =
-        q.Error.Add(fun e -> failwithf "%A" e)
+let tests =
+    q.Error.Add(fun e -> failwithf "%A" e)
 
-        [ testFixtures (+) <@ (+) @> 0 (=) "int add"
-          testFixtures (+) <@ (+) @> 0uy (=) "byte add"
-          testFixtures max <@ max @> 0 (=) "int max"
-          testFixtures max <@ max @> 0uy (=) "byte max"
-          testFixtures min <@ min @> System.Int32.MaxValue (=) "int min"
+    [ testFixtures (+) <@ (+) @> 0 (=) "int add"
+      testFixtures (+) <@ (+) @> 0uy (=) "byte add"
+      testFixtures max <@ max @> 0 (=) "int max"
+      testFixtures max <@ max @> 0uy (=) "byte max"
+      testFixtures min <@ min @> System.Int32.MaxValue (=) "int min"
 
-          if Tests.Utils.isFloat64Available context.ClDevice then
-              testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
-              testFixtures max <@ max @> 0.0 (=) "float max"
+      if Tests.Utils.isFloat64Available context.ClDevice then
+          testFixtures min <@ min @> System.Double.MaxValue (=) "float min"
+          testFixtures max <@ max @> 0.0 (=) "float max"
 
-          testFixtures min <@ min @> System.Single.MaxValue (=) "float32 min"
-          testFixtures max <@ max @> 0.0f (=) "float32 max"
+      testFixtures min <@ min @> System.Single.MaxValue (=) "float32 min"
+      testFixtures max <@ max @> 0.0f (=) "float32 max"
 
-          testFixtures min <@ min @> System.Byte.MaxValue (=) "byte min"
-          testFixtures (||) <@ (||) @> false (=) "bool logic-or"
-          testFixtures (&&) <@ (&&) @> true (=) "bool logic-and" ]
-        |> testList "Backend.Common.PrefixSum tests"
+      testFixtures min <@ min @> System.Byte.MaxValue (=) "byte min"
+      testFixtures (||) <@ (||) @> false (=) "bool logic-or"
+      testFixtures (&&) <@ (&&) @> true (=) "bool logic-and" ]
+    |> testList "Backend.Common.PrefixSum tests"

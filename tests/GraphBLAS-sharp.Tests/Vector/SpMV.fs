@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Tests.Backend.Vector
+﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
@@ -14,123 +14,120 @@ open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-module SpMV =
-    let config = Utils.defaultConfig
+let config = Utils.defaultConfig
 
-    let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Utils.defaultWorkGroupSize
 
-    let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
-        let rows = Array2D.length1 baseMtx
-        let columns = Array2D.length2 baseMtx
+let checkResult isEqual sumOp mulOp zero (baseMtx: 'a [,]) (baseVtr: 'a []) (actual: 'a option []) =
+    let rows = Array2D.length1 baseMtx
+    let columns = Array2D.length2 baseMtx
 
-        let expected = Array.create rows zero
+    let expected = Array.create rows zero
 
-        for i in 0 .. rows - 1 do
-            let mutable sum = zero
+    for i in 0 .. rows - 1 do
+        let mutable sum = zero
 
-            for v in 0 .. columns - 1 do
-                sum <- sumOp sum (mulOp baseMtx.[i, v] baseVtr.[v])
+        for v in 0 .. columns - 1 do
+            sum <- sumOp sum (mulOp baseMtx.[i, v] baseVtr.[v])
 
-            expected.[i] <- sum
+        expected.[i] <- sum
 
-        for i in 0 .. actual.Size - 1 do
-            match actual.[i] with
-            | Some v ->
-                if isEqual zero v then
-                    failwith "Resulting zeroes should be implicit."
-            | None -> ()
+    for i in 0 .. actual.Size - 1 do
+        match actual.[i] with
+        | Some v ->
+            if isEqual zero v then
+                failwith "Resulting zeroes should be implicit."
+        | None -> ()
 
-        for i in 0 .. actual.Size - 1 do
-            match actual.[i] with
-            | Some v ->
-                Expect.isTrue
-                    (isEqual v expected.[i])
-                    $"Values should be the same. Actual is {v}, expected {expected.[i]}."
-            | None ->
-                Expect.isTrue
-                    (isEqual zero expected.[i])
-                    $"Values should be the same. Actual is {zero}, expected {expected.[i]}."
+    for i in 0 .. actual.Size - 1 do
+        match actual.[i] with
+        | Some v ->
+            Expect.isTrue (isEqual v expected.[i]) $"Values should be the same. Actual is {v}, expected {expected.[i]}."
+        | None ->
+            Expect.isTrue
+                (isEqual zero expected.[i])
+                $"Values should be the same. Actual is {zero}, expected {expected.[i]}."
 
-    let correctnessGenericTest
-        zero
-        sumOp
-        mulOp
-        (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'a option> -> ClArray<'a option>)
-        (isEqual: 'a -> 'a -> bool)
-        q
-        (testContext: TestContext)
-        (matrix: 'a [,], vector: 'a [], _: bool [])
-        =
+let correctnessGenericTest
+    zero
+    sumOp
+    mulOp
+    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'a option> -> ClArray<'a option>)
+    (isEqual: 'a -> 'a -> bool)
+    q
+    (testContext: TestContext)
+    (matrix: 'a [,], vector: 'a [], _: bool [])
+    =
 
-        let mtx =
-            Utils.createMatrixFromArray2D CSR matrix (isEqual zero)
+    let mtx =
+        Utils.createMatrixFromArray2D CSR matrix (isEqual zero)
 
-        let vtr =
-            Utils.createVectorFromArray Dense vector (isEqual zero)
+    let vtr =
+        Utils.createVectorFromArray Dense vector (isEqual zero)
 
-        if mtx.NNZ > 0 && vtr.Size > 0 then
-            try
-                let m = mtx.ToDevice testContext.ClContext
+    if mtx.NNZ > 0 && vtr.Size > 0 then
+        try
+            let m = mtx.ToDevice testContext.ClContext
 
-                match vtr, m with
-                | Vector.Dense vtr, ClMatrix.CSR m ->
-                    let v = vtr.ToDevice testContext.ClContext
+            match vtr, m with
+            | Vector.Dense vtr, ClMatrix.CSR m ->
+                let v = vtr.ToDevice testContext.ClContext
 
-                    let res = spMV testContext.Queue HostInterop m v
+                let res = spMV testContext.Queue HostInterop m v
 
-                    (ClMatrix.CSR m).Dispose q
-                    v.Dispose q
-                    let hostRes = res.ToHost q
-                    res.Dispose q
+                (ClMatrix.CSR m).Dispose q
+                v.Dispose q
+                let hostRes = res.ToHost q
+                res.Dispose q
 
-                    checkResult isEqual sumOp mulOp zero matrix vector hostRes
-                | _ -> failwith "Impossible"
-            with
-            | ex when ex.Message = "InvalidBufferSize" -> ()
-            | ex -> raise ex
+                checkResult isEqual sumOp mulOp zero matrix vector hostRes
+            | _ -> failwith "Impossible"
+        with
+        | ex when ex.Message = "InvalidBufferSize" -> ()
+        | ex -> raise ex
 
-    let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
-        let context = testContext.ClContext
-        let q = testContext.Queue
+let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
+    let context = testContext.ClContext
+    let q = testContext.Queue
 
-        let getCorrectnessTestName datatype =
-            $"Correctness on %s{datatype}, %A{testContext.ClContext}"
+    let getCorrectnessTestName datatype =
+        $"Correctness on %s{datatype}, %A{testContext.ClContext}"
 
-        let spMV = SpMV.run context addQ mulQ wgSize
+    let spMV = SpMV.run context addQ mulQ wgSize
 
-        testContext
-        |> correctnessGenericTest zero add mul spMV isEqual q
-        |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
+    testContext
+    |> correctnessGenericTest zero add mul spMV isEqual q
+    |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
 
 
-    let testFixturesSpMV (testContext: TestContext) =
-        [ let context = testContext.ClContext
-          let q = testContext.Queue
-          q.Error.Add(fun e -> failwithf "%A" e)
+let testFixturesSpMV (testContext: TestContext) =
+    [ let context = testContext.ClContext
+      let q = testContext.Queue
+      q.Error.Add(fun e -> failwithf "%A" e)
 
-          createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMul
-          createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
+      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMul
+      createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
 
-          if Utils.isFloat64Available context.ClDevice then
-              createTest
-                  testContext
-                  0.0
-                  Utils.floatIsEqual
-                  (+)
-                  (*)
-                  ArithmeticOperations.floatSum
-                  ArithmeticOperations.floatMul
-
+      if Utils.isFloat64Available context.ClDevice then
           createTest
               testContext
-              0.0f
-              Utils.float32IsEqual
+              0.0
+              Utils.floatIsEqual
               (+)
               (*)
-              ArithmeticOperations.float32Sum
-              ArithmeticOperations.float32Mul
+              ArithmeticOperations.floatSum
+              ArithmeticOperations.floatMul
 
-          createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSum ArithmeticOperations.byteMul ]
+      createTest
+          testContext
+          0.0f
+          Utils.float32IsEqual
+          (+)
+          (*)
+          ArithmeticOperations.float32Sum
+          ArithmeticOperations.float32Mul
 
-    let tests =
-        gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV
+      createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSum ArithmeticOperations.byteMul ]
+
+let tests =
+    gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV
