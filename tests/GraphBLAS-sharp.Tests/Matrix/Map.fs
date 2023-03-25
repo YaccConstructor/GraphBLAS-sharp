@@ -87,25 +87,28 @@ let correctnessGenericTest
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex
 
-let createTestMap case (zero: 'a) op isEqual opQ map =
+let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let getCorrectnessTestName = getCorrectnessTestName case
 
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
-    let map = map context opQ wgSize
+    let unaryOp = binOp constant
+    let unaryOpQ = opQ zero constant
+
+    let map = Matrix.map context unaryOpQ wgSize
 
     let toCOO = Matrix.toCOO context wgSize
 
     case
-    |> correctnessGenericTest zero op map toCOO isEqual q
+    |> correctnessGenericTest zero unaryOp map toCOO isEqual q
     |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
 
 let testFixturesMapNot case =
     [ let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap case false not (=) ArithmeticOperations.notQ Matrix.map ]
+      createTestMap case false true (fun _ -> not) (=) (fun _ _ -> ArithmeticOperations.notQ) ]
 
 let notTests =
     operationGPUTests "Backend.Matrix.map not tests" testFixturesMapNot
@@ -116,11 +119,11 @@ let testFixturesMapAdd case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap case 0.0 ((+) 10.0) Utils.floatIsEqual (ArithmeticOperations.addLeftConst 0.0 10.0) Matrix.map
+          createTestMap case 0.0 10.0 (+) Utils.floatIsEqual ArithmeticOperations.addLeftConst
 
-      createTestMap case 0.0f ((+) 10.0f) Utils.float32IsEqual (ArithmeticOperations.addLeftConst 0.0f 10.0f) Matrix.map
+      createTestMap case 0.0f 10.0f (+) Utils.float32IsEqual ArithmeticOperations.addLeftConst
 
-      createTestMap case 0uy ((+) 10uy) (=) (ArithmeticOperations.addLeftConst 0uy 10uy) Matrix.map ]
+      createTestMap case 0uy 10uy (+) (=) ArithmeticOperations.addLeftConst ]
 
 let addTests =
     operationGPUTests "Backend.Matrix.map add tests" testFixturesMapAdd
@@ -131,11 +134,11 @@ let testFixturesMapMul case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap case 0.0 ((*) 10.0) Utils.floatIsEqual (ArithmeticOperations.mulLeftConst 0.0 10.0) Matrix.map
+          createTestMap case 0.0 10.0 (*) Utils.floatIsEqual ArithmeticOperations.mulLeftConst
 
-      createTestMap case 0.0f ((*) 10.0f) Utils.float32IsEqual (ArithmeticOperations.mulLeftConst 0.0f 10.0f) Matrix.map
+      createTestMap case 0.0f 10.0f (*) Utils.float32IsEqual ArithmeticOperations.mulLeftConst
 
-      createTestMap case 0uy ((*) 10uy) (=) (ArithmeticOperations.mulLeftConst 0uy 10uy) Matrix.map ]
+      createTestMap case 0uy 10uy (*) (=) ArithmeticOperations.mulLeftConst ]
 
 let mulTests =
     operationGPUTests "Backend.Matrix.map mul tests" testFixturesMapMul
