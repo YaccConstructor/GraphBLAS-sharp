@@ -30,10 +30,10 @@ module internal Map2 =
                     let rightLastIndex = rightRowPointers.[rowIndex + 1] - 1
 
                     let leftValue =
-                        (%BinSearch.searchInRange) leftStartIndex leftLastIndex columnIndex leftColumns leftValues
+                        (%BinSearch.inRange) leftStartIndex leftLastIndex columnIndex leftColumns leftValues
 
                     let rightValue =
-                        (%BinSearch.searchInRange) rightStartIndex rightLastIndex columnIndex rightColumn rightValues
+                        (%BinSearch.inRange) rightStartIndex rightLastIndex columnIndex rightColumn rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->

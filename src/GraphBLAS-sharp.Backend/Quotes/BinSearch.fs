@@ -12,7 +12,7 @@ module BinSearch =
     /// The index array should have the same length as the array of values.
     /// left edge and right edge should be less than the length of the index array.
     /// </remarks>
-    let searchInRange<'a> =
+    let inRange<'a> =
         <@ fun leftEdge rightEdge sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
 
             let mutable leftEdge = leftEdge
@@ -43,7 +43,7 @@ module BinSearch =
     /// <remarks>
     /// Position is uint64 and it should be written in such format: first 32 bits is row, second 32 bits is column.
     /// </remarks>
-    let searchCOO<'a> =
+    let byKey2D<'a> =
         <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
             let mutable leftEdge = 0

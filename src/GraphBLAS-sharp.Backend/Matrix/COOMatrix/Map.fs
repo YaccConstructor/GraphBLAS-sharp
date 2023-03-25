@@ -9,7 +9,6 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-
 module internal Map =
     let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
 
@@ -27,7 +26,7 @@ module internal Map =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let value =
-                        (%BinSearch.searchCOO) valuesLength index rows columns values
+                        (%BinSearch.byKey2D) valuesLength index rows columns values
 
                     match (%op) value with
                     | Some resultValue ->
