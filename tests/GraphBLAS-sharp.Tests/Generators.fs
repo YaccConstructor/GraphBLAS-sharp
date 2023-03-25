@@ -47,12 +47,15 @@ module Generators =
 
     let rec normalFloat32Generator (random: System.Random) =
         gen {
-            let result = random.NextSingle()
+            let rawValue = random.NextSingle()
 
-            if System.Single.IsNormal result then
-                return result
+            if System.Single.IsNormal rawValue then
+                let sign = float32 <| sign rawValue
+                let processedValue = ((+) 1.0f) <| (abs <| rawValue)
+
+                return processedValue * sign
             else
-                return! normalFloat32Generator random
+                return 0.0f
         }
 
     let genericSparseGenerator zero valuesGen handler =
