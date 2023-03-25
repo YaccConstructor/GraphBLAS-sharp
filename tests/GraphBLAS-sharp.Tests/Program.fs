@@ -14,7 +14,7 @@ let matrixTests =
     |> testSequenced
 
 let commonTests =
-    let reduceTest =
+    let reduceTests =
         testList
             "Reduce"
             [ Common.Reduce.ByKey.sequentialTest
@@ -36,11 +36,18 @@ let commonTests =
               Common.ClArray.Map2.mulTests
               Common.ClArray.Choose.tests ]
 
+    let sortTests =
+        testList
+            "Sort"
+            [ Common.Sort.Bitonic.tests
+              Common.Sort.Radix.testsByKeys
+              Common.Sort.Radix.testKeysOnly ]
+
     testList
         "Common tests"
         [ clArrayTests
-          reduceTest
-          Common.BitonicSort.tests
+          sortTests
+          reduceTests
           Common.Scatter.tests ]
     |> testSequenced
 

@@ -61,7 +61,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            ClArray.prefixSumBackwardsIncludeInplace <@ min @> clContext workGroupSize
+            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
@@ -124,7 +124,7 @@ module Matrix =
     let transposeInplace (clContext: ClContext) workGroupSize =
 
         let sort =
-            BitonicSort.sortKeyValuesInplace clContext workGroupSize
+            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values

@@ -3,7 +3,6 @@
 open Brahma.FSharp
 
 module ArraysExtensions =
-
     type ClArray<'a> with
         member this.Dispose(q: MailboxProcessor<Msg>) =
             q.Post(Msg.CreateFreeMsg this)

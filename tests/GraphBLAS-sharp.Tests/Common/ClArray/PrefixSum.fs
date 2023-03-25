@@ -60,7 +60,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
         |> Tests.Utils.compareArrays isEqual actual expected
 
 let testFixtures plus plusQ zero isEqual name =
-    ClArray.prefixSumIncludeInplace plusQ context wgSize
+    PrefixSum.runIncludeInplace plusQ context wgSize
     |> makeTest plus zero isEqual
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 

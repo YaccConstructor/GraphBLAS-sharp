@@ -1,8 +1,9 @@
-namespace GraphBLAS.FSharp.Backend.Common
+namespace GraphBLAS.FSharp.Backend.Common.Sort
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Common
 
-module internal BitonicSort =
+module internal Bitonic =
     let private localBegin (clContext: ClContext) workGroupSize =
 
         let processedSize = workGroupSize * 2

@@ -29,7 +29,7 @@ module Matrix =
             ClArray.zeroCreate clContext workGroupSize
 
         let scan =
-            ClArray.prefixSumIncludeInplace <@ max @> clContext workGroupSize
+            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
 
