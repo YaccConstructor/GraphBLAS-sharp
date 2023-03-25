@@ -135,7 +135,7 @@ let testFixturesMapMul case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap case 0 10 (+) (=) ArithmeticOperations.mulLeftConst
+      createTestMap case 0 10 (*) (=) ArithmeticOperations.mulLeftConst
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap case 0.0 10.0 (*) Utils.floatIsEqual ArithmeticOperations.mulLeftConst
