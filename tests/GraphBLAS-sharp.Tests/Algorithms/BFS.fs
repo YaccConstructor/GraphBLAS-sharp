@@ -6,8 +6,8 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Tests.QuickGraph.Algorithms
-open GraphBLAS.FSharp.Tests.QuickGraph.CreateGraph
+open GraphBLAS.FSharp.Tests.Backend.QuickGraph.Algorithms
+open GraphBLAS.FSharp.Tests.Backend.QuickGraph.CreateGraph
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
