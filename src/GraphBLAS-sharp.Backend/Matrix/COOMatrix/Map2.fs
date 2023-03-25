@@ -27,10 +27,10 @@ module internal Map2 =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let leftValue =
-                        (%Search.Bin.byKey2) leftValuesLength index leftRows leftColumns leftValues
+                        (%Search.Bin.byKey2D) leftValuesLength index leftRows leftColumns leftValues
 
                     let rightValue =
-                        (%Search.Bin.byKey2) rightValuesLength index rightRows rightColumn rightValues
+                        (%Search.Bin.byKey2D) rightValuesLength index rightRows rightColumn rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->

@@ -35,7 +35,7 @@ module Search =
         /// Searches value in array by two keys.
         /// In case there is a value at the given keys position, it is returned.
         /// </summary>
-        let byKey2<'a> =
+        let byKey2D<'a> =
             <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
