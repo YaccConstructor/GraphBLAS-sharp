@@ -14,6 +14,15 @@ let matrixTests =
     |> testSequenced
 
 let commonTests =
+    let reduceTests =
+        testList
+            "Reduce"
+            [ Common.Reduce.ByKey.sequentialTest
+              Common.Reduce.ByKey.sequentialSegmentTests
+              Common.Reduce.ByKey.oneWorkGroupTest
+              Common.Reduce.Reduce.tests
+              Common.Reduce.Sum.tests ]
+
     let clArrayTests =
         testList
             "ClArray"
@@ -38,9 +47,8 @@ let commonTests =
         "Common tests"
         [ clArrayTests
           sortTests
-          Common.Scatter.tests
-          Common.Reduce.tests
-          Common.Sum.tests ]
+          reduceTests
+          Common.Scatter.tests ]
     |> testSequenced
 
 let vectorTests =
