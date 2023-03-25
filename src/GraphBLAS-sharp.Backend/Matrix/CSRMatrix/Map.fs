@@ -27,7 +27,7 @@ module internal Map =
                     let lastIndex = rowPointers.[rowIndex + 1] - 1
 
                     let value =
-                        (%BinSearch.inRange) startIndex lastIndex columnIndex columns values
+                        (%Search.Bin.inRange) startIndex lastIndex columnIndex columns values
 
                     match (%op) value with
                     | Some resultValue ->

@@ -8,8 +8,10 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Map2 =
+
     let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
@@ -26,10 +28,10 @@ module internal Map2 =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let leftValue =
-                        (%BinSearch.byKey2D) leftValuesLength index leftRows leftColumns leftValues
+                        (%Search.Bin.byKey2D) leftValuesLength index leftRows leftColumns leftValues
 
                     let rightValue =
-                        (%BinSearch.byKey2D) rightValuesLength index rightRows rightColumn rightValues
+                        (%Search.Bin.byKey2D) rightValuesLength index rightRows rightColumn rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->

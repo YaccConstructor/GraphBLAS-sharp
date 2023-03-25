@@ -1,5 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
+open System
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
@@ -26,7 +27,7 @@ module internal Map =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
                     let value =
-                        (%BinSearch.byKey2D) valuesLength index rows columns values
+                        (%Search.Bin.byKey2D) valuesLength index rows columns values
 
                     match (%op) value with
                     | Some resultValue ->

@@ -4,7 +4,7 @@ open Brahma.FSharp
 
 module SubSum =
     let private treeAccess<'a> opAdd =
-        <@ fun step lid wgSize (localBuffer: 'a []) ->
+        <@ fun step lid _ (localBuffer: 'a []) ->
             let i = step * (lid + 1) - 1
 
             let firstValue = localBuffer.[i - (step >>> 1)]
@@ -35,3 +35,21 @@ module SubSum =
         sumGeneral<'a> <| sequentialAccess<'a> opAdd
 
     let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess<'a> opAdd
+
+    let localPrefixSum opAdd =
+        <@ fun (lid: int) (workGroupSize: int) (array: 'a []) ->
+            let mutable offset = 1
+
+            while offset < workGroupSize do
+                barrierLocal ()
+                let mutable value = array.[lid]
+
+                if lid >= offset then
+                    value <- (%opAdd) value array.[lid - offset]
+
+                offset <- offset * 2
+
+                barrierLocal ()
+                array.[lid] <- value @>
+
+    let localIntPrefixSum = localPrefixSum <@ (+) @>
