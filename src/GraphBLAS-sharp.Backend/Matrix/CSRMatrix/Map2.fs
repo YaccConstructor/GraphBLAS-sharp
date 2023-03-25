@@ -1,21 +1,20 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.COO
+﻿namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Matrix
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Matrix.COO
 
 module internal Map2 =
-
     let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
-            <@ fun (ndRange: Range1D) rowCount columnCount leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) rowCount columnCount (leftValues: ClArray<'a>) (leftRowPointers: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRowPointers: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -24,14 +23,17 @@ module internal Map2 =
                     let columnIndex = gid % columnCount
                     let rowIndex = gid / columnCount
 
-                    let index =
-                        (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
+                    let leftStartIndex = leftRowPointers.[rowIndex]
+                    let leftLastIndex = leftRowPointers.[rowIndex + 1] - 1
+
+                    let rightStartIndex = rightRowPointers.[rowIndex]
+                    let rightLastIndex = rightRowPointers.[rowIndex + 1] - 1
 
                     let leftValue =
-                        (%Search.Bin.byKey2D) leftValuesLength index leftRows leftColumns leftValues
+                        (%Search.Bin.inRange) leftStartIndex leftLastIndex columnIndex leftColumns leftValues
 
                     let rightValue =
-                        (%Search.Bin.byKey2D) rightValuesLength index rightRows rightColumn rightValues
+                        (%Search.Bin.inRange) rightStartIndex rightLastIndex columnIndex rightColumn rightValues
 
                     match (%op) leftValue rightValue with
                     | Some value ->
@@ -73,8 +75,6 @@ module internal Map2 =
                             ndRange
                             rowCount
                             columnCount
-                            leftValues.Length
-                            rightValues.Length
                             leftValues
                             leftRows
                             leftColumns
@@ -94,7 +94,7 @@ module internal Map2 =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -106,7 +106,7 @@ module internal Map2 =
         let setPositions =
             Common.setPositions<'c> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
 
             let bitmap, values, rows, columns =
                 map2
@@ -114,10 +114,10 @@ module internal Map2 =
                     matrixLeft.RowCount
                     matrixLeft.ColumnCount
                     matrixLeft.Values
-                    matrixLeft.Rows
+                    matrixLeft.RowPointers
                     matrixLeft.Columns
                     matrixRight.Values
-                    matrixRight.Rows
+                    matrixRight.RowPointers
                     matrixRight.Columns
 
             let resultRows, resultColumns, resultValues, _ =
@@ -134,3 +134,18 @@ module internal Map2 =
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
+
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let map2ToCOO = runToCOO clContext opAdd workGroupSize
+
+        let toCSRInplace =
+            Matrix.toCSRInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+            map2ToCOO queue allocationMode matrixLeft matrixRight
+            |> toCSRInplace queue allocationMode

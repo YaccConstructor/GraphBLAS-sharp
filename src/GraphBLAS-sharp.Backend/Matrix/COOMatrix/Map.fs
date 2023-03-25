@@ -1,21 +1,20 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.COO
+﻿namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
+open System
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Quotes
 
-module internal Map2 =
+module internal Map =
+    let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
 
-    let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
-
-        let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
-            <@ fun (ndRange: Range1D) rowCount columnCount leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
+        let preparePositions (op: Expr<'a option -> 'b option>) =
+            <@ fun (ndRange: Range1D) rowCount columnCount valuesLength (values: ClArray<'a>) (rows: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -27,15 +26,12 @@ module internal Map2 =
                     let index =
                         (uint64 rowIndex <<< 32) ||| (uint64 columnIndex)
 
-                    let leftValue =
-                        (%Search.Bin.byKey2D) leftValuesLength index leftRows leftColumns leftValues
+                    let value =
+                        (%Search.Bin.byKey2D) valuesLength index rows columns values
 
-                    let rightValue =
-                        (%Search.Bin.byKey2D) rightValuesLength index rightRows rightColumn rightValues
-
-                    match (%op) leftValue rightValue with
-                    | Some value ->
-                        resultValues.[gid] <- value
+                    match (%op) value with
+                    | Some resultValue ->
+                        resultValues.[gid] <- resultValue
                         resultRows.[gid] <- rowIndex
                         resultColumns.[gid] <- columnIndex
 
@@ -45,7 +41,7 @@ module internal Map2 =
         let kernel =
             clContext.Compile <| preparePositions opAdd
 
-        fun (processor: MailboxProcessor<_>) rowCount columnCount (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumns: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) ->
 
             let (resultLength: int) = columnCount * rowCount
 
@@ -59,7 +55,7 @@ module internal Map2 =
                 clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resultLength)
 
             let resultValues =
-                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, resultLength)
 
             let ndRange =
                 Range1D.CreateValid(resultLength, workGroupSize)
@@ -73,14 +69,10 @@ module internal Map2 =
                             ndRange
                             rowCount
                             columnCount
-                            leftValues.Length
-                            rightValues.Length
-                            leftValues
-                            leftRows
-                            leftColumns
-                            rightValues
-                            rightRows
-                            rightColumns
+                            values.Length
+                            values
+                            rowPointers
+                            columns
                             resultBitmap
                             resultValues
                             resultRows
@@ -91,34 +83,22 @@ module internal Map2 =
 
             resultBitmap, resultValues, resultRows, resultColumns
 
-    ///<param name="clContext">.</param>
-    ///<param name="opAdd">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
         (clContext: ClContext)
-        (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (opAdd: Expr<'a option -> 'b option>)
         workGroupSize
         =
 
-        let map2 =
+        let map =
             preparePositions clContext workGroupSize opAdd
 
         let setPositions =
-            Common.setPositions<'c> clContext workGroupSize
+            Common.setPositions<'b> clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
 
             let bitmap, values, rows, columns =
-                map2
-                    queue
-                    matrixLeft.RowCount
-                    matrixLeft.ColumnCount
-                    matrixLeft.Values
-                    matrixLeft.Rows
-                    matrixLeft.Columns
-                    matrixRight.Values
-                    matrixRight.Rows
-                    matrixRight.Columns
+                map queue matrix.RowCount matrix.ColumnCount matrix.Values matrix.Rows matrix.Columns
 
             let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allocationMode rows columns values bitmap
@@ -129,8 +109,8 @@ module internal Map2 =
             queue.Post(Msg.CreateFreeMsg<_>(columns))
 
             { Context = clContext
-              RowCount = matrixLeft.RowCount
-              ColumnCount = matrixLeft.ColumnCount
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }

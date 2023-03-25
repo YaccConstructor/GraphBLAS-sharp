@@ -191,6 +191,21 @@ module Matrix =
                     .ToCSC
                 |> ClMatrix.CSC
 
+    let map (clContext: ClContext) (opAdd: Expr<'a option -> 'b option>) workGroupSize =
+        let mapCOO =
+            COO.Matrix.map clContext opAdd workGroupSize
+
+        let mapCSR =
+            CSR.Matrix.map clContext opAdd workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode matrix ->
+            match matrix with
+            | ClMatrix.COO m -> mapCOO processor allocationMode m |> ClMatrix.COO
+            | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.CSR
+            | ClMatrix.CSC m ->
+                (mapCSR processor allocationMode m.ToCSR).ToCSC
+                |> ClMatrix.CSC
+
     let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize = // TODO()
         let map2COO =
             COO.Matrix.map2 clContext opAdd workGroupSize
