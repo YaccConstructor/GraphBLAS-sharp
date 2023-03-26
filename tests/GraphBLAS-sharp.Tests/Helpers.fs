@@ -96,8 +96,19 @@ module Utils =
         for i in 0 .. actual.Length - 1 do
             if not (areEqual actual.[i] expected.[i]) then
                 $"%s{message}. Arrays differ at position %A{i} of %A{actual.Length - 1}.
-                Actual value is %A{actual.[i]}, expected %A{expected.[i]}"
+                Actual value is %A{actual.[i]}, expected %A{expected.[i]}, \n actual: %A{actual} \n expected: %A{expected}"
                 |> failtestf "%s"
+
+    let compare2DArrays areEqual (actual: 'a [,]) (expected: 'a [,]) message =
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. Array2D.length1 actual - 1 do
+            for j in 0 .. Array2D.length2 actual - 1 do
+                if not (areEqual actual.[i, j] expected.[i, j]) then
+                    $"%s{message}. Arrays differ at position [%d{i}, %d{j}] of [%A{Array2D.length1 actual}, %A{Array2D.length2 actual}].
+                    Actual value is %A{actual.[i, j]}, expected %A{expected.[i, j]}"
+                    |> failtestf "%s"
 
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
@@ -185,6 +196,56 @@ module Utils =
     let castMatrixToCSR = function
         | Matrix.CSR matrix -> matrix
         | _ -> failwith "matrix format must be CSR"
+
+module HostPrimitives =
+    let prefixSumInclude array =
+        Array.scan (+) 0 array
+        |> fun scanned -> scanned.[1..]
+
+    let prefixSumExclude sourceArray =
+        prefixSumInclude sourceArray
+        |> Array.insertAt 0 0
+        |> fun array -> Array.take sourceArray.Length array, Array.last array
+
+    let getUniqueBitmapLastOccurrence array =
+        Array.pairwise array
+        |> fun pairs ->
+            Array.init
+                array.Length
+                (fun index ->
+                    if index = array.Length - 1
+                       || fst pairs.[index] <> snd pairs.[index] then
+                        1
+                    else
+                        0)
+
+    let getUniqueBitmapFirstOccurrence (sourceArray: _ []) =
+        let resultArray = Array.zeroCreate sourceArray.Length
+
+        for i in 0 .. sourceArray.Length - 1 do
+            if i = 0 || sourceArray.[i] <> sourceArray.[i - 1] then
+                resultArray.[i] <- 1
+
+        resultArray
+
+    let getBitPositions bitmap =
+        bitmap
+        |> Array.mapi (fun index bit -> if bit = 1 then Some index else None)
+        |> Array.choose id
+
+    let reduceByKey keys value reduceOp =
+        let zipped = Array.zip keys value
+
+        Array.distinct keys
+        |> Array.map
+            (fun key ->
+                // extract elements corresponding to key
+                (key,
+                 Array.map snd
+                 <| Array.filter ((=) key << fst) zipped))
+        // reduce elements
+        |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
+        |> Array.unzip
 
 module Context =
     type TestContext =

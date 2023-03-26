@@ -1,202 +1,208 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open FSharp.Quotations
+open Microsoft.FSharp.Control
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Quotes
 
-module Map2 =
-    let binSearch<'a> =
-        <@ fun lenght sourceIndex (indices: ClArray<int>) (values: ClArray<'a>) ->
+module internal Map2 =
+    let private preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
-            let mutable leftEdge = 0
-            let mutable rightEdge = lenght - 1
+        let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
+            <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
-            let mutable result = None
+                let gid = ndRange.GlobalID0
 
-            while leftEdge <= rightEdge do
-                let middleIdx = (leftEdge + rightEdge) / 2
-                let currentIndex = indices.[middleIdx]
+                if gid < length then
 
-                if sourceIndex = currentIndex then
-                    result <- Some values.[middleIdx]
+                    let (leftValue: 'a option) =
+                        (%Search.Bin.byKey) leftValuesLength gid leftIndices leftValues
 
-                    rightEdge <- -1 // TODO() break
-                elif sourceIndex < currentIndex then
-                    rightEdge <- middleIdx - 1
-                else
-                    leftEdge <- middleIdx + 1
+                    let (rightValue: 'b option) =
+                        (%Search.Bin.byKey) rightValuesLength gid rightIndices rightValues
 
-            result @>
+                    match (%op) leftValue rightValue with
+                    | Some value ->
+                        resultValues.[gid] <- value
+                        resultIndices.[gid] <- gid
 
-    let preparePositionsGeneral (op: Expr<'a option -> 'b option -> 'c option>) =
-        <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+                        resultBitmap.[gid] <- 1
+                    | None -> resultBitmap.[gid] <- 0 @>
 
-            let gid = ndRange.GlobalID0
+        let kernel =
+            clContext.Compile <| preparePositions opAdd
 
-            if gid < length then
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) ->
 
-                let (leftValue: 'a option) =
-                    (%binSearch) leftValuesLength gid leftIndices leftValues
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-                let (rightValue: 'b option) =
-                    (%binSearch) rightValuesLength gid rightIndices rightValues
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-                match (%op) leftValue rightValue with
-                | Some value ->
-                    resultValues.[gid] <- value
-                    resultIndices.[gid] <- gid
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
 
-                    resultBitmap.[gid] <- 1
-                | None -> resultBitmap.[gid] <- 0 @>
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
 
-    let prepareAssign op =
-        <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+            let kernel = kernel.GetKernel()
 
-            let gid = ndRange.GlobalID0
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftIndices
+                            rightValues
+                            rightIndices
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
 
-            let value = value.Value
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            if gid < length then
+            resultBitmap, resultValues, resultIndices
 
-                let (leftValue: 'a option) =
-                    (%binSearch) leftValuesLength gid leftIndices leftValues
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
 
-                let (rightValue: 'b option) =
-                    (%binSearch) rightValuesLength gid rightIndices rightValues
+        let prepare =
+            preparePositions<'a, 'b, 'c> clContext workGroupSize op
 
-                match (%op) leftValue rightValue value with
-                | Some value ->
-                    resultValues.[gid] <- value
-                    resultIndices.[gid] <- gid
+        let setPositions =
+            Common.setPositions clContext workGroupSize
 
-                    resultBitmap.[gid] <- 1
-                | None -> resultBitmap.[gid] <- 0 @>
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
-    let merge workGroupSize =
-        <@ fun (ndRange: Range1D) (firstSide: int) (secondSide: int) (sumOfSides: int) (firstIndicesBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondIndicesBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'b>) (allIndicesBuffer: ClArray<int>) (firstResultValues: ClArray<'a>) (secondResultValues: ClArray<'b>) (isLeftBitMap: ClArray<int>) ->
+            let bitmap, allValues, allIndices =
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
 
-            let i = ndRange.GlobalID0
+            let resultValues, resultIndices =
+                setPositions processor allocationMode allValues allIndices bitmap
 
-            let mutable beginIdxLocal = local ()
-            let mutable endIdxLocal = local ()
-            let localID = ndRange.LocalID0
+            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+            processor.Post(Msg.CreateFreeMsg<_>(allValues))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
 
-            if localID < 2 then
-                let x = localID * (workGroupSize - 1) + i - 1
+            { Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = max leftVector.Size rightVector.Size }
 
-                let diagonalNumber = min (sumOfSides - 1) x
+    let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
+        (clContext: ClContext)
+        op
+        workGroupSize
+        =
 
-                let mutable leftEdge = diagonalNumber + 1 - secondSide
-                leftEdge <- max 0 leftEdge
+        let assign op =
+            <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
-                let mutable rightEdge = firstSide - 1
+                let gid = ndRange.GlobalID0
 
-                rightEdge <- min rightEdge diagonalNumber
+                let value = value.Value
 
-                while leftEdge <= rightEdge do
-                    let middleIdx = (leftEdge + rightEdge) / 2
-                    let firstIndex = firstIndicesBuffer.[middleIdx]
+                if gid < length then
 
-                    let secondIndex =
-                        secondIndicesBuffer.[diagonalNumber - middleIdx]
+                    let (leftValue: 'a option) =
+                        (%Search.Bin.byKey) leftValuesLength gid leftIndices leftValues
 
-                    if firstIndex <= secondIndex then
-                        leftEdge <- middleIdx + 1
-                    else
-                        rightEdge <- middleIdx - 1
+                    let (rightValue: 'b option) =
+                        (%Search.Bin.byKey) rightValuesLength gid rightIndices rightValues
 
-                // Here localID equals either 0 or 1
-                if localID = 0 then
-                    beginIdxLocal <- leftEdge
-                else
-                    endIdxLocal <- leftEdge
+                    match (%op) leftValue rightValue value with
+                    | Some value ->
+                        resultValues.[gid] <- value
+                        resultIndices.[gid] <- gid
 
-            barrierLocal ()
+                        resultBitmap.[gid] <- 1
+                    | None -> resultBitmap.[gid] <- 0 @>
 
-            let beginIdx = beginIdxLocal
-            let endIdx = endIdxLocal
-            let firstLocalLength = endIdx - beginIdx
-            let mutable x = workGroupSize - firstLocalLength
+        let kernel = clContext.Compile <| assign op
 
-            if endIdx = firstSide then
-                x <- secondSide - i + localID + beginIdx
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (value: ClCell<'a>) ->
 
-            let secondLocalLength = x
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-            //First indices are from 0 to firstLocalLength - 1 inclusive
-            //Second indices are from firstLocalLength to firstLocalLength + secondLocalLength - 1 inclusive
-            let localIndices = localArray<int> workGroupSize
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
 
-            if localID < firstLocalLength then
-                localIndices.[localID] <- firstIndicesBuffer.[beginIdx + localID]
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, vectorLenght)
 
-            if localID < secondLocalLength then
-                localIndices.[firstLocalLength + localID] <- secondIndicesBuffer.[i - beginIdx]
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
 
-            barrierLocal ()
+            let kernel = kernel.GetKernel()
 
-            if i < sumOfSides then
-                let mutable leftEdge = localID + 1 - secondLocalLength
-                if leftEdge < 0 then leftEdge <- 0
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues.Length
+                            rightValues.Length
+                            leftValues
+                            leftIndices
+                            rightValues
+                            rightIndices
+                            value
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
 
-                let mutable rightEdge = firstLocalLength - 1
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                rightEdge <- min rightEdge localID
+            resultBitmap, resultValues, resultIndices
 
-                while leftEdge <= rightEdge do
-                    let middleIdx = (leftEdge + rightEdge) / 2
-                    let firstIndex = localIndices.[middleIdx]
+    ///<param name="clContext">.</param>
+    ///<param name="op">.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let assignByMask<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
 
-                    let secondIndex =
-                        localIndices.[firstLocalLength + localID - middleIdx]
+        let prepare =
+            preparePositionsAssignByMask clContext op workGroupSize
 
-                    if firstIndex <= secondIndex then
-                        leftEdge <- middleIdx + 1
-                    else
-                        rightEdge <- middleIdx - 1
+        let setPositions =
+            Common.setPositions clContext workGroupSize
 
-                let boundaryX = rightEdge
-                let boundaryY = localID - leftEdge
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
 
-                // boundaryX and boundaryY can't be off the right edge of array (only off the left edge)
-                let isValidX = boundaryX >= 0
-                let isValidY = boundaryY >= 0
+            let bitmap, values, indices =
+                prepare
+                    processor
+                    leftVector.Size
+                    leftVector.Values
+                    leftVector.Indices
+                    rightVector.Values
+                    rightVector.Indices
+                    value
 
-                let mutable fstIdx = 0
+            let resultValues, resultIndices =
+                setPositions processor allocationMode values indices bitmap
 
-                if isValidX then
-                    fstIdx <- localIndices.[boundaryX]
+            processor.Post(Msg.CreateFreeMsg<_>(indices))
+            processor.Post(Msg.CreateFreeMsg<_>(values))
+            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
 
-                let mutable sndIdx = 0
-
-                if isValidY then
-                    sndIdx <- localIndices.[firstLocalLength + boundaryY]
-
-                if not isValidX || isValidY && fstIdx <= sndIdx then
-                    allIndicesBuffer.[i] <- sndIdx
-                    secondResultValues.[i] <- secondValuesBuffer.[i - localID - beginIdx + boundaryY]
-                    isLeftBitMap.[i] <- 0
-                else
-                    allIndicesBuffer.[i] <- fstIdx
-                    firstResultValues.[i] <- firstValuesBuffer.[beginIdx + boundaryX]
-                    isLeftBitMap.[i] <- 1 @>
-
-    let preparePositions opAdd =
-        <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
-
-            let gid = ndRange.GlobalID0
-
-            if gid < length - 1
-               && allIndices.[gid] = allIndices.[gid + 1] then
-                let result =
-                    (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1])
-
-                (%PreparePositions.both) gid result positions allValues
-            elif (gid < length
-                  && gid > 0
-                  && allIndices.[gid - 1] <> allIndices.[gid])
-                 || gid = 0 then
-                let leftResult = (%opAdd) (Some leftValues.[gid]) None
-                let rightResult = (%opAdd) None (Some rightValues.[gid])
-
-                (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>
+            { Context = clContext
+              Values = resultValues
+              Indices = resultIndices
+              Size = rightVector.Size }

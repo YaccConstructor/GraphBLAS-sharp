@@ -2,6 +2,19 @@ open Expecto
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 
+
+// [<Tests>]
+// let allTests =
+//     testList
+//         "All tests"
+//         [ Matrix.SpGEMM.Expand.processPositionsTest
+//           Matrix.SpGEMM.Expand.expandLeftMatrixValuesTest
+//           Matrix.SpGEMM.Expand.extendGlobalRightMatrixPointersTest
+//           Matrix.SpGEMM.Expand.getRightMatrixValuesAndPointersTest
+//           Matrix.SpGEMM.Expand.multiplicationTest
+//           Matrix.SpGEMM.Expand.runExtendTest ]
+    // |> testSequenced
+
 // let matrixTests =
 //     testList
 //         "Matrix tests"
@@ -10,11 +23,23 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 //           Matrix.Map2.addAtLeastOneTests
 //           Matrix.Map2.mulAtLeastOneTests
 //           Matrix.Map2.addAtLeastOneToCOOTests
+//           Matrix.Map.notTests
+//           Matrix.Map.addTests
+//           Matrix.Map.mulTests
 //           Matrix.Mxm.tests
 //           Matrix.Transpose.tests ]
 //     |> testSequenced
 //
 // let commonTests =
+//     let reduceTests =
+//         testList
+//             "Reduce"
+//             [ Common.Reduce.ByKey.sequentialTest
+//               Common.Reduce.ByKey.sequentialSegmentTests
+//               Common.Reduce.ByKey.oneWorkGroupTest
+//               Common.Reduce.Reduce.tests
+//               Common.Reduce.Sum.tests ]
+//
 //     let clArrayTests =
 //         testList
 //             "ClArray"
@@ -28,13 +53,19 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 //               Common.ClArray.Map2.mulTests
 //               Common.ClArray.Choose.tests ]
 //
+//     let sortTests =
+//         testList
+//             "Sort"
+//             [ Common.Sort.Bitonic.tests
+//               Common.Sort.Radix.testsByKeys
+//               Common.Sort.Radix.testKeysOnly ]
+//
 //     testList
 //         "Common tests"
 //         [ clArrayTests
-//           Common.BitonicSort.tests
-//           Common.Scatter.tests
-//           Common.Reduce.tests
-//           Common.Sum.tests ]
+//           sortTests
+//           reduceTests
+//           Common.Scatter.tests ]
 //     |> testSequenced
 //
 // let vectorTests =
@@ -49,8 +80,6 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 //           Vector.Map2.mulTests
 //           Vector.Map2.addAtLeastOneTests
 //           Vector.Map2.mulAtLeastOneTests
-//           Vector.Map2.addGeneralTests
-//           Vector.Map2.mulGeneralTests
 //           Vector.Map2.complementedGeneralTests
 //           Vector.AssignByMask.tests
 //           Vector.AssignByMask.complementedTests
@@ -60,20 +89,16 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 // let algorithmsTests =
 //     testList "Algorithms tests" [ Algorithms.BFS.tests ]
 //     |> testSequenced
-
+//
 // [<Tests>]
 // let allTests =
 //     testList
 //         "All tests"
-//         [ Matrix.SpGEMM.Expand.processPositionsTest
-//           Matrix.SpGEMM.Expand.expandLeftMatrixValuesTest
-//           Matrix.SpGEMM.Expand.extendGlobalRightMatrixPointersTest
-//           Matrix.SpGEMM.Expand.getRightMatrixValuesAndPointersTest
-//           Matrix.SpGEMM.Expand.multiplicationTest
-//           Matrix.SpGEMM.Expand.runExtendTest ]
-    // |> testSequenced
-
-
+//         [ matrixTests
+//           commonTests
+//           vectorTests
+//           algorithmsTests ]
+//     |> testSequenced
 
 [<EntryPoint>]
 let main argv = Expand.testFixtures |> runTestsWithCLIArgs [] argv

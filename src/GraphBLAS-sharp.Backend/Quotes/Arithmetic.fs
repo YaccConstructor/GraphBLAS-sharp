@@ -3,6 +3,16 @@
 open GraphBLAS.FSharp.Backend.Objects
 
 module ArithmeticOperations =
+    let inline mkUnaryOp zero unaryOp =
+        <@ fun x ->
+            let mutable res = zero
+
+            match x with
+            | Some v -> res <- (%unaryOp) v
+            | None -> res <- (%unaryOp) zero
+
+            if res = zero then None else Some res @>
+
     let inline mkNumericSum zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
@@ -56,6 +66,12 @@ module ArithmeticOperations =
 
             if res then Some true else None @>
 
+    let inline addLeftConst zero constant =
+        mkUnaryOp zero <@ fun x -> constant + x @>
+
+    let inline addRightConst zero constant =
+        mkUnaryOp zero <@ fun x -> x + constant @>
+
     let intSum = mkNumericSum 0
     let byteSum = mkNumericSum 0uy
     let floatSum = mkNumericSum 0.0
@@ -79,6 +95,12 @@ module ArithmeticOperations =
 
             if res then Some true else None @>
 
+    let inline mulLeftConst zero constant =
+        mkUnaryOp zero <@ fun x -> constant * x @>
+
+    let inline mulRightConst zero constant =
+        mkUnaryOp zero <@ fun x -> x * constant @>
+
     let intMul = mkNumericMul 0
     let byteMul = mkNumericMul 0uy
     let floatMul = mkNumericMul 0.0
@@ -98,3 +120,9 @@ module ArithmeticOperations =
     let byteMulAtLeastOne = mkNumericMulAtLeastOne 0uy
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
+
+    let notQ =
+        <@ fun x ->
+            match x with
+            | Some true -> None
+            | _ -> Some true @>

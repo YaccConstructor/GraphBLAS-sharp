@@ -158,33 +158,6 @@ let mulAtLeastOneTestFixtures case =
 let mulAtLeastOneTests =
     operationGPUTests "Backend.Vector.Map2AtLeasOne mul tests" mulTestFixtures
 
-let addGeneralTestFixtures (case: OperationCase<VectorFormat>) =
-    let context = case.TestContext.ClContext
-
-    [ createTest case (=) 0 (+) ArithmeticOperations.intSum Vector.map2General
-
-      if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSum Vector.map2General
-
-      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32Sum Vector.map2General
-      createTest case (=) false (||) ArithmeticOperations.boolSum Vector.map2General
-      createTest case (=) 0uy (+) ArithmeticOperations.byteSum Vector.map2General ]
-
-let addGeneralTests =
-    operationGPUTests "Backend.Vector.Map2Gen add tests" addGeneralTestFixtures
-
-let mulGeneralTestFixtures case =
-    let context = case.TestContext.ClContext
-
-    [ createTest case (=) 0 (*) ArithmeticOperations.intMul Vector.map2General
-
-      if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMul Vector.map2General
-
-      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32Mul Vector.map2General
-      createTest case (=) false (&&) ArithmeticOperations.boolMul Vector.map2General
-      createTest case (=) 0uy (*) ArithmeticOperations.byteMul Vector.map2General ]
-
 let fillSubVectorComplementedQ<'a, 'b> value =
     <@ fun (left: 'a option) (right: 'b option) ->
         match left with
@@ -198,13 +171,10 @@ let fillSubVectorFun value zero isEqual =
         else
             right
 
-let mulGeneralTests =
-    operationGPUTests "Backend.Vector.SparseVector.map2Gen mul tests" mulGeneralTestFixtures
-
 let complementedGeneralTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (fillSubVectorFun 1 0 (=)) (fillSubVectorComplementedQ 1) Vector.map2General
+    [ createTest case (=) 0 (fillSubVectorFun 1 0 (=)) (fillSubVectorComplementedQ 1) Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
           createTest
@@ -213,7 +183,7 @@ let complementedGeneralTestFixtures case =
               0.0
               (fillSubVectorFun 1.0 0.0 Utils.floatIsEqual)
               (fillSubVectorComplementedQ 1.0)
-              Vector.map2General
+              Vector.map2
 
       createTest
           case
@@ -221,11 +191,11 @@ let complementedGeneralTestFixtures case =
           0.0f
           (fillSubVectorFun 1.0f 0.0f Utils.float32IsEqual)
           (fillSubVectorComplementedQ 1.0f)
-          Vector.map2General
+          Vector.map2
 
-      createTest case (=) false (fillSubVectorFun true false (=)) (fillSubVectorComplementedQ true) Vector.map2General
+      createTest case (=) false (fillSubVectorFun true false (=)) (fillSubVectorComplementedQ true) Vector.map2
 
-      createTest case (=) 0uy (fillSubVectorFun 1uy 0uy (=)) (fillSubVectorComplementedQ 1uy) Vector.map2General ]
+      createTest case (=) 0uy (fillSubVectorFun 1uy 0uy (=)) (fillSubVectorComplementedQ 1uy) Vector.map2 ]
 
 
 let complementedGeneralTests =

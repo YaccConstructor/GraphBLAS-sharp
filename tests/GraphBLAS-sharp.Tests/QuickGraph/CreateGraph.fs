@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Tests.QuickGraph
+﻿namespace GraphBLAS.FSharp.Tests.Backend.QuickGraph
 
 open QuikGraph
 

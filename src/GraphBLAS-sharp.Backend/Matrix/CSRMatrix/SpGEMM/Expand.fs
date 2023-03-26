@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR.SpGEMM
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Predefined
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
@@ -230,8 +229,6 @@ module Expand =
                 removeDuplications processor globalRightMatrixRowsStartPositions
 
             // RESULT row pointers into result expanded (obtained by multiplication) array
-            // printfn "GLOBAL LENGTH: %A" globalLength
-
             let resultRowPointers =
                 getRowPointers processor globalLength leftMatrix.RowPointers globalRightMatrixRowsStartPositions
 
@@ -240,8 +237,6 @@ module Expand =
             // int map to distinguish different raws in a general array. 1 for first, 2 for second and so forth...
             let globalMap =
                 getGlobalPositions processor globalLength globalRightMatrixRawsPointersWithoutDuplicates
-
-            // printfn "global clmap: %A" <| globalMap.ToHost processor
 
             globalMap, globalRightMatrixRawsPointersWithoutDuplicates, requiredLeftMatrixValues, requiredRightMatrixRawPointers, resultRowPointers
 
