@@ -90,17 +90,16 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 //     testList "Algorithms tests" [ Algorithms.BFS.tests ]
 //     |> testSequenced
 //
-// [<Tests>]
-// let allTests =
-//     testList
-//         "All tests"
-//         [ matrixTests
-//           commonTests
-//           vectorTests
-//           algorithmsTests ]
-//     |> testSequenced
+[<Tests>]
+let allTests =
+    testList
+        "All tests"
+        [ Common.Reduce.ByKey.sequential2DTest
+          Common.Reduce.ByKey.sequentialSegmentTests2D ]
+
+    |> testSequenced
 
 [<EntryPoint>]
-let main argv = Expand.testFixtures |> runTestsWithCLIArgs [] argv
+let main argv = allTests |> runTestsWithCLIArgs [] argv
 
 

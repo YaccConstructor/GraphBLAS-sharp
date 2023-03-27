@@ -233,8 +233,8 @@ module HostPrimitives =
         |> Array.mapi (fun index bit -> if bit = 1 then Some index else None)
         |> Array.choose id
 
-    let reduceByKey keys value reduceOp =
-        let zipped = Array.zip keys value
+    let reduceByKey keys values reduceOp =
+        let zipped = Array.zip keys values
 
         Array.distinct keys
         |> Array.map
@@ -246,6 +246,12 @@ module HostPrimitives =
         // reduce elements
         |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
         |> Array.unzip
+
+    let reduceByKey2D firstKeys secondKeys values reduceOp =
+        Array.zip firstKeys secondKeys
+        |> fun compactedKeys -> reduceByKey compactedKeys values reduceOp
+        ||> Array.map2 (fun (fst, snd) value ->  fst, snd, value)
+        |> Array.unzip3
 
 module Context =
     type TestContext =

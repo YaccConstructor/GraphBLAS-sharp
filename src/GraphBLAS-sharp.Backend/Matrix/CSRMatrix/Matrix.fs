@@ -8,6 +8,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Matrix =
     let private expandRowPointers (clContext: ClContext) workGroupSize =
@@ -153,3 +154,51 @@ module Matrix =
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
             run queue matrixLeft matrixRight mask
+
+    let spgemm
+        (clContext: ClContext)
+        workGroupSize
+        (opAdd: Expr<'c -> 'c -> 'c>)
+        (opMul: Expr<'a -> 'b -> 'c>)
+        =
+
+        let expand = SpGEMM.Expand.run clContext workGroupSize opMul
+
+        let expandRowPointers = expandRowPointers clContext workGroupSize
+
+        let sortData = Sort.Radix.runByKeysStandard clContext workGroupSize
+
+        let sortKeys = Sort.Radix.runByKeysStandard clContext workGroupSize
+
+        let reduceByKey = Reduce.ByKey.segmentSequential clContext workGroupSize opAdd
+
+        fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+            let multiplicationResult, columns, rowPointers =
+                expand processor leftMatrix rightMatrix
+
+            let rows =
+                expandRowPointers processor DeviceOnly rowPointers columns.Length leftMatrix.RowCount
+
+            rowPointers.Free processor
+
+            // sorting
+            let sortData = sortData processor
+            let sortKeys = sortKeys processor
+
+            // by columns
+            let valuesSortedByColumns = sortData columns multiplicationResult
+            let byKeSortedRows = sortKeys columns rows
+
+            multiplicationResult.Free processor
+            rows.Free processor
+
+            // by rows
+            let values = sortData byKeSortedRows valuesSortedByColumns
+            let columns = sortKeys byKeSortedRows columns
+
+            // reduce
+
+
+
+            ()
+

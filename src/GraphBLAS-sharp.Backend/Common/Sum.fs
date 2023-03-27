@@ -470,3 +470,149 @@ module Reduce =
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 reducedKeys, reducedValues
+
+    module ByKey2D =
+        /// <summary>
+        /// Reduce an array of values by 2D keys using a single work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
+        let sequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) length (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (secondReducedKeys: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid = 0 then
+                        let mutable firstCurrentKey = firstKeys.[0]
+                        let mutable secondCurrentKey = secondKeys.[0]
+
+                        let mutable segmentResult = values.[0]
+                        let mutable segmentCount = 0
+
+                        for i in 1 .. length - 1 do
+                            if firstCurrentKey = firstKeys.[i]
+                               && secondCurrentKey = secondKeys.[i] then
+                                segmentResult <- (%reduceOp) segmentResult values.[i]
+                            else
+                                reducedValues.[segmentCount] <- segmentResult
+
+                                firstReducedKeys.[segmentCount] <- firstCurrentKey
+                                secondReducedKeys.[segmentCount] <- secondCurrentKey
+
+                                segmentCount <- segmentCount + 1
+                                firstCurrentKey <- firstKeys.[i]
+                                secondCurrentKey <- secondKeys.[i]
+                                segmentResult <- values.[i]
+
+                        firstReducedKeys.[segmentCount] <- firstCurrentKey
+                        secondReducedKeys.[segmentCount] <- secondCurrentKey
+
+                        reducedValues.[segmentCount] <- segmentResult @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let firstReducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let secondReducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange firstKeys.Length firstKeys secondKeys values reducedValues firstReducedKeys secondReducedKeys)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                firstReducedKeys, secondReducedKeys, reducedValues
+
+        /// <summary>
+        /// Reduces values by key. Each segment is reduced by one work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
+        let segmentSequential<'a> (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (secondReducedKeys: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeyCount then
+                        let startPosition = offsets.[gid]
+
+                        let firstSourceKey = firstKeys.[startPosition]
+                        let secondSourceKey = secondKeys.[startPosition]
+
+                        let mutable sum = values.[startPosition]
+
+                        let mutable currentPosition = startPosition + 1
+
+                        while currentPosition < keysLength
+                              && firstSourceKey = firstKeys.[currentPosition]
+                              && secondSourceKey = secondKeys.[currentPosition] do
+
+                            sum <- (%reduceOp) sum values.[currentPosition]
+                            currentPosition <- currentPosition + 1
+
+                        reducedValues.[gid] <- sum
+                        firstReducedKeys.[gid] <- firstSourceKey
+                        secondReducedKeys.[gid] <- secondSourceKey @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let firstReducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let secondReducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                resultLength
+                                firstKeys.Length
+                                offsets
+                                firstKeys
+                                secondKeys
+                                values
+                                reducedValues
+                                firstReducedKeys
+                                secondReducedKeys)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                firstReducedKeys, secondReducedKeys, reducedValues
