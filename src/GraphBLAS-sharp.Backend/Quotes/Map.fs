@@ -21,3 +21,7 @@ module Map =
             match (%map) item with
             | Some _ -> 1
             | None -> 0 @>
+
+    let inc = <@ fun item -> item + 1 @>
+
+    let subtraction = <@ fun first second -> first - second @>

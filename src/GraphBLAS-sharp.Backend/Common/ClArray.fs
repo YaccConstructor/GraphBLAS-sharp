@@ -5,6 +5,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -32,30 +33,6 @@ module ClArray =
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
             outputArray
-
-    let assignManyInit (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
-
-        let init =
-            <@ fun (range: Range1D) indicesLength (indices: ClArray<int>) (outputBuffer: ClArray<'a>) ->
-
-                let gid = range.GlobalID0
-
-                if gid < indicesLength then
-                    let targetIndex = indices.[gid]
-
-                    outputBuffer.[targetIndex] <- (%initializer) gid @>
-
-        let program = clContext.Compile(init)
-
-        fun (processor: MailboxProcessor<_>) (indices: ClArray<int>) (result: ClArray<'a>) ->
-
-            let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(indices.Length, workGroupSize)
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange indices.Length indices result))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
     let create (clContext: ClContext) workGroupSize =
 
@@ -315,6 +292,24 @@ module ClArray =
 
             resultArray
 
+    let getUniqueBitmap2<'a when 'a: equality> (clContext: ClContext) workGroupSize =
+
+        let map = map2 clContext workGroupSize <@ fun x y -> if x = 1 && y = 1 then 1 else 0 @>
+
+        let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
+            let firstBitmap = getUniqueBitmap processor DeviceOnly firstArray
+
+            let secondBitmap = getUniqueBitmap processor DeviceOnly secondArray
+
+            let result = map processor allocationMode firstBitmap secondBitmap
+
+            firstBitmap.Free processor
+            secondBitmap.Free processor
+
+            result
+
     let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
         let getBitmap =
             map<'a, int> clContext workGroupSize
@@ -353,3 +348,14 @@ module ClArray =
             scatter processor positions values result
 
             result
+
+    let iterate (clContext: ClContext) workGroupSize iterator =
+
+        let create = create clContext workGroupSize iterator
+
+        let scatter = Scatter.runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
+
+            let positions = create processor allocationMode
+
