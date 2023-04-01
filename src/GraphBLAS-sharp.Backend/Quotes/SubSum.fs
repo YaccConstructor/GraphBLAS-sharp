@@ -31,10 +31,76 @@ module SubSum =
 
                 barrierLocal () @>
 
-    let sequentialSum<'a> opAdd =
-        sumGeneral<'a> <| sequentialAccess<'a> opAdd
+    let sequentialSum<'a> = sumGeneral<'a> << sequentialAccess<'a>
 
-    let treeSum<'a> opAdd = sumGeneral<'a> <| treeAccess<'a> opAdd
+    let upSweep<'a> = sumGeneral<'a> << treeAccess<'a>
+
+    let downSweep opAdd =
+        <@ fun wgSize lid (localBuffer: 'a []) ->
+            let mutable step = wgSize
+
+            while step > 1 do
+                barrierLocal ()
+
+                if lid < wgSize / step then
+                    let i = step * (lid + 1) - 1
+                    let j = i - (step >>> 1)
+
+                    let tmp = localBuffer.[i]
+                    let buff = (%opAdd) tmp localBuffer.[j]
+                    localBuffer.[i] <- buff
+                    localBuffer.[j] <- tmp
+
+                step <- step >>> 1 @>
+
+    let upSweepByKey opAdd =
+        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: 'b [])->
+            let mutable step = 2
+
+            while step <= wgSize do
+                let i = step * (lid + 1) - 1
+
+                let firstIndex = i - (step >>> 1) // TODO()
+                let secondIndex = i
+
+                let firstKey = localKeys.[firstIndex]
+                let secondKey = localKeys.[secondIndex]
+
+                if lid < wgSize / step
+                   && firstKey = secondKey then
+
+                    let firstValue = localBuffer.[firstIndex]
+                    let secondValue = localBuffer.[secondIndex]
+
+                    localBuffer.[secondIndex] <- (%opAdd) firstValue secondValue
+
+                step <- step <<< 1
+
+                barrierLocal () @>
+
+    let downSweepByKey opAdd =
+        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: int []) ->
+            let mutable step = wgSize
+
+            while step > 1 do
+                barrierLocal ()
+
+                let rightIndex = step * (lid + 1) - 1
+                let leftIndex = rightIndex - (step >>> 1)
+
+                let rightKey = localKeys.[rightIndex]
+                let leftKey = localKeys.[leftIndex]
+
+                if lid < wgSize / step
+                    && rightKey = leftKey then
+
+                    let tmp = localBuffer.[rightIndex]
+                    let buff = (%opAdd) tmp localBuffer.[leftIndex]
+
+                    localBuffer.[rightIndex] <- buff
+                    localBuffer.[leftIndex] <- tmp
+
+                step <- step >>> 1 @>
 
     let localPrefixSum opAdd =
         <@ fun (lid: int) (workGroupSize: int) (array: 'a []) ->
@@ -51,5 +117,7 @@ module SubSum =
 
                 barrierLocal ()
                 array.[lid] <- value @>
+
+
 
     let localIntPrefixSum = localPrefixSum <@ (+) @>

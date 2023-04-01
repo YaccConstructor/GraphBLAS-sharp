@@ -3,6 +3,9 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
@@ -38,7 +41,7 @@ module PrefixSum =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
-            processor.Post(Msg.CreateFreeMsg(mirror))
+            mirror.Free processor
 
     let private scanGeneral
         beforeLocalSumClear
@@ -48,10 +51,8 @@ module PrefixSum =
         workGroupSize
         =
 
-        let subSum = SubSum.treeSum opAdd
-
         let scan =
-            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (resultBuffer: ClArray<'a>) (verticesBuffer: ClArray<'a>) (totalSumBuffer: ClCell<'a>) (zero: ClCell<'a>) (mirror: ClCell<bool>) ->
+            <@ fun (ndRange: Range1D) inputArrayLength verticesLength (inputArray: ClArray<'a>) (verticesBuffer: ClArray<'a>) (totalSumBuffer: ClCell<'a>) (zero: ClCell<'a>) (mirror: ClCell<bool>) ->
 
                 let mirror = mirror.Value
 
@@ -62,46 +63,34 @@ module PrefixSum =
                 if mirror then
                     i <- inputArrayLength - 1 - i
 
-                let localID = ndRange.LocalID0
+                let lid = ndRange.LocalID0
 
                 let zero = zero.Value
 
                 if gid < inputArrayLength then
-                    resultLocalBuffer.[localID] <- resultBuffer.[i]
+                    resultLocalBuffer.[lid] <- inputArray.[i]
                 else
-                    resultLocalBuffer.[localID] <- zero
+                    resultLocalBuffer.[lid] <- zero
 
                 barrierLocal ()
 
-                (%subSum) workGroupSize localID resultLocalBuffer
+                // Local tree reduce
+                (%SubSum.upSweep opAdd) workGroupSize lid resultLocalBuffer
 
-                if localID = workGroupSize - 1 then
-                    if verticesLength <= 1 && localID = gid then
-                        totalSumBuffer.Value <- resultLocalBuffer.[localID]
+                if lid = workGroupSize - 1 then
+                    // if last iteration
+                    if verticesLength <= 1 && lid = gid then
+                        totalSumBuffer.Value <- resultLocalBuffer.[lid]
 
-                    verticesBuffer.[gid / workGroupSize] <- resultLocalBuffer.[localID]
-                    (%beforeLocalSumClear) resultBuffer resultLocalBuffer.[localID] inputArrayLength gid i
-                    resultLocalBuffer.[localID] <- zero
+                    verticesBuffer.[gid / workGroupSize] <- resultLocalBuffer.[lid]
+                    (%beforeLocalSumClear) inputArray resultLocalBuffer.[lid] inputArrayLength gid i
+                    resultLocalBuffer.[lid] <- zero
 
-                let mutable step = workGroupSize
-
-                while step > 1 do
-                    barrierLocal ()
-
-                    if localID < workGroupSize / step then
-                        let i = step * (localID + 1) - 1
-                        let j = i - (step >>> 1)
-
-                        let tmp = resultLocalBuffer.[i]
-                        let buff = (%opAdd) tmp resultLocalBuffer.[j]
-                        resultLocalBuffer.[i] <- buff
-                        resultLocalBuffer.[j] <- tmp
-
-                    step <- step >>> 1
+                (%SubSum.downSweep opAdd) workGroupSize lid resultLocalBuffer
 
                 barrierLocal ()
 
-                (%writeData) resultBuffer resultLocalBuffer inputArrayLength workGroupSize gid i localID @>
+                (%writeData) inputArray resultLocalBuffer inputArrayLength workGroupSize gid i lid @>
 
         let program = clContext.Compile(scan)
 
@@ -132,13 +121,14 @@ module PrefixSum =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
-            processor.Post(Msg.CreateFreeMsg(zero))
-            processor.Post(Msg.CreateFreeMsg(mirror))
+
+            zero.Free processor
+            mirror.Free processor
 
     let private scanExclusive<'a when 'a: struct> =
         scanGeneral
             <@ fun (_: ClArray<'a>) (_: 'a) (_: int) (_: int) (_: int) -> () @>
-            <@ fun (resultBuffer: ClArray<'a>) (resultLocalBuffer: 'a []) (inputArrayLength: int) (smth: int) (gid: int) (i: int) (localID: int) ->
+            <@ fun (resultBuffer: ClArray<'a>) (resultLocalBuffer: 'a []) (inputArrayLength: int) (_: int) (gid: int) (i: int) (localID: int) ->
 
                 if gid < inputArrayLength then
                     resultBuffer.[i] <- resultLocalBuffer.[localID] @>
@@ -147,8 +137,7 @@ module PrefixSum =
         scanGeneral
             <@ fun (resultBuffer: ClArray<'a>) (value: 'a) (inputArrayLength: int) (gid: int) (i: int) ->
 
-                if gid < inputArrayLength then
-                    resultBuffer.[i] <- value @>
+                if gid < inputArrayLength then resultBuffer.[i] <- value @>
             <@ fun (resultBuffer: ClArray<'a>) (resultLocalBuffer: 'a []) (inputArrayLength: int) (workGroupSize: int) (gid: int) (i: int) (localID: int) ->
 
                 if gid < inputArrayLength
@@ -206,8 +195,8 @@ module PrefixSum =
                 verticesArrays <- swap verticesArrays
                 verticesLength <- (verticesLength - 1) / workGroupSize + 1
 
-            processor.Post(Msg.CreateFreeMsg(firstVertices))
-            processor.Post(Msg.CreateFreeMsg(secondVertices))
+            firstVertices.Free processor
+            secondVertices.Free processor
 
             totalSum
 
@@ -270,3 +259,119 @@ module PrefixSum =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 
             scan processor inputArray 0
+
+
+    module ByKey =
+        let private oneWorkGroup
+            writeZero
+            zero
+            uniqueKey
+            (opAdd: Expr<'a -> 'a -> 'a>)
+            (clContext: ClContext)
+            workGroupSize
+            =
+
+            let scan =
+                <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (keys: ClArray<int>) ->
+
+                    let localValues = localArray<'a> workGroupSize
+                    let localKeys = localArray<int> workGroupSize
+
+                    let gid = ndRange.GlobalID0
+                    let lid = ndRange.LocalID0
+
+                    if gid < length then
+                        // only one workgroup
+                        localValues.[lid] <- values.[lid]
+                        localKeys.[lid] <- keys.[gid]
+                    else
+                        localValues.[lid] <- zero
+                        localKeys.[lid] <- uniqueKey
+
+                    barrierLocal ()
+
+                    // Local tree reduce
+                    (%SubSum.upSweepByKey opAdd) workGroupSize lid localValues localKeys
+
+                    // if root item
+                    if lid = workGroupSize - 1
+                       || localValues.[lid] <> localValues.[lid + 1] then
+
+                        (%writeZero) localValues lid zero
+
+                    (%SubSum.downSweepByKey opAdd) workGroupSize lid localValues localKeys
+
+                    barrierLocal ()
+
+                    values.[lid] <- localValues.[lid] @>
+
+            let program = clContext.Compile(scan)
+
+            fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let kernel = program.GetKernel()
+
+                let ndRange =
+                    Range1D.CreateValid(values.Length, workGroupSize)
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                values.Length
+                                values
+                                keys)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+        let sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) lenght uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeysCount then
+                        let sourcePosition = offsets.[gid]
+                        let sourceKey = keys.[sourcePosition]
+
+                        let mutable currentSum = values.[sourcePosition]
+                        let mutable previousSum = zero
+
+                        values.[gid] <- (%opWrite) previousSum currentSum
+
+                        let mutable currentPosition = sourcePosition + 1
+
+                        while currentPosition < lenght
+                                && keys.[currentPosition] = sourceKey do
+
+                            previousSum <- currentSum
+                            currentSum <- (%opAdd) currentSum values.[currentPosition]
+
+                            values.[gid] <- (%opWrite) previousSum currentSum
+
+                            currentPosition <- currentPosition + 1 @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
+
+                let kernel = kernel.GetKernel()
+
+                let ndRange =
+                    Range1D.CreateValid(values.Length, workGroupSize)
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                values.Length
+                                uniqueKeysCount
+                                values
+                                keys
+                                offsets)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _> kernel)
