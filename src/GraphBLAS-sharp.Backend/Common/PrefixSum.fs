@@ -136,7 +136,8 @@ module PrefixSum =
         scanGeneral
             <@ fun (resultBuffer: ClArray<'a>) (value: 'a) (inputArrayLength: int) (gid: int) (i: int) ->
 
-                if gid < inputArrayLength then resultBuffer.[i] <- value @>
+                if gid < inputArrayLength then
+                    resultBuffer.[i] <- value @>
             <@ fun (resultBuffer: ClArray<'a>) (resultLocalBuffer: 'a []) (inputArrayLength: int) (workGroupSize: int) (gid: int) (i: int) (localID: int) ->
 
                 if gid < inputArrayLength
@@ -214,7 +215,7 @@ module PrefixSum =
     /// <code>
     /// let arr = [| 1; 1; 1; 1 |]
     /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
     /// |> ignore
     /// ...
     /// > val arr = [| 0; 1; 2; 3 |]
@@ -240,7 +241,7 @@ module PrefixSum =
     /// <code>
     /// let arr = [| 1; 1; 1; 1 |]
     /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum <@ (+) @> 0
+    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
     /// |> ignore
     /// ...
     /// > val arr = [| 1; 2; 3; 4 |]
@@ -259,76 +260,7 @@ module PrefixSum =
 
             scan processor inputArray 0
 
-
     module ByKey =
-        let private oneWorkGroup
-            writeZero
-            zero
-            uniqueKey
-            (opAdd: Expr<'a -> 'a -> 'a>)
-            (clContext: ClContext)
-            workGroupSize
-            =
-
-            let scan =
-                <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (keys: ClArray<int>) ->
-
-                    let localValues = localArray<'a> workGroupSize
-                    let localKeys = localArray<int> workGroupSize
-
-                    let gid = ndRange.GlobalID0
-                    let lid = ndRange.LocalID0
-
-                    if gid < length then
-                        // only one workgroup
-                        localValues.[lid] <- values.[lid]
-                        localKeys.[lid] <- keys.[gid]
-                    else
-                        localValues.[lid] <- zero
-                        localKeys.[lid] <- uniqueKey
-
-                    barrierLocal ()
-
-                    // Local tree reduce
-                    (%SubSum.upSweepByKey opAdd) workGroupSize lid localValues localKeys
-
-                    // if root item
-                    if lid = workGroupSize - 1
-                       || localValues.[lid] <> localValues.[lid + 1] then
-
-                        (%writeZero) localValues lid zero
-
-                    (%SubSum.downSweepByKey opAdd) workGroupSize lid localValues localKeys
-
-                    barrierLocal ()
-
-                    values.[lid] <- localValues.[lid] @>
-
-            let program = clContext.Compile(scan)
-
-            fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) (values: ClArray<'a>) ->
-
-                let kernel = program.GetKernel()
-
-                let ndRange =
-                    Range1D.CreateValid(values.Length, workGroupSize)
-
-                processor.Post(
-                    Msg.MsgSetArguments
-                        (fun () ->
-                            kernel.KernelFunc
-                                ndRange
-                                values.Length
-                                values
-                                keys)
-                )
-
-                processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-        let oneWorkGroupExclude zero = oneWorkGroup <@ (fun _ _ _ -> ()) @> zero
-
-        let onwWorkGroupInclude zero = oneWorkGroup <@ (fun localValues lid zero -> localValues.[lid] <- zero) @> zero
-
         let private sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
 
             let kernel =
@@ -345,7 +277,7 @@ module PrefixSum =
                         let mutable currentPosition = sourcePosition
 
                         while currentPosition < lenght
-                                && keys.[currentPosition] = sourceKey do
+                              && keys.[currentPosition] = sourceKey do
 
                             previousSum <- currentSum
                             currentSum <- (%opAdd) currentSum values.[currentPosition]
@@ -365,21 +297,35 @@ module PrefixSum =
 
                 processor.Post(
                     Msg.MsgSetArguments
-                        (fun () ->
-                            kernel.KernelFunc
-                                ndRange
-                                values.Length
-                                uniqueKeysCount
-                                values
-                                keys
-                                offsets)
+                        (fun () -> kernel.KernelFunc ndRange values.Length uniqueKeysCount values keys offsets)
                 )
 
                 processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
+        /// <summary>
+        /// Exclude scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 0; 0; 1; 2; 0; 1 |]
+        /// </code>
+        /// </example>
+        let sequentialExclude clContext =
+            sequentialSegments (Map.fst ()) clContext
 
-        let sequentialExclude clContext = sequentialSegments (Map.fst ()) clContext
-
-        let sequentialInclude clContext = sequentialSegments (Map.snd ()) clContext
-
-
+        /// <summary>
+        /// Include scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 1; 1; 2; 3; 1; 2 |]
+        /// </code>
+        /// </example>
+        let sequentialInclude clContext =
+            sequentialSegments (Map.snd ()) clContext

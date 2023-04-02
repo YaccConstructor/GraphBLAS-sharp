@@ -57,7 +57,7 @@ module SubSum =
                 step <- step >>> 1 @>
 
     let upSweepByKey opAdd =
-        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: 'b [])->
+        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: 'b []) ->
             let mutable step = 2
 
             while step <= wgSize do
@@ -69,8 +69,7 @@ module SubSum =
                 let firstKey = localKeys.[firstIndex]
                 let secondKey = localKeys.[secondIndex]
 
-                if lid < wgSize / step
-                   && firstKey = secondKey then
+                if lid < wgSize / step && firstKey = secondKey then
 
                     let firstValue = localBuffer.[firstIndex]
                     let secondValue = localBuffer.[secondIndex]
@@ -94,8 +93,7 @@ module SubSum =
                 let rightKey = localKeys.[rightIndex]
                 let leftKey = localKeys.[leftIndex]
 
-                if lid < wgSize / step
-                    && rightKey = leftKey then
+                if lid < wgSize / step && rightKey = leftKey then
 
                     let tmp = localBuffer.[rightIndex]
 

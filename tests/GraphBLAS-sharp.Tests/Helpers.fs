@@ -190,6 +190,21 @@ module HostPrimitives =
         |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
         |> Array.unzip
 
+    let scanByKey scan keysAndValues =
+        // select keys
+        Array.map fst keysAndValues
+        // get unique keys
+        |> Array.distinct
+        |> Array.map
+            (fun key ->
+                // select with certain key
+                Array.filter (fst >> ((=) key)) keysAndValues
+                // get values
+                |> Array.map snd
+                // scan values and get only values without sum
+                |> (fst << scan))
+        |> Array.concat
+
 module Context =
     type TestContext =
         { ClContext: ClContext

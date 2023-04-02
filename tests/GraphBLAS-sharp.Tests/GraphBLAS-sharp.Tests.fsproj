@@ -29,8 +29,8 @@
         <Compile Include="Common/Reduce/Sum.fs" />
         <Compile Include="Common/Reduce/Reduce.fs" />
         <Compile Include="Common/Reduce/ReduceByKey.fs" />
-        <Compile Include="Common\Scan\PrefixSum.fs" />
-        <Compile Include="Common\Scan\ByKey.fs" />
+        <Compile Include="Common/Scan/PrefixSum.fs" />
+        <Compile Include="Common/Scan/ByKey.fs" />
         <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
         <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
