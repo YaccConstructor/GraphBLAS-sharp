@@ -56,55 +56,6 @@ module SubSum =
 
                 step <- step >>> 1 @>
 
-    let upSweepByKey opAdd =
-        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: 'b []) ->
-            let mutable step = 2
-
-            while step <= wgSize do
-                let i = step * (lid + 1) - 1
-
-                let firstIndex = i - (step >>> 1) // TODO(work ?)
-                let secondIndex = i
-
-                let firstKey = localKeys.[firstIndex]
-                let secondKey = localKeys.[secondIndex]
-
-                if lid < wgSize / step && firstKey = secondKey then
-
-                    let firstValue = localBuffer.[firstIndex]
-                    let secondValue = localBuffer.[secondIndex]
-
-                    localBuffer.[secondIndex] <- (%opAdd) firstValue secondValue
-
-                step <- step <<< 1
-
-                barrierLocal () @>
-
-    let downSweepByKey opAdd =
-        <@ fun wgSize lid (localBuffer: 'a []) (localKeys: int []) ->
-            let mutable step = wgSize
-
-            while step > 1 do
-                barrierLocal ()
-
-                let rightIndex = step * (lid + 1) - 1
-                let leftIndex = rightIndex - (step >>> 1)
-
-                let rightKey = localKeys.[rightIndex]
-                let leftKey = localKeys.[leftIndex]
-
-                if lid < wgSize / step && rightKey = leftKey then
-
-                    let tmp = localBuffer.[rightIndex]
-
-                    let rightOperand = localBuffer.[leftIndex] // Brahma error
-                    let buff = (%opAdd) tmp rightOperand
-
-                    localBuffer.[rightIndex] <- buff
-                    localBuffer.[leftIndex] <- tmp
-
-                step <- step >>> 1 @>
-
     let localPrefixSum opAdd =
         <@ fun (lid: int) (workGroupSize: int) (array: 'a []) ->
             let mutable offset = 1
