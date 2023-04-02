@@ -47,7 +47,10 @@ module SubSum =
                     let j = i - (step >>> 1)
 
                     let tmp = localBuffer.[i]
-                    let buff = (%opAdd) tmp localBuffer.[j]
+
+                    let operand = localBuffer.[j] // brahma error
+                    let buff = (%opAdd) tmp operand
+
                     localBuffer.[i] <- buff
                     localBuffer.[j] <- tmp
 
@@ -60,7 +63,7 @@ module SubSum =
             while step <= wgSize do
                 let i = step * (lid + 1) - 1
 
-                let firstIndex = i - (step >>> 1) // TODO()
+                let firstIndex = i - (step >>> 1) // TODO(work ?)
                 let secondIndex = i
 
                 let firstKey = localKeys.[firstIndex]
@@ -95,7 +98,9 @@ module SubSum =
                     && rightKey = leftKey then
 
                     let tmp = localBuffer.[rightIndex]
-                    let buff = (%opAdd) tmp localBuffer.[leftIndex]
+
+                    let rightOperand = localBuffer.[leftIndex] // Brahma error
+                    let buff = (%opAdd) tmp rightOperand
 
                     localBuffer.[rightIndex] <- buff
                     localBuffer.[leftIndex] <- tmp

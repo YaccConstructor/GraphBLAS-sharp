@@ -5,7 +5,6 @@ open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClCell
-open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
@@ -326,7 +325,11 @@ module PrefixSum =
 
                 processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-        let sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
+        let oneWorkGroupExclude zero = oneWorkGroup <@ (fun _ _ _ -> ()) @> zero
+
+        let onwWorkGroupInclude zero = oneWorkGroup <@ (fun localValues lid zero -> localValues.[lid] <- zero) @> zero
+
+        let private sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
 
             let kernel =
                 <@ fun (ndRange: Range1D) lenght uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
@@ -336,12 +339,10 @@ module PrefixSum =
                         let sourcePosition = offsets.[gid]
                         let sourceKey = keys.[sourcePosition]
 
-                        let mutable currentSum = values.[sourcePosition]
+                        let mutable currentSum = zero
                         let mutable previousSum = zero
 
-                        values.[gid] <- (%opWrite) previousSum currentSum
-
-                        let mutable currentPosition = sourcePosition + 1
+                        let mutable currentPosition = sourcePosition
 
                         while currentPosition < lenght
                                 && keys.[currentPosition] = sourceKey do
@@ -349,7 +350,7 @@ module PrefixSum =
                             previousSum <- currentSum
                             currentSum <- (%opAdd) currentSum values.[currentPosition]
 
-                            values.[gid] <- (%opWrite) previousSum currentSum
+                            values.[currentPosition] <- (%opWrite) previousSum currentSum
 
                             currentPosition <- currentPosition + 1 @>
 
@@ -375,3 +376,10 @@ module PrefixSum =
                 )
 
                 processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+
+        let sequentialExclude clContext = sequentialSegments (Map.fst ()) clContext
+
+        let sequentialInclude clContext = sequentialSegments (Map.snd ()) clContext
+
+
