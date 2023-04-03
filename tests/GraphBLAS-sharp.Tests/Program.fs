@@ -1,6 +1,6 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
-open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
+open GraphBLAS.FSharp.Tests.Matrix
 
 
 // [<Tests>]
@@ -94,8 +94,8 @@ open GraphBLAS.FSharp.Tests.Backend.Matrix.SpGEMM
 let allTests =
     testList
         "All tests"
-        [ Common.Reduce.ByKey.sequential2DTest
-          Common.Reduce.ByKey.sequentialSegmentTests2D ]
+        [ Common.Scatter.tests
+          Common.Gather.tests ]
 
     |> testSequenced
 

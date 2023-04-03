@@ -270,3 +270,75 @@ module PrefixSum =
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 
             scan processor inputArray 0
+
+
+    module ByKey =
+        let private sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) lenght uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeysCount then
+                        let sourcePosition = offsets.[gid]
+                        let sourceKey = keys.[sourcePosition]
+
+                        let mutable currentSum = zero
+                        let mutable previousSum = zero
+
+                        let mutable currentPosition = sourcePosition
+
+                        while currentPosition < lenght
+                              && keys.[currentPosition] = sourceKey do
+
+                            previousSum <- currentSum
+                            currentSum <- (%opAdd) currentSum values.[currentPosition]
+
+                            values.[currentPosition] <- (%opWrite) previousSum currentSum
+
+                            currentPosition <- currentPosition + 1 @>
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
+
+                let kernel = kernel.GetKernel()
+
+                let ndRange =
+                    Range1D.CreateValid(values.Length, workGroupSize)
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange values.Length uniqueKeysCount values keys offsets)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+        /// <summary>
+        /// Exclude scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 0; 0; 1; 2; 0; 1 |]
+        /// </code>
+        /// </example>
+        let sequentialExclude clContext =
+            sequentialSegments (Map.fst ()) clContext
+
+        /// <summary>
+        /// Include scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 1; 1; 2; 3; 1; 2 |]
+        /// </code>
+        /// </example>
+        let sequentialInclude clContext =
+            sequentialSegments (Map.snd ()) clContext
+

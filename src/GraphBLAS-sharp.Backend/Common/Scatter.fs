@@ -43,6 +43,8 @@ module internal Scatter =
 
         fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (result: ClArray<'a>) ->
 
+            if positions.Length <> values.Length then failwith "Lengths must be the same"
+
             let positionsLength = positions.Length
 
             let ndRange =

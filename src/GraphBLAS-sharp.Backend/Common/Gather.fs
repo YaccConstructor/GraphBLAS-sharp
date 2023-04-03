@@ -17,28 +17,28 @@ module internal Gather =
     let run (clContext: ClContext) workGroupSize =
 
         let gather =
-            <@ fun (ndRange: Range1D) (positions: ClArray<int>) (values: ClArray<'a>) (outputArray: ClArray<'a>) (size: int) ->
+            <@ fun (ndRange: Range1D) positionsLength valuesLength (positions: ClArray<int>) (values: ClArray<'a>) (outputArray: ClArray<'a>) ->
 
                 let i = ndRange.GlobalID0
 
-                if i < size then
+                if i < positionsLength then
                     let position = positions.[i]
-                    let value = values.[position]
 
-                    outputArray.[i] <- value @>
+                    if position >= 0 && position < valuesLength then
+                        outputArray.[i] <- values.[position] @>
 
-        let program = clContext.Compile(gather)
+        let program = clContext.Compile gather
 
-        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (inputArray: ClArray<'a>) (outputArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (outputArray: ClArray<'a>) ->
 
-            let size = outputArray.Length
+            if positions.Length <> outputArray.Length then failwith "Lengths must be the same"
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(size, workGroupSize)
+            let ndRange = Range1D.CreateValid(positions.Length, workGroupSize)
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange positions inputArray outputArray size)
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange positions.Length values.Length positions values outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

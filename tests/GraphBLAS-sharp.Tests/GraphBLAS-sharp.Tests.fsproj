@@ -17,6 +17,7 @@
         <Compile Include="QuickGraph/Algorithms/ConnectedComponents.fs" />
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Common/Scatter.fs" />
+        <Compile Include="Common\Gather.fs" />
         <Compile Include="Common/ClArray/Choose.fs" />
         <Compile Include="Common/ClArray/Exists.fs" />
         <Compile Include="Common/ClArray/Map.fs" />
@@ -47,9 +48,8 @@
         <Compile Include="Matrix/Map2.fs" />
         <Compile Include="Matrix/Mxm.fs" />
         <Compile Include="Matrix/Transpose.fs" />
-        <Compile Include="Matrix\SpGEMM\Example.fs" />
-        <Compile Include="Matrix\SpGEMM\Expand.fs" />
         <Compile Include="Matrix/Map.fs" />
+        <Compile Include="Matrix\SpGeMM.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

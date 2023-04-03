@@ -12,47 +12,9 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Matrix =
-    let private expandRowPointers (clContext: ClContext) workGroupSize =
-
-        let expandRowPointers =
-            <@ fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i < rowCount then
-                    let rowPointer = rowPointers.[i]
-
-                    if rowPointer <> rowPointers.[i + 1] then
-                        rows.[rowPointer] <- i @>
-
-        let program = clContext.Compile(expandRowPointers)
-
-        let create =
-            ClArray.zeroCreate clContext workGroupSize
-
-        let scan =
-            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
-
-            let rows = create processor allocationMode nnz
-
-            let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(rowCount, workGroupSize)
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowPointers rowCount rows))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            let total = scan processor rows 0
-            processor.Post(Msg.CreateFreeMsg(total))
-
-            rows
-
     let toCOO (clContext: ClContext) workGroupSize =
         let prepare =
-            expandRowPointers clContext workGroupSize
+            Common.expandRowPointers clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 
@@ -77,7 +39,7 @@ module Matrix =
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let prepare =
-            expandRowPointers clContext workGroupSize
+            Common.expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =

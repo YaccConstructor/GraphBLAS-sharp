@@ -25,3 +25,7 @@ module Map =
     let inc = <@ fun item -> item + 1 @>
 
     let subtraction = <@ fun first second -> first - second @>
+
+    let fst () = <@ fun fst _ -> fst @>
+
+    let snd () = <@ fun _ snd -> snd @>

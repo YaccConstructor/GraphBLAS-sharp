@@ -349,13 +349,3 @@ module ClArray =
 
             result
 
-    let iterate (clContext: ClContext) workGroupSize iterator =
-
-        let create = create clContext workGroupSize iterator
-
-        let scatter = Scatter.runInplace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) (resultArray: ClArray<'a>) ->
-
-            let positions = create processor allocationMode
-

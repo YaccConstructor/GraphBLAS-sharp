@@ -269,12 +269,9 @@ let sequential2DTest =
 
 let makeTestSequentialSegments2D isEqual reduce reduceOp (array: (int * int * 'a) []) =
 
-    let firstKeys, secondKeys, values =
-        array
-        |> Array.sortBy (fun (fst, snd, _) -> fst, snd)
-        |> Array.unzip3
+    if array.Length > 0 then
+        let array = Array.sortBy (fun (fst, snd, _) -> fst, snd) array
 
-    if firstKeys.Length > 0 then
         let offsets =
             array
             |> Array.map (fun (fst, snd, _) -> fst, snd)
