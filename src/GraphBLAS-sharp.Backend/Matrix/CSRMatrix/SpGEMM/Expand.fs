@@ -77,8 +77,6 @@ module Expand =
 
             length, segmentsLengths
 
-    let
-
     let expand (clContext: ClContext) workGroupSize opMul =
 
         let init = ClArray.init clContext workGroupSize Map.id

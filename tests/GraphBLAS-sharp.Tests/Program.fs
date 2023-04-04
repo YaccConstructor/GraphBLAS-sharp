@@ -94,7 +94,7 @@ open GraphBLAS.FSharp.Tests.Matrix
 let allTests =
     testList
         "All tests"
-        [ SpGeMM.getSegmentsTests ]
+        [ SpGeMM.expandTests ]
 
     |> testSequenced
 
