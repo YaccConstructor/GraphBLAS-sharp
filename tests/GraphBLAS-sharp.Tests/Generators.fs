@@ -389,9 +389,6 @@ module Generators =
                     valuesGenerator
                     |> Gen.array2DOfDim (nColsA, nColsB)
 
-                printf $"left matrix column count: %A{Array2D.length1 matrixA}"
-                printf $"right matrix row count: %A{Array2D.length2 matrixA}"
-
                 return (matrixA, matrixB)
             }
 

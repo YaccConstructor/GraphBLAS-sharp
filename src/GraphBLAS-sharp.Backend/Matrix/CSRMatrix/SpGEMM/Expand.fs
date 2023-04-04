@@ -45,29 +45,21 @@ module Expand =
 
             positions.Free processor
 
-            printfn $"first pointers gpu: %A{firstPointers.ToHost processor}"
-
             // extract last rightMatrix.RowPointers.Lengths - 1 indices from rightMatrix.RowPointers
             // (right matrix row pointers without first item)
             let shiftedPositions = // TODO(fuse)
                 createShifted processor DeviceOnly positionsLength
-
-            printfn "shifted positions gpu: %A" <| shiftedPositions.ToHost processor
 
             let lastPointers =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, positionsLength)
 
             gather processor shiftedPositions rightMatrix.RowPointers lastPointers
 
-            printfn $"last pointers gpu: %A{lastPointers.ToHost processor}"
-
             shiftedPositions.Free processor
 
             // subtract
             let rightMatrixRowsLengths =
                 subtract processor DeviceOnly lastPointers firstPointers
-
-            printfn $"subtract result gpu: %A{rightMatrixRowsLengths.ToHost processor}"
 
             firstPointers.Free processor
             lastPointers.Free processor
@@ -78,16 +70,14 @@ module Expand =
             // extract needed lengths by left matrix nnz
             gather processor leftMatrix.Columns rightMatrixRowsLengths segmentsLengths
 
-            printfn $"subtract after gather result gpu: %A{segmentsLengths.ToHost processor}"
-
             rightMatrixRowsLengths.Free processor
 
             // compute pointers
             let length = (prefixSum processor segmentsLengths).ToHostAndFree processor
 
-            printfn $"subtract after prefix sum gpu: %A{segmentsLengths.ToHost processor}"
-
             length, segmentsLengths
+
+    let
 
     let expand (clContext: ClContext) workGroupSize opMul =
 

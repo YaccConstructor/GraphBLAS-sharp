@@ -14,6 +14,7 @@ let processor = Context.defaultContext.Queue
 let check isEqual actual positions values target =
 
     HostPrimitives.gather positions values target
+    |> ignore
 
     "Results must be the same"
     |> Utils.compareArrays isEqual actual target

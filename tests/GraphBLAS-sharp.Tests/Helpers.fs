@@ -225,7 +225,6 @@ module HostPrimitives =
 
         result
 
-
 module Context =
     type TestContext =
         { ClContext: ClContext

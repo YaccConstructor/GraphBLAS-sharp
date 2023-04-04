@@ -2,6 +2,7 @@ module GraphBLAS.FSharp.Tests.Matrix.SpGeMM
 
 open Expecto
 open GraphBLAS.FSharp.Backend.Matrix.CSR.SpGeMM
+open GraphBLAS.FSharp.Test
 open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Matrix
@@ -16,29 +17,14 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
+let config = { Utils.defaultConfig with arbitrary = [ typeof<Generators.PairOfMatricesOfCompatibleSize> ] }
+
 let getSegmentsPointers (leftMatrix: Matrix.CSR<'a>) (rightMatrix: Matrix.CSR<'b>) =
-    printfn $"all: %A{rightMatrix.RowPointers}"
+    Array.map (fun item ->
+        rightMatrix.RowPointers.[item + 1] - rightMatrix.RowPointers.[item]) leftMatrix.ColumnIndices
+    |> HostPrimitives.prefixSumExclude
 
-    let firstRowPointers =
-        rightMatrix.RowPointers.[..rightMatrix.RowPointers.Length - 2]
-
-    printfn $"first pointers: %A{firstRowPointers}"
-
-    let lastRowPointers = rightMatrix.RowPointers.[1..]
-
-    printfn $"last pointers: %A{lastRowPointers}"
-
-    let rowsLengths = Array.map2 (-) lastRowPointers firstRowPointers
-
-    printfn $"all row lengths %A{rowsLengths}"
-
-    let neededLengths = Array.init leftMatrix.ColumnIndices.Length (fun index -> Array.item index rowsLengths)
-
-    printfn $"needed lengths %A{neededLengths}"
-
-    HostPrimitives.prefixSumExclude neededLengths
-
-let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,], _: bool [,]) =
+let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
     let leftMatrix =
         Utils.createMatrixFromArray2D CSR leftArray isZero
@@ -57,6 +43,8 @@ let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,], _: bool [,])
         let actualLength, (clActual: ClArray<int>) =
             testFun processor clLeftMatrix clRightMatrix
 
+        clLeftMatrix.Dispose processor
+
         let actualPointers = clActual.ToHostAndFree processor
 
         let expectedPointers, expectedLength =
@@ -73,7 +61,7 @@ let createTest<'a when 'a : struct> (isZero: 'a -> bool) testFun =
     let testFun = testFun context Utils.defaultWorkGroupSize
 
     makeTest isZero testFun
-    |> testPropertyWithConfig  { Utils.defaultConfig with endSize = 10 } $"test on {typeof<'a>}"
+    |> testPropertyWithConfig  { config with endSize = 10 } $"test on {typeof<'a>}"
 
 let getSegmentsTests =
     [ createTest ((=) 0) Expand.getSegmentPointers
@@ -86,4 +74,30 @@ let getSegmentsTests =
       createTest ((=) 0u) Expand.getSegmentPointers ]
     |> testList "get segment pointers"
 
+let makeExpandTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
+
+        let leftMatrix =
+            Utils.createMatrixFromArray2D CSR leftArray isZero
+            |> Utils.castMatrixToCSR
+
+        let rightMatrix =
+            Utils.createMatrixFromArray2D CSR rightArray isZero
+            |> Utils.castMatrixToCSR
+
+        if leftMatrix.NNZ > 0
+           && rightMatrix.NNZ > 0 then
+
+            let segmentPointers, length =
+                getSegmentsPointers leftMatrix rightMatrix
+
+            let clLeftMatrix = leftMatrix.ToDevice context
+            let clRightMatrix = rightMatrix.ToDevice context
+            let clSegmentPointers = context.CreateClArray segmentPointers
+
+            let (actualValues: ClArray<'a>), (actualColumns: ClArray<int>), (actualRows: ClArray<int>) =
+                testFun processor length clSegmentPointers clLeftMatrix clRightMatrix
+
+            clLeftMatrix.Free processor
+            clRightMatrix. processor
+            clSegmentPointers
 
