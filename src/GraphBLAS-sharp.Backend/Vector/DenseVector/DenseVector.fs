@@ -90,10 +90,10 @@ module DenseVector =
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let scatterValues =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.scatterLastOccurrence clContext workGroupSize
 
         let scatterIndices =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.scatterLastOccurrence clContext workGroupSize
 
         let getBitmap =
             ClArray.map clContext workGroupSize

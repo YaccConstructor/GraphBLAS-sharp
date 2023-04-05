@@ -21,13 +21,13 @@ let wgSize = Tests.Utils.defaultWorkGroupSize
 
 let q = defaultContext.Queue
 
-let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
+let makeTest hostScatter scatter (array: (int * 'a) []) (result: 'a []) =
     if array.Length > 0 then
         let positions, values = Array.unzip array
 
         let expected =
             Array.copy result
-            |> HostPrimitives.scatter positions values
+            |> hostScatter positions values
 
         let actual =
             use clPositions = context.CreateClArray positions
@@ -41,15 +41,29 @@ let makeTest scatter (array: (int * 'a) []) (result: 'a []) =
         $"Arrays should be equal. Actual is \n%A{actual}, expected \n%A{expected}"
         |> Tests.Utils.compareArrays (=) actual expected
 
-let testFixtures<'a when 'a: equality> =
-    Scatter.runInplace<'a> context wgSize
-    |> makeTest
+let testFixturesLast<'a when 'a: equality> hostScatter =
+    Scatter.scatterLastOccurrence<'a> context wgSize
+    |> makeTest hostScatter
+    |> testPropertyWithConfig { config with endSize = 10 } $"Correctness on %A{typeof<'a>}"
+
+let testFixturesFirst<'a when 'a: equality> hostScatter =
+    Scatter.scatterFirstOccurrence<'a> context wgSize
+    |> makeTest hostScatter
     |> testPropertyWithConfig { config with endSize = 10 } $"Correctness on %A{typeof<'a>}"
 
 let tests =
     q.Error.Add(fun e -> failwithf $"%A{e}")
 
-    [ testFixtures<int>
-      testFixtures<byte>
-      testFixtures<bool> ]
-    |> testList "Backend.Common.Scatter tests"
+    let last =
+        [ testFixturesLast<int> HostPrimitives.scatterLastOccurrence
+          testFixturesLast<byte> HostPrimitives.scatterLastOccurrence
+          testFixturesLast<bool> HostPrimitives.scatterLastOccurrence ]
+        |> testList "Last Occurrence"
+
+    let first =
+        [ testFixturesFirst<int> HostPrimitives.scatterFirstOccurrence
+          testFixturesFirst<byte> HostPrimitives.scatterFirstOccurrence
+          testFixturesFirst<bool> HostPrimitives.scatterFirstOccurrence ]
+        |> testList "First Occurrence"
+
+    testList "Scatter tests" [first; last]

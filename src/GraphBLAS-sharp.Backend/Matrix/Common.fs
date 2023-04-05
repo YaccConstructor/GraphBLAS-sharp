@@ -11,10 +11,10 @@ module Common =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let indicesScatter =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.scatterLastOccurrence clContext workGroupSize
 
         let valuesScatter =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.scatterLastOccurrence clContext workGroupSize
 
         let sum =
             PrefixSum.standardExcludeInplace clContext workGroupSize

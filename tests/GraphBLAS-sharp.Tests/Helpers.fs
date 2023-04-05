@@ -200,11 +200,11 @@ module HostPrimitives =
         ||> Array.map2 (fun (fst, snd) value ->  fst, snd, value)
         |> Array.unzip3
 
-    let scatter (positions: int array) (values: 'a array) (resultValues: 'a array) =
+    let generalScatter getBitmap (positions: int array) (values: 'a array) (resultValues: 'a array) =
 
         if positions.Length <> values.Length then failwith "Lengths must be the same"
 
-        let bitmap = getUniqueBitmapLastOccurrence positions
+        let bitmap = getBitmap positions
 
         Array.iteri2
             (fun index bit key ->
@@ -214,6 +214,10 @@ module HostPrimitives =
                    resultValues.[key] <- values.[index]) bitmap positions
 
         resultValues
+
+    let scatterLastOccurrence positions = generalScatter getUniqueBitmapLastOccurrence positions
+
+    let scatterFirstOccurrence positions = generalScatter getUniqueBitmapFirstOccurrence positions
 
     let gather (positions: int []) (values: 'a []) (result: 'a []) =
         if positions.Length <> result.Length then
