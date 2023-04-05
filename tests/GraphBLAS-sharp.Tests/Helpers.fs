@@ -225,6 +225,18 @@ module HostPrimitives =
 
         result
 
+    let array2DMultiplication mul add leftArray rightArray =
+        if Array2D.length2 leftArray <> Array2D.length1 rightArray then
+            failwith "Incompatible matrices"
+
+        Array2D.init
+        <| Array2D.length1 leftArray
+        <| Array2D.length2 rightArray
+        <| fun i j ->
+                (leftArray.[i, *], rightArray.[*, j])
+                ||> Array.map2 mul
+                |> Array.reduce add
+
 module Context =
     type TestContext =
         { ClContext: ClContext

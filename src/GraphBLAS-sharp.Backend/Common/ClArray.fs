@@ -130,18 +130,20 @@ module ClArray =
 
             outputArray
 
-    let getUniqueBitmap (clContext: ClContext) workGroupSize =
+    let private getUniqueBitmapGeneral predicate (clContext: ClContext) workGroupSize =
 
         let getUniqueBitmap =
             <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
 
-                let i = ndRange.GlobalID0
+                let gid = ndRange.GlobalID0
 
-                if i < inputLength - 1
-                   && inputArray.[i] = inputArray.[i + 1] then
-                    isUniqueBitmap.[i] <- 0
-                else
-                    isUniqueBitmap.[i] <- 1 @>
+                if gid < inputLength then
+                    let isUnique = (%predicate) gid inputLength inputArray // brahma error
+
+                    if isUnique then
+                        isUniqueBitmap.[gid] <- 1
+                    else
+                        isUniqueBitmap.[gid] <- 0 @>
 
         let kernel = clContext.Compile(getUniqueBitmap)
 
@@ -163,6 +165,18 @@ module ClArray =
 
             bitmap
 
+    let getUniqueBitmapFirstOccurrence clContext =
+        getUniqueBitmapGeneral
+        <| <@ fun (gid: int) (_: int) (inputArray: ClArray<'a>) ->
+               gid = 0 || inputArray.[gid - 1] <> inputArray.[gid] @>
+        <| clContext
+
+    let getUniqueBitmapLastOccurrence clContext =
+        getUniqueBitmapGeneral
+        <| <@ fun (gid: int) (length: int) (inputArray: ClArray<'a>) ->
+                gid = length - 1 || inputArray.[gid] <> inputArray.[gid + 1] @>
+        <| clContext
+
     ///<description>Remove duplicates form the given array.</description>
     ///<param name="clContext">Computational context</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
@@ -172,7 +186,7 @@ module ClArray =
         let scatter =
             Scatter.runInplace clContext workGroupSize
 
-        let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
+        let getUniqueBitmap = getUniqueBitmapLastOccurrence clContext workGroupSize
 
         let prefixSumExclude =
             PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
@@ -292,23 +306,32 @@ module ClArray =
 
             resultArray
 
-    let getUniqueBitmap2<'a when 'a: equality> (clContext: ClContext) workGroupSize =
+    let getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
 
-        let map = map2 clContext workGroupSize <@ fun x y -> if x = 1 && y = 1 then 1 else 0 @>
+        let map = map2 clContext workGroupSize <@ fun x y -> x ||| y @>
 
-        let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
+        let firstGetBitmap = getUniqueBitmap clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
-            let firstBitmap = getUniqueBitmap processor DeviceOnly firstArray
+            let firstBitmap = firstGetBitmap processor DeviceOnly firstArray
 
-            let secondBitmap = getUniqueBitmap processor DeviceOnly secondArray
+            let secondBitmap = firstGetBitmap processor DeviceOnly secondArray
 
             let result = map processor allocationMode firstBitmap secondBitmap
+
+            printfn $"first bitmap: %A{firstBitmap.ToHost processor}"
+            printfn $"second bitmap: %A{secondBitmap.ToHost processor}"
 
             firstBitmap.Free processor
             secondBitmap.Free processor
 
             result
+
+    let getUniqueBitmap2FirstOccurrence clContext =
+        getUniqueBitmap2General getUniqueBitmapFirstOccurrence clContext
+
+    let getUniqueBitmap2LastOccurrence clContext =
+        getUniqueBitmap2General getUniqueBitmapLastOccurrence clContext
 
     let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
         let getBitmap =

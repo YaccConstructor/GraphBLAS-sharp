@@ -184,16 +184,16 @@ module Expand =
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
             // sort by columns
-            let valuesSortedByColumns = sortByKeyValues processor columns values
+            let valuesSortedByColumns = sortByKeyValues processor DeviceOnly columns values
 
-            let rowsSortedByColumns = sortByKeyIndices processor columns rows
+            let rowsSortedByColumns = sortByKeyIndices processor DeviceOnly columns rows
 
             let sortedColumns = sortKeys processor columns
 
             // sort by rows
-            let valuesSortedByRows = sortByKeyValues processor rows valuesSortedByColumns
+            let valuesSortedByRows = sortByKeyValues processor DeviceOnly rows valuesSortedByColumns
 
-            let columnsSortedByRows = sortByKeyIndices processor rows sortedColumns
+            let columnsSortedByRows = sortByKeyIndices processor DeviceOnly rows sortedColumns
 
             let sortedRows = sortKeys processor rowsSortedByColumns
 
@@ -208,21 +208,36 @@ module Expand =
         let reduce = Reduce.ByKey2D.segmentSequential clContext workGroupSize opAdd
 
         let getUniqueBitmap =
-            ClArray.getUniqueBitmap2 clContext workGroupSize
+            ClArray.getUniqueBitmap2FirstOccurrence clContext workGroupSize
 
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let removeDuplicates = ClArray.removeDuplications clContext workGroupSize
+        let init = ClArray.init clContext workGroupSize Map.id // TODO(fuse)
+
+        let scatter = Scatter.runInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
 
             let bitmap = getUniqueBitmap processor DeviceOnly columns rows
 
+            printfn $"key bitmap: %A{bitmap.ToHost processor}"
+
             let uniqueKeysCount = (prefixSum processor bitmap).ToHostAndFree processor
 
-            let offsets = removeDuplicates processor bitmap
+            printfn $"key bitmap after prefix sum: %A{bitmap.ToHost processor}"
+
+            let positions = init processor DeviceOnly bitmap.Length
+
+            printfn $"positions: %A{positions.ToHost processor}"
+
+            let offsets = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, uniqueKeysCount)
+
+            scatter processor bitmap positions offsets
+
+            printfn $"offsets: %A{offsets.ToHost processor}"
 
             bitmap.Free processor
+            positions.Free processor
 
             let reducedColumns, reducedRows, reducedValues =
                 reduce processor allocationMode uniqueKeysCount offsets columns rows values
@@ -231,7 +246,7 @@ module Expand =
 
             reducedValues, reducedColumns, reducedRows
 
-    let run (clContext: ClContext) workGroupSize opMul opAdd  =
+    let run (clContext: ClContext) workGroupSize opAdd opMul =
 
         let getSegmentPointers = getSegmentPointers clContext workGroupSize
 
@@ -248,8 +263,16 @@ module Expand =
             let values, columns, rows =
                 expand processor length segmentPointers leftMatrix rightMatrix
 
+            printfn $"expanded values: %A{values.ToHost processor}"
+            printfn $"expanded columns: %A{columns.ToHost processor}"
+            printfn $"expanded rows: %A{rows.ToHost processor}"
+
             let sortedValues, sortedColumns, sortedRows =
                 sort processor values columns rows
+
+            printfn $"sorted values: %A{sortedValues.ToHost processor}"
+            printfn $"sorted columns: %A{sortedColumns.ToHost processor}"
+            printfn $"sorted rows: %A{sortedRows.ToHost processor}"
 
             values.Free processor
             columns.Free processor
@@ -258,8 +281,13 @@ module Expand =
             let reducedValues, reducedColumns, reducedRows =
                 reduce processor allocationMode sortedValues sortedColumns sortedRows
 
+            printfn $"reduced values: %A{reducedValues.ToHost processor}"
+            printfn $"reduced columns: %A{reducedColumns.ToHost processor}"
+            printfn $"reduced rows: %A{reducedRows.ToHost processor}"
+
             sortedValues.Free processor
             sortedColumns.Free processor
             sortedRows.Free processor
 
             reducedValues, reducedColumns, reducedRows
+

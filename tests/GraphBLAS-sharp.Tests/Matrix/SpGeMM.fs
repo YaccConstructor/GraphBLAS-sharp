@@ -12,6 +12,7 @@ open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let context = Context.defaultContext.ClContext
 
@@ -165,3 +166,67 @@ let expandTests =
       createExpandTest (=) false (&&) <@ (&&) @> Expand.expand
       createExpandTest (=) 0uy (*) <@ (*) @> Expand.expand ]
     |> testList "Expand.expand"
+
+let checkGeneralResult zero isEqual actualValues actualColumns actualRows mul add (leftArray: 'a [,]) (rightArray: 'a [,]) =
+
+    let expected =
+        HostPrimitives.array2DMultiplication mul add leftArray rightArray
+        |> fun array -> Utils.createMatrixFromArray2D COO array (isEqual zero)
+        |> function Matrix.COO matrix -> matrix | _ -> failwith "format miss"
+
+    printfn $"leftMatrix \n %A{leftArray}"
+    printfn $"rightMatrix \n %A{rightArray}"
+
+    printfn $"actual values: %A{actualValues}"
+    printfn $"expected values: %A{expected.Values}"
+
+    printfn $"actualColumns: %A{actualColumns}"
+    printfn $"expectedColumns: %A{expected.Columns}"
+
+    printfn $"actualRows: %A{actualRows}"
+    printfn $"expectedRows: %A{expected.Rows}"
+
+    "Values must be the same"
+    |> Utils.compareArrays isEqual actualValues expected.Values
+
+    "Columns must be the same"
+    |> Utils.compareArrays (=) actualColumns expected.Columns
+
+    "Rows must be the same"
+    |> Utils.compareArrays (=) actualRows expected.Rows
+
+let makeGeneralTest zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightArray: 'a [,]) =
+
+        let leftMatrix = createCSRMatrix leftArray <| isEqual zero
+
+        let rightMatrix = createCSRMatrix rightArray <| isEqual zero
+
+        if leftMatrix.NNZ > 0
+           && rightMatrix.NNZ > 0 then
+
+            let clLeftMatrix = leftMatrix.ToDevice context
+            let clRightMatrix = rightMatrix.ToDevice context
+
+            let (clActualValues: ClArray<'a>), (clActualColumns: ClArray<int>), (clActualRows: ClArray<int>) =
+                testFun processor HostInterop clLeftMatrix clRightMatrix
+
+            clLeftMatrix.Dispose processor
+            clRightMatrix.Dispose processor
+
+            let actualValues = clActualValues.ToHostAndFree processor
+            let actualColumns = clActualColumns.ToHostAndFree processor
+            let actualRows = clActualRows.ToHostAndFree processor
+
+            checkGeneralResult zero isEqual actualValues actualColumns actualRows opMul opAdd leftArray rightArray
+
+let createGeneralTest (zero: 'a) isEqual opAdd opAddQ opMul opMulQ testFun =
+
+    let testFun = testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
+
+    makeGeneralTest zero isEqual opMul opAdd testFun
+    |> testPropertyWithConfig  { config with endSize = 10 } $"test on %A{typeof<'a>}"
+
+let generalTests =
+    [ createGeneralTest 0 (=) (+) <@ (+) @> (*) <@ (*) @> Expand.run ]
+    |> testList "general"
+
