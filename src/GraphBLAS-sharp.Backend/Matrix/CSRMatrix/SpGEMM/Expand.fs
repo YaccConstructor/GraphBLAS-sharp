@@ -69,6 +69,8 @@ module Expand =
 
         let init = ClArray.init clContext workGroupSize Map.id
 
+        let idScatter = Scatter.initLastOccurrence Map.id clContext workGroupSize
+
         let scatter = Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate = ClArray.zeroCreate clContext workGroupSize
@@ -94,18 +96,14 @@ module Expand =
         fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: Indices) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
             // Compute A positions
-            let sequence = init processor DeviceOnly segmentsPointers.Length // TODO(fuse)
-
             let APositions = zeroCreate processor DeviceOnly lengths
 
-            scatter processor segmentsPointers sequence APositions
-
-            sequence.Free processor
+            idScatter processor segmentsPointers APositions
 
             (maxPrefixSum processor APositions 0).Free processor
 
             // Compute B positions
-            let BPositions = create processor DeviceOnly lengths 1 // TODO(fuse)
+            let BPositions = create processor DeviceOnly lengths 1
 
             let requiredBPointers = zeroCreate processor DeviceOnly leftMatrix.Columns.Length
 
@@ -200,9 +198,7 @@ module Expand =
 
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let init = ClArray.init clContext workGroupSize Map.id // TODO(fuse)
-
-        let scatter = Scatter.firstOccurrence clContext workGroupSize
+        let idScatter = Scatter.initFirsOccurrence Map.id clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
 
@@ -214,18 +210,13 @@ module Expand =
 
             printfn $"key bitmap after prefix sum: %A{bitmap.ToHost processor}"
 
-            let positions = init processor DeviceOnly bitmap.Length
-
-            printfn $"positions: %A{positions.ToHost processor}"
-
             let offsets = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, uniqueKeysCount)
 
-            scatter processor bitmap positions offsets
+            idScatter processor bitmap offsets
 
             printfn $"offsets: %A{offsets.ToHost processor}"
 
             bitmap.Free processor
-            positions.Free processor
 
             let reducedColumns, reducedRows, reducedValues = // by size variance TODO()
                 reduce processor allocationMode uniqueKeysCount offsets columns rows values

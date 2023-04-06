@@ -3,12 +3,12 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 
 module internal Scatter =
-    let firstOccurencePredicate () =
+    let private firstOccurencePredicate () =
         <@ fun gid _ (positions: ClArray<int>) ->
                  // first occurrence condition
                  (gid = 0 || positions.[gid - 1] <> positions.[gid]) @>
 
-    let lastOccurrencePredicate () =
+    let private lastOccurrencePredicate () =
         <@ fun gid positionsLength (positions: ClArray<int>) ->
                 // last occurrence condition
                 (gid = positionsLength - 1 || positions.[gid] <> positions.[gid + 1]) @>
