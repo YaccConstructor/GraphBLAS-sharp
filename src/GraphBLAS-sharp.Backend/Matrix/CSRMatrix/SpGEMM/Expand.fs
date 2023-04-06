@@ -191,9 +191,9 @@ module Expand =
             let sortedColumns = sortKeys processor columns
 
             // sort by rows
-            let valuesSortedByRows = sortByKeyValues processor DeviceOnly rows valuesSortedByColumns
+            let valuesSortedByRows = sortByKeyValues processor DeviceOnly rowsSortedByColumns valuesSortedByColumns
 
-            let columnsSortedByRows = sortByKeyIndices processor DeviceOnly rows sortedColumns
+            let columnsSortedByRows = sortByKeyIndices processor DeviceOnly rowsSortedByColumns sortedColumns
 
             let sortedRows = sortKeys processor rowsSortedByColumns
 
@@ -206,15 +206,16 @@ module Expand =
     let reduce (clContext: ClContext) workGroupSize opAdd  =
 
         let reduce = Reduce.ByKey2D.segmentSequential clContext workGroupSize opAdd
+        //let reduce = Reduce.ByKey2D.sequential clContext workGroupSize opAdd
 
         let getUniqueBitmap =
-            ClArray.getUniqueBitmap2FirstOccurrence clContext workGroupSize
+            ClArray.getUniqueBitmap2LastOccurrence clContext workGroupSize
 
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let init = ClArray.init clContext workGroupSize Map.id // TODO(fuse)
 
-        let scatter = Scatter.scatterLastOccurrence clContext workGroupSize
+        let scatter = Scatter.scatterFirstOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
 
@@ -241,6 +242,9 @@ module Expand =
 
             let reducedColumns, reducedRows, reducedValues =
                 reduce processor allocationMode uniqueKeysCount offsets columns rows values
+
+            // let reducedColumns, reducedRows, reducedValues =
+            //     reduce processor DeviceOnly uniqueKeysCount columns rows values
 
             offsets.Free processor
 

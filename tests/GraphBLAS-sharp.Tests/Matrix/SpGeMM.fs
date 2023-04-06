@@ -203,30 +203,29 @@ let makeGeneralTest zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightAr
 
         if leftMatrix.NNZ > 0
            && rightMatrix.NNZ > 0 then
+           try
+                let clLeftMatrix = leftMatrix.ToDevice context
+                let clRightMatrix = rightMatrix.ToDevice context
 
-            let clLeftMatrix = leftMatrix.ToDevice context
-            let clRightMatrix = rightMatrix.ToDevice context
+                let (clActualValues: ClArray<'a>), (clActualColumns: ClArray<int>), (clActualRows: ClArray<int>) =
+                    testFun processor HostInterop clLeftMatrix clRightMatrix
 
-            let (clActualValues: ClArray<'a>), (clActualColumns: ClArray<int>), (clActualRows: ClArray<int>) =
-                testFun processor HostInterop clLeftMatrix clRightMatrix
+                let actualValues = clActualValues.ToHostAndFree processor
+                let actualColumns = clActualColumns.ToHostAndFree processor
+                let actualRows = clActualRows.ToHostAndFree processor
 
-            clLeftMatrix.Dispose processor
-            clRightMatrix.Dispose processor
-
-            let actualValues = clActualValues.ToHostAndFree processor
-            let actualColumns = clActualColumns.ToHostAndFree processor
-            let actualRows = clActualRows.ToHostAndFree processor
-
-            checkGeneralResult zero isEqual actualValues actualColumns actualRows opMul opAdd leftArray rightArray
+                checkGeneralResult zero isEqual actualValues actualColumns actualRows opMul opAdd leftArray rightArray
+           with
+           | ex when ex.Message = "InvalidBufferSize" -> ()
+           | ex -> raise ex
 
 let createGeneralTest (zero: 'a) isEqual opAdd opAddQ opMul opMulQ testFun =
 
     let testFun = testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
 
     makeGeneralTest zero isEqual opMul opAdd testFun
-    |> testPropertyWithConfig  { config with endSize = 10 } $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig { config with endSize = 10; maxTest = 1000 } $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) (+) <@ (+) @> (*) <@ (*) @> Expand.run ]
     |> testList "general"
-

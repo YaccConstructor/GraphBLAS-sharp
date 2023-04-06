@@ -163,7 +163,7 @@ module Radix =
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) ->
             if keys.Length <= 1 then
-                keys
+                copy processor DeviceOnly keys // TODO(allocation mode)
             else
                 let firstKeys = copy processor DeviceOnly keys
 
@@ -194,6 +194,7 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
+                (snd pair).Free processor
                 fst pair
 
     let standardRunKeysOnly clContext workGroupSize =
