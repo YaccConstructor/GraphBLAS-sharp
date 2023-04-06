@@ -103,7 +103,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
 type BFSBenchmarksWithoutDataTransfer() =
 
     inherit BFSBenchmarks<ClMatrix.CSR<int>, int>(
-        (fun context wgSize -> BFS.singleSource context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize),
+        (fun context wgSize -> BFS.singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption wgSize),
         int,
         (fun _ -> Utils.nextInt (System.Random())),
         Matrix.ToBackendCSR)

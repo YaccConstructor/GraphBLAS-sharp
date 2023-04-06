@@ -96,9 +96,7 @@ let allTests =
         "All tests"
         [ // SpGeMM.generalTests
           // Common.Gather.initTests
-          //Common.Scatter.allTests ]
-            Common.ClArray.Choose.tests
-        ]
+          Common.ClArray.Choose.tests2 ]
 
     |> testSequenced
 

@@ -352,6 +352,8 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) ->
 
+            if values.Length <> positions.Length then failwith "lengths must be the same"
+
             let ndRange =
                 Range1D.CreateValid(values.Length, workGroupSize)
 
@@ -387,3 +389,65 @@ module ClArray =
 
             result
 
+    let private assignOption2 (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c option>) =
+
+        let assign =
+            <@ fun (ndRange: Range1D) length (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (positions: ClArray<int>) (result: ClArray<'c>) resultLength ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let position = positions.[gid]
+
+                    let leftValue = firstValues.[gid]
+                    let rightValue = secondValues.[gid]
+
+                    // seems like scatter2 (option scatter2) ???
+                    if 0 <= position && position < resultLength then
+                        match (%op) leftValue rightValue with
+                        | Some value ->
+                            result.[position] <- value
+                        | None -> () @>
+
+        let kernel = clContext.Compile assign
+
+        fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (positions: ClArray<int>) (result: ClArray<'c>) ->
+
+            if firstValues.Length <> secondValues.Length
+                || secondValues.Length <> positions.Length then
+                    failwith "lengths must be the same"
+
+            let ndRange =
+                Range1D.CreateValid(firstValues.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange firstValues.Length firstValues secondValues positions result result.Length)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let choose2 (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
+        let getBitmap =
+            map2<'a, 'b, int> clContext workGroupSize
+            <| Map.chooseBitmap2 predicate
+
+        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let assignValues = assignOption2 clContext workGroupSize predicate
+
+        fun (processor: MailboxProcessor<_>) allocationMode (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) ->
+
+            let positions = getBitmap processor DeviceOnly firstValues secondValues
+
+            let resultLength =
+                (prefixSum processor positions)
+                    .ToHostAndFree(processor)
+
+            let result = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            assignValues processor firstValues secondValues positions result
+
+            result

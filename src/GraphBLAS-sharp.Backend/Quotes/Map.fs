@@ -22,6 +22,12 @@ module Map =
             | Some _ -> 1
             | None -> 0 @>
 
+    let chooseBitmap2<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c option>) =
+        <@ fun (leftItem: 'a) (rightItem: 'b) ->
+            match (%map) leftItem rightItem with
+            | Some _ -> 1
+            | None -> 0 @>
+
     let inc = <@ fun item -> item + 1 @>
 
     let subtraction = <@ fun first second -> first - second @>
