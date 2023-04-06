@@ -17,17 +17,13 @@ type Values<'a> = ClArray<'a>
 module Expand =
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 
-        let create =
-            ClArray.init clContext workGroupSize Map.id
-
-        let createShifted =
-            ClArray.init clContext workGroupSize Map.inc
-
         let subtract = ClArray.map2 clContext workGroupSize Map.subtraction
 
-        let gather = Gather.run clContext workGroupSize
+        let idGather = Gather.runInit Map.id clContext workGroupSize
 
-        let shiftedGather = Gather.runInit Map.inc clContext workGroupSize
+        let incGather = Gather.runInit Map.inc clContext workGroupSize
+
+        let gather = Gather.run clContext workGroupSize
 
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
@@ -37,27 +33,17 @@ module Expand =
 
             // extract first rightMatrix.RowPointers.Lengths - 1 indices from rightMatrix.RowPointers
             // (right matrix row pointers without last item)
-            let positions = // TODO(fuse)
-                create processor DeviceOnly positionsLength
-
             let firstPointers =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, positionsLength)
 
-            gather processor positions rightMatrix.RowPointers firstPointers
-
-            positions.Free processor
+            idGather processor rightMatrix.RowPointers firstPointers
 
             // extract last rightMatrix.RowPointers.Lengths - 1 indices from rightMatrix.RowPointers
             // (right matrix row pointers without first item)
-            let shiftedPositions = // TODO(fuse)
-                createShifted processor DeviceOnly positionsLength
-
             let lastPointers =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, positionsLength)
 
-            gather processor shiftedPositions rightMatrix.RowPointers lastPointers
-
-            shiftedPositions.Free processor
+            incGather processor rightMatrix.RowPointers lastPointers
 
             // subtract
             let rightMatrixRowsLengths =

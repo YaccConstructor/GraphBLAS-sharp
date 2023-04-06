@@ -50,7 +50,7 @@ module internal Scatter =
     /// <code>
     /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
     /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
-    /// let result = run clContext 32 processor positions values result
+    /// run clContext 32 processor positions values result
     /// ...
     /// > val result = [| 1,9; 3.7; 6.4; 7.3; 9.1 |]
     /// </code>
@@ -78,7 +78,7 @@ module internal Scatter =
     /// <code>
     /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
     /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
-    /// let result = run clContext 32 processor positions values result
+    /// run clContext 32 processor positions values result
     /// ...
     /// > val result = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
     /// </code>
@@ -92,4 +92,51 @@ module internal Scatter =
                     // result position in valid range
                     && (0 <= index && index < resultLength) @>
         <| clContext
+
+    /// <summary>
+    /// Writes elements from the array of values to the array at the positions indicated by the global id map.
+    /// </summary>
+    /// <remarks>
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let positionMap = fun x -> x + 1
+    /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
+    /// let result = ... // create result
+    /// run positionMap clContext 32 processor positions values result
+    /// ...
+    /// > val result = [| 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
+    /// </code>
+    /// </example>
+    /// <param name="positionMap">Should be injective in order to avoid race conditions.</param>
+    let init<'a> positionMap (clContext: ClContext) workGroupSize =
+
+        let run =
+            <@ fun (ndRange: Range1D) (valuesLength: int) (values: ClArray<'a>) (result: ClArray<'a>) resultLength ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < valuesLength then
+                    let position = (%positionMap) gid
+
+                    // may be race condition
+                    if 0 <= position && position < resultLength then
+                        result.[position] <- values.[gid] @>
+
+        let program = clContext.Compile(run)
+
+        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (result: ClArray<'a>) ->
+
+            let ndRange =
+                Range1D.CreateValid(values.Length, workGroupSize)
+
+            let kernel = program.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange values.Length values result result.Length)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
