@@ -85,7 +85,7 @@ let createTest2 (isEqual: 'a -> 'a -> bool) (opMapQ, opMap) testFun =
     let testFun = testFun context Utils.defaultWorkGroupSize opMapQ
 
     makeTest2 isEqual opMap testFun
-    |> testPropertyWithConfig { config with maxTest = 1000 } $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let tests2 =
     [ createTest2 (=) ArithmeticOperations.intAdd ClArray.choose2

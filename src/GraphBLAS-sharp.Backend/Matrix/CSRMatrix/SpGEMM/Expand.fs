@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open FSharp.Quotations
 
 type Indices = ClArray<int>
 
@@ -65,7 +66,40 @@ module Expand =
 
             length, segmentsLengths
 
-    let expand (clContext: ClContext) workGroupSize opMul =
+    let multiply (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
+        let getBitmap =
+            ClArray.map2<'a, 'b, int> clContext workGroupSize
+            <| Map.chooseBitmap2 predicate
+
+        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let assignValues = ClArray.assignOption2 clContext workGroupSize predicate
+
+        let scatter = Scatter.lastOccurrence clContext workGroupSize // TODO(last ?)
+
+        fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (columns: Indices) (rows: Indices) ->
+
+            let positions = getBitmap processor DeviceOnly firstValues secondValues
+
+            let resultLength =
+                (prefixSum processor positions)
+                    .ToHostAndFree(processor)
+
+            let resultColumns = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            scatter processor positions columns resultColumns
+
+            let resultRows = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            scatter processor positions rows resultRows
+
+            let resultValues = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            assignValues processor firstValues secondValues positions resultValues
+
+            resultValues, resultColumns, resultRows
+
+    let expand (clContext: ClContext) workGroupSize =
 
         let idScatter = Scatter.initLastOccurrence Map.id clContext workGroupSize
 
@@ -88,8 +122,6 @@ module Expand =
         let AGather = Gather.run clContext workGroupSize
 
         let BGather = Gather.run clContext workGroupSize
-
-        let mul = ClArray.map2 clContext workGroupSize opMul
 
         fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: Indices) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
@@ -150,13 +182,8 @@ module Expand =
 
             BPositions.Free processor
 
-            // multiply values TODO(filter values)
-            let values = mul processor DeviceOnly AValues BValues
-
-            AValues.Free processor
-            BValues.Free processor
-
-            values, columns, rows
+            // left, right matrix values, columns and rows indices
+            AValues, BValues, columns, rows
 
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
@@ -227,7 +254,9 @@ module Expand =
 
         let getSegmentPointers = getSegmentPointers clContext workGroupSize
 
-        let expand = expand clContext workGroupSize opMul
+        let expand = expand clContext workGroupSize
+
+        let multiply = multiply clContext workGroupSize opMul
 
         let sort = sortByColumnsAndRows clContext workGroupSize
 
@@ -237,24 +266,37 @@ module Expand =
 
             let length, segmentPointers = getSegmentPointers processor leftMatrix rightMatrix
 
-            let values, columns, rows =
+            // expand
+            let leftMatrixValues, rightMatrixValues, columns, rows =
                 expand processor length segmentPointers leftMatrix rightMatrix
 
-            printfn $"expanded values: %A{values.ToHost processor}"
+            printfn $"left matrix values: %A{leftMatrixValues.ToHost processor}"
+            printfn $"right matrix values: %A{rightMatrixValues.ToHost processor}"
             printfn $"expanded columns: %A{columns.ToHost processor}"
             printfn $"expanded rows: %A{rows.ToHost processor}"
 
+            // multiply
+            let resultValues, resultColumns, resultRows =
+                multiply processor leftMatrixValues rightMatrixValues columns rows
+
+            leftMatrixValues.Free processor
+            rightMatrixValues.Free processor
+            columns.Free processor
+            rows.Free processor
+
+            // sort
             let sortedValues, sortedColumns, sortedRows =
-                sort processor values columns rows
+                sort processor resultValues resultColumns resultRows
 
             printfn $"sorted values: %A{sortedValues.ToHost processor}"
             printfn $"sorted columns: %A{sortedColumns.ToHost processor}"
             printfn $"sorted rows: %A{sortedRows.ToHost processor}"
 
-            values.Free processor
-            columns.Free processor
-            rows.Free processor
+            resultValues.Free processor
+            resultColumns.Free processor
+            resultRows.Free processor
 
+            // addition
             let reducedValues, reducedColumns, reducedRows =
                 reduce processor allocationMode sortedValues sortedColumns sortedRows
 

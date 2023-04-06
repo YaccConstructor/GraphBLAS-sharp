@@ -141,6 +141,7 @@ module ArithmeticOperations =
 
     let inline createPair zero op opQ = binOpQ zero opQ, binOp zero op
 
+    // addition
     let intAdd = createPair 0 (+) <@ (+) @>
 
     let boolAdd = createPair false (||) <@ (||) @>
@@ -148,3 +149,12 @@ module ArithmeticOperations =
     let floatAdd = createPair 0.0 (+) <@ (+) @>
 
     let float32Add = createPair 0.0f (+) <@ (+) @>
+
+    // multiplication
+    let intMul = createPair 0 (*) <@ (*) @>
+
+    let boolMul = createPair false (&&) <@ (&&) @>
+
+    let floatMul = createPair 0.0 (*) <@ (*) @>
+
+    let float32Mul = createPair 0.0f (*) <@ (*) @>
