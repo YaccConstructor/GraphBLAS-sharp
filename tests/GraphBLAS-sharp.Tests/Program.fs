@@ -96,7 +96,7 @@ let allTests =
         "All tests"
         [ // SpGeMM.getSegmentsTests
           // Common.Gather.initTests
-          Common.Scatter.initTests ]
+          Common.Scatter.allTests ]
 
     |> testSequenced
 

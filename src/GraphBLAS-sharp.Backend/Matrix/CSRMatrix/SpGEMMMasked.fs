@@ -151,8 +151,8 @@ module internal SpGEMMMasked =
         let calculate =
             calculate context workGroupSize opAdd opMul
 
-        let scatter = Scatter.scatterLastOccurrence context workGroupSize
-        let scatterData = Scatter.scatterLastOccurrence context workGroupSize
+        let scatter = Scatter.lastOccurrence context workGroupSize
+        let scatterData = Scatter.lastOccurrence context workGroupSize
 
         let scanInplace =
             PrefixSum.standardExcludeInplace context workGroupSize

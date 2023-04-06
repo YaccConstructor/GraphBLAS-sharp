@@ -69,7 +69,7 @@ module Expand =
 
         let init = ClArray.init clContext workGroupSize Map.id
 
-        let scatter = Scatter.scatterLastOccurrence clContext workGroupSize
+        let scatter = Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate = ClArray.zeroCreate clContext workGroupSize
 
@@ -202,7 +202,7 @@ module Expand =
 
         let init = ClArray.init clContext workGroupSize Map.id // TODO(fuse)
 
-        let scatter = Scatter.scatterFirstOccurrence clContext workGroupSize
+        let scatter = Scatter.firstOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
 

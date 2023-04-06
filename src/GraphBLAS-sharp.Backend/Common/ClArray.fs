@@ -184,7 +184,7 @@ module ClArray =
     let removeDuplications (clContext: ClContext) workGroupSize =
 
         let scatter =
-            Scatter.scatterLastOccurrence clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         let getUniqueBitmap = getUniqueBitmapLastOccurrence clContext workGroupSize
 
@@ -349,7 +349,7 @@ module ClArray =
             PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
 
         let scatter =
-            Scatter.scatterLastOccurrence clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a>) ->
 

@@ -35,7 +35,7 @@ module Vector =
 
     let ofList (clContext: ClContext) workGroupSize =
         let scatter =
-            Scatter.scatterLastOccurrence clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
