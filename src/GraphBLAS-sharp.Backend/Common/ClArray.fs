@@ -319,9 +319,6 @@ module ClArray =
 
             let result = map processor allocationMode firstBitmap secondBitmap
 
-            printfn $"first bitmap: %A{firstBitmap.ToHost processor}"
-            printfn $"second bitmap: %A{secondBitmap.ToHost processor}"
-
             firstBitmap.Free processor
             secondBitmap.Free processor
 
@@ -333,42 +330,60 @@ module ClArray =
     let getUniqueBitmap2LastOccurrence clContext =
         getUniqueBitmap2General getUniqueBitmapLastOccurrence clContext
 
+    let private assignOption (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b option>) =
+
+        let assign =
+            <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) resultLength ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let position = positions.[gid]
+                    let value = values.[gid]
+
+                    // seems like scatter (option scatter) ???
+                    if 0 <= position && position < resultLength then
+                        match (%op) value with
+                        | Some value ->
+                            result.[position] <- value
+                        | None -> () @>
+
+        let kernel = clContext.Compile assign
+
+        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) ->
+
+            let ndRange =
+                Range1D.CreateValid(values.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange values.Length values positions result result.Length)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
     let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
         let getBitmap =
             map<'a, int> clContext workGroupSize
             <| Map.chooseBitmap predicate
 
-        let getOptionValues =
-            map<'a, 'b option> clContext workGroupSize predicate
+        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let getValues =
-            map<'b option, 'b> clContext workGroupSize
-            <| Map.optionToValueOrZero Unchecked.defaultof<'b>
+        let assignValues = assignOption clContext workGroupSize predicate
 
-        let prefixSum =
-            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceValues: ClArray<'a>) ->
 
-        let scatter =
-            Scatter.lastOccurrence clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a>) ->
-
-            let positions = getBitmap processor DeviceOnly array
+            let positions = getBitmap processor DeviceOnly sourceValues
 
             let resultLength =
-                (prefixSum processor positions 0)
+                (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            let optionValues =
-                getOptionValues processor DeviceOnly array
+            let result = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            let values =
-                getValues processor DeviceOnly optionValues
-
-            let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
-
-            scatter processor positions values result
+            assignValues processor sourceValues positions result
 
             result
 

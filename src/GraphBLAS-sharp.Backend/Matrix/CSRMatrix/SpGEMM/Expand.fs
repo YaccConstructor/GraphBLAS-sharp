@@ -67,8 +67,6 @@ module Expand =
 
     let expand (clContext: ClContext) workGroupSize opMul =
 
-        let init = ClArray.init clContext workGroupSize Map.id
-
         let idScatter = Scatter.initLastOccurrence Map.id clContext workGroupSize
 
         let scatter = Scatter.lastOccurrence clContext workGroupSize
