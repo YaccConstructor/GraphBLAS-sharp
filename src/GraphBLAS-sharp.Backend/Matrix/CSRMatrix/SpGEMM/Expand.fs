@@ -27,6 +27,8 @@ module Expand =
 
         let gather = Gather.run clContext workGroupSize
 
+        let shiftedGather = Gather.runInit Map.inc clContext workGroupSize
+
         let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
@@ -130,7 +132,7 @@ module Expand =
             // another way to get offsets ???
             let offsets = removeDuplicates processor segmentsPointers
 
-            segmentPrefixSum processor offsets.Length BPositions APositions offsets // TODO(offsets lengths in scan)
+            segmentPrefixSum processor offsets.Length BPositions APositions offsets
 
             offsets.Free processor
 
@@ -206,7 +208,6 @@ module Expand =
     let reduce (clContext: ClContext) workGroupSize opAdd  =
 
         let reduce = Reduce.ByKey2D.segmentSequential clContext workGroupSize opAdd
-        //let reduce = Reduce.ByKey2D.sequential clContext workGroupSize opAdd
 
         let getUniqueBitmap =
             ClArray.getUniqueBitmap2LastOccurrence clContext workGroupSize
@@ -240,11 +241,8 @@ module Expand =
             bitmap.Free processor
             positions.Free processor
 
-            let reducedColumns, reducedRows, reducedValues =
+            let reducedColumns, reducedRows, reducedValues = // by size variance TODO()
                 reduce processor allocationMode uniqueKeysCount offsets columns rows values
-
-            // let reducedColumns, reducedRows, reducedValues =
-            //     reduce processor DeviceOnly uniqueKeysCount columns rows values
 
             offsets.Free processor
 
