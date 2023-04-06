@@ -2,6 +2,7 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Reduce.ByKey
 
 open Expecto
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ClContext
@@ -13,6 +14,16 @@ let context = Context.defaultContext.ClContext
 let processor = Context.defaultContext.Queue
 
 let config = Utils.defaultConfig
+
+let getOffsets array =
+    Array.map fst array
+    |> HostPrimitives.getUniqueBitmapFirstOccurrence
+    |> HostPrimitives.getBitPositions
+
+let getOffsets2D array =
+    Array.map (fun (fst, snd, _) -> fst, snd) array
+    |> HostPrimitives.getUniqueBitmapFirstOccurrence
+    |> HostPrimitives.getBitPositions
 
 let checkResult isEqual actualKeys actualValues keys values reduceOp =
 
@@ -336,3 +347,87 @@ let sequentialSegmentTests2D =
               createTestSequentialSegments2D<bool> (=) (&&) <@ (&&) @> ]
 
     testList "Sequential segments 2D" [ addTests; mulTests ]
+
+let checkResult2DOption isEqual firstActualKeys secondActualKeys actualValues firstKeys secondKeys values reduceOp =
+
+    let reduceOp left right =
+        match left, right with
+        | Some left, Some right ->
+            reduceOp left right
+        | Some value, None
+        | None, Some value -> Some value
+        | _ -> None
+
+    let expectedFirstKeys, expectedSecondKeys, expectedValues =
+        let keys = Array.zip firstKeys secondKeys
+
+        Array.zip keys values
+        |> Array.groupBy fst
+        |> Array.map (fun (key, array) -> key, Array.map snd array)
+        |> Array.map (fun (key, array) ->
+            Array.map Some array
+            |> Array.reduce reduceOp
+            |> fun result -> key, result)
+        |> Array.choose (fun ((fstKey, sndKey), value) ->
+            match value with
+            | Some value -> Some (fstKey, sndKey, value)
+            | _ -> None )
+        |> Array.unzip3
+
+    "First keys must be the same"
+    |> Utils.compareArrays (=) firstActualKeys expectedFirstKeys
+
+    "Second keys must be the same"
+    |> Utils.compareArrays (=) secondActualKeys expectedSecondKeys
+
+    "Values must the same"
+    |> Utils.compareArrays isEqual actualValues expectedValues
+
+let test2DOption<'a> isEqual reduce reduceOp (array: (int * int * 'a) [])  =
+    if array.Length > 0 then
+        let array = Array.sortBy (fun (fst, snd, _) -> fst, snd) array
+
+        let offsets = getOffsets2D array
+
+        let firstKeys, secondKeys, values = Array.unzip3 array
+
+        let clOffsets =
+            context.CreateClArrayWithSpecificAllocationMode(HostInterop, offsets)
+
+        let clFirstKeys =
+            context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, firstKeys)
+
+        let clSecondKeys =
+            context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, secondKeys)
+
+        let clValues =
+            context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
+
+        let clFirstActualKeys, clSecondActualKeys, clReducedValues: ClArray<int> * ClArray<int> * ClArray<'a> =
+            reduce processor DeviceOnly offsets.Length clOffsets clFirstKeys clSecondKeys clValues
+
+        let reducedFirsKeys = clFirstActualKeys.ToHostAndFree processor
+        let reducesSecondKeys = clSecondActualKeys.ToHostAndFree processor
+        let reducedValues = clReducedValues.ToHostAndFree processor
+
+        checkResult2DOption isEqual reducedFirsKeys reducesSecondKeys reducedValues firstKeys secondKeys values reduceOp
+
+let createTest2DOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
+    let reduce =
+        Reduce.ByKey2D.segmentSequentialOption context Utils.defaultWorkGroupSize reduceOpQ
+
+    test2DOption<'a> isEqual reduce reduceOp
+    |> testPropertyWithConfig { config with arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] } $"test on {typeof<'a>}"
+
+let testsByKey2DSegmentsSequential =
+    [ createTest2DOption (=) ArithmeticOperations.intAdd
+
+      if Utils.isFloat64Available context.ClDevice then
+        createTest2DOption Utils.floatIsEqual ArithmeticOperations.floatAdd
+
+      createTest2DOption Utils.float32IsEqual ArithmeticOperations.float32Add
+      createTest2DOption (=) ArithmeticOperations.boolAdd ]
+    |> testList "2D option"
+
+
+
