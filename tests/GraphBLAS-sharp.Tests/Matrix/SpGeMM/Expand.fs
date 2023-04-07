@@ -36,7 +36,7 @@ let getSegmentsPointers (leftMatrix: Matrix.CSR<'a>) (rightMatrix: Matrix.CSR<'b
             rightMatrix.RowPointers.[item + 1]
             - rightMatrix.RowPointers.[item])
         leftMatrix.ColumnIndices
-    |> HostPrimitives.prefixSumExclude
+    |> HostPrimitives.prefixSumExclude 0 (+)
 
 let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
