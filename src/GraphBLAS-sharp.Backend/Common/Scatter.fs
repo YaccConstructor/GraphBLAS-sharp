@@ -64,7 +64,9 @@ module internal Scatter =
     /// </code>
     /// </example>
     let firstOccurrence clContext =
-        general <| Predicates.firstOccurrence () <| clContext
+        general
+        <| Predicates.firstOccurrence ()
+        <| clContext
 
     /// <summary>
     /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -85,7 +87,9 @@ module internal Scatter =
     /// </code>
     /// </example>
     let lastOccurrence clContext =
-        general <| Predicates.lastOccurrence () <| clContext
+        general
+        <| Predicates.lastOccurrence ()
+        <| clContext
 
     let private generalInit<'a> predicate valueMap (clContext: ClContext) workGroupSize =
 

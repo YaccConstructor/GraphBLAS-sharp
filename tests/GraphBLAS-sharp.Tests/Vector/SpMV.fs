@@ -77,8 +77,7 @@ let correctnessGenericTest
 
                 (ClMatrix.CSR m).Dispose q
                 v.Free q
-                let hostRes = res.ToHost q
-                res.Free q
+                let hostRes = res.ToHostAndFree q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes
             | _ -> failwith "Impossible"

@@ -458,10 +458,10 @@ let testsSegmentsSequential2DOption =
 
 let allTests =
     testList
-       "Reduce.ByKey"
-       [ sequentialTest
-         oneWorkGroupTest
-         sequentialSegmentTests
-         sequential2DTest
-         sequentialSegment2DTests
-         testsSegmentsSequential2DOption ]
+        "Reduce.ByKey"
+        [ sequentialTest
+          oneWorkGroupTest
+          sequentialSegmentTests
+          sequential2DTest
+          sequentialSegment2DTests
+          testsSegmentsSequential2DOption ]
