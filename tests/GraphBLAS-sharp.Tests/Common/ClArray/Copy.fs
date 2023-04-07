@@ -23,7 +23,10 @@ let makeTest<'a when 'a: equality> copyFun (array: array<'a>) =
     if array.Length > 0 then
         let clArray = context.CreateClArray array
 
-        let actual = (copyFun q HostInterop clArray: ClArray<_>).ToHostAndFree q
+        let actual =
+            (copyFun q HostInterop clArray: ClArray<_>)
+                .ToHostAndFree q
+
         clArray.Free q
 
         logger.debug (

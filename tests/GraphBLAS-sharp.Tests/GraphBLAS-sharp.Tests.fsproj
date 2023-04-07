@@ -31,10 +31,6 @@
         <Compile Include="Common/Reduce/Sum.fs" />
         <Compile Include="Common/Reduce/Reduce.fs" />
         <Compile Include="Common/Reduce/ReduceByKey.fs" />
-        <!--Compile Include="MatrixOperationsTests/GetTuplesTests.fs" /-->
-        <!--Compile Include="MatrixOperationsTests/MxvTests.fs" /-->
-        <!--Compile Include="MatrixOperationsTests/VxmTests.fs" /-->
-        <!--Compile Include="AlgorithmsTests/BfsTests.fs" /-->
         <Compile Include="Vector/ZeroCreate.fs" />
         <Compile Include="Vector/OfList.fs" />
         <Compile Include="Vector/Copy.fs" />

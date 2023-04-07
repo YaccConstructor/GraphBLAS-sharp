@@ -31,10 +31,6 @@
     <Compile Include="Predefined/Semirings/AnyAll.fs" />
     <Compile Include="Predefined/Semirings/AddMult.fs" />
     <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <!--Compile Include="Algorithms/BFS.fs" />
-    <Compile Include="Algorithms/ShortestPath.fs" />
-    <Compile Include="Algorithms/TriangleCounting.fs" />
-    <Compile Include="Algorithms/BetweennessCentrality.fs" /-->
     <Content Include="YC.OpenCL.NET.dll.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
