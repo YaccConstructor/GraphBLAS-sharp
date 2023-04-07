@@ -95,10 +95,11 @@ let allTests =
     testList
         "All tests"
         [ // SpGeMM.expandTests
-          // SpGeMM.generalTests
+           SpGeMM.generalTests
           // Common.Gather.initTests
           // Common.ClArray.Choose.tests2 ]
-          Common.Reduce.ByKey.testsByKey2DSegmentsSequential ]
+          // Common.Reduce.ByKey.testsByKey2DSegmentsSequential ]
+            ]
     |> testSequenced
 
 [<EntryPoint>]

@@ -233,15 +233,26 @@ module HostPrimitives =
         if Array2D.length2 leftArray <> Array2D.length1 rightArray then
             failwith "Incompatible matrices"
 
+        let add left right =
+            match left, right with
+            | Some left, Some right ->
+                add left right
+            | Some value, None
+            | None, Some value -> Some value
+            | _ -> None
+
         Array2D.init
         <| Array2D.length1 leftArray
         <| Array2D.length2 rightArray
         <| fun i j ->
                 (leftArray.[i, *], rightArray.[*, j])
+                // multiply and filter
                 ||> Array.map2 mul
                 |> Array.choose id
-                |> Array.fold add zero
-
+                // add and filter
+                |> Array.map Some
+                |> Array.fold add None
+                |> function | Some value -> value | None -> zero
 module Context =
     type TestContext =
         { ClContext: ClContext

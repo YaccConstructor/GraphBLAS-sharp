@@ -222,13 +222,13 @@ let makeGeneralTest zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightAr
            | ex when ex.Message = "InvalidBufferSize" -> ()
            | _ -> reraise ()
 
-let createGeneralTest (zero: 'a) isEqual opAddQ opAdd (opMulQ, opMul) testFun =
+let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
 
     let testFun = testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
 
     makeGeneralTest zero isEqual opMul opAdd testFun
-    |> testPropertyWithConfig { config with endSize = 10; maxTest = 1000 } $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config  $"test on %A{typeof<'a>}"
 
 let generalTests =
-    [ createGeneralTest 0 (=) <@ (+) @> (+) ArithmeticOperations.intMul Expand.run ]
+    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Expand.run ]
     |> testList "general"
