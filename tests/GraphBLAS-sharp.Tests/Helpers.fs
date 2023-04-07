@@ -177,32 +177,18 @@ module HostPrimitives =
         |> Array.choose id
 
     let reduceByKey keys value reduceOp =
-        let zipped = Array.zip keys value
-
-        Array.distinct keys
+        Array.zip keys value
+        |> Array.groupBy fst
         |> Array.map
-            (fun key ->
-                // extract elements corresponding to key
-                (key,
-                 Array.map snd
-                 <| Array.filter ((=) key << fst) zipped))
-        // reduce elements
-        |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
+            (fun (key, array) ->
+                Array.map snd array
+                |> Array.reduce reduceOp
+                |> fun value -> key, value)
         |> Array.unzip
 
     let scanByKey scan keysAndValues =
-        // select keys
-        Array.map fst keysAndValues
-        // get unique keys
-        |> Array.distinct
-        |> Array.map
-            (fun key ->
-                // select with certain key
-                Array.filter (fst >> ((=) key)) keysAndValues
-                // get values
-                |> Array.map snd
-                // scan values and get only values without sum
-                |> (fst << scan))
+        Array.groupBy fst keysAndValues
+        |> Array.map (fun (_, array) -> Array.map snd array |> scan |> fst)
         |> Array.concat
 
 module Context =
