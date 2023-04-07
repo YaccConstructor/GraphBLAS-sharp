@@ -21,3 +21,7 @@ module Map =
             match (%map) item with
             | Some _ -> 1
             | None -> 0 @>
+
+    let fst () = <@ fun fst _ -> fst @>
+
+    let snd () = <@ fun _ snd -> snd @>

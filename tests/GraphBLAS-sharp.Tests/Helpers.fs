@@ -141,13 +141,13 @@ module Utils =
         result
 
 module HostPrimitives =
-    let prefixSumInclude array =
-        Array.scan (+) 0 array
-        |> fun scanned -> scanned.[1..]
+    let prefixSumInclude zero add array =
+        Array.scan add zero array
+        |> fun scanned -> scanned.[1..], Array.last scanned
 
-    let prefixSumExclude sourceArray =
-        prefixSumInclude sourceArray
-        |> Array.insertAt 0 0
+    let prefixSumExclude zero add sourceArray =
+        prefixSumInclude zero add sourceArray
+        |> (fst >> Array.insertAt 0 zero)
         |> fun array -> Array.take sourceArray.Length array, Array.last array
 
     let getUniqueBitmapLastOccurrence array =
@@ -177,18 +177,19 @@ module HostPrimitives =
         |> Array.choose id
 
     let reduceByKey keys value reduceOp =
-        let zipped = Array.zip keys value
-
-        Array.distinct keys
+        Array.zip keys value
+        |> Array.groupBy fst
         |> Array.map
-            (fun key ->
-                // extract elements corresponding to key
-                (key,
-                 Array.map snd
-                 <| Array.filter ((=) key << fst) zipped))
-        // reduce elements
-        |> Array.map (fun (key, values) -> key, Array.reduce reduceOp values)
+            (fun (key, array) ->
+                Array.map snd array
+                |> Array.reduce reduceOp
+                |> fun value -> key, value)
         |> Array.unzip
+
+    let scanByKey scan keysAndValues =
+        Array.groupBy fst keysAndValues
+        |> Array.map (fun (_, array) -> Array.map snd array |> scan |> fst)
+        |> Array.concat
 
 module Context =
     type TestContext =

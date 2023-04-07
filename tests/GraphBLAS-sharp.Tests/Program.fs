@@ -17,6 +17,12 @@ let matrixTests =
     |> testSequenced
 
 let commonTests =
+    let scanTests =
+        testList
+            "Scan"
+            [ Common.Scan.ByKey.sequentialSegmentsTests
+              Common.Scan.PrefixSum.tests ]
+
     let reduceTests =
         testList
             "Reduce"
@@ -29,8 +35,7 @@ let commonTests =
     let clArrayTests =
         testList
             "ClArray"
-            [ Common.ClArray.PrefixSum.tests
-              Common.ClArray.RemoveDuplicates.tests
+            [ Common.ClArray.RemoveDuplicates.tests
               Common.ClArray.Copy.tests
               Common.ClArray.Replicate.tests
               Common.ClArray.Exists.tests
@@ -51,6 +56,7 @@ let commonTests =
         [ clArrayTests
           sortTests
           reduceTests
+          scanTests
           Common.Scatter.tests ]
     |> testSequenced
 
