@@ -1,20 +1,9 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Scatter =
-    let private firstOccurencePredicate () =
-        <@ fun gid _ (positions: ClArray<int>) ->
-            // first occurrence condition
-            (gid = 0 || positions.[gid - 1] <> positions.[gid]) @>
-
-    let private lastOccurrencePredicate () =
-        <@ fun gid positionsLength (positions: ClArray<int>) ->
-            // last occurrence condition
-            (gid = positionsLength - 1
-             || positions.[gid] <> positions.[gid + 1]) @>
-
-
     let private general<'a> predicate (clContext: ClContext) workGroupSize =
 
         let run =
@@ -75,7 +64,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     let firstOccurrence clContext =
-        general <| firstOccurencePredicate () <| clContext
+        general <| Predicates.firstOccurrence () <| clContext
 
     /// <summary>
     /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -96,7 +85,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     let lastOccurrence clContext =
-        general <| lastOccurrencePredicate () <| clContext
+        general <| Predicates.lastOccurrence () <| clContext
 
     let private generalInit<'a> predicate valueMap (clContext: ClContext) workGroupSize =
 
@@ -156,7 +145,7 @@ module internal Scatter =
     /// <param name="valueMap">Maps global id to a value</param>
     let initFirsOccurrence<'a> valueMap =
         generalInit<'a>
-        <| firstOccurencePredicate ()
+        <| Predicates.firstOccurrence ()
         <| valueMap
 
     /// <summary>
@@ -180,5 +169,5 @@ module internal Scatter =
     /// <param name="valueMap">Maps global id to a value</param>
     let initLastOccurrence<'a> valueMap =
         generalInit<'a>
-        <| lastOccurrencePredicate ()
+        <| Predicates.lastOccurrence ()
         <| valueMap

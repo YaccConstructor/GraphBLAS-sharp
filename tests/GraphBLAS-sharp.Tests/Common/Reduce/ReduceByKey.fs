@@ -15,17 +15,17 @@ let processor = Context.defaultContext.Queue
 
 let config = Utils.defaultConfig
 
-let getOffsets array =
+let private getOffsets array =
     Array.map fst array
     |> HostPrimitives.getUniqueBitmapFirstOccurrence
     |> HostPrimitives.getBitPositions
 
-let getOffsets2D array =
+let private getOffsets2D array =
     Array.map (fun (fst, snd, _) -> fst, snd) array
     |> HostPrimitives.getUniqueBitmapFirstOccurrence
     |> HostPrimitives.getBitPositions
 
-let checkResult isEqual actualKeys actualValues keys values reduceOp =
+let private checkResult isEqual actualKeys actualValues keys values reduceOp =
 
     let expectedKeys, expectedValues =
         HostPrimitives.reduceByKey keys values reduceOp
@@ -36,7 +36,7 @@ let checkResult isEqual actualKeys actualValues keys values reduceOp =
     "Values must the same"
     |> Utils.compareArrays isEqual actualValues expectedValues
 
-let makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
+let private makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
     let keys, values =
         Array.sortBy fst arrayAndKeys |> Array.unzip
 
@@ -60,7 +60,7 @@ let makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
 
         checkResult isEqual actualKeys actualValues keys values reduceOp
 
-let createTestSequential<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
+let private createTestSequential<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
 
     let reduce =
         Reduce.ByKey.sequential context Utils.defaultWorkGroupSize reduceOpQ
@@ -339,7 +339,7 @@ let createTestSequentialSegments2D<'a> (isEqual: 'a -> 'a -> bool) reduceOp redu
               arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] }
         $"test on {typeof<'a>}"
 
-let sequentialSegmentTests2D =
+let sequentialSegment2DTests =
     let addTests =
         testList
             "add tests"
@@ -446,7 +446,7 @@ let createTest2DOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
               arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] }
         $"test on {typeof<'a>}"
 
-let testsByKey2DSegmentsSequentialOption =
+let testsSegmentsSequential2DOption =
     [ createTest2DOption (=) ArithmeticOperations.intAdd
 
       if Utils.isFloat64Available context.ClDevice then
@@ -455,3 +455,13 @@ let testsByKey2DSegmentsSequentialOption =
       createTest2DOption Utils.float32IsEqual ArithmeticOperations.float32Add
       createTest2DOption (=) ArithmeticOperations.boolAdd ]
     |> testList "2D option"
+
+let allTests =
+    testList
+       "Reduce.ByKey"
+       [ sequentialTest
+         oneWorkGroupTest
+         sequentialSegmentTests
+         sequential2DTest
+         sequentialSegment2DTests
+         testsSegmentsSequential2DOption ]

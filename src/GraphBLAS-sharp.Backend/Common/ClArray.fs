@@ -6,6 +6,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 
 module ClArray =
     let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
@@ -167,16 +168,12 @@ module ClArray =
 
     let getUniqueBitmapFirstOccurrence clContext =
         getUniqueBitmapGeneral
-        <| <@ fun (gid: int) (_: int) (inputArray: ClArray<'a>) ->
-                  gid = 0
-                  || inputArray.[gid - 1] <> inputArray.[gid] @>
+        <| Predicates.firstOccurrence ()
         <| clContext
 
     let getUniqueBitmapLastOccurrence clContext =
         getUniqueBitmapGeneral
-        <| <@ fun (gid: int) (length: int) (inputArray: ClArray<'a>) ->
-                  gid = length - 1
-                  || inputArray.[gid] <> inputArray.[gid + 1] @>
+        <| Predicates.lastOccurrence ()
         <| clContext
 
     ///<description>Remove duplicates form the given array.</description>

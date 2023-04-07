@@ -159,7 +159,7 @@ module ArithmeticOperations =
     // multiplication
     let intMul = createPair 0 (*) <@ (*) @>
 
-    let boolMul = createPair false (&&) <@ (&&) @>
+    let boolMul = createPair true (&&) <@ (&&) @>
 
     let floatMul = createPair 0.0 (*) <@ (*) @>
 
