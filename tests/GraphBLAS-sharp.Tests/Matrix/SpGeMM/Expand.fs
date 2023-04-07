@@ -22,7 +22,9 @@ let processor = Context.defaultContext.Queue
 
 let config =
     { Utils.defaultConfig with
-          arbitrary = [ typeof<Generators.PairOfMatricesOfCompatibleSize> ] }
+          arbitrary = [ typeof<Generators.PairOfMatricesOfCompatibleSize> ]
+          endSize = 500
+          maxTest = 100 }
 
 let createCSRMatrix array isZero =
     Utils.createMatrixFromArray2D CSR array isZero
