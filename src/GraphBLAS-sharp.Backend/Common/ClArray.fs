@@ -168,13 +168,15 @@ module ClArray =
     let getUniqueBitmapFirstOccurrence clContext =
         getUniqueBitmapGeneral
         <| <@ fun (gid: int) (_: int) (inputArray: ClArray<'a>) ->
-               gid = 0 || inputArray.[gid - 1] <> inputArray.[gid] @>
+                  gid = 0
+                  || inputArray.[gid - 1] <> inputArray.[gid] @>
         <| clContext
 
     let getUniqueBitmapLastOccurrence clContext =
         getUniqueBitmapGeneral
         <| <@ fun (gid: int) (length: int) (inputArray: ClArray<'a>) ->
-                gid = length - 1 || inputArray.[gid] <> inputArray.[gid + 1] @>
+                  gid = length - 1
+                  || inputArray.[gid] <> inputArray.[gid + 1] @>
         <| clContext
 
     ///<description>Remove duplicates form the given array.</description>
@@ -186,7 +188,8 @@ module ClArray =
         let scatter =
             Scatter.lastOccurrence clContext workGroupSize
 
-        let getUniqueBitmap = getUniqueBitmapLastOccurrence clContext workGroupSize
+        let getUniqueBitmap =
+            getUniqueBitmapLastOccurrence clContext workGroupSize
 
         let prefixSumExclude =
             PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
@@ -308,16 +311,20 @@ module ClArray =
 
     let getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
 
-        let map = map2 clContext workGroupSize <@ fun x y -> x ||| y @>
+        let map =
+            map2 clContext workGroupSize <@ fun x y -> x ||| y @>
 
         let firstGetBitmap = getUniqueBitmap clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
-            let firstBitmap = firstGetBitmap processor DeviceOnly firstArray
+            let firstBitmap =
+                firstGetBitmap processor DeviceOnly firstArray
 
-            let secondBitmap = firstGetBitmap processor DeviceOnly secondArray
+            let secondBitmap =
+                firstGetBitmap processor DeviceOnly secondArray
 
-            let result = map processor allocationMode firstBitmap secondBitmap
+            let result =
+                map processor allocationMode firstBitmap secondBitmap
 
             firstBitmap.Free processor
             secondBitmap.Free processor
@@ -344,15 +351,15 @@ module ClArray =
                     // seems like scatter (option scatter) ???
                     if 0 <= position && position < resultLength then
                         match (%op) value with
-                        | Some value ->
-                            result.[position] <- value
+                        | Some value -> result.[position] <- value
                         | None -> () @>
 
         let kernel = clContext.Compile assign
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) ->
 
-            if values.Length <> positions.Length then failwith "lengths must be the same"
+            if values.Length <> positions.Length then
+                failwith "lengths must be the same"
 
             let ndRange =
                 Range1D.CreateValid(values.Length, workGroupSize)
@@ -371,19 +378,23 @@ module ClArray =
             map<'a, int> clContext workGroupSize
             <| Map.chooseBitmap predicate
 
-        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let assignValues = assignOption clContext workGroupSize predicate
+        let assignValues =
+            assignOption clContext workGroupSize predicate
 
         fun (processor: MailboxProcessor<_>) allocationMode (sourceValues: ClArray<'a>) ->
 
-            let positions = getBitmap processor DeviceOnly sourceValues
+            let positions =
+                getBitmap processor DeviceOnly sourceValues
 
             let resultLength =
                 (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            let result = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
             assignValues processor sourceValues positions result
 
@@ -405,8 +416,7 @@ module ClArray =
                     // seems like scatter2 (option scatter2) ???
                     if 0 <= position && position < resultLength then
                         match (%op) leftValue rightValue with
-                        | Some value ->
-                            result.[position] <- value
+                        | Some value -> result.[position] <- value
                         | None -> () @>
 
         let kernel = clContext.Compile assign
@@ -414,8 +424,8 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (positions: ClArray<int>) (result: ClArray<'c>) ->
 
             if firstValues.Length <> secondValues.Length
-                || secondValues.Length <> positions.Length then
-                    failwith "lengths must be the same"
+               || secondValues.Length <> positions.Length then
+                failwith "lengths must be the same"
 
             let ndRange =
                 Range1D.CreateValid(firstValues.Length, workGroupSize)
@@ -424,7 +434,15 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange firstValues.Length firstValues secondValues positions result result.Length)
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            firstValues.Length
+                            firstValues
+                            secondValues
+                            positions
+                            result
+                            result.Length)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -434,19 +452,23 @@ module ClArray =
             map2<'a, 'b, int> clContext workGroupSize
             <| Map.chooseBitmap2 predicate
 
-        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let assignValues = assignOption2 clContext workGroupSize predicate
+        let assignValues =
+            assignOption2 clContext workGroupSize predicate
 
         fun (processor: MailboxProcessor<_>) allocationMode (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) ->
 
-            let positions = getBitmap processor DeviceOnly firstValues secondValues
+            let positions =
+                getBitmap processor DeviceOnly firstValues secondValues
 
             let resultLength =
                 (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            let result = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
             assignValues processor firstValues secondValues positions result
 

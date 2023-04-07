@@ -18,15 +18,19 @@ type Values<'a> = ClArray<'a>
 module Expand =
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 
-        let subtract = ClArray.map2 clContext workGroupSize Map.subtraction
+        let subtract =
+            ClArray.map2 clContext workGroupSize Map.subtraction
 
-        let idGather = Gather.runInit Map.id clContext workGroupSize
+        let idGather =
+            Gather.runInit Map.id clContext workGroupSize
 
-        let incGather = Gather.runInit Map.inc clContext workGroupSize
+        let incGather =
+            Gather.runInit Map.inc clContext workGroupSize
 
         let gather = Gather.run clContext workGroupSize
 
-        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
@@ -62,7 +66,9 @@ module Expand =
             rightMatrixRowsLengths.Free processor
 
             // compute pointers
-            let length = (prefixSum processor segmentsLengths).ToHostAndFree processor
+            let length =
+                (prefixSum processor segmentsLengths)
+                    .ToHostAndFree processor
 
             length, segmentsLengths
 
@@ -71,29 +77,36 @@ module Expand =
             ClArray.map2<'a, 'b, int> clContext workGroupSize
             <| Map.chooseBitmap2 predicate
 
-        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let assignValues = ClArray.assignOption2 clContext workGroupSize predicate
+        let assignValues =
+            ClArray.assignOption2 clContext workGroupSize predicate
 
-        let scatter = Scatter.lastOccurrence clContext workGroupSize // TODO(last ?)
+        let scatter =
+            Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (columns: Indices) (rows: Indices) ->
 
-            let positions = getBitmap processor DeviceOnly firstValues secondValues
+            let positions =
+                getBitmap processor DeviceOnly firstValues secondValues
 
             let resultLength =
                 (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            let resultColumns = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+            let resultColumns =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
             scatter processor positions columns resultColumns
 
-            let resultRows = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+            let resultRows =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
             scatter processor positions rows resultRows
 
-            let resultValues = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
             assignValues processor firstValues secondValues positions resultValues
 
@@ -101,23 +114,30 @@ module Expand =
 
     let expand (clContext: ClContext) workGroupSize =
 
-        let idScatter = Scatter.initLastOccurrence Map.id clContext workGroupSize
+        let idScatter =
+            Scatter.initLastOccurrence Map.id clContext workGroupSize
 
-        let scatter = Scatter.lastOccurrence clContext workGroupSize
+        let scatter =
+            Scatter.lastOccurrence clContext workGroupSize
 
-        let zeroCreate = ClArray.zeroCreate clContext workGroupSize
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
 
-        let maxPrefixSum = PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
+        let maxPrefixSum =
+            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 
         let gather = Gather.run clContext workGroupSize
 
-        let segmentPrefixSum = PrefixSum.ByKey.sequentialInclude clContext workGroupSize <@ (+) @> 0
+        let segmentPrefixSum =
+            PrefixSum.ByKey.sequentialInclude clContext workGroupSize <@ (+) @> 0
 
-        let removeDuplicates = ClArray.removeDuplications clContext workGroupSize
+        let removeDuplicates =
+            ClArray.removeDuplications clContext workGroupSize
 
-        let expandRowPointers = Common.expandRowPointers clContext workGroupSize
+        let expandRowPointers =
+            Common.expandRowPointers clContext workGroupSize
 
         let AGather = Gather.run clContext workGroupSize
 
@@ -130,12 +150,14 @@ module Expand =
 
             idScatter processor segmentsPointers APositions
 
-            (maxPrefixSum processor APositions 0).Free processor
+            (maxPrefixSum processor APositions 0)
+                .Free processor
 
             // Compute B positions
             let BPositions = create processor DeviceOnly lengths 1
 
-            let requiredBPointers = zeroCreate processor DeviceOnly leftMatrix.Columns.Length
+            let requiredBPointers =
+                zeroCreate processor DeviceOnly leftMatrix.Columns.Length
 
             gather processor leftMatrix.Columns rightMatrix.RowPointers requiredBPointers
 
@@ -144,7 +166,8 @@ module Expand =
             requiredBPointers.Free processor
 
             // another way to get offsets ???
-            let offsets = removeDuplicates processor segmentsPointers
+            let offsets =
+                removeDuplicates processor segmentsPointers
 
             segmentPrefixSum processor offsets.Length BPositions APositions offsets
 
@@ -157,7 +180,8 @@ module Expand =
             gather processor BPositions rightMatrix.Columns columns
 
             // compute rows
-            let ARows = expandRowPointers processor DeviceOnly leftMatrix.RowPointers leftMatrix.NNZ leftMatrix.RowCount
+            let ARows =
+                expandRowPointers processor DeviceOnly leftMatrix.RowPointers leftMatrix.NNZ leftMatrix.RowCount
 
             let rows =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
@@ -187,24 +211,31 @@ module Expand =
 
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
-        let sortByKeyIndices = Radix.runByKeysStandard clContext workGroupSize
+        let sortByKeyIndices =
+            Radix.runByKeysStandard clContext workGroupSize
 
-        let sortByKeyValues = Radix.runByKeysStandard clContext workGroupSize
+        let sortByKeyValues =
+            Radix.runByKeysStandard clContext workGroupSize
 
-        let sortKeys = Radix.standardRunKeysOnly clContext workGroupSize
+        let sortKeys =
+            Radix.standardRunKeysOnly clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
             // sort by columns
-            let valuesSortedByColumns = sortByKeyValues processor DeviceOnly columns values
+            let valuesSortedByColumns =
+                sortByKeyValues processor DeviceOnly columns values
 
-            let rowsSortedByColumns = sortByKeyIndices processor DeviceOnly columns rows
+            let rowsSortedByColumns =
+                sortByKeyIndices processor DeviceOnly columns rows
 
             let sortedColumns = sortKeys processor columns
 
             // sort by rows
-            let valuesSortedByRows = sortByKeyValues processor DeviceOnly rowsSortedByColumns valuesSortedByColumns
+            let valuesSortedByRows =
+                sortByKeyValues processor DeviceOnly rowsSortedByColumns valuesSortedByColumns
 
-            let columnsSortedByRows = sortByKeyIndices processor DeviceOnly rowsSortedByColumns sortedColumns
+            let columnsSortedByRows =
+                sortByKeyIndices processor DeviceOnly rowsSortedByColumns sortedColumns
 
             let sortedRows = sortKeys processor rowsSortedByColumns
 
@@ -214,32 +245,33 @@ module Expand =
 
             valuesSortedByRows, columnsSortedByRows, sortedRows
 
-    let reduce (clContext: ClContext) workGroupSize opAdd  =
+    let reduce (clContext: ClContext) workGroupSize opAdd =
 
-        let reduce = Reduce.ByKey2D.segmentSequentialOption clContext workGroupSize opAdd
+        let reduce =
+            Reduce.ByKey2D.segmentSequentialOption clContext workGroupSize opAdd
 
         let getUniqueBitmap =
             ClArray.getUniqueBitmap2LastOccurrence clContext workGroupSize
 
-        let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
 
-        let idScatter = Scatter.initFirsOccurrence Map.id clContext workGroupSize
+        let idScatter =
+            Scatter.initFirsOccurrence Map.id clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) (rows: Indices) ->
 
-            let bitmap = getUniqueBitmap processor DeviceOnly columns rows
+            let bitmap =
+                getUniqueBitmap processor DeviceOnly columns rows
 
-            printfn $"key bitmap: %A{bitmap.ToHost processor}"
+            let uniqueKeysCount =
+                (prefixSum processor bitmap)
+                    .ToHostAndFree processor
 
-            let uniqueKeysCount = (prefixSum processor bitmap).ToHostAndFree processor
-
-            printfn $"key bitmap after prefix sum: %A{bitmap.ToHost processor}"
-
-            let offsets = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, uniqueKeysCount)
+            let offsets =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, uniqueKeysCount)
 
             idScatter processor bitmap offsets
-
-            printfn $"offsets: %A{offsets.ToHost processor}"
 
             bitmap.Free processor
 
@@ -252,28 +284,26 @@ module Expand =
 
     let run (clContext: ClContext) workGroupSize opAdd opMul =
 
-        let getSegmentPointers = getSegmentPointers clContext workGroupSize
+        let getSegmentPointers =
+            getSegmentPointers clContext workGroupSize
 
         let expand = expand clContext workGroupSize
 
         let multiply = multiply clContext workGroupSize opMul
 
-        let sort = sortByColumnsAndRows clContext workGroupSize
+        let sort =
+            sortByColumnsAndRows clContext workGroupSize
 
         let reduce = reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
-            let length, segmentPointers = getSegmentPointers processor leftMatrix rightMatrix
+            let length, segmentPointers =
+                getSegmentPointers processor leftMatrix rightMatrix
 
             // expand
             let leftMatrixValues, rightMatrixValues, columns, rows =
                 expand processor length segmentPointers leftMatrix rightMatrix
-
-            printfn $"left matrix values: %A{leftMatrixValues.ToHost processor}"
-            printfn $"right matrix values: %A{rightMatrixValues.ToHost processor}"
-            printfn $"expanded columns: %A{columns.ToHost processor}"
-            printfn $"expanded rows: %A{rows.ToHost processor}"
 
             // multiply
             let resultValues, resultColumns, resultRows =
@@ -288,10 +318,6 @@ module Expand =
             let sortedValues, sortedColumns, sortedRows =
                 sort processor resultValues resultColumns resultRows
 
-            printfn $"sorted values: %A{sortedValues.ToHost processor}"
-            printfn $"sorted columns: %A{sortedColumns.ToHost processor}"
-            printfn $"sorted rows: %A{sortedRows.ToHost processor}"
-
             resultValues.Free processor
             resultColumns.Free processor
             resultRows.Free processor
@@ -300,13 +326,8 @@ module Expand =
             let reducedValues, reducedColumns, reducedRows =
                 reduce processor allocationMode sortedValues sortedColumns sortedRows
 
-            printfn $"reduced values: %A{reducedValues.ToHost processor}"
-            printfn $"reduced columns: %A{reducedColumns.ToHost processor}"
-            printfn $"reduced rows: %A{reducedRows.ToHost processor}"
-
             sortedValues.Free processor
             sortedColumns.Free processor
             sortedRows.Free processor
 
             reducedValues, reducedColumns, reducedRows
-

@@ -22,11 +22,10 @@ module internal Gather =
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(outputArray.Length, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(outputArray.Length, workGroupSize)
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange values.Length values outputArray)
-            )
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange values.Length values outputArray))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
@@ -59,14 +58,17 @@ module internal Gather =
 
         fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (outputArray: ClArray<'a>) ->
 
-            if positions.Length <> outputArray.Length then failwith "Lengths must be the same"
+            if positions.Length <> outputArray.Length then
+                failwith "Lengths must be the same"
 
             let kernel = program.GetKernel()
 
-            let ndRange = Range1D.CreateValid(positions.Length, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(positions.Length, workGroupSize)
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange positions.Length values.Length positions values outputArray)
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange positions.Length values.Length positions values outputArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

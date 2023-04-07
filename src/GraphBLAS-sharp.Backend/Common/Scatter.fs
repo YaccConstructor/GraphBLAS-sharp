@@ -5,13 +5,14 @@ open Brahma.FSharp
 module internal Scatter =
     let private firstOccurencePredicate () =
         <@ fun gid _ (positions: ClArray<int>) ->
-                 // first occurrence condition
-                 (gid = 0 || positions.[gid - 1] <> positions.[gid]) @>
+            // first occurrence condition
+            (gid = 0 || positions.[gid - 1] <> positions.[gid]) @>
 
     let private lastOccurrencePredicate () =
         <@ fun gid positionsLength (positions: ClArray<int>) ->
-                // last occurrence condition
-                (gid = positionsLength - 1 || positions.[gid] <> positions.[gid + 1]) @>
+            // last occurrence condition
+            (gid = positionsLength - 1
+             || positions.[gid] <> positions.[gid + 1]) @>
 
 
     let private general<'a> predicate (clContext: ClContext) workGroupSize =
@@ -23,11 +24,14 @@ module internal Scatter =
 
                 if gid < positionsLength then
                     // positions lengths == values length
-                    let predicateResult = (%predicate) gid positionsLength positions
+                    let predicateResult =
+                        (%predicate) gid positionsLength positions
+
                     let position = positions.[gid]
 
                     if predicateResult
-                        && 0 <= position && position < resultLength then
+                       && 0 <= position
+                       && position < resultLength then
 
                         result.[positions.[gid]] <- values.[gid] @>
 
@@ -35,7 +39,8 @@ module internal Scatter =
 
         fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (result: ClArray<'a>) ->
 
-            if positions.Length <> values.Length then failwith "Lengths must be the same"
+            if positions.Length <> values.Length then
+                failwith "Lengths must be the same"
 
             let positionsLength = positions.Length
 
@@ -70,9 +75,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     let firstOccurrence clContext =
-        general
-        <| firstOccurencePredicate ()
-        <| clContext
+        general <| firstOccurencePredicate () <| clContext
 
     /// <summary>
     /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -93,9 +96,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     let lastOccurrence clContext =
-        general
-        <| lastOccurrencePredicate ()
-        <| clContext
+        general <| lastOccurrencePredicate () <| clContext
 
     let private generalInit<'a> predicate valueMap (clContext: ClContext) workGroupSize =
 
@@ -106,12 +107,14 @@ module internal Scatter =
 
                 if gid < positionsLength then
                     // positions lengths == values length
-                    let predicateResult = (%predicate) gid positionsLength positions
+                    let predicateResult =
+                        (%predicate) gid positionsLength positions
 
                     let position = positions.[gid]
 
                     if predicateResult
-                       && 0 <= position && position < resultLength then
+                       && 0 <= position
+                       && position < resultLength then
 
                         result.[positions.[gid]] <- (%valueMap) gid @>
 
@@ -127,8 +130,7 @@ module internal Scatter =
             let kernel = program.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange positions positionsLength result result.Length)
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange positions positionsLength result result.Length)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -152,7 +154,10 @@ module internal Scatter =
     /// </code>
     /// </example>
     /// <param name="valueMap">Maps global id to a value</param>
-    let initFirsOccurrence<'a> valueMap = generalInit<'a> <| firstOccurencePredicate () <| valueMap
+    let initFirsOccurrence<'a> valueMap =
+        generalInit<'a>
+        <| firstOccurencePredicate ()
+        <| valueMap
 
     /// <summary>
     /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -173,4 +178,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     /// <param name="valueMap">Maps global id to a value</param>
-    let initLastOccurrence<'a> valueMap = generalInit<'a> <| lastOccurrencePredicate () <| valueMap
+    let initLastOccurrence<'a> valueMap =
+        generalInit<'a>
+        <| lastOccurrencePredicate ()
+        <| valueMap

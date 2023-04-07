@@ -536,7 +536,16 @@ module Reduce =
 
                 processor.Post(
                     Msg.MsgSetArguments
-                        (fun () -> kernel.KernelFunc ndRange firstKeys.Length firstKeys secondKeys values reducedValues firstReducedKeys secondReducedKeys)
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                firstKeys.Length
+                                firstKeys
+                                secondKeys
+                                values
+                                reducedValues
+                                firstReducedKeys
+                                secondReducedKeys)
                 )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -650,11 +659,11 @@ module Reduce =
 
                             match sum with
                             | Some value ->
-                                let result = ((%reduceOp) value values.[currentPosition]) // brahma error
+                                let result =
+                                    ((%reduceOp) value values.[currentPosition]) // brahma error
 
                                 sum <- result
-                            | None ->
-                                sum <- Some values.[currentPosition]
+                            | None -> sum <- Some values.[currentPosition]
 
                             currentPosition <- currentPosition + 1
 
@@ -662,19 +671,21 @@ module Reduce =
                         | Some value ->
                             reducedValues.[gid] <- value
                             resultPositions.[gid] <- 1
-                        | None ->
-                            resultPositions.[gid] <- 0
+                        | None -> resultPositions.[gid] <- 0
 
                         firstReducedKeys.[gid] <- firstSourceKey
                         secondReducedKeys.[gid] <- secondSourceKey @>
 
             let kernel = clContext.Compile kernel
 
-            let scatterData = Scatter.lastOccurrence clContext workGroupSize
+            let scatterData =
+                Scatter.lastOccurrence clContext workGroupSize
 
-            let scatterIndices = Scatter.lastOccurrence clContext workGroupSize
+            let scatterIndices =
+                Scatter.lastOccurrence clContext workGroupSize
 
-            let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+            let prefixSum =
+                PrefixSum.standardExcludeInplace clContext workGroupSize
 
             fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) ->
 
@@ -715,7 +726,8 @@ module Reduce =
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 let resultLength =
-                    (prefixSum processor resultPositions).ToHostAndFree processor
+                    (prefixSum processor resultPositions)
+                        .ToHostAndFree processor
 
                 let resultValues =
                     clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)

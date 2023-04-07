@@ -228,7 +228,9 @@ let makeTest2D isEqual reduce reduceOp (array: (int * int * 'a) []) =
         let clValues =
             context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
 
-        let resultLength = Array.length <| Array.distinctBy (fun (fst, snd, _) -> (fst, snd)) array
+        let resultLength =
+            Array.length
+            <| Array.distinctBy (fun (fst, snd, _) -> (fst, snd)) array
 
         let clFirstActualKeys, clSecondActualKeys, clActualValues: ClArray<int> * ClArray<int> * ClArray<'a> =
             reduce processor HostInterop resultLength clFirstKeys clSecondKeys clValues
@@ -238,8 +240,12 @@ let makeTest2D isEqual reduce reduceOp (array: (int * int * 'a) []) =
         clSecondKeys.Free processor
 
         let actualValues = clActualValues.ToHostAndFree processor
-        let firstActualKeys = clFirstActualKeys.ToHostAndFree processor
-        let secondActualKeys = clSecondActualKeys.ToHostAndFree processor
+
+        let firstActualKeys =
+            clFirstActualKeys.ToHostAndFree processor
+
+        let secondActualKeys =
+            clSecondActualKeys.ToHostAndFree processor
 
         checkResult2D isEqual firstActualKeys secondActualKeys actualValues firstKeys secondKeys values reduceOp
 
@@ -249,7 +255,11 @@ let createTestSequential2D<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
         Reduce.ByKey2D.sequential context Utils.defaultWorkGroupSize reduceOpQ
 
     makeTest2D isEqual reduce reduceOp
-    |> testPropertyWithConfig { config with arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ]; endSize = 10 } $"test on {typeof<'a>}"
+    |> testPropertyWithConfig
+        { config with
+              arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ]
+              endSize = 10 }
+        $"test on {typeof<'a>}"
 
 let sequential2DTest =
     let addTests =
@@ -281,7 +291,8 @@ let sequential2DTest =
 let makeTestSequentialSegments2D isEqual reduce reduceOp (array: (int * int * 'a) []) =
 
     if array.Length > 0 then
-        let array = Array.sortBy (fun (fst, snd, _) -> fst, snd) array
+        let array =
+            Array.sortBy (fun (fst, snd, _) -> fst, snd) array
 
         let offsets =
             array
@@ -308,8 +319,12 @@ let makeTestSequentialSegments2D isEqual reduce reduceOp (array: (int * int * 'a
         let clFirstActualKeys, clSecondActualKeys, clReducedValues: ClArray<int> * ClArray<int> * ClArray<'a> =
             reduce processor DeviceOnly resultLength clOffsets clFirstKeys clSecondKeys clValues
 
-        let reducedFirsKeys = clFirstActualKeys.ToHostAndFree processor
-        let reducesSecondKeys = clSecondActualKeys.ToHostAndFree processor
+        let reducedFirsKeys =
+            clFirstActualKeys.ToHostAndFree processor
+
+        let reducesSecondKeys =
+            clSecondActualKeys.ToHostAndFree processor
+
         let reducedValues = clReducedValues.ToHostAndFree processor
 
         checkResult2D isEqual reducedFirsKeys reducesSecondKeys reducedValues firstKeys secondKeys values reduceOp
@@ -319,7 +334,10 @@ let createTestSequentialSegments2D<'a> (isEqual: 'a -> 'a -> bool) reduceOp redu
         Reduce.ByKey2D.segmentSequential context Utils.defaultWorkGroupSize reduceOpQ
 
     makeTestSequentialSegments2D isEqual reduce reduceOp
-    |> testPropertyWithConfig { config with arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] } $"test on {typeof<'a>}"
+    |> testPropertyWithConfig
+        { config with
+              arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] }
+        $"test on {typeof<'a>}"
 
 let sequentialSegmentTests2D =
     let addTests =
@@ -352,8 +370,7 @@ let checkResult2DOption isEqual firstActualKeys secondActualKeys actualValues fi
 
     let reduceOp left right =
         match left, right with
-        | Some left, Some right ->
-            reduceOp left right
+        | Some left, Some right -> reduceOp left right
         | Some value, None
         | None, Some value -> Some value
         | _ -> None
@@ -364,14 +381,16 @@ let checkResult2DOption isEqual firstActualKeys secondActualKeys actualValues fi
         Array.zip keys values
         |> Array.groupBy fst
         |> Array.map (fun (key, array) -> key, Array.map snd array)
-        |> Array.map (fun (key, array) ->
-            Array.map Some array
-            |> Array.reduce reduceOp
-            |> fun result -> key, result)
-        |> Array.choose (fun ((fstKey, sndKey), value) ->
-            match value with
-            | Some value -> Some (fstKey, sndKey, value)
-            | _ -> None )
+        |> Array.map
+            (fun (key, array) ->
+                Array.map Some array
+                |> Array.reduce reduceOp
+                |> fun result -> key, result)
+        |> Array.choose
+            (fun ((fstKey, sndKey), value) ->
+                match value with
+                | Some value -> Some(fstKey, sndKey, value)
+                | _ -> None)
         |> Array.unzip3
 
     "First keys must be the same"
@@ -383,9 +402,10 @@ let checkResult2DOption isEqual firstActualKeys secondActualKeys actualValues fi
     "Values must the same"
     |> Utils.compareArrays isEqual actualValues expectedValues
 
-let test2DOption<'a> isEqual reduce reduceOp (array: (int * int * 'a) [])  =
+let test2DOption<'a> isEqual reduce reduceOp (array: (int * int * 'a) []) =
     if array.Length > 0 then
-        let array = Array.sortBy (fun (fst, snd, _) -> fst, snd) array
+        let array =
+            Array.sortBy (fun (fst, snd, _) -> fst, snd) array
 
         let offsets = getOffsets2D array
 
@@ -406,8 +426,12 @@ let test2DOption<'a> isEqual reduce reduceOp (array: (int * int * 'a) [])  =
         let clFirstActualKeys, clSecondActualKeys, clReducedValues: ClArray<int> * ClArray<int> * ClArray<'a> =
             reduce processor DeviceOnly offsets.Length clOffsets clFirstKeys clSecondKeys clValues
 
-        let reducedFirsKeys = clFirstActualKeys.ToHostAndFree processor
-        let reducesSecondKeys = clSecondActualKeys.ToHostAndFree processor
+        let reducedFirsKeys =
+            clFirstActualKeys.ToHostAndFree processor
+
+        let reducesSecondKeys =
+            clSecondActualKeys.ToHostAndFree processor
+
         let reducedValues = clReducedValues.ToHostAndFree processor
 
         checkResult2DOption isEqual reducedFirsKeys reducesSecondKeys reducedValues firstKeys secondKeys values reduceOp
@@ -417,17 +441,17 @@ let createTest2DOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
         Reduce.ByKey2D.segmentSequentialOption context Utils.defaultWorkGroupSize reduceOpQ
 
     test2DOption<'a> isEqual reduce reduceOp
-    |> testPropertyWithConfig { config with arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] } $"test on {typeof<'a>}"
+    |> testPropertyWithConfig
+        { config with
+              arbitrary = [ typeof<Generators.ArrayOfDistinctKeys> ] }
+        $"test on {typeof<'a>}"
 
-let testsByKey2DSegmentsSequential =
+let testsByKey2DSegmentsSequentialOption =
     [ createTest2DOption (=) ArithmeticOperations.intAdd
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest2DOption Utils.floatIsEqual ArithmeticOperations.floatAdd
+          createTest2DOption Utils.floatIsEqual ArithmeticOperations.floatAdd
 
       createTest2DOption Utils.float32IsEqual ArithmeticOperations.float32Add
       createTest2DOption (=) ArithmeticOperations.boolAdd ]
     |> testList "2D option"
-
-
-

@@ -21,13 +21,10 @@ let q = defaultContext.Queue
 
 let makeTest<'a when 'a: equality> hostScatter scatter (array: (int * 'a) []) (result: 'a []) =
     if array.Length > 0 then
-        let positions, values =
-            Array.sortBy fst array
-            |> Array.unzip
+        let positions, values = Array.sortBy fst array |> Array.unzip
 
         let expected =
-            Array.copy result
-            |> hostScatter positions values
+            Array.copy result |> hostScatter positions values
 
         let actual =
             let clPositions = context.CreateClArray positions
@@ -68,7 +65,7 @@ let tests =
           testFixturesFirst<bool> ]
         |> testList "First Occurrence"
 
-    testList "ones occurrence" [first; last]
+    testList "ones occurrence" [ first; last ]
 
 let makeTestInit<'a when 'a: equality> hostScatter valueMap scatter (positions: int []) (result: 'a []) =
     if positions.Length > 0 then
@@ -77,8 +74,7 @@ let makeTestInit<'a when 'a: equality> hostScatter valueMap scatter (positions: 
         let positions = Array.sort positions
 
         let expected =
-            Array.copy result
-            |> hostScatter positions values
+            Array.copy result |> hostScatter positions values
 
         let clPositions = context.CreateClArray positions
         let clResult = context.CreateClArray result
@@ -93,7 +89,8 @@ let makeTestInit<'a when 'a: equality> hostScatter valueMap scatter (positions: 
         |> Utils.compareArrays (=) actual expected
 
 let createInitTest clScatter hostScatter name valuesMap valuesMapQ =
-    let scatter = clScatter valuesMapQ context Utils.defaultWorkGroupSize
+    let scatter =
+        clScatter valuesMapQ context Utils.defaultWorkGroupSize
 
     makeTestInit<'a> hostScatter valuesMap scatter
     |> testPropertyWithConfig config name
@@ -105,12 +102,12 @@ let initTests =
 
     let firstOccurrence =
         [ createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "id" id Map.id
-          createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence  "inc" inc Map.inc ]
+          createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "inc" inc Map.inc ]
         |> testList "first occurrence"
 
     let lastOccurrence =
         [ createInitTest Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "id" id Map.id
-          createInitTest Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence  "inc" inc Map.inc ]
+          createInitTest Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "inc" inc Map.inc ]
         |> testList "last occurrence"
 
     testList "init" [ firstOccurrence; lastOccurrence ]

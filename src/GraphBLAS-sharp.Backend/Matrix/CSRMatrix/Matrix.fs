@@ -104,17 +104,39 @@ module Matrix =
             |> transposeInplace queue
             |> toCSRInplace queue allocationMode
 
-    let spgemmCSC
-        (clContext: ClContext)
-        workGroupSize
-        (opAdd: Expr<'c -> 'c -> 'c option>)
-        (opMul: Expr<'a -> 'b -> 'c option>)
-        =
+    module SpGeMM =
+        let masked
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
 
-        let run =
-            SpGEMMMasked.run clContext workGroupSize opAdd opMul
+            let run =
+                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
+            fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
-            run queue matrixLeft matrixRight mask
+                run queue matrixLeft matrixRight mask
 
+        let expand
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
+
+            let run =
+                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+
+            fun (queue: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+
+                let values, columns, rows =
+                    run queue allocationMode leftMatrix rightMatrix
+
+                { COO.Context = clContext
+                  ColumnCount = rightMatrix.ColumnCount
+                  RowCount = leftMatrix.RowCount
+                  Values = values
+                  Columns = columns
+                  Rows = rows }

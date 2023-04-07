@@ -131,13 +131,19 @@ module ArithmeticOperations =
         <@ fun (left: 'a) (right: 'a) ->
             let result = (%op) left right
 
-            if result = zero then None else Some result  @>
+            if result = zero then
+                None
+            else
+                Some result @>
 
     let inline private binOp zero op =
         fun left right ->
             let result = op left right
 
-            if result = zero then None else Some result
+            if result = zero then
+                None
+            else
+                Some result
 
     let inline createPair zero op opQ = binOpQ zero opQ, binOp zero op
 

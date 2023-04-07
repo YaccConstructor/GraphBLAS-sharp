@@ -33,7 +33,8 @@ module Radix =
             let clKeys = keys.ToDevice context
             let clValues = values.ToDevice context
 
-            let clActualValues: ClArray<'a> = sortFun processor HostInterop clKeys clValues
+            let clActualValues: ClArray<'a> =
+                sortFun processor HostInterop clKeys clValues
 
             let actualValues = clActualValues.ToHostAndFree processor
 

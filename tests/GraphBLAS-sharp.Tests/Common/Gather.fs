@@ -48,7 +48,8 @@ let makeTest isEqual testFun (array: (uint * 'a * 'a) []) =
 
 let createTest<'a> (isEqual: 'a -> 'a -> bool) testFun =
 
-    let testFun = testFun context Utils.defaultWorkGroupSize
+    let testFun =
+        testFun context Utils.defaultWorkGroupSize
 
     makeTest isEqual testFun
     |> testPropertyWithConfig Utils.defaultConfig $"test on %A{typeof<'a>}"
@@ -57,7 +58,7 @@ let tests =
     [ createTest<int> (=) Gather.run
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float> Utils.floatIsEqual Gather.run
+          createTest<float> Utils.floatIsEqual Gather.run
 
       createTest<float32> Utils.float32IsEqual Gather.run
       createTest<bool> (=) Gather.run
@@ -88,7 +89,8 @@ let makeTestInit isEqual testFun indexMap (array: ('a * 'a) []) =
 
 let createTestInit<'a> (isEqual: 'a -> 'a -> bool) testFun indexMapQ indexMap =
 
-    let testFun = testFun indexMapQ context Utils.defaultWorkGroupSize
+    let testFun =
+        testFun indexMapQ context Utils.defaultWorkGroupSize
 
     makeTestInit isEqual testFun indexMap
     |> testPropertyWithConfig Utils.defaultConfig $"test on {typeof<'a>}"
@@ -99,11 +101,11 @@ let initTests =
         [ createTestInit<int> (=) Gather.runInit Map.id id
 
           if Utils.isFloat64Available context.ClDevice then
-            createTestInit<float> Utils.floatIsEqual Gather.runInit Map.id id
+              createTestInit<float> Utils.floatIsEqual Gather.runInit Map.id id
 
           createTestInit<float32> Utils.float32IsEqual Gather.runInit Map.id id
           createTestInit<bool> (=) Gather.runInit Map.id id
-          createTestInit<uint> (=) Gather.runInit Map.id id]
+          createTestInit<uint> (=) Gather.runInit Map.id id ]
         |> testList "id"
 
     let inc = ((+) 1)
@@ -112,13 +114,14 @@ let initTests =
         [ createTestInit<int> (=) Gather.runInit Map.inc inc
 
           if Utils.isFloat64Available context.ClDevice then
-            createTestInit<float> Utils.floatIsEqual Gather.runInit Map.inc inc
+              createTestInit<float> Utils.floatIsEqual Gather.runInit Map.inc inc
 
           createTestInit<float32> Utils.float32IsEqual Gather.runInit Map.inc inc
           createTestInit<bool> (=) Gather.runInit Map.inc inc
-          createTestInit<uint> (=) Gather.runInit Map.inc inc]
+          createTestInit<uint> (=) Gather.runInit Map.inc inc ]
         |> testList "inc"
 
-    testList "init" [idTests; incTests]
+    testList "init" [ idTests; incTests ]
 
 
+let allTests = testList "Gather" [ tests; initTests ]

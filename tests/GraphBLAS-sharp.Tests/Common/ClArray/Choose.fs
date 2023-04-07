@@ -62,8 +62,7 @@ let tests =
     TestCases.gpuTests "choose id" testFixtures
 
 let makeTest2 isEqual opMap testFun (firstArray: 'a [], secondArray: 'a []) =
-    if firstArray.Length > 0
-        && secondArray.Length > 0 then
+    if firstArray.Length > 0 && secondArray.Length > 0 then
 
         let expected =
             Array.map2 opMap firstArray secondArray
@@ -72,7 +71,8 @@ let makeTest2 isEqual opMap testFun (firstArray: 'a [], secondArray: 'a []) =
         let clFirstArray = context.CreateClArray firstArray
         let clSecondArray = context.CreateClArray secondArray
 
-        let (clActual: ClArray<_>) = testFun processor HostInterop clFirstArray clSecondArray
+        let (clActual: ClArray<_>) =
+            testFun processor HostInterop clFirstArray clSecondArray
 
         let actual = clActual.ToHostAndFree processor
         clFirstArray.Free processor
@@ -82,7 +82,8 @@ let makeTest2 isEqual opMap testFun (firstArray: 'a [], secondArray: 'a []) =
         |> Utils.compareArrays isEqual actual expected
 
 let createTest2 (isEqual: 'a -> 'a -> bool) (opMapQ, opMap) testFun =
-    let testFun = testFun context Utils.defaultWorkGroupSize opMapQ
+    let testFun =
+        testFun context Utils.defaultWorkGroupSize opMapQ
 
     makeTest2 isEqual opMap testFun
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -91,7 +92,7 @@ let tests2 =
     [ createTest2 (=) ArithmeticOperations.intAdd ClArray.choose2
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest2 (=) ArithmeticOperations.floatAdd ClArray.choose2
+          createTest2 (=) ArithmeticOperations.floatAdd ClArray.choose2
 
       createTest2 (=) ArithmeticOperations.float32Add ClArray.choose2
       createTest2 (=) ArithmeticOperations.boolAdd ClArray.choose2 ]

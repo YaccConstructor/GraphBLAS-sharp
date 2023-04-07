@@ -22,7 +22,11 @@ let testFixtures (testContext: TestContext) =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
-          Algorithms.BFS.singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption workGroupSize
+          Algorithms.BFS.singleSource
+              context
+              ArithmeticOperations.intSumOption
+              ArithmeticOperations.intMulOption
+              workGroupSize
 
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->

@@ -341,4 +341,3 @@ module PrefixSum =
         /// </example>
         let sequentialInclude clContext =
             sequentialSegments (Map.snd ()) clContext
-

@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.CSR
+namespace GraphBLAS.FSharp.Backend.Matrix.CSR.SpGeMM
 
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 
-module internal SpGEMMMasked =
+module internal Masked =
     let private calculate
         (context: ClContext)
         workGroupSize
@@ -151,8 +151,11 @@ module internal SpGEMMMasked =
         let calculate =
             calculate context workGroupSize opAdd opMul
 
-        let scatter = Scatter.lastOccurrence context workGroupSize
-        let scatterData = Scatter.lastOccurrence context workGroupSize
+        let scatter =
+            Scatter.lastOccurrence context workGroupSize
+
+        let scatterData =
+            Scatter.lastOccurrence context workGroupSize
 
         let scanInplace =
             PrefixSum.standardExcludeInplace context workGroupSize
