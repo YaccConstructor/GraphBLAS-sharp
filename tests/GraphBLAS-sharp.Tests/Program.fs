@@ -14,12 +14,17 @@ let matrixTests =
           Matrix.Map.addTests
           Matrix.Map.mulTests
           Matrix.Transpose.tests
-
           Matrix.SpGeMM.Masked.tests
           Matrix.SpGeMM.Expand.generalTests ]
     |> testSequenced
 
 let commonTests =
+    let scanTests =
+        testList
+            "Scan"
+            [ Common.Scan.ByKey.sequentialSegmentsTests
+              Common.Scan.PrefixSum.tests ]
+
     let reduceTests =
         testList
             "Reduce"
@@ -30,8 +35,7 @@ let commonTests =
     let clArrayTests =
         testList
             "ClArray"
-            [ Common.ClArray.PrefixSum.tests
-              Common.ClArray.RemoveDuplicates.tests
+            [ Common.ClArray.RemoveDuplicates.tests
               Common.ClArray.Copy.tests
               Common.ClArray.Replicate.tests
               Common.ClArray.Exists.tests
@@ -49,11 +53,12 @@ let commonTests =
 
     testList
         "Common tests"
-        [ clArrayTests
+        [ Common.Scatter.allTests
+          Common.Gather.allTests
+          clArrayTests
           sortTests
           reduceTests
-          Common.Scatter.allTests
-          Common.Gather.allTests ]
+          scanTests ]
     |> testSequenced
 
 let vectorTests =

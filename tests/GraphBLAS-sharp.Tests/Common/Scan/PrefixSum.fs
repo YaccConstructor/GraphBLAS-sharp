@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.PrefixSum
+module GraphBLAS.FSharp.Tests.Backend.Common.Scan.PrefixSum
 
 open Expecto
 open Expecto.Logging
@@ -63,7 +63,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
 let testFixtures plus plusQ zero isEqual name =
     PrefixSum.runIncludeInplace plusQ context wgSize
     |> makeTest plus zero isEqual
-    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+    |> testPropertyWithConfig config $"Correctness on %s{name}"
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
