@@ -34,7 +34,7 @@ let makeTest<'a when 'a: equality> hostScatter scatter (array: (int * 'a) []) (r
             scatter q clPositions clValues clResult
 
             clValues.Free q
-            clValues.Free q
+            clPositions.Free q
             clResult.ToHostAndFree q
 
         $"Arrays should be equal."
@@ -81,9 +81,8 @@ let makeTestInit<'a when 'a: equality> hostScatter valueMap scatter (positions: 
 
         scatter q clPositions clResult
 
-        let actual = clResult.ToHostAndFree q
         clPositions.Free q
-        clResult.Free q
+        let actual = clResult.ToHostAndFree q
 
         $"Arrays should be equal."
         |> Utils.compareArrays (=) actual expected
