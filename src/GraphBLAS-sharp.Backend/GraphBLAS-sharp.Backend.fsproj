@@ -44,6 +44,7 @@
     <Compile Include="Matrix/CSRMatrix/Map2AtLeastOne.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM.fs" />
     <Compile Include="Matrix/CSRMatrix/Map.fs" />
+    <Compile Include="Matrix/CSRMatrix/MapWithValue.fs" />
     <Compile Include="Matrix/CSRMatrix/Matrix.fs" />
     <Compile Include="Matrix/Matrix.fs" />
     <Compile Include="Vector/SparseVector/Common.fs" />
