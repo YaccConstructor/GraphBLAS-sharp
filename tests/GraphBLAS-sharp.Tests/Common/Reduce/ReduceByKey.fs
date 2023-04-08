@@ -15,17 +15,17 @@ let processor = Context.defaultContext.Queue
 
 let config = Utils.defaultConfig
 
-let private getOffsets array =
+let getOffsets array =
     Array.map fst array
     |> HostPrimitives.getUniqueBitmapFirstOccurrence
     |> HostPrimitives.getBitPositions
 
-let private getOffsets2D array =
+let getOffsets2D array =
     Array.map (fun (fst, snd, _) -> fst, snd) array
     |> HostPrimitives.getUniqueBitmapFirstOccurrence
     |> HostPrimitives.getBitPositions
 
-let private checkResult isEqual actualKeys actualValues keys values reduceOp =
+let checkResult isEqual actualKeys actualValues keys values reduceOp =
 
     let expectedKeys, expectedValues =
         HostPrimitives.reduceByKey keys values reduceOp
@@ -36,7 +36,7 @@ let private checkResult isEqual actualKeys actualValues keys values reduceOp =
     "Values must the same"
     |> Utils.compareArrays isEqual actualValues expectedValues
 
-let private makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
+let makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
     let keys, values =
         Array.sortBy fst arrayAndKeys |> Array.unzip
 
@@ -60,7 +60,7 @@ let private makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
 
         checkResult isEqual actualKeys actualValues keys values reduceOp
 
-let private createTestSequential<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
+let createTestSequential<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
 
     let reduce =
         Reduce.ByKey.sequential context Utils.defaultWorkGroupSize reduceOpQ

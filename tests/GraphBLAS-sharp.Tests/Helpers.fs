@@ -254,9 +254,7 @@ module HostPrimitives =
             // add and filter
             |> Array.map Some
             |> Array.fold add None
-            |> function
-                | Some value -> value
-                | None -> zero
+            |> Option.defaultValue zero
 
     let scanByKey scan keysAndValues =
         Array.groupBy fst keysAndValues

@@ -33,7 +33,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
             let (total: ClCell<_>) = scan q clArray zero
 
             let actual = clArray.ToHostAndFree q
-            let actualSum = total.ToHostAndFree(q)
+            let actualSum = total.ToHostAndFree q
             actual, actualSum
 
         logger.debug (

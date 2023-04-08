@@ -67,23 +67,23 @@ let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
         "Result pointers must be the same"
         |> Expect.sequenceEqual actualPointers expectedPointers
 
-let createTest<'a when 'a: struct> (isZero: 'a -> bool) testFun =
+let createTest<'a when 'a: struct> (isZero: 'a -> bool) =
 
     let testFun =
-        testFun context Utils.defaultWorkGroupSize
+        Expand.getSegmentPointers context Utils.defaultWorkGroupSize
 
     makeTest isZero testFun
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
 let getSegmentsTests =
-    [ createTest ((=) 0) Expand.getSegmentPointers
+    [ createTest ((=) 0)
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest ((=) 0.0) Expand.getSegmentPointers
+          createTest ((=) 0.0)
 
-      createTest ((=) 0f) Expand.getSegmentPointers
-      createTest ((=) false) Expand.getSegmentPointers
-      createTest ((=) 0uy) Expand.getSegmentPointers ]
+      createTest ((=) 0f)
+      createTest ((=) false)
+      createTest ((=) 0uy) ]
     |> testList "get segment pointers"
 
 let expand length segmentPointers (leftMatrix: Matrix.CSR<'a>) (rightMatrix: Matrix.CSR<'b>) =

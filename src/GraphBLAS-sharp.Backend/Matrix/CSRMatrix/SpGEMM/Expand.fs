@@ -139,37 +139,37 @@ module Expand =
         let expandRowPointers =
             Common.expandRowPointers clContext workGroupSize
 
-        let AGather = Gather.run clContext workGroupSize
+        let leftMatrixGather = Gather.run clContext workGroupSize
 
-        let BGather = Gather.run clContext workGroupSize
+        let rightMatrixGather = Gather.run clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: Indices) (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
-            // Compute A positions
-            let APositions = zeroCreate processor DeviceOnly lengths
+            // Compute left matrix positions
+            let leftMatrixPositions = zeroCreate processor DeviceOnly lengths
 
-            idScatter processor segmentsPointers APositions
+            idScatter processor segmentsPointers leftMatrixPositions
 
-            (maxPrefixSum processor APositions 0)
+            (maxPrefixSum processor leftMatrixPositions 0)
                 .Free processor
 
-            // Compute B positions
-            let BPositions = create processor DeviceOnly lengths 1
+            // Compute right matrix positions
+            let rightMatrixPositions = create processor DeviceOnly lengths 1
 
-            let requiredBPointers =
+            let requiredRightMatrixPointers =
                 zeroCreate processor DeviceOnly leftMatrix.Columns.Length
 
-            gather processor leftMatrix.Columns rightMatrix.RowPointers requiredBPointers
+            gather processor leftMatrix.Columns rightMatrix.RowPointers requiredRightMatrixPointers
 
-            scatter processor segmentsPointers requiredBPointers BPositions
+            scatter processor segmentsPointers requiredRightMatrixPointers rightMatrixPositions
 
-            requiredBPointers.Free processor
+            requiredRightMatrixPointers.Free processor
 
             // another way to get offsets ???
             let offsets =
                 removeDuplicates processor segmentsPointers
 
-            segmentPrefixSum processor offsets.Length BPositions APositions offsets
+            segmentPrefixSum processor offsets.Length rightMatrixPositions leftMatrixPositions offsets
 
             offsets.Free processor
 
@@ -177,37 +177,37 @@ module Expand =
             let columns =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
 
-            gather processor BPositions rightMatrix.Columns columns
+            gather processor rightMatrixPositions rightMatrix.Columns columns
 
             // compute rows
-            let ARows =
+            let leftMatrixRows =
                 expandRowPointers processor DeviceOnly leftMatrix.RowPointers leftMatrix.NNZ leftMatrix.RowCount
 
             let rows =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
 
-            gather processor APositions ARows rows
+            gather processor leftMatrixPositions leftMatrixRows rows
 
-            ARows.Free processor
+            leftMatrixRows.Free processor
 
-            // compute leftMatrix values
-            let AValues =
+            // compute left matrix values
+            let leftMatrixValues =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
 
-            AGather processor APositions leftMatrix.Values AValues
+            leftMatrixGather processor leftMatrixPositions leftMatrix.Values leftMatrixValues
 
-            APositions.Free processor
+            leftMatrixPositions.Free processor
 
             // compute right matrix values
-            let BValues =
+            let rightMatrixValues =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
 
-            BGather processor BPositions rightMatrix.Values BValues
+            rightMatrixGather processor rightMatrixPositions rightMatrix.Values rightMatrixValues
 
-            BPositions.Free processor
+            rightMatrixPositions.Free processor
 
             // left, right matrix values, columns and rows indices
-            AValues, BValues, columns, rows
+            leftMatrixValues, rightMatrixValues, columns, rows
 
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
