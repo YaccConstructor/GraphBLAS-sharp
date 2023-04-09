@@ -57,7 +57,8 @@ let commonTests =
 let vectorTests =
     testList
         "Vector tests"
-        [ Vector.SpMV.tests
+        [ Vector.SpMSpV.tests
+          Vector.SpMV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests
