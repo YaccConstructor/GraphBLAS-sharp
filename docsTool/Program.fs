@@ -282,7 +282,7 @@ module GenerateDocs =
             }
 
         dotnetPublish cfg
-        Async.Parallel [generateDocs(*; generateAPI*)]
+        Async.Parallel [generateDocs; generateAPI]
         |> Async.RunSynchronously
         |> Array.toList
         |> List.collect id
