@@ -273,7 +273,9 @@ module ClArray =
 
             let kernel = kernel.GetKernel()
 
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length value inputArray result))
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length value inputArray result)
+            )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 

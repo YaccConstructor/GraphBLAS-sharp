@@ -97,7 +97,14 @@ module internal MapWithValue =
         fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
 
             let bitmap, values, rows, columns =
-                mapWithValue queue operand matrix.RowCount matrix.ColumnCount matrix.Values matrix.RowPointers matrix.Columns
+                mapWithValue
+                    queue
+                    operand
+                    matrix.RowCount
+                    matrix.ColumnCount
+                    matrix.Values
+                    matrix.RowPointers
+                    matrix.Columns
 
             let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allocationMode rows columns values bitmap

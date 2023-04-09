@@ -61,7 +61,6 @@ module MergeDisjoint =
 
                 if endIdx = firstSide then
                     x <- secondSide - i + localID + beginIdx
-
                 let secondLocalLength = x
 
                 //First indices are from 0 to firstLocalLength - 1 inclusive
@@ -178,7 +177,7 @@ module MergeDisjoint =
 
         let merge = merge clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'a>) ->
+        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'a>) ->
 
             let allRows, allColumns, mergedValues =
                 merge
