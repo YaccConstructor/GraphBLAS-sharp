@@ -13,10 +13,10 @@ module internal Common =
             PrefixSum.standardExcludeInplace clContext workGroupSize
 
         let valuesScatter =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         let indicesScatter =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 

@@ -101,14 +101,14 @@ let createTest case isEqual (zero: 'a) plus plusQ map2 =
 let addTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (+) ArithmeticOperations.intSum Vector.map2
+    [ createTest case (=) 0 (+) ArithmeticOperations.intSumOption Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSum Vector.map2
+          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSumOption Vector.map2
 
-      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32Sum Vector.map2
+      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32SumOption Vector.map2
       createTest case (=) false (||) ArithmeticOperations.boolSum Vector.map2
-      createTest case (=) 0uy (+) ArithmeticOperations.byteSum Vector.map2 ]
+      createTest case (=) 0uy (+) ArithmeticOperations.byteSumOption Vector.map2 ]
 
 let addTests =
     operationGPUTests "Backend.Vector.Map2 add tests" addTestFixtures
@@ -116,14 +116,14 @@ let addTests =
 let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (*) ArithmeticOperations.intMul Vector.map2
+    [ createTest case (=) 0 (*) ArithmeticOperations.intMulOption Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMul Vector.map2
+          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMulOption Vector.map2
 
-      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32Mul Vector.map2
-      createTest case (=) false (&&) ArithmeticOperations.boolMul Vector.map2
-      createTest case (=) 0uy (*) ArithmeticOperations.byteMul Vector.map2 ]
+      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32MulOption Vector.map2
+      createTest case (=) false (&&) ArithmeticOperations.boolMulOption Vector.map2
+      createTest case (=) 0uy (*) ArithmeticOperations.byteMulOption Vector.map2 ]
 
 let mulTests =
     operationGPUTests "Backend.Vector.map2 mul tests" addTestFixtures

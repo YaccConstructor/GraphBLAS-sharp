@@ -1,5 +1,6 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Tests
 
 let matrixTests =
     testList
@@ -12,8 +13,9 @@ let matrixTests =
           Matrix.Map.notTests
           Matrix.Map.addTests
           Matrix.Map.mulTests
-          Matrix.Mxm.tests
-          Matrix.Transpose.tests ]
+          Matrix.Transpose.tests
+          Matrix.SpGeMM.Masked.tests
+          Matrix.SpGeMM.Expand.generalTests ]
     |> testSequenced
 
 let commonTests =
@@ -26,9 +28,7 @@ let commonTests =
     let reduceTests =
         testList
             "Reduce"
-            [ Common.Reduce.ByKey.sequentialTest
-              Common.Reduce.ByKey.sequentialSegmentTests
-              Common.Reduce.ByKey.oneWorkGroupTest
+            [ Common.Reduce.ByKey.allTests
               Common.Reduce.Reduce.tests
               Common.Reduce.Sum.tests ]
 
@@ -42,22 +42,23 @@ let commonTests =
               Common.ClArray.Map.tests
               Common.ClArray.Map2.addTests
               Common.ClArray.Map2.mulTests
-              Common.ClArray.Choose.tests ]
+              Common.ClArray.Choose.allTests ]
 
     let sortTests =
         testList
             "Sort"
             [ Common.Sort.Bitonic.tests
-              Common.Sort.Radix.testsByKeys
+              Common.Sort.Radix.testByKeys
               Common.Sort.Radix.testKeysOnly ]
 
     testList
         "Common tests"
-        [ clArrayTests
+        [ Common.Scatter.allTests
+          Common.Gather.allTests
+          clArrayTests
           sortTests
           reduceTests
-          scanTests
-          Common.Scatter.tests ]
+          scanTests ]
     |> testSequenced
 
 let vectorTests =
@@ -87,8 +88,8 @@ let allTests =
     testList
         "All tests"
         [ matrixTests
-          commonTests
           vectorTests
+          commonTests
           algorithmsTests ]
     |> testSequenced
 

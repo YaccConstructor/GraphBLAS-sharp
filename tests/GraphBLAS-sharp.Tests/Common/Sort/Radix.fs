@@ -5,6 +5,7 @@ open GraphBLAS.FSharp.Backend.Common.Sort
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Radix =
     let config =
@@ -18,15 +19,12 @@ module Radix =
     let context = Context.defaultContext.ClContext
 
     let checkResultByKeys (inputArray: (int * 'a) []) (actualValues: 'a []) =
-        let expectedValues =
-            Array.sortBy fst inputArray |> Array.map snd
+        let expectedValues = Seq.sortBy fst inputArray |> Seq.map snd
 
         "Values must be the same"
         |> Expect.sequenceEqual expectedValues actualValues
 
     let makeTestByKeys<'a when 'a: equality> sortFun (array: (int * 'a) []) =
-        // since Array.sort not stable
-        let array = Array.distinctBy fst array
 
         if array.Length > 0 then
             let keys = Array.map fst array
@@ -35,7 +33,8 @@ module Radix =
             let clKeys = keys.ToDevice context
             let clValues = values.ToDevice context
 
-            let clActualValues: ClArray<'a> = sortFun processor clKeys clValues
+            let clActualValues: ClArray<'a> =
+                sortFun processor HostInterop clKeys clValues
 
             let actualValues = clActualValues.ToHostAndFree processor
 
@@ -48,7 +47,7 @@ module Radix =
         makeTestByKeys<'a> sort
         |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
-    let testFixturesByKeys =
+    let testByKeys =
         [ createTestByKeys<int>
           createTestByKeys<uint>
 
@@ -57,9 +56,7 @@ module Radix =
 
           createTestByKeys<float32>
           createTestByKeys<bool> ]
-
-    let testsByKeys =
-        testList "Radix sort by keys" testFixturesByKeys
+        |> testList "Radix sort by keys"
 
     let makeTestKeysOnly sort (keys: uint []) =
         if keys.Length > 0 then

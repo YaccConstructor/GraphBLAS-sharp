@@ -337,17 +337,35 @@ module Matrix =
                   Values = copyData processor allocationMode m.Values }
                 |> ClMatrix.CSR
 
-    let mxm
-        (opAdd: Expr<'c -> 'c -> 'c option>)
-        (opMul: Expr<'a -> 'b -> 'c option>)
-        (clContext: ClContext)
-        workGroupSize
-        =
+    module SpGeMM =
+        let masked
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            (clContext: ClContext)
+            workGroupSize
+            =
 
-        let runCSRnCSC =
-            CSR.Matrix.spgemmCSC clContext workGroupSize opAdd opMul
+            let runCSRnCSC =
+                CSR.Matrix.SpGeMM.masked clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMatrix<_>) ->
-            match matrix1, matrix2, mask with
-            | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
-            | _ -> failwith "Matrix formats are not matching"
+            fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMatrix<_>) ->
+                match matrix1, matrix2, mask with
+                | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
+                | _ -> failwith "Matrix formats are not matching"
+
+        let expand
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
+
+            let run =
+                CSR.Matrix.SpGeMM.expand clContext workGroupSize opAdd opMul
+
+            fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
+                match leftMatrix, rightMatrix with
+                | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
+                    run processor allocationMode leftMatrix rightMatrix
+                    |> ClMatrix.COO
+                | _ -> failwith "Matrix formats are not matching"
