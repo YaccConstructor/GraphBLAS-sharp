@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Vector.Sparse
 
 module BFS =
     let singleSource
@@ -71,3 +72,70 @@ module BFS =
 
                 levels
             | _ -> failwith "Not implemented"
+
+
+    let singleSourceSparse
+        (clContext: ClContext)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
+        workGroupSize
+        =
+
+        let spMSpV =
+            SpMSpV.run clContext add mul workGroupSize
+
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
+
+        let ofList = Vector.ofList clContext workGroupSize
+
+        let maskComplementedTo =
+            SparseVector.map2SparseDense clContext Mask.complementedOp workGroupSize
+
+        let fillSubVectorTo =
+            DenseVector.assignBySparseMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
+
+        let containsNonZero =
+            SparseVector.exists clContext workGroupSize (Predicates.notEquals false)
+
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<bool>) (source: int) ->
+            let vertexCount = matrix.RowCount
+
+            let levels = zeroCreate queue HostInterop vertexCount
+
+            let mutable frontier =
+                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
+
+            let mutable level = 0
+            let mutable stop = false
+
+            while not stop do
+                match frontier with
+                | ClVector.Sparse front ->
+                    level <- level + 1
+
+                    //Assigning new level values
+                    fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
+
+                    //Getting new frontier
+                    let newFrontier = spMSpV queue matrix front
+
+                    frontier.Dispose queue
+
+                    frontier <- ClVector.Sparse(maskComplementedTo queue DeviceOnly newFrontier levels)
+
+                    newFrontier.Dispose queue
+
+                    //Checking if front is empty
+                    match frontier with
+                    | ClVector.Sparse front ->
+                        stop <-
+                            not
+                            <| (containsNonZero queue front).ToHostAndFree queue
+                    | _ -> ()
+
+                | _ -> failwith "Not implemented"
+
+            frontier.Dispose queue
+
+            levels

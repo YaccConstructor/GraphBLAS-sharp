@@ -62,7 +62,7 @@ module ClArray =
 
             outputArray
 
-    let zeroCreate (clContext: ClContext) workGroupSize =
+    let zeroCreate<'a> (clContext: ClContext) workGroupSize =
 
         let create = create clContext workGroupSize
 

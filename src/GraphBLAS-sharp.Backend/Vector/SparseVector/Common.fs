@@ -34,3 +34,44 @@ module internal Common =
             indicesScatter processor positions allIndices resultIndices
 
             resultValues, resultIndices
+
+    let setPositionsNotEmpty<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+
+        let sum =
+            PrefixSum.standardExcludeInplace clContext workGroupSize
+
+        let valuesScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let indicesScatter =
+            Scatter.runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
+
+            let resultLength =
+                (sum processor positions).ToHostAndFree(processor)
+
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(
+                    allocationMode,
+                    if resultLength > 0 then
+                        resultLength
+                    else
+                        1
+                )
+
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(
+                    allocationMode,
+                    if resultLength > 0 then
+                        resultLength
+                    else
+                        1
+                )
+
+            if resultLength > 0 then
+                valuesScatter processor positions allValues resultValues
+
+                indicesScatter processor positions allIndices resultIndices
+
+            resultValues, resultIndices, resultLength

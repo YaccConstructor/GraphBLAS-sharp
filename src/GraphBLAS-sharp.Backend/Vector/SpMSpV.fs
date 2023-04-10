@@ -2,9 +2,9 @@ namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Matrix
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClCell
@@ -129,31 +129,44 @@ module SpMSpV =
             let gather = gather.GetKernel()
 
             let resultIndices =
-                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, gatherArraySize)
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(
+                    DeviceOnly,
+                    if gatherArraySize > 0 then
+                        gatherArraySize
+                    else
+                        1
+                )
 
             let resultValues =
-                clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, gatherArraySize)
+                clContext.CreateClArrayWithSpecificAllocationMode<'a>(
+                    DeviceOnly,
+                    if gatherArraySize > 0 then
+                        gatherArraySize
+                    else
+                        1
+                )
 
-            queue.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        gather.KernelFunc
-                            ndRange
-                            vector.NNZ
-                            collectedRows
-                            matrix.RowPointers
-                            matrix.Columns
-                            matrix.Values
-                            vector.Indices
-                            resultIndices
-                            resultValues)
-            )
+            if gatherArraySize > 0 then
+                queue.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            gather.KernelFunc
+                                ndRange
+                                vector.NNZ
+                                collectedRows
+                                matrix.RowPointers
+                                matrix.Columns
+                                matrix.Values
+                                vector.Indices
+                                resultIndices
+                                resultValues)
+                )
 
-            queue.Post(Msg.CreateRunMsg<_, _>(gather))
+                queue.Post(Msg.CreateRunMsg<_, _>(gather))
 
             collectedRows.Free queue
 
-            resultIndices, resultValues
+            resultIndices, resultValues, gatherArraySize
 
     let run
         (clContext: ClContext)
@@ -170,14 +183,25 @@ module SpMSpV =
         let removeDuplicates =
             ClArray.removeDuplications clContext workGroupSize
 
+        let create = ClArray.create clContext workGroupSize
+
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 
-            let gatherIndices, gatherValues = gather queue matrix vector
+            let gatherIndices, gatherValues, gatherLength = gather queue matrix vector
 
-            gatherValues.Free queue
+            gatherValues.Dispose queue
 
-            let sortedIndices = sort queue gatherIndices
+            if gatherLength <= 0 then
+                { Context = clContext
+                  Indices = gatherIndices
+                  Values = clContext.CreateClArray [| false |]
+                  Size = 1 }
+            else
+                let sortedIndices = sort queue gatherIndices
 
-            let resultIndices = removeDuplicates queue sortedIndices
+                let resultIndices = removeDuplicates queue sortedIndices
 
-            resultIndices
+                { Context = clContext
+                  Indices = resultIndices
+                  Values = create queue DeviceOnly resultIndices.Length true
+                  Size = resultIndices.Length }
