@@ -29,7 +29,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
 
     let source = 0
 
-    member val ResultVector = Unchecked.defaultof<ClArray<'elem option>> with get,set
+    member val ResultVector = Unchecked.defaultof<ClArray<int option>> with get,set
 
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -106,6 +106,35 @@ type BFSBenchmarksWithoutDataTransfer() =
         (fun context wgSize -> BFS.singleSource context ArithmeticOperations.intSum ArithmeticOperations.intMul wgSize),
         int,
         (fun _ -> Utils.nextInt (System.Random())),
+        Matrix.ToBackendCSR)
+
+    static member InputMatricesProvider =
+        BFSBenchmarks<_,_>.InputMatricesProviderBuilder "BFSBenchmarks.txt"
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix ()
+        this.LoadMatrixToGPU ()
+
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearResult()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearInputMatrix()
+
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.BFS()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
+type BFSSparseBenchmarksWithoutDataTransfer() =
+
+    inherit BFSBenchmarks<ClMatrix.CSR<bool>, bool>(
+        (fun context wgSize -> BFS.singleSourceSparse context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize),
+        (fun _ -> true),
+        (fun _ -> true),
         Matrix.ToBackendCSR)
 
     static member InputMatricesProvider =
