@@ -43,7 +43,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClVector.Sparse<'a> -> ClArray<int>)
+    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClVector.Sparse<'a> -> ClVector.Sparse<'a>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -72,7 +72,7 @@ let correctnessGenericTest
 
                 (ClMatrix.CSR m).Dispose q
                 v.Dispose q
-                let hostRes = res.ToHost q
+                let hostRes = res.Indices.ToHost q
                 res.Dispose q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes
