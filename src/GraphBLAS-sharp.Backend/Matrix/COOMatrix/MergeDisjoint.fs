@@ -61,6 +61,7 @@ module MergeDisjoint =
 
                 if endIdx = firstSide then
                     x <- secondSide - i + localID + beginIdx
+
                 let secondLocalLength = x
 
                 //First indices are from 0 to firstLocalLength - 1 inclusive

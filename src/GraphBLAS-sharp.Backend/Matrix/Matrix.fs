@@ -337,6 +337,16 @@ module Matrix =
                   Values = copyData processor allocationMode m.Values }
                 |> ClMatrix.CSR
 
+    let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+
+        let runCSR =
+            CSR.Kronecker.runToCOO clContext op workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
+            match matrix1, matrix2 with
+            | ClMatrix.CSR m1, ClMatrix.CSR m2 -> runCSR queue allocationFlag m1 m2 |> ClMatrix.COO
+            | _ -> failwith "Matrix formats are not matching"
+
     let mxm
         (opAdd: Expr<'c -> 'c -> 'c option>)
         (opMul: Expr<'a -> 'b -> 'c option>)

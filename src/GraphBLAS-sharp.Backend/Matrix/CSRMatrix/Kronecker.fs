@@ -7,9 +7,10 @@ open GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (op: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -54,12 +55,15 @@ module internal Kronecker =
 
             let mutable resultMatrix = mapWithZero
 
+            let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
+            let leftMatrixCols = matrixLeft.Columns.ToHost queue
+            let leftMatrixVals = matrixLeft.Values.ToHost queue
+
             for row in 0 .. (matrixLeft.RowCount - 1) do
                 let NNZInRow =
-                    matrixLeft.RowPointers.[row + 1]
-                    - matrixLeft.RowPointers.[row]
+                    leftMatrixRows.[row + 1] - leftMatrixRows.[row]
 
-                let firstElementIndex = matrixLeft.RowPointers.[row]
+                let firstElementIndex = leftMatrixRows.[row]
 
                 let rowOffset =
                     row * matrixRight.RowCount
@@ -67,14 +71,14 @@ module internal Kronecker =
 
                 for offset in 0 .. (NNZInRow - 1) do
                     let currentColumn =
-                        matrixLeft.Columns.[firstElementIndex + offset]
+                        leftMatrixCols.[firstElementIndex + offset]
 
                     let numberOfZeroElements =
                         match offset with
                         | 0 -> currentColumn
                         | _ ->
                             currentColumn
-                            - matrixLeft.Columns.[firstElementIndex + offset - 1]
+                            - leftMatrixCols.[firstElementIndex + offset - 1]
                             - 1
 
                     let columnOffset =
@@ -100,7 +104,7 @@ module internal Kronecker =
                                     resultMatrix
 
                     let operand =
-                        Some matrixLeft.Values.[firstElementIndex + offset]
+                        Some leftMatrixVals.[firstElementIndex + offset]
                         |> clContext.CreateClCell
 
                     let mappedMatrix =
@@ -111,18 +115,32 @@ module internal Kronecker =
 
                 let lastElementInRowIndex = firstElementIndex + NNZInRow - 1
 
-                let lastColumnInRow =
-                    matrixLeft.Columns.[lastElementInRowIndex]
+                let lastColumnInRow = leftMatrixCols.[lastElementInRowIndex]
 
                 let numberOfZeroElements =
                     matrixLeft.ColumnCount - lastColumnInRow - 1
 
                 for i in lastElementInRowIndex + 1 .. lastElementInRowIndex + numberOfZeroElements do
                     let columnOffset =
-                        matrixLeft.Columns.[i] * matrixRight.ColumnCount
+                        leftMatrixCols.[i] * matrixRight.ColumnCount
                         |> clContext.CreateClCell
 
                     resultMatrix <-
                         insertMatrixWithOffset queue allocationMode mapWithZero rowOffset columnOffset resultMatrix
 
             resultMatrix
+
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        (clContext: ClContext)
+        (op: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let kroneckerToCOO = runToCOO clContext op workGroupSize
+
+        let toCSRInplace =
+            Matrix.toCSRInplace clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+            kroneckerToCOO queue allocationMode matrixLeft matrixRight
+            |> toCSRInplace queue allocationMode
