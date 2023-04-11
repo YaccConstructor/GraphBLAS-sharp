@@ -51,7 +51,7 @@ module internal Kronecker =
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             let mapWithZero =
-                mapWithValueToCOO queue allocationMode (clContext.CreateClCell None) matrixRight
+                mapWithValueToCOO queue allocationMode (clContext.CreateClCell(None)) matrixRight
 
             let mutable resultMatrix = mapWithZero
 
@@ -113,16 +113,16 @@ module internal Kronecker =
                     resultMatrix <-
                         insertMatrixWithOffset queue allocationMode mappedMatrix rowOffset columnOffset resultMatrix
 
-                let lastElementInRowIndex = firstElementIndex + NNZInRow - 1
+                let startColumn =
+                    match NNZInRow with
+                    | 0 -> 0
+                    | _ ->
+                        leftMatrixCols.[firstElementIndex + NNZInRow - 1]
+                        + 1
 
-                let lastColumnInRow = leftMatrixCols.[lastElementInRowIndex]
-
-                let numberOfZeroElements =
-                    matrixLeft.ColumnCount - lastColumnInRow - 1
-
-                for i in lastElementInRowIndex + 1 .. lastElementInRowIndex + numberOfZeroElements do
+                for i in startColumn .. matrixLeft.ColumnCount - 1 do
                     let columnOffset =
-                        leftMatrixCols.[i] * matrixRight.ColumnCount
+                        i * matrixRight.ColumnCount
                         |> clContext.CreateClCell
 
                     resultMatrix <-
