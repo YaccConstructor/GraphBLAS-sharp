@@ -275,7 +275,7 @@ module internal Map2AtLeastOne =
             preparePositionsAtLeastOne clContext opAdd workGroupSize
 
         let setPositions =
-            Common.setPositions<'c> clContext workGroupSize
+            Common.setPositionsUnsafe<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.COO<'a>) (matrixRight: ClMatrix.COO<'b>) ->
 

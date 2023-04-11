@@ -92,7 +92,7 @@ module internal MapWithValue =
             preparePositions clContext workGroupSize op
 
         let setPositions =
-            Common.setPositions<'c> clContext workGroupSize
+            Common.setPositionsSafe<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
 
@@ -106,20 +106,22 @@ module internal MapWithValue =
                     matrix.RowPointers
                     matrix.Columns
 
-            let resultRows, resultColumns, resultValues, _ =
-                setPositions queue allocationMode rows columns values bitmap
+            let result = setPositions queue allocationMode rows columns values bitmap
 
             queue.Post(Msg.CreateFreeMsg<_>(bitmap))
             queue.Post(Msg.CreateFreeMsg<_>(values))
             queue.Post(Msg.CreateFreeMsg<_>(rows))
             queue.Post(Msg.CreateFreeMsg<_>(columns))
 
-            { Context = clContext
-              RowCount = matrix.RowCount
-              ColumnCount = matrix.ColumnCount
-              Rows = resultRows
-              Columns = resultColumns
-              Values = resultValues }
+            match result with
+            | None -> None
+            | Some (resultRows, resultColumns, resultValues, _) ->
+                Some { Context = clContext
+                       RowCount = matrix.RowCount
+                       ColumnCount = matrix.ColumnCount
+                       Rows = resultRows
+                       Columns = resultColumns
+                       Values = resultValues }
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -133,5 +135,6 @@ module internal MapWithValue =
             Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
-            mapToCOO queue allocationMode operand matrix
-            |> toCSRInplace queue allocationMode
+            match (mapToCOO queue allocationMode operand matrix) with
+            | None -> None
+            | Some result -> Some (result |> toCSRInplace queue allocationMode)

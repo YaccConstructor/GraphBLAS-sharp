@@ -28,26 +28,34 @@ module internal Kronecker =
         let insertMatrixWithOffset
             (queue: MailboxProcessor<_>)
             allocationMode
-            (matrix: ClMatrix.COO<'c>)
+            (matrix: ClMatrix.COO<'c> option)
             rowOffset
             columnOffset
-            (resultMatrix: ClMatrix.COO<'c>)
+            (resultMatrix: ClMatrix.COO<'c> option)
             =
-            let newRowIndices =
-                mapWithValueClArray queue allocationMode rowOffset matrix.Rows
 
-            let newColumnIndices =
-                mapWithValueClArray queue allocationMode columnOffset matrix.Columns
+            match matrix with
+            | None ->
+                match resultMatrix with
+                | None -> // TODO: нужно возрвращать нулевую матрицу определенного размера
+            | Some cooMatrix ->
+                let newRowIndices =
+                    mapWithValueClArray queue allocationMode rowOffset cooMatrix.Rows
 
-            let newMatrix =
-                { Context = clContext
-                  RowCount = matrix.RowCount
-                  ColumnCount = matrix.ColumnCount
-                  Rows = newRowIndices
-                  Columns = newColumnIndices
-                  Values = matrix.Values }
+                let newColumnIndices =
+                    mapWithValueClArray queue allocationMode columnOffset cooMatrix.Columns
 
-            mergeDisjointCOO queue resultMatrix newMatrix
+                let newMatrix =
+                    { Context = clContext
+                      RowCount = cooMatrix.RowCount
+                      ColumnCount = cooMatrix.ColumnCount
+                      Rows = newRowIndices
+                      Columns = newColumnIndices
+                      Values = cooMatrix.Values }
+
+                match resultMatrix with
+                | None -> Some newMatrix
+                | Some mainMatrix -> Some (mergeDisjointCOO queue mainMatrix newMatrix)
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             let mapWithZero =
@@ -88,7 +96,7 @@ module internal Kronecker =
                     // Вставляем матрицы, получившиеся в результате умножения на 0
                     if currentColumn <> 0
                        && numberOfZeroElements >= 0
-                       && mapWithZero.NNZ <> 0 then
+                       && mapWithZero <> None then
                         for i in (currentColumn - numberOfZeroElements) .. currentColumn - 1 do
                             let columnOfZeroElement =
                                 i * matrixRight.ColumnCount
@@ -142,5 +150,7 @@ module internal Kronecker =
             Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-            kroneckerToCOO queue allocationMode matrixLeft matrixRight
-            |> toCSRInplace queue allocationMode
+            let result = kroneckerToCOO queue allocationMode matrixLeft matrixRight
+            match result with
+            | None -> None
+            | Some resultMatrix -> Some (resultMatrix |> toCSRInplace queue allocationMode)
