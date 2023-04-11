@@ -48,6 +48,7 @@
         <Compile Include="Matrix/Mxm.fs" />
         <Compile Include="Matrix/Transpose.fs" />
         <Compile Include="Matrix/Map.fs" />
+        <Compile Include="Matrix/Kronecker.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
