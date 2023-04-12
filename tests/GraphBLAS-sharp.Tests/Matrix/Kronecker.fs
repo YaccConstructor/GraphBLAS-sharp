@@ -78,18 +78,17 @@ let tests =
           Matrix.kronecker ArithmeticOperations.intSum context workGroupSize
 
       makeTest context q 0 (=) (+) kroneckerSum
-      |> testPropertyWithConfig config (getCorrectnessTestName "int sum") ]
+      |> testPropertyWithConfig config (getCorrectnessTestName "int sum")
 
-    // let kroneckerFun =
-    //     Matrix.kronecker ArithmeticOperations.boolMul context workGroupSize
-    //
-    // makeTest context q false (=) (&&) kroneckerFun
-    // |> testPropertyWithConfig config (getCorrectnessTestName "bool mul")
-    //
-    // let kroneckerFun =
-    //     Matrix.kronecker ArithmeticOperations.boolSum context workGroupSize
-    //
-    // makeTest context q false (=) (||) kroneckerFun
-    // |> testPropertyWithConfig config (getCorrectnessTestName "bool sum")
-    // ]
+      let kroneckerFun =
+          Matrix.kronecker ArithmeticOperations.boolMul context workGroupSize
+
+      makeTest context q false (=) (&&) kroneckerFun
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool mul")
+
+      let kroneckerFun =
+          Matrix.kronecker ArithmeticOperations.boolSum context workGroupSize
+
+      makeTest context q false (=) (||) kroneckerFun
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool sum") ]
     |> testList "kronecker masked tests"

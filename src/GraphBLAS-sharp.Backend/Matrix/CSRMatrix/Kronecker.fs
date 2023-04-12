@@ -104,7 +104,10 @@ module internal Kronecker =
                       ColumnCount = matrixRight.RowCount
                       Matrix = Some (m.Rows, m.Columns, m.Values) }
 
-            let mutable resultMatrix = mapWithZero
+            let mutable resultMatrix =
+                { RowCount = 0
+                  ColumnCount = 0
+                  Matrix = None }
 
             let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
             let leftMatrixCols = matrixLeft.Columns.ToHost queue
