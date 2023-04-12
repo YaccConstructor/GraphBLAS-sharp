@@ -68,8 +68,7 @@ let tests =
     let q = defaultContext.Queue
     q.Error.Add(fun e -> failwithf "%A" e)
 
-    [
-      let kroneckerMul =
+    [ let kroneckerMul =
           Matrix.kronecker ArithmeticOperations.intMul context workGroupSize
 
       makeTest context q 0 (=) (*) kroneckerMul
@@ -79,8 +78,7 @@ let tests =
           Matrix.kronecker ArithmeticOperations.intSum context workGroupSize
 
       makeTest context q 0 (=) (+) kroneckerSum
-      |> testPropertyWithConfig config (getCorrectnessTestName "int sum")
-       ]
+      |> testPropertyWithConfig config (getCorrectnessTestName "int sum") ]
 
     // let kroneckerFun =
     //     Matrix.kronecker ArithmeticOperations.boolMul context workGroupSize
@@ -93,5 +91,5 @@ let tests =
     //
     // makeTest context q false (=) (||) kroneckerFun
     // |> testPropertyWithConfig config (getCorrectnessTestName "bool sum")
-     // ]
+    // ]
     |> testList "kronecker masked tests"

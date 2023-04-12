@@ -344,7 +344,12 @@ module Matrix =
 
         fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
             match matrix1, matrix2 with
-            | ClMatrix.CSR m1, ClMatrix.CSR m2 -> runCSR queue allocationFlag m1 m2 |> ClMatrix.COO
+            | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
+                let result = runCSR queue allocationFlag m1 m2
+
+                match result with
+                | None -> failwith "zero matrix"
+                | Some m -> m |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
     let mxm

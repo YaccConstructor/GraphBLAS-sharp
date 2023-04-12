@@ -59,7 +59,8 @@ module Common =
             let resultLength =
                 (sum processor positions).ToHostAndFree(processor)
 
-            if resultLength = 0 then None
+            if resultLength = 0 then
+                None
             else
                 let resultRows =
                     clContext.CreateClArrayWithSpecificAllocationMode<int>(allocationMode, resultLength)
@@ -76,4 +77,4 @@ module Common =
 
                 valuesScatter processor positions allValues resultValues
 
-                Some (resultRows, resultColumns, resultValues, resultLength)
+                Some(resultRows, resultColumns, resultValues, resultLength)

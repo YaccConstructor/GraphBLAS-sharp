@@ -106,7 +106,8 @@ module internal MapWithValue =
                     matrix.RowPointers
                     matrix.Columns
 
-            let result = setPositions queue allocationMode rows columns values bitmap
+            let result =
+                setPositions queue allocationMode rows columns values bitmap
 
             queue.Post(Msg.CreateFreeMsg<_>(bitmap))
             queue.Post(Msg.CreateFreeMsg<_>(values))
@@ -116,12 +117,13 @@ module internal MapWithValue =
             match result with
             | None -> None
             | Some (resultRows, resultColumns, resultValues, _) ->
-                Some { Context = clContext
-                       RowCount = matrix.RowCount
-                       ColumnCount = matrix.ColumnCount
-                       Rows = resultRows
-                       Columns = resultColumns
-                       Values = resultValues }
+                Some
+                    { Context = clContext
+                      RowCount = matrix.RowCount
+                      ColumnCount = matrix.ColumnCount
+                      Rows = resultRows
+                      Columns = resultColumns
+                      Values = resultValues }
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -137,4 +139,4 @@ module internal MapWithValue =
         fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
             match (mapToCOO queue allocationMode operand matrix) with
             | None -> None
-            | Some result -> Some (result |> toCSRInplace queue allocationMode)
+            | Some result -> Some(result |> toCSRInplace queue allocationMode)
