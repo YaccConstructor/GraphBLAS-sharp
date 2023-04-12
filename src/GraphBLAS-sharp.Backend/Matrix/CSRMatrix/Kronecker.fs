@@ -23,7 +23,7 @@ module internal Kronecker =
         let mergeDisjointCOO =
             MergeDisjoint.run clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixToInsert: optionalMatrix<'c>) rowOffset columnOffset (resultMatrix: optionalMatrix<'c>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode rowOffset columnOffset (matrixToInsert: optionalMatrix<'c>) (resultMatrix: optionalMatrix<'c>) ->
 
             let newColCount =
                 if resultMatrix.ColumnCount < columnOffset + matrixToInsert.ColumnCount then
@@ -54,10 +54,10 @@ module internal Kronecker =
                 | None ->
                     { RowCount = newColCount
                       ColumnCount = newColCount
-                      Matrix = Some(newRowIndices, newColumnIndices, vals) }
+                      Matrix = Some (newRowIndices, newColumnIndices, vals) }
 
                 | Some (mainRows, mainCols, mainVals) ->
-                    let newMatrix =
+                    let newMatrixCOO =
                         { Context = clContext
                           RowCount = matrixToInsert.RowCount
                           ColumnCount = matrixToInsert.ColumnCount
@@ -74,11 +74,11 @@ module internal Kronecker =
                           Values = mainVals }
 
                     let newMatrix =
-                        mergeDisjointCOO queue mainMatrixCOO newMatrix
+                        mergeDisjointCOO queue mainMatrixCOO newMatrixCOO
 
                     { RowCount = newColCount
                       ColumnCount = newColCount
-                      Matrix = Some(newMatrix.Rows, newMatrix.Columns, newMatrix.Values) }
+                      Matrix = Some (newMatrix.Rows, newMatrix.Columns, newMatrix.Values) }
 
     let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -102,7 +102,7 @@ module internal Kronecker =
                 | Some m ->
                     { RowCount = matrixRight.RowCount
                       ColumnCount = matrixRight.RowCount
-                      Matrix = Some(m.Rows, m.Columns, m.Values) }
+                      Matrix = Some (m.Rows, m.Columns, m.Values) }
 
             let mutable resultMatrix = mapWithZero
 
@@ -138,7 +138,7 @@ module internal Kronecker =
                             let columnOfZeroElement = i * matrixRight.ColumnCount
 
                             resultMatrix <-
-                                insert queue allocationMode mapWithZero rowOffset columnOfZeroElement resultMatrix
+                                insert queue allocationMode rowOffset columnOfZeroElement mapWithZero resultMatrix
 
                     let operand =
                         Some leftMatrixVals.[firstElementIndex + offset]
@@ -153,9 +153,9 @@ module internal Kronecker =
                         | Some m ->
                             { RowCount = m.RowCount
                               ColumnCount = m.RowCount
-                              Matrix = Some(m.Rows, m.Columns, m.Values) }
+                              Matrix = Some (m.Rows, m.Columns, m.Values) }
 
-                    resultMatrix <- insert queue allocationMode mappedMatrix rowOffset columnOffset resultMatrix
+                    resultMatrix <- insert queue allocationMode rowOffset columnOffset mappedMatrix resultMatrix
 
                 let startColumn =
                     match NNZInRow with
@@ -167,15 +167,15 @@ module internal Kronecker =
                 for i in startColumn .. matrixLeft.ColumnCount - 1 do
                     let columnOffset = i * matrixRight.ColumnCount
 
-                    resultMatrix <- insert queue allocationMode mapWithZero rowOffset columnOffset resultMatrix
+                    resultMatrix <- insert queue allocationMode rowOffset columnOffset mapWithZero resultMatrix
 
             match resultMatrix.Matrix with
             | None -> None
             | Some (rows, cols, vals) ->
                 Some
                     { Context = clContext
-                      RowCount = resultMatrix.RowCount
-                      ColumnCount = resultMatrix.ColumnCount
+                      RowCount = matrixLeft.RowCount * matrixRight.RowCount
+                      ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount
                       Rows = rows
                       Columns = cols
                       Values = vals }
@@ -197,4 +197,4 @@ module internal Kronecker =
 
             match result with
             | None -> None
-            | Some resultMatrix -> Some(resultMatrix |> toCSRInplace queue allocationMode)
+            | Some resultMatrix -> Some (resultMatrix |> toCSRInplace queue allocationMode)
