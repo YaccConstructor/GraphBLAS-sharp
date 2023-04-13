@@ -195,7 +195,7 @@ module M =
 type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClMatrix.COO<float32>,float32>(
-        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.float32Sum wgSize),
+        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.float32SumOption wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         Matrix.ToBackendCOO
@@ -207,7 +207,7 @@ type EWiseAddBenchmarks4Float32COOWithoutDataTransfer() =
 type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 
     inherit EWiseAddBenchmarksWithDataTransfer<ClMatrix.COO<float32>,float32>(
-        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.float32Sum wgSize),
+        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.float32SumOption wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         Matrix.ToBackendCOO<float32>,
@@ -234,7 +234,7 @@ type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClMatrix.CSR<float32>,float32>(
-        (fun context wgSize -> CSR.Matrix.map2 context ArithmeticOperations.float32Sum wgSize),
+        (fun context wgSize -> CSR.Matrix.map2 context ArithmeticOperations.float32SumOption wgSize),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         Matrix.ToBackendCSR

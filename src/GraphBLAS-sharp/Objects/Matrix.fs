@@ -19,6 +19,8 @@ module Matrix =
               sprintf "Values:        %A \n" this.Values ]
             |> String.concat ""
 
+        member this.NNZ = this.Values.Length
+
         static member FromTuples(rowCount: int, columnCount: int, rows: int [], columns: int [], values: 'a []) =
             { RowCount = rowCount
               ColumnCount = columnCount
@@ -79,6 +81,8 @@ module Matrix =
               RowCount = rowsCount
               ColumnCount = columnsCount }
 
+        member this.NNZ = this.Values.Length
+
         member this.ToDevice(context: ClContext) =
             { Context = context
               RowCount = this.RowCount
@@ -121,6 +125,8 @@ module Matrix =
               RowCount = rowsCount
               ColumnCount = columnsCount }
 
+        member this.NNZ = this.Values.Length
+
         member this.ToDevice(context: ClContext) =
             { Context = context
               RowCount = this.RowCount
@@ -154,9 +160,9 @@ type Matrix<'a when 'a: struct> =
 
     member this.NNZ =
         match this with
-        | COO m -> m.Values.Length
-        | CSR m -> m.Values.Length
-        | CSC m -> m.Values.Length
+        | COO m -> m.NNZ
+        | CSR m -> m.NNZ
+        | CSC m -> m.NNZ
 
     member this.ToDevice(context: ClContext) =
         match this with

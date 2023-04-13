@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Bitonic =
     let logger = Log.create "BitonicSort.Tests"
@@ -32,22 +33,16 @@ module Bitonic =
 
             let rows, cols, vals = Array.unzip3 array
 
-            use clRows = context.CreateClArray rows
-            use clColumns = context.CreateClArray cols
-            use clValues = context.CreateClArray vals
+            let clRows = context.CreateClArray rows
+            let clColumns = context.CreateClArray cols
+            let clValues = context.CreateClArray vals
 
             let actualRows, actualCols, actualValues =
                 sort q clRows clColumns clValues
 
-                let rows = Array.zeroCreate<'n> clRows.Length
-                let columns = Array.zeroCreate<'n> clColumns.Length
-                let values = Array.zeroCreate<'a> clValues.Length
-
-                q.Post(Msg.CreateToHostMsg(clRows, rows))
-                q.Post(Msg.CreateToHostMsg(clColumns, columns))
-
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clValues, values, ch))
-                |> ignore
+                let rows = clRows.ToHostAndFree q
+                let columns = clColumns.ToHostAndFree q
+                let values = clValues.ToHostAndFree q
 
                 rows, columns, values
 
@@ -80,7 +75,6 @@ module Bitonic =
               testFixtures<float>
 
           testFixtures<float32>
-
           testFixtures<byte>
           testFixtures<bool> ]
         |> testList "Backend.Common.BitonicSort tests"

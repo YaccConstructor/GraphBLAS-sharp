@@ -163,7 +163,7 @@ module Radix =
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) ->
             if keys.Length <= 1 then
-                keys
+                copy processor DeviceOnly keys // TODO(allocation mode)
             else
                 let firstKeys = copy processor DeviceOnly keys
 
@@ -194,6 +194,7 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
+                (snd pair).Free processor
                 fst pair
 
     let standardRunKeysOnly clContext workGroupSize =
@@ -264,25 +265,28 @@ module Radix =
         let scatterByKey =
             scatterByKey clContext workGroupSize mask
 
-        fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (keys: Indices) (values: ClArray<'a>) ->
             if values.Length <> keys.Length then
                 failwith "Mismatch of key lengths and value. Lengths must be the same"
 
             if values.Length <= 1 then
-                values
+                dataCopy processor allocationMode values
             else
                 let firstKeys = copy processor DeviceOnly keys
 
                 let secondKeys =
                     clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
 
-                let secondValues = dataCopy processor DeviceOnly values
+                let firstValues = dataCopy processor DeviceOnly values
+
+                let secondValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values.Length)
 
                 let workGroupCount =
                     clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
 
                 let mutable keysPair = (firstKeys, secondKeys)
-                let mutable valuesPair = (values, secondValues)
+                let mutable valuesPair = (firstValues, secondValues)
 
                 let swap (x, y) = y, x
                 // compute bound of iterations

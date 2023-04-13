@@ -8,49 +8,13 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Matrix =
-    let private expandRowPointers (clContext: ClContext) workGroupSize =
-
-        let expandRowPointers =
-            <@ fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i < rowCount then
-                    let rowPointer = rowPointers.[i]
-
-                    if rowPointer <> rowPointers.[i + 1] then
-                        rows.[rowPointer] <- i @>
-
-        let program = clContext.Compile(expandRowPointers)
-
-        let create =
-            ClArray.zeroCreate clContext workGroupSize
-
-        let scan =
-            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
-
-            let rows = create processor allocationMode nnz
-
-            let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(rowCount, workGroupSize)
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowPointers rowCount rows))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            let total = scan processor rows 0
-            processor.Post(Msg.CreateFreeMsg(total))
-
-            rows
-
     let toCOO (clContext: ClContext) workGroupSize =
         let prepare =
-            expandRowPointers clContext workGroupSize
+            Common.expandRowPointers clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 
@@ -75,7 +39,7 @@ module Matrix =
 
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let prepare =
-            expandRowPointers clContext workGroupSize
+            Common.expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =
@@ -140,16 +104,39 @@ module Matrix =
             |> transposeInplace queue
             |> toCSRInplace queue allocationMode
 
-    let spgemmCSC
-        (clContext: ClContext)
-        workGroupSize
-        (opAdd: Expr<'c -> 'c -> 'c option>)
-        (opMul: Expr<'a -> 'b -> 'c option>)
-        =
+    module SpGeMM =
+        let masked
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
 
-        let run =
-            SpGEMM.run clContext workGroupSize opAdd opMul
+            let run =
+                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
+            fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
-            run queue matrixLeft matrixRight mask
+                run queue matrixLeft matrixRight mask
+
+        let expand
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
+
+            let run =
+                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+
+            fun (queue: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+
+                let values, columns, rows =
+                    run queue allocationMode leftMatrix rightMatrix
+
+                { COO.Context = clContext
+                  ColumnCount = rightMatrix.ColumnCount
+                  RowCount = leftMatrix.RowCount
+                  Values = values
+                  Columns = columns
+                  Rows = rows }

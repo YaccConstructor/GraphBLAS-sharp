@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.PrefixSum
+module GraphBLAS.FSharp.Tests.Backend.Common.Scan.PrefixSum
 
 open Expecto
 open Expecto.Logging
@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "ClArray.PrefixSum.Tests"
 
@@ -28,12 +29,12 @@ let makeTest plus zero isEqual scan (array: 'a []) =
         )
 
         let actual, actualSum =
-            use clArray = context.CreateClArray array
+            let clArray = context.CreateClArray array
             let (total: ClCell<_>) = scan q clArray zero
 
-            let actual = Array.zeroCreate<'a> clArray.Length
-            let actualSum = total.ToHostAndFree(q)
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clArray, actual, ch)), actualSum
+            let actual = clArray.ToHostAndFree q
+            let actualSum = total.ToHostAndFree q
+            actual, actualSum
 
         logger.debug (
             eventX "Actual is {actual}\n"
@@ -62,7 +63,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
 let testFixtures plus plusQ zero isEqual name =
     PrefixSum.runIncludeInplace plusQ context wgSize
     |> makeTest plus zero isEqual
-    |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
+    |> testPropertyWithConfig config $"Correctness on %s{name}"
 
 let tests =
     q.Error.Add(fun e -> failwithf "%A" e)
