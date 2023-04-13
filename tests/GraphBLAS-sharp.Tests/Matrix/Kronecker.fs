@@ -90,5 +90,6 @@ let tests =
           Matrix.kronecker ArithmeticOperations.boolSum context workGroupSize
 
       makeTest context q false (=) (||) kroneckerFun
-      |> testPropertyWithConfig config (getCorrectnessTestName "bool sum") ]
+      |> testPropertyWithConfig config (getCorrectnessTestName "bool sum")
+       ]
     |> testList "kronecker masked tests"

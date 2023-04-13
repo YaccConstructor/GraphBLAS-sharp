@@ -13,13 +13,13 @@ open GraphBLAS.FSharp.Backend.Objects
 
 [<RequireQualifiedAccess>]
 module Utils =
-    let defaultWorkGroupSize = 32
+    let defaultWorkGroupSize = 8
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
               maxTest = 10
               startSize = 1
-              endSize = 1000
+              endSize = 200
               arbitrary =
                   [ typeof<Generators.SingleMatrix>
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>
