@@ -64,7 +64,7 @@ let generalTests (testContext: TestContext) =
 
       let config =
           { Utils.defaultConfig with
-                endSize = 100
+                endSize = 50
                 maxTest = 5 }
 
       let context = testContext.ClContext

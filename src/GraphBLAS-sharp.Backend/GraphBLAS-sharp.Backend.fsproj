@@ -40,7 +40,6 @@
     <Compile Include="Matrix/COOMatrix/Map2AtLeastOne.fs" />
     <Compile Include="Matrix/COOMatrix/Map.fs" />
     <Compile Include="Matrix/COOMatrix/Matrix.fs" />
-    <Compile Include="Matrix/COOMatrix/MergeDisjoint.fs" />
     <Compile Include="Matrix/CSRMatrix/Map2.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM/Expand.fs" />
     <Compile Include="Matrix/CSRMatrix/SpGEMM/Masked.fs" />

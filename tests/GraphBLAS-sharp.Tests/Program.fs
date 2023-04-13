@@ -15,7 +15,8 @@ let matrixTests =
           Matrix.Map.mulTests
           Matrix.Transpose.tests
           Matrix.SpGeMM.Masked.tests
-          Matrix.SpGeMM.Expand.generalTests ]
+          Matrix.SpGeMM.Expand.generalTests
+          Matrix.kronecker.tests ]
     |> testSequenced
 
 let commonTests =
