@@ -1,10 +1,11 @@
-module GraphBLAS.FSharp.Backend.Matrix
+namespace GraphBLAS.FSharp.Backend.Matrix
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 // type lazy matrix ???
 
@@ -42,7 +43,21 @@ module Split =
                |> Seq.map (fun lazyMatrix -> lazyMatrix.Value)
                |> Seq.toArray
 
+        // let run (clContext: ClContext) workGroupSize =
+        //
+        //     let run = runCOOLazy clContext workGroupSize
+        //
+        //     let runCOO = runCOO clContext workGroupSize
+        //
+        //     let COOToCSR = COO.Matrix.toCSR clCOntext workGroupSize
+        //
+        //     fun (processor: MailboxProcessor<_>) allocationMode chunkSize (matrix: ClMatrix<'a>) ->
+        //        match matrix with
+        //        | ClMatrix.COO matrix -> runCOO processor allocationMode chunkSize matrix
+        //        | ClMatrix.COO matrix ->
+        //            ()
     module ByRow =
+        // MB We can split CSR to chunks without COO representation
         let runCSRLazy (clContext: ClContext) workGroupSize =
 
             let getChunkValues = ClArray.getChunk clContext workGroupSize
@@ -54,6 +69,12 @@ module Split =
                 let getChunkValues = getChunkValues processor allocationMode matrix.Values
                 let getChunkIndices = getChunkIndices processor allocationMode matrix.Columns
 
+                let creatSparseVector values columns =
+                    { Context = clContext
+                      Indices = columns
+                      Values = values
+                      Size = matrix.ColumnCount }
+
                 matrix.RowPointers.ToHost processor
                 |> Seq.pairwise
                 |> Seq.map (fun (first, second) ->
@@ -62,7 +83,7 @@ module Split =
                             let values = getChunkValues first second
                             let columns = getChunkIndices first second
 
-                            Some (values, columns)
+                            Some <| creatSparseVector values columns
                         else None)
 
         let runCSR (clContext: ClContext) workGroupSize =
@@ -73,3 +94,43 @@ module Split =
                 runLazy processor allocationMode matrix
                 |> Seq.map (fun lazyValue -> lazyValue.Value)
                 |> Seq.toArray
+
+    module ByColumn =
+        let runCSRLazy (clContext: ClContext) workGroupSize =
+
+            let getChunkValues = ClArray.getChunk clContext workGroupSize
+
+            let getChunkIndices = ClArray.getChunk clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSC<'a>) ->
+
+                let getChunkValues = getChunkValues processor allocationMode matrix.Values
+                let getChunkIndices = getChunkIndices processor allocationMode matrix.Rows
+
+                let creatSparseVector values columns =
+                    { Context = clContext
+                      Indices = columns
+                      Values = values
+                      Size = matrix.RowCount }
+
+                matrix.ColumnPointers.ToHost processor
+                |> Seq.pairwise
+                |> Seq.map (fun (first, second) ->
+                    lazy
+                        if second - first > 0 then
+                            let values = getChunkValues first second
+                            let rows = getChunkIndices first second
+
+                            Some <| creatSparseVector values rows
+                        else None)
+
+        let runCSR (clContext: ClContext) workGroupSize =
+
+            let runLazy = runCSRLazy clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSC<'a>) ->
+                runLazy processor allocationMode matrix
+                |> Seq.map (fun lazyValue -> lazyValue.Value)
+                |> Seq.toArray
+
+

@@ -346,9 +346,9 @@ module ClArray =
         let kernel = clContext.Compile kernel
 
         fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) startIndex endIndex ->
-            if startIndex < 0 then failwith ""
-            if startIndex >= endIndex then failwith "" // empty array
-            if endIndex > sourceArray.Length then failwith ""  // TODO()
+            if startIndex < 0 then failwith "startIndex is less than zero"
+            if startIndex >= endIndex then failwith "startIndex is greater than or equal to the endIndex"
+            if endIndex > sourceArray.Length then failwith "endIndex is larger than the size of the array"
 
             let resultLength = endIndex - startIndex
 
@@ -382,20 +382,19 @@ module ClArray =
         let getChunk =
             getChunk clContext workGroupSize
 
-        // TODO(immutable array)
         fun (processor: MailboxProcessor<_>) allocationMode chunkSize (sourceArray: ClArray<'a>) ->
-            if chunkSize <= 0 then failwith ""
+            if chunkSize <= 0 then failwith "The size of the piece cannot be less than 1"
 
-            let chunkCount = (sourceArray.Length - 1) / chunkSize + 1
+            let chunkCount = (sourceArray.Length - 1) / chunkSize
 
             let getChunk = getChunk processor allocationMode sourceArray
 
             seq {
                 for i in 0 .. chunkCount do
                     let startIndex = i * chunkSize
-                    let endIndex = max (startIndex + chunkSize) sourceArray.Length
+                    let endIndex = min (startIndex + chunkSize) sourceArray.Length
 
-                    yield lazy ( getChunk startIndex endIndex )
+                    yield lazy getChunk startIndex endIndex
             }
 
     /// <summary>

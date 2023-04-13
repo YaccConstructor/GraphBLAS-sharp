@@ -99,6 +99,13 @@ module Utils =
                 Actual value is %A{actual.[i]}, expected %A{expected.[i]}, \n actual: %A{actual} \n expected: %A{expected}"
                 |> failtestf "%s"
 
+    let compareChunksArrays areEqual (actual: 'a [][]) (expected: 'a [][]) message =
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. actual.Length - 1 do
+            compareArrays areEqual actual.[i] expected.[i] message
+
     let compare2DArrays areEqual (actual: 'a [,]) (expected: 'a [,]) message =
         $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
         |> Expect.equal actual.Length expected.Length
