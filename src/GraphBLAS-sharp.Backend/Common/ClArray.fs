@@ -1,5 +1,6 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
+open System.Collections.Generic
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
@@ -329,3 +330,85 @@ module ClArray =
             scatter processor positions values result
 
             result
+
+    let getChunk (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) startIndex endIndex (sourceArray: ClArray<'a>) (targetChunk: ClArray<'a>) ->
+
+               let gid = ndRange.GlobalID0
+               let sourcePosition = gid + startIndex
+
+               if sourcePosition < endIndex then
+
+                   targetChunk.[gid] <- sourceArray.[sourcePosition] @>
+
+        let kernel = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) startIndex endIndex ->
+            if startIndex < 0 then failwith ""
+            if startIndex >= endIndex then failwith "" // empty array
+            if endIndex > sourceArray.Length then failwith ""  // TODO()
+
+            let resultLength = endIndex - startIndex
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            let ndRange =
+                Range1D.CreateValid(resultLength, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () -> kernel.KernelFunc ndRange startIndex endIndex sourceArray result)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result
+
+    /// <summary>
+    /// Lazy divides the input array into chunks of size at most chunkSize.
+    /// </summary>
+    /// <param name="clContext">Cl context.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    /// <remarks>
+    /// Since calculations are performed lazily, the array should not change.
+    /// </remarks>
+    let lazyChunkBySize (clContext: ClContext) workGroupSize =
+
+        let getChunk =
+            getChunk clContext workGroupSize
+
+        // TODO(immutable array)
+        fun (processor: MailboxProcessor<_>) allocationMode chunkSize (sourceArray: ClArray<'a>) ->
+            if chunkSize <= 0 then failwith ""
+
+            let chunkCount = (sourceArray.Length - 1) / chunkSize + 1
+
+            let getChunk = getChunk processor allocationMode sourceArray
+
+            seq {
+                for i in 0 .. chunkCount do
+                    let startIndex = i * chunkSize
+                    let endIndex = max (startIndex + chunkSize) sourceArray.Length
+
+                    yield lazy ( getChunk startIndex endIndex )
+            }
+
+    /// <summary>
+    /// Divides the input array into chunks of size at most chunkSize.
+    /// </summary>
+    /// <param name="clContext">Cl context.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    let chunkBySize (clContext: ClContext) workGroupSize =
+
+        let chunkBySizeLazy =
+            lazyChunkBySize clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode chunkSize (sourceArray: ClArray<'a>) ->
+            chunkBySizeLazy processor allocationMode chunkSize sourceArray
+            |> Seq.map (fun lazyValue -> lazyValue.Value)
+            |> Seq.toArray

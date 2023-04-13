@@ -36,6 +36,7 @@
     <Compile Include="Common/Sum.fs" />
     <!--Compile Include="Matrices.fs" /-->
     <Compile Include="Matrix/Common.fs" />
+    <Compile Include="Matrix\Split.fs" />
     <Compile Include="Matrix/COOMatrix/Map2.fs" />
     <Compile Include="Matrix/COOMatrix/Map2AtLeastOne.fs" />
     <Compile Include="Matrix/COOMatrix/Map.fs" />
