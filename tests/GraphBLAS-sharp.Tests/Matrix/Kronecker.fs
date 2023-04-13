@@ -62,9 +62,11 @@ let makeTest context q zero isEqual mul kroneckerFun (leftMatrix: 'a [,], rightM
 let generalTests (testContext: TestContext) =
     [ let getCorrectnessTestName = sprintf "Correctness on %s"
 
-      let config = { Utils.defaultConfig with
-                          endSize = 100
-                          maxTest = 5 }
+      let config =
+          { Utils.defaultConfig with
+                endSize = 100
+                maxTest = 5 }
+
       let context = testContext.ClContext
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)

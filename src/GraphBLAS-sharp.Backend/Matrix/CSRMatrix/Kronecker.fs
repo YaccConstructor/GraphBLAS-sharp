@@ -27,23 +27,8 @@ module internal Kronecker =
 
         fun (queue: MailboxProcessor<_>) allocationMode (rowOffset: int) (columnOffset: int) (matrixToInsert: optionalMatrix<'c>) (resultMatrix: optionalMatrix<'c>) ->
 
-            let newRowCount =
-                if resultMatrix.RowCount < rowOffset + matrixToInsert.RowCount then
-                    rowOffset + matrixToInsert.RowCount
-                else
-                    resultMatrix.RowCount
-
-            let newColCount =
-                if resultMatrix.ColumnCount < columnOffset + matrixToInsert.ColumnCount then
-                    columnOffset + matrixToInsert.ColumnCount
-                else
-                    resultMatrix.ColumnCount
-
             match matrixToInsert.Matrix with
-            | None ->
-                { resultMatrix with
-                      RowCount = newRowCount
-                      ColumnCount = newColCount }
+            | None -> resultMatrix
 
             | Some (rows, cols, vals) ->
                 let rowOffset = rowOffset |> clContext.CreateClCell
@@ -60,8 +45,8 @@ module internal Kronecker =
 
                 match resultMatrix.Matrix with
                 | None ->
-                    { RowCount = newRowCount
-                      ColumnCount = newColCount
+                    { RowCount = resultMatrix.RowCount
+                      ColumnCount = resultMatrix.ColumnCount
                       Matrix = Some(newRowIndices, newColumnIndices, copyClArray queue allocationMode vals) }
 
                 | Some (mainRows, mainCols, mainVals) ->
@@ -75,8 +60,8 @@ module internal Kronecker =
 
                     let mainMatrixCOO =
                         { Context = clContext
-                          RowCount = newRowCount
-                          ColumnCount = newColCount
+                          RowCount = resultMatrix.RowCount
+                          ColumnCount = resultMatrix.ColumnCount
                           Rows = mainRows
                           Columns = mainCols
                           Values = mainVals }
@@ -84,8 +69,8 @@ module internal Kronecker =
                     let newMatrix =
                         mergeDisjointCOO queue mainMatrixCOO newMatrixCOO
 
-                    { RowCount = newRowCount
-                      ColumnCount = newColCount
+                    { RowCount = resultMatrix.RowCount
+                      ColumnCount = resultMatrix.ColumnCount
                       Matrix = Some(newMatrix.Rows, newMatrix.Columns, newMatrix.Values) }
 
     let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -117,8 +102,8 @@ module internal Kronecker =
             queue.Post(Msg.CreateFreeMsg<_>(noneClCell))
 
             let mutable resultMatrix =
-                { RowCount = 0
-                  ColumnCount = 0
+                { RowCount = matrixLeft.RowCount * matrixRight.RowCount
+                  ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount
                   Matrix = None }
 
             let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
@@ -225,8 +210,8 @@ module internal Kronecker =
             | Some (rows, cols, vals) ->
                 Some
                     { Context = clContext
-                      RowCount = matrixLeft.RowCount * matrixRight.RowCount // resultMatrix.RowCount
-                      ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount // resultMatrix.ColumnCount
+                      RowCount = resultMatrix.RowCount
+                      ColumnCount = resultMatrix.ColumnCount
                       Rows = rows
                       Columns = cols
                       Values = vals }
