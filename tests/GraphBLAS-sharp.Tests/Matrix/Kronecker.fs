@@ -5,6 +5,7 @@ open Expecto.Logging
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
+open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
@@ -13,11 +14,9 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "kronecker.Tests"
 
-let context = defaultContext.ClContext
 let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeTest context q zero isEqual mul kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
-
     let m1 =
         Utils.createMatrixFromArray2D CSR leftMatrix (isEqual zero)
 
@@ -60,15 +59,17 @@ let makeTest context q zero isEqual mul kroneckerFun (leftMatrix: 'a [,], rightM
             "Matrices should be equal"
             |> Expect.equal actual expected
 
-let tests =
-    let getCorrectnessTestName = sprintf "Correctness on %s"
+let generalTests (testContext: TestContext) =
+    [ let getCorrectnessTestName = sprintf "Correctness on %s"
 
-    let config = Utils.defaultConfig
+      let config = { Utils.defaultConfig with
+                          endSize = 100
+                          maxTest = 5 }
+      let context = testContext.ClContext
+      let q = testContext.Queue
+      q.Error.Add(fun e -> failwithf "%A" e)
 
-    let q = defaultContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
-
-    [ let kroneckerMul =
+      let kroneckerMul =
           Matrix.kronecker ArithmeticOperations.intMul context workGroupSize
 
       makeTest context q 0 (=) (*) kroneckerMul
@@ -91,4 +92,6 @@ let tests =
 
       makeTest context q false (=) (||) kroneckerFun
       |> testPropertyWithConfig config (getCorrectnessTestName "bool sum") ]
-    |> testList "kronecker masked tests"
+
+let tests =
+    gpuTests "Backend.Matrix.kronecker tests" generalTests

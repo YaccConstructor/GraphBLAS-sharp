@@ -190,10 +190,6 @@ module MergeDisjoint =
                     matrixRight.Columns
                     matrixRight.Values
 
-            // queue.Post(Msg.CreateFreeMsg<_>(mergedValues))
-            // queue.Post(Msg.CreateFreeMsg<_>(allRows))
-            // queue.Post(Msg.CreateFreeMsg<_>(allColumns))
-
             { Context = clContext
               RowCount = matrixLeft.RowCount
               ColumnCount = matrixLeft.ColumnCount

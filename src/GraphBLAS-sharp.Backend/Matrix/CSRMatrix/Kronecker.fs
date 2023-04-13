@@ -162,6 +162,7 @@ module internal Kronecker =
                                     newMatrix
                                 | _ -> newMatrix
 
+                    // inserting new matrix resulting from multiplication by non None element of left matrix
                     let columnOffset = currentColumn * matrixRight.ColumnCount
 
                     let operand =
@@ -193,10 +194,10 @@ module internal Kronecker =
                             queue.Post(Msg.CreateFreeMsg<_>(mappedRows))
                             queue.Post(Msg.CreateFreeMsg<_>(mappedCols))
                             queue.Post(Msg.CreateFreeMsg<_>(mappedVals))
-
                             newMatrix
                         | _ -> newMatrix
 
+                // inserting matrices resulting from multiplication by 0 to the rest of the place in row
                 let startColumn =
                     match NNZInRow with
                     | 0 -> 0
@@ -204,7 +205,6 @@ module internal Kronecker =
                         leftMatrixCols.[firstElementIndex + NNZInRow - 1]
                         + 1
 
-                // inserting matrices resulting from multiplication by 0 to the rest of the place
                 for i in startColumn .. matrixLeft.ColumnCount - 1 do
                     let columnOffset = i * matrixRight.ColumnCount
 
