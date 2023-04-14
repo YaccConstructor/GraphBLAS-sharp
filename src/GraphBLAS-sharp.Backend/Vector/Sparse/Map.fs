@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Quotes
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Common
 
 module internal Map =
     let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
@@ -97,3 +98,16 @@ module internal Map =
               Size = vector.Size }
 
     module AtLeastOne =
+        let run (clContext: ClContext) workGroupSize op =
+
+            let getOptionBitmap =
+                ClArray.map2 clContext workGroupSize
+                <| Map.choose2Bitmap op
+
+            let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+
+            let scatter = Scatter.runInplace clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) ->
+
+                ()

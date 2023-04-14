@@ -489,5 +489,3 @@ module ClArray =
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange firstPosition (firstPosition + count) value targetArray))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            ()
