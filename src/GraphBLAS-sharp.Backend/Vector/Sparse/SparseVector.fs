@@ -68,3 +68,24 @@ module SparseVector =
             Reduce.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values
+
+    let concat<'a> (clContext: ClContext) workGroupSize =
+
+        let concatValues = ClArray.concat clContext workGroupSize
+
+        let concatIndices = ClArray.concat clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (vectors: ClVector.Sparse<'a> seq) ->
+
+            let resultValues =
+                Seq.map (fun vector -> vector.Values) vectors
+                |> concatValues processor allocationMode
+
+            let resultIndices =
+                Seq.map (fun vector -> vector.Indices) vectors
+                |> concatIndices processor allocationMode
+
+            { Context = clContext
+              Indices = resultIndices
+              Values = resultValues
+              Size = resultValues.Length } // TODO(size)

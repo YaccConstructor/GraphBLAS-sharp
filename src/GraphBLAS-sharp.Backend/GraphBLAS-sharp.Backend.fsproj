@@ -34,11 +34,12 @@
     <Compile Include="Common/Sort/Radix.fs" />
     <Compile Include="Common/Sort/Bitonic.fs" />
     <Compile Include="Common/Sum.fs" />
-    <Compile Include="Vector/SparseVector/Common.fs" />
-    <Compile Include="Vector/SparseVector/Map2.fs" />
-    <Compile Include="Vector/SparseVector/Map2AtLeastOne.fs" />
-    <Compile Include="Vector/SparseVector/SparseVector.fs" />
-    <Compile Include="Vector/DenseVector/DenseVector.fs" />
+    <Compile Include="Vector\Sparse\Common.fs" />
+    <Compile Include="Vector\Sparse\Map2.fs" />
+    <Compile Include="Vector\Sparse\Map2AtLeastOne.fs" />
+    <Compile Include="Vector\Sparse\SparseVector.fs" />
+    <Compile Include="Vector\Sparse\Map.fs" />
+    <Compile Include="Vector\Dense\DenseVector.fs" />
     <Compile Include="Vector/Vector.fs" />
     <Compile Include="Vector/SpMV.fs" />
     <Compile Include="Matrix/Common.fs" />

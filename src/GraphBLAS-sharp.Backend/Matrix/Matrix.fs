@@ -45,9 +45,7 @@ module Matrix =
                       Values = copyData processor allocationMode m.Values }
             | ClMatrix.Rows matrix ->
                 matrix.Rows
-                |> Array.map (function
-                    Some vector -> Some <| vectorCopy processor allocationMode vector
-                    | None -> None)
+                |> Array.map (Option.bind <| (Some << (vectorCopy processor allocationMode)))
                 |> fun rows ->
                     { Context = clContext
                       RowCount = matrix.RowCount
@@ -69,6 +67,8 @@ module Matrix =
         let transpose =
             CSR.Matrix.transpose clContext workGroupSize
 
+        let rowsToCSR = Rows.Matrix.toCSR clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO m -> toCSR processor allocationMode m |> ClMatrix.CSR
@@ -77,6 +77,9 @@ module Matrix =
                 m.ToCSR
                 |> transpose processor allocationMode
                 |> ClMatrix.CSR
+            | ClMatrix.Rows m ->
+                rowsToCSR processor allocationMode m
+                |> ClMatrix.CSR
 
     /// <summary>
     /// Returns the matrix, represented in CSR format, that is equal to the given one.
@@ -84,23 +87,26 @@ module Matrix =
     /// </summary>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let toCSRInplace (clContext: ClContext) workGroupSize =
-        let toCSRInplace =
+    let toCSRInPlace (clContext: ClContext) workGroupSize =
+        let toCSRInPlace =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             CSR.Matrix.transposeInplace clContext workGroupSize
+
+        let rowsToCSR = Rows.Matrix.toCSR clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO m ->
-                toCSRInplace processor allocationMode m
+                toCSRInPlace processor allocationMode m
                 |> ClMatrix.CSR
             | ClMatrix.CSR _ -> matrix
             | ClMatrix.CSC m ->
                 m.ToCSR
-                |> transposeInplace processor allocationMode
+                |> transposeInPlace processor allocationMode
                 |> ClMatrix.CSR
+            | _ -> failwith "not yet supported"
 
     /// <summary>
     /// Creates a new matrix, represented in COO format, that is equal to the given one.
@@ -115,6 +121,9 @@ module Matrix =
         let transposeInplace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
+        let rowsToCOO =
+            Rows.Matrix.toCOO clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO _ -> copy processor allocationMode matrix
@@ -124,6 +133,9 @@ module Matrix =
                 |> toCOO processor allocationMode
                 |> transposeInplace processor
                 |> ClMatrix.COO
+            | ClMatrix.Rows m ->
+                rowsToCOO processor allocationMode m
+                |> ClMatrix.COO
 
     /// <summary>
     /// Returns the matrix, represented in COO format, that is equal to the given one.
@@ -131,24 +143,28 @@ module Matrix =
     /// </summary>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let toCOOInplace (clContext: ClContext) workGroupSize =
-        let toCOOInplace =
+    let toCOOInPlace (clContext: ClContext) workGroupSize =
+        let toCOOInPlace =
             CSR.Matrix.toCOOInplace clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
+
+        let rowsToCOO =
+            Rows.Matrix.toCOO clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO _ -> matrix
             | ClMatrix.CSR m ->
-                toCOOInplace processor allocationMode m
+                toCOOInPlace processor allocationMode m
                 |> ClMatrix.COO
             | ClMatrix.CSC m ->
                 m.ToCSR
-                |> toCOOInplace processor allocationMode
-                |> transposeInplace processor
+                |> toCOOInPlace processor allocationMode
+                |> transposeInPlace processor
                 |> ClMatrix.COO
+            | _ -> failwith "not yet supported"
 
     /// <summary>
     /// Creates a new matrix, represented in CSC format, that is equal to the given one.
@@ -156,7 +172,7 @@ module Matrix =
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSC (clContext: ClContext) workGroupSize =
-        let toCSR = COO.Matrix.toCSR clContext workGroupSize
+        let COOtoCSR = COO.Matrix.toCSR clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
@@ -174,9 +190,10 @@ module Matrix =
                 |> ClMatrix.CSC
             | ClMatrix.COO m ->
                 (transposeCOO processor allocationMode m
-                 |> toCSR processor allocationMode)
+                 |> COOtoCSR processor allocationMode)
                     .ToCSC
                 |> ClMatrix.CSC
+            | _ -> failwith "not yet supported"
 
     /// <summary>
     /// Returns the matrix, represented in CSC format, that is equal to the given one.
@@ -206,6 +223,7 @@ module Matrix =
                  |> toCSRInplace processor allocationMode)
                     .ToCSC
                 |> ClMatrix.CSC
+            | _ -> failwith "not yet supported"
 
     let map (clContext: ClContext) (opAdd: Expr<'a option -> 'b option>) workGroupSize =
         let mapCOO =
@@ -271,7 +289,7 @@ module Matrix =
         let CSRElementwise =
             CSR.Matrix.map2AtLeastOneToCOO clContext opAdd workGroupSize
 
-        let transposeCOOInplace =
+        let transposeCOOInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
@@ -284,7 +302,7 @@ module Matrix =
                 |> ClMatrix.COO
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
                 CSRElementwise processor allocationMode m1.ToCSR m2.ToCSR
-                |> transposeCOOInplace processor
+                |> transposeCOOInPlace processor
                 |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
@@ -301,15 +319,16 @@ module Matrix =
     /// </remarks>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let transposeInplace (clContext: ClContext) workGroupSize =
-        let COOtransposeInplace =
+    let transposeInPlace (clContext: ClContext) workGroupSize =
+        let COOTransposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) matrix ->
             match matrix with
-            | ClMatrix.COO m -> COOtransposeInplace processor m |> ClMatrix.COO
+            | ClMatrix.COO m -> COOTransposeInPlace processor m |> ClMatrix.COO
             | ClMatrix.CSR m -> ClMatrix.CSC m.ToCSC
             | ClMatrix.CSC m -> ClMatrix.CSR m.ToCSR
+            | ClMatrix.Rows _ -> failwith "not yet supported"
 
     /// <summary>
     /// Transposes the given matrix and returns result as a new matrix.
@@ -352,6 +371,7 @@ module Matrix =
                   Columns = copy processor allocationMode m.Rows
                   Values = copyData processor allocationMode m.Values }
                 |> ClMatrix.CSR
+            | ClMatrix.Rows _ -> failwith "not yet supported"
 
     let mxm
         (opAdd: Expr<'c -> 'c -> 'c option>)

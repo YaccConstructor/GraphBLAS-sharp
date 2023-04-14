@@ -412,35 +412,82 @@ module ClArray =
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
 
-    let append<'a> (clContext: ClContext) workGroupSize =
+    let assign<'a> (clContext: ClContext) workGroupSize =
 
-        let set =
-            <@ fun (ndRange: Range1D) sourceArrayLength appendedArrayLength (inputArray: ClArray<'a>) (result: ClArray<'a>) ->
+        let assign =
+            <@ fun (ndRange: Range1D) startPosition appendedArrayLength (inputArray: ClArray<'a>) (result: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
 
-                let resultPosition = gid + sourceArrayLength
+                let resultPosition = gid + startPosition
 
                 if gid < appendedArrayLength then
 
                     result.[resultPosition] <- inputArray.[gid] @>
 
-        let kernel = clContext.Compile set
+        let kernel = clContext.Compile assign
 
-        fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) (appendedArray: ClArray<'a>) ->
-
-            let resultLength = sourceArray.Length + appendedArray.Length
-
-            let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+        fun (processor: MailboxProcessor<_>) allocationMode (targetArray: ClArray<'a>) startPosition (appendedArray: ClArray<'a>) ->
+            if startPosition < 0 then failwith "The starting position cannot be less than zero"
+            if startPosition + appendedArray.Length > targetArray.Length then
+                failwith "The array should fit completely"
 
             let ndRange =
                 Range1D.CreateValid(appendedArray.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange sourceArray.Length appendedArray.Length appendedArray result))
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange appendedArray.Length appendedArray.Length appendedArray targetArray))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    let concat (clContext: ClContext) workGroupSize =
+
+        let assign = assign clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceArrays: ClArray<'a> seq) ->
+
+            let resultLength =
+                sourceArrays |> Seq.sumBy (fun array -> array.Length)
+
+            let result = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            let assign = assign processor allocationMode result
+
+            // write each array to result
+            Seq.fold (fun previousLength array ->
+                assign previousLength array
+                previousLength + array.Length) 0 sourceArrays
+            |> ignore
+
             result
+
+    let fill (clContext: ClContext) workGroupSize =
+
+        let fill =
+            <@ fun (ndRange: Range1D) firstPosition endPosition (value: ClCell<'a>) (targetArray: ClArray<'a>) ->
+
+                let gid = ndRange.GlobalID0
+                let writePosition = gid + firstPosition
+
+                if writePosition < endPosition then
+
+                    targetArray.[writePosition] <- value.Value @>
+
+        let kernel = clContext.Compile fill
+
+        fun (processor: MailboxProcessor<_>) value firstPosition count (targetArray: ClArray<'a>) ->
+            if firstPosition + count > targetArray.Length then failwith ""
+            if firstPosition < 0 then failwith ""
+            if count <= 0 then failwith "" // TODO()
+
+            let ndRange =
+                Range1D.CreateValid(count, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange firstPosition (firstPosition + count) value targetArray))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            ()

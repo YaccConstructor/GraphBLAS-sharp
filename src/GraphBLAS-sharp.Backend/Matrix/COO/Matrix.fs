@@ -155,3 +155,33 @@ module Matrix =
               Columns = copy queue allocationMode matrix.Columns
               Values = copyData queue allocationMode matrix.Values }
             |> transposeInplace queue
+
+    let concat (clContext: ClContext) workGroupSize =
+
+        let concatValues = ClArray.concat clContext workGroupSize
+
+        let concatIndices = ClArray.concat clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode columnCount rowCount (matrices: ClMatrix.COO<'a> seq) ->
+
+            let resultValues =
+                matrices
+                |> Seq.map (fun matrix -> matrix.Values)
+                |> concatValues processor allocationMode
+
+            let resultColumns =
+                matrices
+                |> Seq.map (fun matrix -> matrix.Columns)
+                |> concatIndices processor allocationMode
+
+            let resultRows =
+                matrices
+                |> Seq.map (fun matrix -> matrix.Rows)
+                |> concatIndices processor allocationMode
+
+            { Context = clContext
+              RowCount = rowCount
+              ColumnCount = columnCount
+              Rows = resultRows
+              Columns = resultColumns
+              Values = resultValues }
