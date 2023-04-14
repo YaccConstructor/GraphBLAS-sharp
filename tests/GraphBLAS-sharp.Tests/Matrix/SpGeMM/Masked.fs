@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Matrix.Mxm
+module GraphBLAS.FSharp.Tests.Backend.Matrix.SpGeMM.Masked
 
 open Expecto
 open Expecto.Logging
@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Test
 
-let logger = Log.create "Mxm.Tests"
+let logger = Log.create "SpGeMM.Masked.Tests"
 
 let context = defaultContext.ClContext
 let workGroupSize = Utils.defaultWorkGroupSize
@@ -79,7 +79,7 @@ let tests =
       let mult = <@ fun x y -> Some(x * y) @>
 
       let mxmFun =
-          Matrix.mxm add mult context workGroupSize
+          Matrix.SpGeMM.masked add mult context workGroupSize
 
       makeTest context q 0 (=) (+) (*) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
@@ -105,8 +105,8 @@ let tests =
               res @>
 
       let mxmFun =
-          Matrix.mxm logicalOr logicalAnd context workGroupSize
+          Matrix.SpGeMM.masked logicalOr logicalAnd context workGroupSize
 
       makeTest context q false (=) (||) (&&) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]
-    |> testList "Mxm tests"
+    |> testList "SpGeMM masked tests"

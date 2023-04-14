@@ -88,4 +88,4 @@ module SparseVector =
             { Context = clContext
               Indices = resultIndices
               Values = resultValues
-              Size = resultValues.Length } // TODO(size)
+              Size = resultValues.Length }

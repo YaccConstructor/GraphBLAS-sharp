@@ -108,7 +108,7 @@ let testFixturesMapNot case =
     [ let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap case false true (fun _ -> not) (=) (fun _ _ -> ArithmeticOperations.notQ) ]
+      createTestMap case false true (fun _ -> not) (=) (fun _ _ -> ArithmeticOperations.notOption) ]
 
 let notTests =
     operationGPUTests "Backend.Matrix.map not tests" testFixturesMapNot

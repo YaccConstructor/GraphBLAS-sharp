@@ -99,7 +99,7 @@ module Utils =
                 Actual value is %A{actual.[i]}, expected %A{expected.[i]}, \n actual: %A{actual} \n expected: %A{expected}"
                 |> failtestf "%s"
 
-    let compareChunksArrays areEqual (actual: 'a [][]) (expected: 'a [][]) message =
+    let compareChunksArrays areEqual (actual: 'a [] []) (expected: 'a [] []) message =
         $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
         |> Expect.equal actual.Length expected.Length
 
@@ -147,6 +147,11 @@ module Utils =
 
         result
 
+    let castMatrixToCSR =
+        function
+        | Matrix.CSR matrix -> matrix
+        | _ -> failwith "matrix format must be CSR"
+
 module HostPrimitives =
     let prefixSumInclude zero add array =
         Array.scan add zero array
@@ -192,6 +197,71 @@ module HostPrimitives =
                 |> Array.reduce reduceOp
                 |> fun value -> key, value)
         |> Array.unzip
+
+    let reduceByKey2D firstKeys secondKeys values reduceOp =
+        Array.zip firstKeys secondKeys
+        |> fun compactedKeys -> reduceByKey compactedKeys values reduceOp
+        ||> Array.map2 (fun (fst, snd) value -> fst, snd, value)
+        |> Array.unzip3
+
+    let generalScatter getBitmap (positions: int array) (values: 'a array) (resultValues: 'a array) =
+
+        if positions.Length <> values.Length then
+            failwith "Lengths must be the same"
+
+        let bitmap = getBitmap positions
+
+        Array.iteri2
+            (fun index bit key ->
+                if bit = 1 && 0 <= key && key < resultValues.Length then
+                    resultValues.[key] <- values.[index])
+            bitmap
+            positions
+
+        resultValues
+
+    let scatterLastOccurrence positions =
+        generalScatter getUniqueBitmapLastOccurrence positions
+
+    let scatterFirstOccurrence positions =
+        generalScatter getUniqueBitmapFirstOccurrence positions
+
+    let gather (positions: int []) (values: 'a []) (result: 'a []) =
+        if positions.Length <> result.Length then
+            failwith "Lengths must be the same"
+
+        Array.iteri
+            (fun index position ->
+                if position >= 0 && position < values.Length then
+                    result.[index] <- values.[position])
+            positions
+
+        result
+
+    let array2DMultiplication zero mul add leftArray rightArray =
+        if Array2D.length2 leftArray
+           <> Array2D.length1 rightArray then
+            failwith "Incompatible matrices"
+
+        let add left right =
+            match left, right with
+            | Some left, Some right -> add left right
+            | Some value, None
+            | None, Some value -> Some value
+            | _ -> None
+
+        Array2D.init
+        <| Array2D.length1 leftArray
+        <| Array2D.length2 rightArray
+        <| fun i j ->
+            (leftArray.[i, *], rightArray.[*, j])
+            // multiply and filter
+            ||> Array.map2 mul
+            |> Array.choose id
+            // add and filter
+            |> Array.map Some
+            |> Array.fold add None
+            |> Option.defaultValue zero
 
     let scanByKey scan keysAndValues =
         Array.groupBy fst keysAndValues

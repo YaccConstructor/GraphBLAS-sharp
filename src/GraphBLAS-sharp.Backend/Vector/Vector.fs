@@ -35,7 +35,7 @@ module Vector =
 
     let ofList (clContext: ClContext) workGroupSize =
         let scatter =
-            Scatter.runInplace clContext workGroupSize
+            Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
@@ -79,7 +79,8 @@ module Vector =
                 ClVector.Dense result
 
     let copy (clContext: ClContext) workGroupSize =
-        let sparseCopy = SparseVector.copy clContext workGroupSize
+        let sparseCopy =
+            SparseVector.copy clContext workGroupSize
 
         let copyOptionData = ClArray.copy clContext workGroupSize
 

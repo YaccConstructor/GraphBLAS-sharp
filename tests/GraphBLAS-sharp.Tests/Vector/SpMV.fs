@@ -76,9 +76,8 @@ let correctnessGenericTest
                 let res = spMV testContext.Queue HostInterop m v
 
                 (ClMatrix.CSR m).Dispose q
-                v.Dispose q
-                let hostRes = res.ToHost q
-                res.Dispose q
+                v.Free q
+                let hostRes = res.ToHostAndFree q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes
             | _ -> failwith "Impossible"
@@ -105,8 +104,8 @@ let testFixturesSpMV (testContext: TestContext) =
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMul
-      createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
+      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMulOption
+      createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption
 
       if Utils.isFloat64Available context.ClDevice then
           createTest
@@ -115,8 +114,8 @@ let testFixturesSpMV (testContext: TestContext) =
               Utils.floatIsEqual
               (+)
               (*)
-              ArithmeticOperations.floatSum
-              ArithmeticOperations.floatMul
+              ArithmeticOperations.floatSumOption
+              ArithmeticOperations.floatMulOption
 
       createTest
           testContext
@@ -124,10 +123,10 @@ let testFixturesSpMV (testContext: TestContext) =
           Utils.float32IsEqual
           (+)
           (*)
-          ArithmeticOperations.float32Sum
-          ArithmeticOperations.float32Mul
+          ArithmeticOperations.float32SumOption
+          ArithmeticOperations.float32MulOption
 
-      createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSum ArithmeticOperations.byteMul ]
+      createTest testContext 0uy (=) (+) (*) ArithmeticOperations.byteSumOption ArithmeticOperations.byteMulOption ]
 
 let tests =
     gpuTests "Backend.Vector.SpMV tests" testFixturesSpMV

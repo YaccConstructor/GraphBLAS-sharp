@@ -6,6 +6,8 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "Reduce.Tests"
 
@@ -28,15 +30,11 @@ let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zer
         )
 
         let actualSum =
-            use clArray = context.CreateClArray array
+            let clArray = context.CreateClArray array
             let total = reduce clArray
 
-            let actualSum = [| zero |]
-
-            let sum =
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(total, actualSum, ch))
-
-            sum.[0]
+            clArray.Free q
+            total.ToHostAndFree q
 
         logger.debug (
             eventX "Actual is {actual}\n"

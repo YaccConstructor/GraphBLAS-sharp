@@ -19,10 +19,14 @@ module Matrix =
             // create row pointers
             let rowPointers =
                 matrix.Rows
-                |> Array.Parallel.map (function None -> 0 | Some array -> array.Size)
+                |> Array.Parallel.map
+                    (function
+                    | None -> 0
+                    | Some array -> array.Size)
                 |> Array.scan (+) 0 // mb device prefix sum ???
 
-            let rowPointers = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, rowPointers)
+            let rowPointers =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, rowPointers)
 
             // compact columns and values
             matrix.Rows
@@ -40,24 +44,26 @@ module Matrix =
 
         let create = ClArray.create clContext workGroupSize
 
-        let concatMatrix = COO.Matrix.concat clContext workGroupSize
+        let concatMatrix =
+            COO.Matrix.concat clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: Rows<'a>) ->
 
             let createMatrix (vector: ClVector.Sparse<_>) rows =
-                 { Context = clContext
-                   RowCount = matrix.RowCount
-                   ColumnCount = matrix.ColumnCount
-                   Rows = rows
-                   Columns = vector.Indices
-                   Values = vector.Values }
+                { Context = clContext
+                  RowCount = matrix.RowCount
+                  ColumnCount = matrix.ColumnCount
+                  Rows = rows
+                  Columns = vector.Indices
+                  Values = vector.Values }
 
             let indices, rowsVectors =
                 matrix.Rows
-                |> Array.Parallel.mapi (fun index optionRow ->
-                    (match optionRow with
-                        | None -> None
-                        | Some row -> Some (index, row)))
+                |> Array.Parallel.mapi
+                    (fun index optionRow ->
+                        (match optionRow with
+                         | None -> None
+                         | Some row -> Some(index, row)))
                 |> Array.Parallel.choose id
                 |> Array.unzip
 
@@ -69,13 +75,12 @@ module Matrix =
             Array.map2 createMatrix rowsVectors rowsIndices
             |> concatMatrix processor allocationMode matrix.ColumnCount matrix.RowCount
 
-    let map (clContext: ClContext) workGroupSize =
-
-        let map2 = Vector.Sparse.Map2.run clContext workGroupSize
-
-        let map = Vector // TODO()
-
-        fun (processor: MailboxProcessor<'a>) ->
-
-            ()
-
+    // let map (clContext: ClContext) workGroupSize =
+    //
+    //     let map2 = Vector.Sparse.Map2.run clContext workGroupSize
+    //
+    //     let map = Vector // TODO()
+    //
+    //     fun (processor: MailboxProcessor<'a>) ->
+    //
+    //         ()

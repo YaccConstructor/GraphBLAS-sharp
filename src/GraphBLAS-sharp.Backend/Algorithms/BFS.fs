@@ -67,7 +67,7 @@ module BFS =
                         not
                         <| (containsNonZero queue front).ToHostAndFree queue
 
-                front.Dispose queue
+                front.Free queue
 
                 levels
             | _ -> failwith "Not implemented"

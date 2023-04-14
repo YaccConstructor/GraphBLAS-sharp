@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Quotes
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Common
 
 module internal Map =
@@ -82,8 +83,7 @@ module internal Map =
 
         fun (queue: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
 
-            let bitmap, values, indices =
-                preparePositions queue vector
+            let bitmap, values, indices = preparePositions queue vector
 
             let resultValues, resultIndices =
                 setPositions queue allocationMode values indices bitmap
@@ -101,13 +101,22 @@ module internal Map =
         let run (clContext: ClContext) workGroupSize op =
 
             let getOptionBitmap =
-                ClArray.map2 clContext workGroupSize
-                <| Map.choose2Bitmap op
+                ClArray.map clContext workGroupSize
+                <| Map.chooseBitmap op
 
-            let prefixSum = PrefixSum.standardExcludeInplace clContext workGroupSize
+            let prefixSum =
+                PrefixSum.standardExcludeInplace clContext workGroupSize
 
-            let scatter = Scatter.runInplace clContext workGroupSize
+            let scatter =
+                Scatter.lastOccurrence clContext workGroupSize
 
-            fun (processor: MailboxProcessor<_>) ->
+            fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
+
+                let bitmap =
+                    getOptionBitmap processor DeviceOnly vector.Values
+
+                let resultLength =
+                    (prefixSum processor bitmap)
+                        .ToHostAndFree processor
 
                 ()

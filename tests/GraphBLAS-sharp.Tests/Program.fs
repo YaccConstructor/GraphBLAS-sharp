@@ -1,5 +1,6 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Tests
 
 // let matrixTests =
 //     testList
@@ -93,4 +94,6 @@ open GraphBLAS.FSharp.Tests.Backend
 //     |> testSequenced
 
 [<EntryPoint>]
-let main argv = Common.ClArray.chunkBySize.allTests |> runTestsWithCLIArgs [] argv
+let main argv =
+    Common.ClArray.chunkBySize.allTests
+    |> runTestsWithCLIArgs [] argv

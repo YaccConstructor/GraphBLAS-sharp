@@ -23,6 +23,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
                 q.PostAndReply(Msg.MsgNotifyMe)
 
+        member this.Dispose q = (this :> IDeviceMemObject).Dispose q
+
         member this.NNZ = this.Values.Length
 
         member this.ToCSC =
@@ -47,6 +49,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
                 q.PostAndReply(Msg.MsgNotifyMe)
+
+        member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 
         member this.NNZ = this.Values.Length
 
@@ -73,9 +77,11 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
                 q.PostAndReply(Msg.MsgNotifyMe)
 
+        member this.Dispose q = (this :> IDeviceMemObject).Dispose q
+
         member this.NNZ = this.Values.Length
 
-    type Rows<'elem when 'elem : struct> =
+    type Rows<'elem when 'elem: struct> =
         { Context: ClContext
           RowCount: int
           ColumnCount: int
@@ -100,6 +106,8 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.PostAndReply(Msg.MsgNotifyMe)
+
+        member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 
         member this.NNZ = this.Values.Length
 

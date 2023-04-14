@@ -72,10 +72,10 @@ module ArithmeticOperations =
     let inline addRightConst zero constant =
         mkUnaryOp zero <@ fun x -> x + constant @>
 
-    let intSum = mkNumericSum 0
-    let byteSum = mkNumericSum 0uy
-    let floatSum = mkNumericSum 0.0
-    let float32Sum = mkNumericSum 0f
+    let intSumOption = mkNumericSum 0
+    let byteSumOption = mkNumericSum 0uy
+    let floatSumOption = mkNumericSum 0.0
+    let float32SumOption = mkNumericSum 0f
 
     let boolSumAtLeastOne =
         <@ fun (_: AtLeastOne<bool, bool>) -> Some true @>
@@ -85,7 +85,7 @@ module ArithmeticOperations =
     let floatSumAtLeastOne = mkNumericSumAtLeastOne 0.0
     let float32SumAtLeastOne = mkNumericSumAtLeastOne 0f
 
-    let boolMul =
+    let boolMulOption =
         <@ fun (x: bool option) (y: bool option) ->
             let mutable res = false
 
@@ -101,10 +101,10 @@ module ArithmeticOperations =
     let inline mulRightConst zero constant =
         mkUnaryOp zero <@ fun x -> x * constant @>
 
-    let intMul = mkNumericMul 0
-    let byteMul = mkNumericMul 0uy
-    let floatMul = mkNumericMul 0.0
-    let float32Mul = mkNumericMul 0f
+    let intMulOption = mkNumericMul 0
+    let byteMulOption = mkNumericMul 0uy
+    let floatMulOption = mkNumericMul 0.0
+    let float32MulOption = mkNumericMul 0f
 
     let boolMulAtLeastOne =
         <@ fun (values: AtLeastOne<bool, bool>) ->
@@ -121,8 +121,46 @@ module ArithmeticOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let notQ =
+    let notOption =
         <@ fun x ->
             match x with
             | Some true -> None
             | _ -> Some true @>
+
+    let inline private binOpQ zero op =
+        <@ fun (left: 'a) (right: 'a) ->
+            let result = (%op) left right
+
+            if result = zero then
+                None
+            else
+                Some result @>
+
+    let inline private binOp zero op =
+        fun left right ->
+            let result = op left right
+
+            if result = zero then
+                None
+            else
+                Some result
+
+    let inline createPair zero op opQ = binOpQ zero opQ, binOp zero op
+
+    // addition
+    let intAdd = createPair 0 (+) <@ (+) @>
+
+    let boolAdd = createPair false (||) <@ (||) @>
+
+    let floatAdd = createPair 0.0 (+) <@ (+) @>
+
+    let float32Add = createPair 0.0f (+) <@ (+) @>
+
+    // multiplication
+    let intMul = createPair 0 (*) <@ (*) @>
+
+    let boolMul = createPair true (&&) <@ (&&) @>
+
+    let floatMul = createPair 0.0 (*) <@ (*) @>
+
+    let float32Mul = createPair 0.0f (*) <@ (*) @>

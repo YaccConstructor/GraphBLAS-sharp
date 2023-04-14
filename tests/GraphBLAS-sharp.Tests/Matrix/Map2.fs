@@ -113,13 +113,13 @@ let testFixturesMap2Add case =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSum Matrix.map2
-      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSum Matrix.map2
+      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumOption Matrix.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          creatTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSum Matrix.map2
+          creatTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumOption Matrix.map2
 
-      creatTestMap2Add case 0.0f (+) Utils.float32IsEqual ArithmeticOperations.float32Sum Matrix.map2
-      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSum Matrix.map2 ]
+      creatTestMap2Add case 0.0f (+) Utils.float32IsEqual ArithmeticOperations.float32SumOption Matrix.map2
+      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumOption Matrix.map2 ]
 
 let addTests =
     operationGPUTests "Backend.Matrix.map2 add tests" testFixturesMap2Add

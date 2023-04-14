@@ -7,6 +7,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "ClArray.Copy.Tests"
 
@@ -20,13 +21,13 @@ let config = Utils.defaultConfig
 
 let makeTest<'a when 'a: equality> copyFun (array: array<'a>) =
     if array.Length > 0 then
-        use clArray = context.CreateClArray array
+        let clArray = context.CreateClArray array
 
         let actual =
-            use clActual: ClArray<'a> = copyFun q HostInterop clArray
+            (copyFun q HostInterop clArray: ClArray<_>)
+                .ToHostAndFree q
 
-            let actual = Array.zeroCreate clActual.Length
-            q.PostAndReply(fun ch -> Msg.CreateToHostMsg(clActual, actual, ch))
+        clArray.Free q
 
         logger.debug (
             eventX "Actual is {actual}"
