@@ -17,8 +17,6 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 
-// let context = Context.defaultContext.ClContext
-
 let config =
     { Utils.defaultConfig with
           arbitrary = [ typeof<Generators.PairOfMatricesOfCompatibleSize> ]
