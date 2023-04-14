@@ -56,7 +56,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let boolSum =
+    let boolSumOption =
         <@ fun (x: bool option) (y: bool option) ->
             let mutable res = false
 

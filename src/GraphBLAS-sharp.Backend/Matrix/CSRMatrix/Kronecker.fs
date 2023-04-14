@@ -11,6 +11,11 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
+    type private optionalMatrix<'elem when 'elem: struct> =
+        { RowCount: int
+          ColumnCount: int
+          Matrix: (ClArray<int> * ClArray<int> * ClArray<'elem>) option }
+
     let mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
@@ -177,11 +182,6 @@ module internal Kronecker =
 
             allRows, allColumns, mergedValues
 
-    type private optionalMatrix<'elem when 'elem: struct> =
-        { RowCount: int
-          ColumnCount: int
-          Matrix: (ClArray<int> * ClArray<int> * ClArray<'elem>) option }
-
     let private insertMatrixWithOffset (clContext: ClContext) workGroupSize =
 
         let mapWithValueClArray =
@@ -232,7 +232,7 @@ module internal Kronecker =
         =
 
         let mapWithValueToCOO =
-            MapWithValue.runToCOO clContext op workGroupSize
+            Map.WithValue.runToCOO clContext op workGroupSize
 
         let insert =
             insertMatrixWithOffset clContext workGroupSize

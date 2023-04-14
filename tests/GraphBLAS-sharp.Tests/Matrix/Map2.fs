@@ -112,7 +112,7 @@ let testFixturesMap2Add case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSum Matrix.map2
+      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSumOption Matrix.map2
       creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumOption Matrix.map2
 
       if Utils.isFloat64Available context.ClDevice then

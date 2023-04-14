@@ -107,7 +107,7 @@ let addTestFixtures case =
           createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSumOption Vector.map2
 
       createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32SumOption Vector.map2
-      createTest case (=) false (||) ArithmeticOperations.boolSum Vector.map2
+      createTest case (=) false (||) ArithmeticOperations.boolSumOption Vector.map2
       createTest case (=) 0uy (+) ArithmeticOperations.byteSumOption Vector.map2 ]
 
 let addTests =

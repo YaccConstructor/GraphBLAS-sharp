@@ -221,7 +221,7 @@ type EWiseAddBenchmarks4Float32COOWithDataTransfer() =
 type EWiseAddBenchmarks4BoolCOOWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClMatrix.COO<bool>,bool>(
-        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.boolSum wgSize),
+        (fun context wgSize -> COO.Matrix.map2 context ArithmeticOperations.boolSumOption wgSize),
         (fun _ -> true),
         (fun _ -> true),
         Matrix.ToBackendCOO<bool>
@@ -247,7 +247,7 @@ type EWiseAddBenchmarks4Float32CSRWithoutDataTransfer() =
 type EWiseAddBenchmarks4BoolCSRWithoutDataTransfer() =
 
     inherit EWiseAddBenchmarksWithoutDataTransfer<ClMatrix.CSR<bool>,bool>(
-        (fun context wgSize -> CSR.Matrix.map2 context ArithmeticOperations.boolSum wgSize),
+        (fun context wgSize -> CSR.Matrix.map2 context ArithmeticOperations.boolSumOption wgSize),
         (fun _ -> true),
         (fun _ -> true),
         Matrix.ToBackendCSR
