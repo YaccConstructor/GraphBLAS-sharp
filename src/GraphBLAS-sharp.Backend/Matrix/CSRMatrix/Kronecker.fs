@@ -11,12 +11,14 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
+    /// Represents sparse COO matrix. Supports zero matrix.
     type private optionalMatrix<'elem when 'elem: struct> =
         { RowCount: int
           ColumnCount: int
           Matrix: (ClArray<int> * ClArray<int> * ClArray<'elem>) option }
 
-    let mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    /// Merges 2 disjoint matrices.
+    let private mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
             <@ fun (ndRange: Range1D) firstSide secondSide sumOfSides (firstRowsBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowsBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'a>) (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (mergedValuesBuffer: ClArray<'a>) ->
@@ -182,6 +184,12 @@ module internal Kronecker =
 
             allRows, allColumns, mergedValues
 
+    /// <summary>
+    /// inserts one matrix to another.
+    /// </summary>
+    /// <remarks>
+    /// Inserted matrix with shifted indices should not intersect the main matrix.
+    /// </remarks>
     let private insertMatrixWithOffset (clContext: ClContext) workGroupSize =
 
         let mapWithValueClArray =
