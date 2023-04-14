@@ -261,6 +261,21 @@ module HostPrimitives =
         |> Array.map (fun (_, array) -> Array.map snd array |> scan |> fst)
         |> Array.concat
 
+    let array2DKroneckerProduct leftMatrix rightMatrix op =
+        Array2D.init
+        <| (Array2D.length1 leftMatrix)
+           * (Array2D.length1 rightMatrix)
+        <| (Array2D.length2 leftMatrix)
+           * (Array2D.length2 rightMatrix)
+        <| fun i j ->
+            let leftElement =
+                leftMatrix.[i / (Array2D.length1 rightMatrix), j / (Array2D.length2 rightMatrix)]
+
+            let rightElement =
+                rightMatrix.[i % (Array2D.length1 rightMatrix), j % (Array2D.length2 rightMatrix)]
+
+            op leftElement rightElement
+
 module Context =
     type TestContext =
         { ClContext: ClContext

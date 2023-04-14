@@ -15,27 +15,12 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 200
-          maxTest = 20 }
+          endSize = 100
+          maxTest = 50 }
 
 let logger = Log.create "kronecker.Tests"
 
 let workGroupSize = Utils.defaultWorkGroupSize
-
-let kroneckerExpected leftMatrix rightMatrix op =
-    Array2D.init
-    <| (Array2D.length1 leftMatrix)
-       * (Array2D.length1 rightMatrix)
-    <| (Array2D.length2 leftMatrix)
-       * (Array2D.length2 rightMatrix)
-    <| fun i j ->
-        let leftElement =
-            leftMatrix.[i / (Array2D.length1 rightMatrix), j / (Array2D.length2 rightMatrix)]
-
-        let rightElement =
-            rightMatrix.[i % (Array2D.length1 rightMatrix), j % (Array2D.length2 rightMatrix)]
-
-        op leftElement rightElement
 
 let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
     let m1 =
@@ -46,7 +31,7 @@ let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,],
 
     if m1.NNZ > 0 && m2.NNZ > 0 then
         let expected =
-            kroneckerExpected leftMatrix rightMatrix op
+            HostPrimitives.array2DKroneckerProduct leftMatrix rightMatrix op
 
         let expected =
             Utils.createMatrixFromArray2D COO expected (isEqual zero)
