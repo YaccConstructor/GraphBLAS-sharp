@@ -411,3 +411,36 @@ module ClArray =
             chunkBySizeLazy processor allocationMode chunkSize sourceArray
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
+
+    let append<'a> (clContext: ClContext) workGroupSize =
+
+        let set =
+            <@ fun (ndRange: Range1D) sourceArrayLength appendedArrayLength (inputArray: ClArray<'a>) (result: ClArray<'a>) ->
+
+                let gid = ndRange.GlobalID0
+
+                let resultPosition = gid + sourceArrayLength
+
+                if gid < appendedArrayLength then
+
+                    result.[resultPosition] <- inputArray.[gid] @>
+
+        let kernel = clContext.Compile set
+
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) (appendedArray: ClArray<'a>) ->
+
+            let resultLength = sourceArray.Length + appendedArray.Length
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            let ndRange =
+                Range1D.CreateValid(appendedArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange sourceArray.Length appendedArray.Length appendedArray result))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result

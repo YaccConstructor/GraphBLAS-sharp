@@ -79,25 +79,18 @@ module Vector =
                 ClVector.Dense result
 
     let copy (clContext: ClContext) workGroupSize =
-        let copy = ClArray.copy clContext workGroupSize
-
-        let copyData = ClArray.copy clContext workGroupSize
+        let sparseCopy = SparseVector.copy clContext workGroupSize
 
         let copyOptionData = ClArray.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) ->
             match vector with
             | ClVector.Sparse vector ->
-                { Context = clContext
-                  Indices = copy processor allocationMode vector.Indices
-                  Values = copyData processor allocationMode vector.Values
-                  Size = vector.Size }
-                |> ClVector.Sparse
+                ClVector.Sparse
+                <| sparseCopy processor allocationMode vector
             | ClVector.Dense vector ->
                 ClVector.Dense
                 <| copyOptionData processor allocationMode vector
-
-    let mask = copy
 
     let toSparse (clContext: ClContext) workGroupSize =
         let toSparse =

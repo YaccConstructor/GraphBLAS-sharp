@@ -9,6 +9,17 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
 module SparseVector =
+    let copy (clContext: ClContext) workGroupSize =
+        let copy = ClArray.copy clContext workGroupSize
+
+        let copyData = ClArray.copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: Sparse<'a>) ->
+            { Context = clContext
+              Indices = copy processor allocationMode vector.Indices
+              Values = copyData processor allocationMode vector.Values
+              Size = vector.Size }
+
     let map2 = Map2.run
 
     let map2AtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =

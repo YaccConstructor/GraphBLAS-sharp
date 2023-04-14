@@ -6,12 +6,16 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
+
         let copy = ClArray.copy clContext workGroupSize
 
         let copyData = ClArray.copy clContext workGroupSize
+
+        let vectorCopy = Vector.Sparse.SparseVector.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -39,6 +43,18 @@ module Matrix =
                       Rows = copy processor allocationMode m.Rows
                       ColumnPointers = copy processor allocationMode m.ColumnPointers
                       Values = copyData processor allocationMode m.Values }
+            | ClMatrix.Rows matrix ->
+                matrix.Rows
+                |> Array.map (function
+                    Some vector -> Some <| vectorCopy processor allocationMode vector
+                    | None -> None)
+                |> fun rows ->
+                    { Context = clContext
+                      RowCount = matrix.RowCount
+                      ColumnCount = matrix.ColumnCount
+                      Rows = rows
+                      NNZ = matrix.NNZ  }
+                    |> ClMatrix.Rows
 
     /// <summary>
     /// Creates a new matrix, represented in CSR format, that is equal to the given one.
