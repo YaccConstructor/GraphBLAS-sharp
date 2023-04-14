@@ -187,8 +187,7 @@ module internal Kronecker =
         let mapWithValueClArray =
             ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
 
-        let mergeDisjointCOO =
-            mergeDisjoint clContext workGroupSize
+        let mergeDisjointCOO = mergeDisjoint clContext workGroupSize
 
         let copyClArray = ClArray.copy clContext workGroupSize
 

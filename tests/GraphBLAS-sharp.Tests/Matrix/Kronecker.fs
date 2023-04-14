@@ -15,13 +15,29 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 50 }
+          endSize = 200
+          maxTest = 10 }
 
 let logger = Log.create "kronecker.Tests"
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
-let makeTest context q zero isEqual mul kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
+let kroneckerExpected leftMatrix rightMatrix op =
+    Array2D.init
+    <| (Array2D.length1 leftMatrix)
+       * (Array2D.length1 rightMatrix)
+    <| (Array2D.length2 leftMatrix)
+       * (Array2D.length2 rightMatrix)
+    <| fun i j ->
+        let leftElement =
+            leftMatrix.[i / (Array2D.length1 rightMatrix), j / (Array2D.length2 rightMatrix)]
+
+        let rightElement =
+            rightMatrix.[i % (Array2D.length1 rightMatrix), j % (Array2D.length2 rightMatrix)]
+
+        op leftElement rightElement
+
+let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
     let m1 =
         Utils.createMatrixFromArray2D CSR leftMatrix (isEqual zero)
 
@@ -29,43 +45,34 @@ let makeTest context q zero isEqual mul kroneckerFun (leftMatrix: 'a [,], rightM
         Utils.createMatrixFromArray2D CSR rightMatrix (isEqual zero)
 
     if m1.NNZ > 0 && m2.NNZ > 0 then
-        let m1 = m1.ToDevice context
-        let m2 = m2.ToDevice context
-
-        let (result: ClMatrix<'a>) =
-            kroneckerFun q ClContext.HostInterop m1 m2
-
-        let actual = result.ToHost q
-
-        m1.Dispose q
-        m2.Dispose q
-        result.Dispose q
-
         let expected =
-            Array2D.init
-            <| (Array2D.length1 leftMatrix)
-               * (Array2D.length1 rightMatrix)
-            <| (Array2D.length2 leftMatrix)
-               * (Array2D.length2 rightMatrix)
-            <| fun i j ->
-                let leftElement =
-                    leftMatrix.[i / (Array2D.length1 rightMatrix), j / (Array2D.length2 rightMatrix)]
-
-                let rightElement =
-                    rightMatrix.[i % (Array2D.length1 rightMatrix), j % (Array2D.length2 rightMatrix)]
-
-                mul leftElement rightElement
+            kroneckerExpected leftMatrix rightMatrix op
 
         let expected =
             Utils.createMatrixFromArray2D COO expected (isEqual zero)
 
-        // Check result
-        "Matrices should be equal"
-        |> Expect.equal actual expected
+        if expected.NNZ > 0 then
+
+            let m1 = m1.ToDevice context
+            let m2 = m2.ToDevice context
+
+            let (result: ClMatrix<'a>) =
+                kroneckerFun processor ClContext.HostInterop m1 m2
+
+            let actual = result.ToHost processor
+
+            m1.Dispose processor
+            m2.Dispose processor
+            result.Dispose processor
+
+            // Check result
+            "Matrices should be equal"
+            |> Expect.equal actual expected
 
 let createGeneralTest (context: ClContext) (queue: MailboxProcessor<Msg>) (zero: 'a) isEqual op opQ testName =
 
-    let kronecker = Matrix.kronecker opQ context workGroupSize
+    let kronecker =
+        Matrix.kronecker opQ context workGroupSize
 
     makeTest context queue zero isEqual op kronecker
     |> testPropertyWithConfig config $"test on %A{typeof<'a>} %s{testName}"
