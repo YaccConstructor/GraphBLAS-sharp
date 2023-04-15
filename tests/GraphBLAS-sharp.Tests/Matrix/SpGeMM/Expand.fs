@@ -281,11 +281,5 @@ let generalTests (testContext: TestContext) =
           ArithmeticOperations.boolAdd
           ArithmeticOperations.boolMul
           Matrix.SpGeMM.expand ]
-    |> testList "general"
 
-let tests (testContext: TestContext) =
-    [ getSegmentsTests testContext
-      expandTests testContext
-      generalTests testContext ]
-
-let gpuTests = TestCases.gpuTests "SpGeMM tests" tests
+let gpuTests = TestCases.gpuTests "SpGeMM tests" generalTests
