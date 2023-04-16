@@ -7,6 +7,8 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Quotes
+open FSharp.Quotations.Evaluator
 
 module Matrix =
     let toCSR (clContext: ClContext) workGroupSize =
@@ -74,13 +76,3 @@ module Matrix =
 
             Array.map2 createMatrix rowsVectors rowsIndices
             |> concatMatrix processor allocationMode matrix.ColumnCount matrix.RowCount
-
-    // let map (clContext: ClContext) workGroupSize =
-    //
-    //     let map2 = Vector.Sparse.Map2.run clContext workGroupSize
-    //
-    //     let map = Vector // TODO()
-    //
-    //     fun (processor: MailboxProcessor<'a>) ->
-    //
-    //         ()

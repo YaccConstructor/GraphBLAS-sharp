@@ -23,3 +23,11 @@ module Convert =
             match rightItem with
             | Some _ -> (%op) leftItem None
             | None -> (%op) leftItem (Some value) @>
+
+    let map2ToMapLeftNone (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun rightItem -> (%op) None rightItem @>
+
+    let map2ToMapRightNone (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun leftItem -> (%op) leftItem None  @>
+
+    let map2ToNoneNone (op: Expr<'a option -> 'b option -> 'c option>) = <@ (%op) None None @>

@@ -40,7 +40,7 @@ module Matrix =
               Columns = cols
               Values = values }
 
-    let toCOOInplace (clContext: ClContext) workGroupSize =
+    let toCOOInPlace (clContext: ClContext) workGroupSize =
         let prepare =
             Common.expandRowPointers clContext workGroupSize
 
@@ -77,35 +77,35 @@ module Matrix =
 
         Map2AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
-    let transposeInplace (clContext: ClContext) workGroupSize =
+    let transposeInPlace (clContext: ClContext) workGroupSize =
 
-        let toCOOInplace = toCOOInplace clContext workGroupSize
+        let toCOOInPlace = toCOOInPlace clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
-            toCOOInplace queue allocationMode matrix
-            |> transposeInplace queue
-            |> toCSRInplace queue allocationMode
+            toCOOInPlace queue allocationMode matrix
+            |> transposeInPlace queue
+            |> toCSRInPlace queue allocationMode
 
     let transpose (clContext: ClContext) workGroupSize =
 
         let toCOO = toCOO clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix
-            |> transposeInplace queue
-            |> toCSRInplace queue allocationMode
+            |> transposeInPlace queue
+            |> toCSRInPlace queue allocationMode
 
     let byRowsLazy (clContext: ClContext) workGroupSize =
 
@@ -148,40 +148,3 @@ module Matrix =
             runLazy processor allocationMode matrix
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
-
-    module SpGeMM =
-        let masked
-            (clContext: ClContext)
-            workGroupSize
-            (opAdd: Expr<'c -> 'c -> 'c option>)
-            (opMul: Expr<'a -> 'b -> 'c option>)
-            =
-
-            let run =
-                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
-
-            fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
-
-                run queue matrixLeft matrixRight mask
-
-        let expand
-            (clContext: ClContext)
-            workGroupSize
-            (opAdd: Expr<'c -> 'c -> 'c option>)
-            (opMul: Expr<'a -> 'b -> 'c option>)
-            =
-
-            let run =
-                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
-
-            fun (queue: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-
-                let values, columns, rows =
-                    run queue allocationMode leftMatrix rightMatrix
-
-                { COO.Context = clContext
-                  ColumnCount = rightMatrix.ColumnCount
-                  RowCount = leftMatrix.RowCount
-                  Values = values
-                  Columns = columns
-                  Rows = rows }

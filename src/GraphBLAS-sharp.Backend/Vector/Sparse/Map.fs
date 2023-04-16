@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Common
 
 module internal Map =
-    let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
+    let private preparePositions<'a, 'b> (clContext: ClContext) workGroupSize opAdd =
         // we can decrease memory requirements by two pass map (like choose)
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) dataLength vectorLength (values: ClArray<'a>) (indices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultIndices: ClArray<int>) ->
@@ -71,8 +71,8 @@ module internal Map =
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
         (clContext: ClContext)
-        (opAdd: Expr<'a option -> 'b option>)
         workGroupSize
+        (opAdd: Expr<'a option -> 'b option>)
         =
 
         let preparePositions =
@@ -97,7 +97,7 @@ module internal Map =
               Values = resultValues
               Size = vector.Size }
 
-    module AtLeastOne =
+    module OnlySome =
         let run (clContext: ClContext) workGroupSize op =
 
             let getOptionBitmap =
@@ -110,6 +110,8 @@ module internal Map =
             let scatter =
                 Scatter.lastOccurrence clContext workGroupSize
 
+            let setOption = ClArray.assignOption clContext workGroupSize op
+
             fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
 
                 let bitmap =
@@ -119,4 +121,17 @@ module internal Map =
                     (prefixSum processor bitmap)
                         .ToHostAndFree processor
 
-                ()
+                let resultValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                setOption processor vector.Values bitmap resultValues
+
+                let resultIndices =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                scatter processor vector.Indices bitmap resultIndices
+
+                { Context = clContext
+                  Indices = resultIndices
+                  Values = resultValues
+                  Size = vector.Size }

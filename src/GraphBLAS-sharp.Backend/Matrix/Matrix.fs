@@ -97,7 +97,7 @@ module Matrix =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         let transposeInPlace =
-            CSR.Matrix.transposeInplace clContext workGroupSize
+            CSR.Matrix.transposeInPlace clContext workGroupSize
 
         let rowsToCSR =
             Rows.Matrix.toCSR clContext workGroupSize
@@ -151,7 +151,7 @@ module Matrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOOInPlace (clContext: ClContext) workGroupSize =
         let toCOOInPlace =
-            CSR.Matrix.toCOOInplace clContext workGroupSize
+            CSR.Matrix.toCOOInPlace clContext workGroupSize
 
         let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
@@ -212,7 +212,7 @@ module Matrix =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         let transposeCSRInplace =
-            CSR.Matrix.transposeInplace clContext workGroupSize
+            CSR.Matrix.transposeInPlace clContext workGroupSize
 
         let transposeCOOInplace =
             COO.Matrix.transposeInplace clContext workGroupSize
@@ -388,7 +388,7 @@ module Matrix =
             =
 
             let runCSRnCSC =
-                CSR.Matrix.SpGeMM.masked clContext workGroupSize opAdd opMul
+                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
 
             fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMatrix<_>) ->
                 match matrix1, matrix2, mask with
@@ -403,7 +403,7 @@ module Matrix =
             =
 
             let run =
-                CSR.Matrix.SpGeMM.expand clContext workGroupSize opAdd opMul
+                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
 
             fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
                 match leftMatrix, rightMatrix with

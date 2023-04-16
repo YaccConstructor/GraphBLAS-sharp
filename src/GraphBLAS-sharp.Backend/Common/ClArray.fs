@@ -335,7 +335,7 @@ module ClArray =
     let getUniqueBitmap2LastOccurrence clContext =
         getUniqueBitmap2General getUniqueBitmapLastOccurrence clContext
 
-    let private assignOption (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b option>) =
+    let assignOption (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b option>) =
 
         let assign =
             <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) resultLength ->
@@ -574,7 +574,7 @@ module ClArray =
 
         let kernel = clContext.Compile assign
 
-        fun (processor: MailboxProcessor<_>) allocationMode (targetArray: ClArray<'a>) startPosition (appendedArray: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (targetArray: ClArray<'a>) startPosition (appendedArray: ClArray<'a>) ->
             if startPosition < 0 then
                 failwith "The starting position cannot be less than zero"
 
@@ -605,9 +605,9 @@ module ClArray =
                 |> Seq.sumBy (fun array -> array.Length)
 
             let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            let assign = assign processor allocationMode result
+            let assign = assign processor result
 
             // write each array to result
             Seq.fold
@@ -652,3 +652,27 @@ module ClArray =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let pairwise (clContext: ClContext) workGroupSize =
+
+        let idGather =
+            Gather.runInit Map.id clContext workGroupSize
+
+        let incGather =
+            Gather.runInit Map.inc clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) ->
+
+            let resultLength = values.Length - 1
+
+            let firstItems =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            idGather processor values firstItems
+
+            let secondItems =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            incGather processor values secondItems
+
+            firstItems, secondItems

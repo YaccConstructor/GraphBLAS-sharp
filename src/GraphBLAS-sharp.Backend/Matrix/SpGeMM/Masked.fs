@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.CSR.SpGeMM
+namespace GraphBLAS.FSharp.Backend.Matrix.SpGeMM
 
 open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp

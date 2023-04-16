@@ -315,7 +315,7 @@ module Reduce =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                reducedKeys, reducedValues
+                reducedValues, reducedKeys
 
         /// <summary>
         /// Reduces values by key. Each segment is reduced by one work item.
@@ -381,7 +381,7 @@ module Reduce =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                reducedKeys, reducedValues
+                reducedValues, reducedKeys
 
         /// <summary>
         /// Reduces values by key. One work group participates in the reduction.
@@ -470,8 +470,120 @@ module Reduce =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                reducedKeys, reducedValues
+                reducedValues, reducedKeys
 
+        /// <summary>
+        /// Reduces values by key. Each segment is reduced by one work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
+        let segmentSequentialOption<'a> (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a option>) =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (resultPositions: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeyCount then
+                        let startPosition = offsets.[gid]
+
+                        let firstSourceKey = keys.[startPosition]
+
+                        let mutable sum = Some values.[startPosition]
+
+                        let mutable currentPosition = startPosition + 1
+
+                        while currentPosition < keysLength
+                              && firstSourceKey = keys.[currentPosition] do
+
+                            match sum with
+                            | Some value ->
+                                let result =
+                                    ((%reduceOp) value values.[currentPosition]) // brahma error
+
+                                sum <- result
+                            | None -> sum <- Some values.[currentPosition]
+
+                            currentPosition <- currentPosition + 1
+
+                        match sum with
+                        | Some value ->
+                            reducedValues.[gid] <- value
+                            resultPositions.[gid] <- 1
+                        | None -> resultPositions.[gid] <- 0
+
+                        firstReducedKeys.[gid] <- firstSourceKey @>
+
+            let kernel = clContext.Compile kernel
+
+            let scatterData =
+                Scatter.lastOccurrence clContext workGroupSize
+
+            let scatterIndices =
+                Scatter.lastOccurrence clContext workGroupSize
+
+            let prefixSum =
+                PrefixSum.standardExcludeInplace clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) ->
+
+                let reducedValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let reducedKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let resultPositions =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+                let ndRange =
+                    Range1D.CreateValid(resultLength, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                resultLength
+                                keys.Length
+                                offsets
+                                keys
+                                values
+                                reducedValues
+                                reducedKeys
+                                resultPositions)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                let resultLength =
+                    (prefixSum processor resultPositions)
+                        .ToHostAndFree processor
+
+                if resultLength =  0 then None
+                else
+                    let resultValues =
+                        clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                    scatterData processor resultPositions reducedValues resultValues
+
+                    reducedValues.Free processor
+
+                    let resultKeys =
+                        clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                    scatterIndices processor resultPositions reducedKeys resultKeys // TODO(mb error)
+
+                    reducedKeys.Free processor
+                    resultPositions.Free processor
+
+                    Some (resultValues, reducedKeys)
     module ByKey2D =
         /// <summary>
         /// Reduce an array of values by 2D keys using a single work item.
@@ -550,7 +662,7 @@ module Reduce =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                firstReducedKeys, secondReducedKeys, reducedValues
+                reducedValues, firstReducedKeys, secondReducedKeys
 
         /// <summary>
         /// Reduces values by key. Each segment is reduced by one work item.
@@ -625,7 +737,7 @@ module Reduce =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-                firstReducedKeys, secondReducedKeys, reducedValues
+                reducedValues, firstReducedKeys, secondReducedKeys
 
         /// <summary>
         /// Reduces values by key. Each segment is reduced by one work item.
@@ -729,27 +841,29 @@ module Reduce =
                     (prefixSum processor resultPositions)
                         .ToHostAndFree processor
 
-                let resultValues =
-                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                if resultLength = 0 then None
+                else
+                    let resultValues =
+                        clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                scatterData processor resultPositions reducedValues resultValues
+                    scatterData processor resultPositions reducedValues resultValues
 
-                reducedValues.Free processor
+                    reducedValues.Free processor
 
-                let resultFirstKeys =
-                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                    let resultFirstKeys =
+                        clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                scatterIndices processor resultPositions firstReducedKeys resultFirstKeys
+                    scatterIndices processor resultPositions firstReducedKeys resultFirstKeys
 
-                firstReducedKeys.Free processor
+                    firstReducedKeys.Free processor
 
-                let resultSecondKeys =
-                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                    let resultSecondKeys =
+                        clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-                scatterIndices processor resultPositions secondReducedKeys resultSecondKeys
+                    scatterIndices processor resultPositions secondReducedKeys resultSecondKeys
 
-                secondReducedKeys.Free processor
+                    secondReducedKeys.Free processor
 
-                resultPositions.Free processor
+                    resultPositions.Free processor
 
-                resultFirstKeys, resultSecondKeys, resultValues
+                    Some (resultValues, resultFirstKeys, resultSecondKeys)
