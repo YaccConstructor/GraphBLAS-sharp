@@ -607,12 +607,10 @@ module ClArray =
             let result =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            let assign = assign processor result
-
             // write each array to result
             Seq.fold
-                (fun previousLength array ->
-                    assign previousLength array
+                (fun previousLength (array: ClArray<_>) ->
+                    assign processor array previousLength result
                     previousLength + array.Length)
                 0
                 sourceArrays

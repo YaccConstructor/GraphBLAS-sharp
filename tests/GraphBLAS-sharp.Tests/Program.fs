@@ -95,5 +95,5 @@ open GraphBLAS.FSharp.Tests
 
 [<EntryPoint>]
 let main argv =
-    testList "lol" [ Common.ClArray.Assign.tests ]
+    testList "lol" [ Common.ClArray.Concat.tests ] |> testSequenced
     |> runTestsWithCLIArgs [] argv
