@@ -562,34 +562,34 @@ module ClArray =
     let assign<'a> (clContext: ClContext) workGroupSize =
 
         let assign =
-            <@ fun (ndRange: Range1D) startPosition appendedArrayLength (inputArray: ClArray<'a>) (result: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) targetPosition sourceArrayLength (sourceArray: ClArray<'a>) (targetArray: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
 
-                let resultPosition = gid + startPosition
+                let resultPosition = gid + targetPosition
 
-                if gid < appendedArrayLength then
+                if gid < sourceArrayLength then
 
-                    result.[resultPosition] <- inputArray.[gid] @>
+                    targetArray.[resultPosition] <- sourceArray.[gid] @>
 
         let kernel = clContext.Compile assign
 
-        fun (processor: MailboxProcessor<_>) (targetArray: ClArray<'a>) startPosition (appendedArray: ClArray<'a>) ->
-            if startPosition < 0 then
+        fun (processor: MailboxProcessor<_>) (sourceArray: ClArray<'a>) targetPosition (targetArray: ClArray<'a>) ->
+            if targetPosition < 0 then
                 failwith "The starting position cannot be less than zero"
 
-            if startPosition + appendedArray.Length > targetArray.Length then
+            if targetPosition + sourceArray.Length > targetArray.Length then
                 failwith "The array should fit completely"
 
             let ndRange =
-                Range1D.CreateValid(appendedArray.Length, workGroupSize)
+                Range1D.CreateValid(targetArray.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        kernel.KernelFunc ndRange appendedArray.Length appendedArray.Length appendedArray targetArray)
+                        kernel.KernelFunc ndRange targetPosition sourceArray.Length sourceArray targetArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))

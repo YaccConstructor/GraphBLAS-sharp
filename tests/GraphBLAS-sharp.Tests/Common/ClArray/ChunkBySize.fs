@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.chunkBySize
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.ChunkBySize
 
 open Expecto
 open Brahma.FSharp

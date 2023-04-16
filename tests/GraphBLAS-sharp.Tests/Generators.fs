@@ -956,3 +956,63 @@ module Generators =
         static member BoolType() =
             arrayAndChunkPosition <| Arb.generate<bool>
             |> Arb.fromGen
+
+    type AssignArray() =
+        static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
+            gen {
+                let! targetArrayLength = Gen.sized <| fun size -> Gen.choose (2, size)
+
+                let! targetArray = Gen.arrayOfLength targetArrayLength valuesGenerator
+
+                let! sourceArrayLength = Gen.choose (1, targetArrayLength)
+
+                let! sourceArray = Gen.arrayOfLength sourceArrayLength valuesGenerator
+
+                let! startPosition = Gen.choose (0, targetArrayLength - sourceArrayLength)
+
+                return (sourceArray, targetArray, startPosition)
+            }
+
+        static member IntType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfVectorsOfEqualSize
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfVectorsOfEqualSize
+            <| (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            pairOfVectorsOfEqualSize <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfVectorsOfEqualSize <| Arb.generate<bool>
+            |> Arb.fromGen
