@@ -200,7 +200,7 @@ module Expand =
     let reduce (clContext: ClContext) workGroupSize opAdd =
 
         let reduce =
-            Reduce.ByKey.segmentSequentialOption clContext workGroupSize opAdd // TODO(tests)
+            Reduce.ByKey.Option.segmentSequential clContext workGroupSize opAdd
 
         let getUniqueBitmap =
             ClArray.getUniqueBitmapLastOccurrence clContext workGroupSize

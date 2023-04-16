@@ -513,6 +513,83 @@ module Generators =
     type ArrayOfDistinctKeys() =
         static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
             let tuplesGenerator =
+                Gen.zip
+                <| keysGenerator
+                <| valuesGenerator
+
+            gen {
+                let! length = Gen.sized <| fun size -> Gen.choose (1, size)
+
+                let! array = Gen.arrayOfLength <| length <| tuplesGenerator
+
+                return Array.distinctBy fst array
+            }
+
+        static member IntType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
+        static member SByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member Int32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<int32>
+            |> Arb.fromGen
+
+        static member UInt32Type() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<uint32>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            arrayOfDistinctKeysGenerator
+            <| Arb.generate<int>
+            <| Arb.generate<bool>
+            |> Arb.fromGen
+
+    type ArrayOfDistinctKeys2D() =
+        static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
+            let tuplesGenerator =
                 Gen.zip3
                 <| keysGenerator
                 <| keysGenerator

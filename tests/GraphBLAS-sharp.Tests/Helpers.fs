@@ -26,7 +26,7 @@ module Utils =
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixAndVectorsCompatibleSize>
                     typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                    typeof<Generators.ArrayOfDistinctKeys>
+                    typeof<Generators.ArrayOfDistinctKeys2D>
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.BufferCompatibleArray>
                     typeof<Generators.PairOfVectorsOfEqualSize>

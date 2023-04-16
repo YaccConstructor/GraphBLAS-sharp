@@ -99,9 +99,6 @@ module Matrix =
         let transposeInPlace =
             CSR.Matrix.transposeInPlace clContext workGroupSize
 
-        let rowsToCSR =
-            Rows.Matrix.toCSR clContext workGroupSize
-
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO m ->
@@ -112,7 +109,7 @@ module Matrix =
                 m.ToCSR
                 |> transposeInPlace processor allocationMode
                 |> ClMatrix.CSR
-            | _ -> failwith "not yet supported"
+            | _ -> failwith "Not yet implemented"
 
     /// <summary>
     /// Creates a new matrix, represented in COO format, that is equal to the given one.
@@ -156,9 +153,6 @@ module Matrix =
         let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
-        let rowsToCOO =
-            Rows.Matrix.toCOO clContext workGroupSize
-
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.COO _ -> matrix
@@ -170,7 +164,7 @@ module Matrix =
                 |> toCOOInPlace processor allocationMode
                 |> transposeInPlace processor
                 |> ClMatrix.COO
-            | _ -> failwith "not yet supported"
+            | _ -> failwith "Not yet implemented"
 
     /// <summary>
     /// Creates a new matrix, represented in CSC format, that is equal to the given one.
@@ -199,7 +193,7 @@ module Matrix =
                  |> COOtoCSR processor allocationMode)
                     .ToCSC
                 |> ClMatrix.CSC
-            | _ -> failwith "not yet supported"
+            | _ -> failwith "Not yet implemented"
 
     /// <summary>
     /// Returns the matrix, represented in CSC format, that is equal to the given one.
@@ -245,6 +239,7 @@ module Matrix =
             | ClMatrix.CSC m ->
                 (mapCSR processor allocationMode m.ToCSR).ToCSC
                 |> ClMatrix.CSC
+            | _ -> failwith "Not yet implemented"
 
     let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize = // TODO()
         let map2COO =
@@ -395,19 +390,19 @@ module Matrix =
                 | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
                 | _ -> failwith "Matrix formats are not matching"
 
-        let expand
-            (clContext: ClContext)
-            workGroupSize
-            (opAdd: Expr<'c -> 'c -> 'c option>)
-            (opMul: Expr<'a -> 'b -> 'c option>)
-            =
-
-            let run =
-                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
-
-            fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
-                match leftMatrix, rightMatrix with
-                | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
-                    run processor allocationMode leftMatrix rightMatrix
-                    |> ClMatrix.COO
-                | _ -> failwith "Matrix formats are not matching"
+        // let expand // TODO()
+        //     (clContext: ClContext)
+        //     workGroupSize
+        //     (opAdd: Expr<'c -> 'c -> 'c option>)
+        //     (opMul: Expr<'a -> 'b -> 'c option>)
+        //     =
+        //
+        //     let run =
+        //         SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+        //
+        //     fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
+        //         match leftMatrix, rightMatrix with
+        //         | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
+        //             run processor allocationMode leftMatrix rightMatrix
+        //             |> ClMatrix.COO
+        //         | _ -> failwith "Matrix formats are not matching"

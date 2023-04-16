@@ -68,3 +68,4 @@ module MatrixExtensions =
                       Values = values }
 
                 Matrix.CSC result
+            | _ -> failwith "Not yet implemented"

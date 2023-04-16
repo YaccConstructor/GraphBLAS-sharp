@@ -95,5 +95,5 @@ open GraphBLAS.FSharp.Tests
 
 [<EntryPoint>]
 let main argv =
-    Common.ClArray.chunkBySize.allTests
+    testList "lol" [ Common.Reduce.ByKey.testsSegmentsSequentialOption ]
     |> runTestsWithCLIArgs [] argv

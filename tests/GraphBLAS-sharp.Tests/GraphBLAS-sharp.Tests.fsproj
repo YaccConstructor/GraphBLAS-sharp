@@ -28,6 +28,8 @@
         <Compile Include="Common\ClArray\ChunkBySize.fs" />
         <Compile Include="Common\ClArray\Assign.fs" />
         <Compile Include="Common\ClArray\Concat.fs" />
+        <Compile Include="Common\ClArray\Fill.fs" />
+        <Compile Include="Common\ClArray\Pairwise.fs" />
         <Compile Include="Common/Sort/Bitonic.fs" />
         <Compile Include="Common/Sort/Radix.fs" />
         <Compile Include="Common/Reduce/Sum.fs" />
