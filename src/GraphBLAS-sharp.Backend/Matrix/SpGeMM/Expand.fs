@@ -26,15 +26,16 @@ module Expand =
 
         fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'b>) ->
 
-            let firstPointers, secondPointers =
-                pairwise processor DeviceOnly matrix.RowPointers
+            // let firstPointers, secondPointers =
+            //     pairwise processor DeviceOnly matrix.RowPointers
 
-            let rowsLength = subtract processor DeviceOnly secondPointers firstPointers
-
-            firstPointers.Free processor
-            secondPointers.Free processor
-
-            rowsLength
+            // let rowsLength = subtract processor DeviceOnly secondPointers firstPointers
+            //
+            // firstPointers.Free processor
+            // secondPointers.Free processor
+            //
+            // rowsLength
+            clContext.CreateClArray [|  |]
 
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 

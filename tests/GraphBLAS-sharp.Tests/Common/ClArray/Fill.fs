@@ -14,29 +14,28 @@ let processor = Context.defaultContext.Queue
 
 let config =
     { Utils.defaultConfig with
-          arbitrary = [ typeof<Generators.ArrayAndChunkPositions> ] }
+          arbitrary = [ typeof<Generators.Fill> ] }
 
-let makeTest<'a> isEqual testFun (value: 'a, targetIndex, count, target: 'a [] ) =
-
+let makeTest<'a> isEqual testFun (value: 'a, targetPosition, count, target: 'a [] ) =
     if target.Length > 0 then
 
         let clTarget = context.CreateClArray target
         let clValue = context.CreateClCell value
 
-        testFun processor clValue 0 0 clTarget
+        testFun processor clValue targetPosition count clTarget
 
         // release
         let actual = clTarget.ToHostAndFree processor
 
         // write to target
-        Array.fill target targetIndex count value
+        Array.fill target targetPosition count value
 
         "Results must be the same"
         |> Utils.compareArrays isEqual actual target
 
 let createTest<'a> isEqual =
     ClArray.fill context Utils.defaultWorkGroupSize
-    |> makeTest isEqual
+    |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let tests =
@@ -47,3 +46,4 @@ let tests =
 
       createTest<float32> (=)
       createTest<bool> (=) ]
+    |> testList "Fill"

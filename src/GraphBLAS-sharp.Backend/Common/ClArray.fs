@@ -621,35 +621,36 @@ module ClArray =
     let fill (clContext: ClContext) workGroupSize =
 
         let fill =
-            <@ fun (ndRange: Range1D) firstPosition endPosition (value: ClCell<'a>) (targetArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) firstPosition count (value: ClCell<'a>) (targetArray: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
                 let writePosition = gid + firstPosition
 
-                if writePosition < endPosition then
-
+                if gid < count then
                     targetArray.[writePosition] <- value.Value @>
 
         let kernel = clContext.Compile fill
 
         fun (processor: MailboxProcessor<_>) value firstPosition count (targetArray: ClArray<'a>) ->
-            if firstPosition + count > targetArray.Length then
-                failwith ""
+            if count = 0 then ()
+            else
+                if firstPosition + count > targetArray.Length then
+                    failwith ""
 
-            if firstPosition < 0 then failwith ""
-            if count <= 0 then failwith "" // TODO()
+                if firstPosition < 0 then failwith ""
+                if count < 0 then failwith "" // TODO()
 
-            let ndRange =
-                Range1D.CreateValid(count, workGroupSize)
+                let ndRange =
+                    Range1D.CreateValid(count, workGroupSize)
 
-            let kernel = kernel.GetKernel()
+                let kernel = kernel.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange firstPosition (firstPosition + count) value targetArray)
-            )
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange firstPosition count value targetArray)
+                )
 
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let pairwise (clContext: ClContext) workGroupSize =
 
@@ -659,18 +660,26 @@ module ClArray =
         let incGather =
             Gather.runInit Map.inc clContext workGroupSize
 
+        let map = map2 clContext workGroupSize <@ fun first second -> (first, second) @>
+
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) ->
+            if values.Length > 1 then
+                let resultLength = values.Length - 1
 
-            let resultLength = values.Length - 1
+                let firstItems =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            let firstItems =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                idGather processor values firstItems
 
-            idGather processor values firstItems
+                let secondItems =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            let secondItems =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                incGather processor values secondItems
 
-            incGather processor values secondItems
+                let result = map processor allocationMode firstItems secondItems
 
-            firstItems, secondItems
+                firstItems.Free processor
+                secondItems.Free processor
+
+                Some result
+            else None
