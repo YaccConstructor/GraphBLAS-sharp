@@ -107,7 +107,7 @@ module Matrix =
               Columns = cols
               Values = values }
 
-    let toCSRInplace (clContext: ClContext) workGroupSize =
+    let toCSRInPlace (clContext: ClContext) workGroupSize =
         let prepare = compressRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
@@ -123,7 +123,7 @@ module Matrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
-    let transposeInplace (clContext: ClContext) workGroupSize =
+    let transposeInPlace (clContext: ClContext) workGroupSize =
 
         let sort =
             Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
@@ -140,7 +140,7 @@ module Matrix =
 
     let transpose (clContext: ClContext) workGroupSize =
 
-        let transposeInplace = transposeInplace clContext workGroupSize
+        let transposeInPlace = transposeInPlace clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 
@@ -154,34 +154,4 @@ module Matrix =
               Rows = copy queue allocationMode matrix.Rows
               Columns = copy queue allocationMode matrix.Columns
               Values = copyData queue allocationMode matrix.Values }
-            |> transposeInplace queue
-
-    let concat (clContext: ClContext) workGroupSize =
-
-        let concatValues = ClArray.concat clContext workGroupSize
-
-        let concatIndices = ClArray.concat clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode columnCount rowCount (matrices: ClMatrix.COO<'a> seq) ->
-
-            let resultValues =
-                matrices
-                |> Seq.map (fun matrix -> matrix.Values)
-                |> concatValues processor allocationMode
-
-            let resultColumns =
-                matrices
-                |> Seq.map (fun matrix -> matrix.Columns)
-                |> concatIndices processor allocationMode
-
-            let resultRows =
-                matrices
-                |> Seq.map (fun matrix -> matrix.Rows)
-                |> concatIndices processor allocationMode
-
-            { Context = clContext
-              RowCount = rowCount
-              ColumnCount = columnCount
-              Rows = resultRows
-              Columns = resultColumns
-              Values = resultValues }
+            |> transposeInPlace queue

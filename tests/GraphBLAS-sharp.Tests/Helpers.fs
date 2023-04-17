@@ -63,6 +63,9 @@ module Utils =
         | CSC ->
             Matrix.CSC
             <| Matrix.CSC.FromArray2D(array, isZero)
+        | Rows ->
+            Matrix.Rows
+            <| Matrix.Rows.FromArray2D(array, isZero)
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with

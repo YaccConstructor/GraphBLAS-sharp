@@ -6,6 +6,7 @@ type MatrixFormat =
     | CSR
     | COO
     | CSC
+    | Rows
 
 module ClMatrix =
     type CSR<'elem when 'elem: struct> =

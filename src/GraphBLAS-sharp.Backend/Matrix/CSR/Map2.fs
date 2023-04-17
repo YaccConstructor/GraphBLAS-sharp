@@ -144,7 +144,7 @@ module internal Map2 =
         let map2ToCOO = runToCOO clContext opAdd workGroupSize
 
         let toCSRInplace =
-            Matrix.toCSRInplace clContext workGroupSize
+            Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             map2ToCOO queue allocationMode matrixLeft matrixRight

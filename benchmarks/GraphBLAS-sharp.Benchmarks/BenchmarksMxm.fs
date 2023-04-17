@@ -75,7 +75,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
     member this.FunCSR2CSC =
         match funCSR2CSC with
         | None ->
-            let x = Matrix.toCSCInplace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSCInPlace this.OclContext this.WorkGroupSize
             funCSR2CSC <- Some x
             x
         | Some x -> x

@@ -635,10 +635,10 @@ module ClArray =
             if count = 0 then ()
             else
                 if firstPosition + count > targetArray.Length then
-                    failwith ""
+                    failwith "The array should fit completely"
 
-                if firstPosition < 0 then failwith ""
-                if count < 0 then failwith "" // TODO()
+                if firstPosition < 0 then failwith "The starting position cannot be less than zero"
+                if count < 0 then failwith "The count cannot be less than zero"
 
                 let ndRange =
                     Range1D.CreateValid(count, workGroupSize)

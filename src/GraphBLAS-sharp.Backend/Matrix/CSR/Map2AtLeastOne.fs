@@ -339,7 +339,7 @@ module internal Map2AtLeastOne =
         let elementwiseToCOO = runToCOO clContext opAdd workGroupSize
 
         let toCSRInplace =
-            Matrix.toCSRInplace clContext workGroupSize
+            Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             elementwiseToCOO queue allocationMode matrixLeft matrixRight

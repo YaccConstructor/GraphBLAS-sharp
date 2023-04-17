@@ -18,25 +18,6 @@ type Indices = ClArray<int>
 type Values<'a> = ClArray<'a>
 
 module Expand =
-    let getRowsLength (clContext: ClContext) workGroupSize =
-        let subtract =
-            ClArray.map2 clContext workGroupSize Map.subtraction
-
-        let pairwise = ClArray.pairwise clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'b>) ->
-
-            // let firstPointers, secondPointers =
-            //     pairwise processor DeviceOnly matrix.RowPointers
-
-            // let rowsLength = subtract processor DeviceOnly secondPointers firstPointers
-            //
-            // firstPointers.Free processor
-            // secondPointers.Free processor
-            //
-            // rowsLength
-            clContext.CreateClArray [|  |]
-
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 
         let gather = Gather.run clContext workGroupSize
@@ -298,7 +279,7 @@ module Expand =
         (opMul: Expr<'a -> 'b -> 'c option>) =
 
         let getRowsLength =
-            getRowsLength clContext workGroupSize
+            CSR.Matrix.getRowsLength clContext workGroupSize
 
         let split = CSR.Matrix.byRowsLazy clContext workGroupSize
 
@@ -314,3 +295,5 @@ module Expand =
 
             split processor allocationMode leftMatrix
             |> Seq.map (fun lazyRow -> Option.bind runRow lazyRow.Value)
+            |> Seq.toArray
+

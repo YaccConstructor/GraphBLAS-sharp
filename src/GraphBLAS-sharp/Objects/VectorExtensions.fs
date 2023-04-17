@@ -2,23 +2,18 @@ namespace GraphBLAS.FSharp.Objects
 
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects
-open Brahma.FSharp
+open GraphBLAS.FSharp.Objects.Vector
 
 module ClVectorExtensions =
+    type ClVector.Sparse<'a> with
+        member this.ToHost(q: MailboxProcessor<_>) =
+            { Indices = this.Indices.ToHost q
+              Values = this.Values.ToHost q
+              Size = this.Size }
+
     type ClVector<'a when 'a: struct> with
         member this.ToHost(q: MailboxProcessor<_>) =
             match this with
             | ClVector.Sparse vector ->
-                let indices = Array.zeroCreate vector.Indices.Length
-                let values = Array.zeroCreate vector.Values.Length
-
-                q.Post(Msg.CreateToHostMsg(vector.Indices, indices))
-
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg(vector.Values, values, ch))
-                |> ignore
-
-                Vector.Sparse
-                <| { Indices = indices
-                     Values = values
-                     Size = this.Size }
+                Vector.Sparse <| vector.ToHost q
             | ClVector.Dense vector -> Vector.Dense <| vector.ToHost q

@@ -18,6 +18,12 @@ let config = Utils.defaultConfig
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
+let context = defaultContext.ClContext
+
+let q = defaultContext.Queue
+
+q.Error.Add(fun e -> failwithf "%A" e)
+
 let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
     let mtx =
         Utils.createMatrixFromArray2D formatFrom array isZero
@@ -42,68 +48,32 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
         "Matrices should be equal"
         |> Expect.equal actual expected
 
+let createTest<'a when 'a : struct and 'a : equality> convertFun formatTo (isZero: 'a -> bool) =
+    let convertFun = convertFun context Utils.defaultWorkGroupSize
+
+    Utils.listOfUnionCases<MatrixFormat>
+    |> List.map (fun formatFrom ->
+        makeTest context q formatFrom formatTo convertFun isZero
+        |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>} from %A{formatFrom}")
+
 let testFixtures formatTo =
-    let getCorrectnessTestName datatype formatFrom =
-        $"Correctness on %s{datatype}, %A{formatFrom} to %A{formatTo}"
-
-    let context = defaultContext.ClContext
-    let q = defaultContext.Queue
-    q.Error.Add(fun e -> failwithf "%A" e)
-
     match formatTo with
     | COO ->
-        [ let convertFun = Matrix.toCOO context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
-
-          let convertFun = Matrix.toCOO context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
+        [ createTest<int> Matrix.toCOO formatTo ((=) 0)
+          createTest<bool> Matrix.toCOO formatTo ((=) false) ]
     | CSR ->
-        [ let convertFun = Matrix.toCSR context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
-
-          let convertFun = Matrix.toCSR context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
+        [ createTest<int> Matrix.toCSR formatTo ((=) 0)
+          createTest<bool> Matrix.toCSR formatTo ((=) false) ]
     | CSC ->
-        [ let convertFun = Matrix.toCSC context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) 0)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "int" formatFrom))
-
-          let convertFun = Matrix.toCSC context workGroupSize
-
-          Utils.listOfUnionCases<MatrixFormat>
-          |> List.map
-              (fun formatFrom ->
-                  makeTest context q formatFrom formatTo convertFun ((=) false)
-                  |> testPropertyWithConfig config (getCorrectnessTestName "bool" formatFrom)) ]
-        |> List.concat
+        [ createTest<int> Matrix.toCSC formatTo ((=) 0)
+          createTest<bool> Matrix.toCSC formatTo ((=) false) ]
+    | Rows ->
+        [ createTest<int> Matrix.toRows formatTo ((=) 0)
+          createTest<bool> Matrix.toRows formatTo ((=) false) ]
+    |> List.concat
+    |> testList $"%A{formatTo}"
 
 let tests =
     Utils.listOfUnionCases<MatrixFormat>
-    |> List.collect testFixtures
-    |> testList "Convert tests"
+    |> List.map testFixtures
+    |> testList "Convert"

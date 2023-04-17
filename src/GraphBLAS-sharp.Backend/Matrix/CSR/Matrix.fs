@@ -82,10 +82,10 @@ module Matrix =
         let toCOOInPlace = toCOOInPlace clContext workGroupSize
 
         let transposeInPlace =
-            COO.Matrix.transposeInplace clContext workGroupSize
+            COO.Matrix.transposeInPlace clContext workGroupSize
 
         let toCSRInPlace =
-            COO.Matrix.toCSRInplace clContext workGroupSize
+            COO.Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOOInPlace queue allocationMode matrix
@@ -97,10 +97,10 @@ module Matrix =
         let toCOO = toCOO clContext workGroupSize
 
         let transposeInPlace =
-            COO.Matrix.transposeInplace clContext workGroupSize
+            COO.Matrix.transposeInPlace clContext workGroupSize
 
         let toCSRInPlace =
-            COO.Matrix.toCSRInplace clContext workGroupSize
+            COO.Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix
@@ -148,3 +148,36 @@ module Matrix =
             runLazy processor allocationMode matrix
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
+
+    let toRows (clContext: ClContext) workGroupSize =
+
+        let byRows = byRows clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+            let rows = byRows processor allocationMode matrix
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              NNZ = matrix.NNZ }
+
+    let getRowsLength (clContext: ClContext) workGroupSize =
+
+        let pairwise = ClArray.pairwise clContext workGroupSize
+
+        let subtract =
+            ClArray.map clContext workGroupSize Map.pairSubtraction
+
+        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'b>) ->
+            let pointerPairs =
+                pairwise processor DeviceOnly matrix.RowPointers
+                // since row pointers length in matrix always >= 2
+                |> Option.defaultWith (fun () ->
+                    failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
+
+            let rowsLength = subtract processor DeviceOnly pointerPairs
+
+            pointerPairs.Free processor
+
+            rowsLength

@@ -18,9 +18,9 @@
     <Compile Include="Exceptions.fs" />
     <Compile Include="AlgebraicStructures.fs" />
     <Compile Include="GraphblasEvaluation.fs" />
+    <Compile Include="Objects\Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects/Scalar.fs" />
-    <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/VectorExtensions.fs" />
     <Compile Include="Objects/MatrixExtensions.fs" />
     <Compile Include="Operations/Scalar.fs" />
