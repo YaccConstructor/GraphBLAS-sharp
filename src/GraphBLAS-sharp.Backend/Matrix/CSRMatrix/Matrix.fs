@@ -104,6 +104,18 @@ module Matrix =
             |> transposeInplace queue
             |> toCSRInplace queue allocationMode
 
+    let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+        let runCSR =
+            Kronecker.runToCOO clContext op workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix.CSR<'a>) (matrix2: ClMatrix.CSR<'b>) ->
+            let result =
+                runCSR queue allocationFlag matrix1 matrix2
+
+            match result with
+            | Some m -> m |> ClMatrix.COO
+            | _ -> failwith "zero matrix"
+
     module SpGeMM =
         let masked
             (clContext: ClContext)

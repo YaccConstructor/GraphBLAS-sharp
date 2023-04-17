@@ -11,12 +11,6 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
-    /// Represents sparse COO matrix. Supports zero matrix.
-    type private optionalMatrix<'elem when 'elem: struct> =
-        { RowCount: int
-          ColumnCount: int
-          Matrix: (ClArray<int> * ClArray<int> * ClArray<'elem>) option }
-
     /// Merges 2 disjoint matrices.
     let private mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
@@ -199,38 +193,49 @@ module internal Kronecker =
 
         let copyClArray = ClArray.copy clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (rowOffset: int) (columnOffset: int) (matrixToInsert: optionalMatrix<'c>) (resultMatrix: optionalMatrix<'c>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (rowOffset: int) (columnOffset: int) (matrixToInsert: ClMatrix.COO<'c> option) (resultMatrix: ClMatrix.COO<'c> option) ->
 
-            match matrixToInsert.Matrix with
+            match matrixToInsert with
             | None -> resultMatrix
 
-            | Some (rows, cols, vals) ->
+            | Some m ->
                 let rowOffset = rowOffset |> clContext.CreateClCell
                 let columnOffset = columnOffset |> clContext.CreateClCell
 
                 let newRowIndices =
-                    mapWithValueClArray queue allocationMode rowOffset rows
+                    mapWithValueClArray queue allocationMode rowOffset m.Rows
 
                 let newColumnIndices =
-                    mapWithValueClArray queue allocationMode columnOffset cols
+                    mapWithValueClArray queue allocationMode columnOffset m.Columns
 
                 queue.Post(Msg.CreateFreeMsg<_>(rowOffset))
                 queue.Post(Msg.CreateFreeMsg<_>(columnOffset))
 
-                match resultMatrix.Matrix with
+                match resultMatrix with
                 | None ->
-                    { RowCount = resultMatrix.RowCount
-                      ColumnCount = resultMatrix.ColumnCount
-                      Matrix = Some(newRowIndices, newColumnIndices, copyClArray queue allocationMode vals) }
+                    Some
+                        { m with
+                              Rows = newRowIndices
+                              Columns = newColumnIndices
+                              Values = copyClArray queue allocationMode m.Values }
 
-                | Some (mainRows, mainCols, mainVals) ->
+                | Some mainMatrix ->
 
-                    let newMatrix =
-                        mergeDisjointCOO queue mainRows mainCols mainVals newRowIndices newColumnIndices vals
+                    let newRows, newCols, newValues =
+                        mergeDisjointCOO
+                            queue
+                            mainMatrix.Rows
+                            mainMatrix.Columns
+                            mainMatrix.Values
+                            newRowIndices
+                            newColumnIndices
+                            m.Values
 
-                    { RowCount = resultMatrix.RowCount
-                      ColumnCount = resultMatrix.ColumnCount
-                      Matrix = Some newMatrix }
+                    Some
+                        { mainMatrix with
+                              Rows = newRows
+                              Columns = newCols
+                              Values = newValues }
 
     let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -248,22 +253,11 @@ module internal Kronecker =
             let noneClCell = None |> clContext.CreateClCell
 
             let mapWithZero =
-                match mapWithValueToCOO queue allocationMode noneClCell matrixRight with
-                | None ->
-                    { RowCount = matrixRight.RowCount
-                      ColumnCount = matrixRight.RowCount
-                      Matrix = None }
-                | Some m ->
-                    { RowCount = matrixRight.RowCount
-                      ColumnCount = matrixRight.RowCount
-                      Matrix = Some(m.Rows, m.Columns, m.Values) }
+                mapWithValueToCOO queue allocationMode noneClCell matrixRight
 
             queue.Post(Msg.CreateFreeMsg<_>(noneClCell))
 
-            let mutable resultMatrix =
-                { RowCount = matrixLeft.RowCount * matrixRight.RowCount
-                  ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount
-                  Matrix = None }
+            let mutable resultMatrix = None
 
             let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
             let leftMatrixCols = matrixLeft.Columns.ToHost queue
@@ -298,11 +292,11 @@ module internal Kronecker =
                                 insert queue allocationMode rowOffset columnOffset mapWithZero resultMatrix
 
                             resultMatrix <-
-                                match resultMatrix.Matrix, mapWithZero.Matrix with
-                                | Some (oldRows, oldCols, oldVals), Some _ ->
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldRows))
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldCols))
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldVals))
+                                match resultMatrix, mapWithZero with
+                                | Some oldMatrix, Some _ ->
+                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
+                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
+                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
                                     newMatrix
                                 | _ -> newMatrix
 
@@ -314,15 +308,7 @@ module internal Kronecker =
                         |> clContext.CreateClCell
 
                     let mappedMatrix =
-                        match mapWithValueToCOO queue allocationMode operand matrixRight with
-                        | None ->
-                            { RowCount = matrixRight.RowCount
-                              ColumnCount = matrixRight.RowCount
-                              Matrix = None }
-                        | Some m ->
-                            { RowCount = m.RowCount
-                              ColumnCount = m.RowCount
-                              Matrix = Some(m.Rows, m.Columns, m.Values) }
+                        mapWithValueToCOO queue allocationMode operand matrixRight
 
                     queue.Post(Msg.CreateFreeMsg<_>(operand))
 
@@ -330,14 +316,14 @@ module internal Kronecker =
                         insert queue allocationMode rowOffset columnOffset mappedMatrix resultMatrix
 
                     resultMatrix <-
-                        match resultMatrix.Matrix, mappedMatrix.Matrix with
-                        | Some (oldRows, oldCols, oldVals), Some (mappedRows, mappedCols, mappedVals) ->
-                            queue.Post(Msg.CreateFreeMsg<_>(oldRows))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldCols))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldVals))
-                            queue.Post(Msg.CreateFreeMsg<_>(mappedRows))
-                            queue.Post(Msg.CreateFreeMsg<_>(mappedCols))
-                            queue.Post(Msg.CreateFreeMsg<_>(mappedVals))
+                        match resultMatrix, mappedMatrix with
+                        | Some oldMatrix, Some m ->
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
+                            queue.Post(Msg.CreateFreeMsg<_>(m.Rows))
+                            queue.Post(Msg.CreateFreeMsg<_>(m.Columns))
+                            queue.Post(Msg.CreateFreeMsg<_>(m.Values))
                             newMatrix
                         | _ -> newMatrix
 
@@ -356,24 +342,21 @@ module internal Kronecker =
                         insert queue allocationMode rowOffset columnOffset mapWithZero resultMatrix
 
                     resultMatrix <-
-                        match resultMatrix.Matrix, mapWithZero.Matrix with
-                        | Some (oldRows, oldCols, oldVals), Some _ ->
-                            queue.Post(Msg.CreateFreeMsg<_>(oldRows))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldCols))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldVals))
+                        match resultMatrix, mapWithZero with
+                        | Some oldMatrix, Some _ ->
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
+                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
                             newMatrix
                         | _ -> newMatrix
 
-            match resultMatrix.Matrix with
+            match resultMatrix with
             | None -> None
-            | Some (rows, cols, vals) ->
+            | Some m ->
                 Some
-                    { Context = clContext
-                      RowCount = resultMatrix.RowCount
-                      ColumnCount = resultMatrix.ColumnCount
-                      Rows = rows
-                      Columns = cols
-                      Values = vals }
+                    { m with
+                          RowCount = matrixLeft.RowCount * matrixRight.RowCount
+                          ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount }
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
