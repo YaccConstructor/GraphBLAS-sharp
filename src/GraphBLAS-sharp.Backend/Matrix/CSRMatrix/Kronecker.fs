@@ -373,6 +373,4 @@ module internal Kronecker =
             let result =
                 kroneckerToCOO queue allocationMode matrixLeft matrixRight
 
-            match result with
-            | None -> None
-            | Some resultMatrix -> Some(resultMatrix |> toCSRInplace queue allocationMode)
+            Option.bind (Some << (toCSRInplace queue allocationMode)) result
