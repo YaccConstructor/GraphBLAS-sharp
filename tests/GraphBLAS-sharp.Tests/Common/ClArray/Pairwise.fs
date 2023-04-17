@@ -22,9 +22,10 @@ let makeTest<'a> isEqual testFun (array: 'a [] ) =
         let clArray = context.CreateClArray array
 
         testFun processor HostInterop clArray
-        |> Option.bind (fun (clFirstActual: ClArray<_>, clSecondActual: ClArray<_>) ->
-            let firstActual = clFirstActual.ToHostAndFree processor
-            let secondActual = clSecondActual.ToHostAndFree processor
+        |> Option.bind (fun (actual: ClArray<_>) ->
+            let firstActual, secondActual =
+                actual.ToHostAndFree processor
+                |> Array.unzip
 
             let firstExpected, secondExpected = Array.pairwise array |> Array.unzip
 
