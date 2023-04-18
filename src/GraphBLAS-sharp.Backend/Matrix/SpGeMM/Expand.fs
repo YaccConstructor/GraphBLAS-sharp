@@ -12,6 +12,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 type Indices = ClArray<int>
 
@@ -70,60 +71,62 @@ module Expand =
 
         let rightMatrixGather = Gather.run clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: Indices) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+        fun (processor: MailboxProcessor<_>) length (segmentsPointers: Indices) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+            if length = 0 then None
+            else
+                printfn "expand length: %A" length
+                // Compute left matrix positions
+                let leftMatrixPositions = zeroCreate processor DeviceOnly length
 
-            // Compute left matrix positions
-            let leftMatrixPositions = zeroCreate processor DeviceOnly lengths
+                idScatter processor segmentsPointers leftMatrixPositions
 
-            idScatter processor segmentsPointers leftMatrixPositions
+                (maxPrefixSum processor leftMatrixPositions 0)
+                    .Free processor
 
-            (maxPrefixSum processor leftMatrixPositions 0)
-                .Free processor
+                // Compute right matrix positions
+                let rightMatrixPositions = create processor DeviceOnly length 1
 
-            // Compute right matrix positions
-            let rightMatrixPositions = create processor DeviceOnly lengths 1
+                let requiredRightMatrixPointers =
+                    zeroCreate processor DeviceOnly leftMatrixRow.Indices.Length
 
-            let requiredRightMatrixPointers =
-                zeroCreate processor DeviceOnly leftMatrixRow.Indices.Length
+                gather processor leftMatrixRow.Indices rightMatrix.RowPointers requiredRightMatrixPointers
 
-            gather processor leftMatrixRow.Indices rightMatrix.RowPointers requiredRightMatrixPointers
+                scatter processor segmentsPointers requiredRightMatrixPointers rightMatrixPositions
 
-            scatter processor segmentsPointers requiredRightMatrixPointers rightMatrixPositions
+                requiredRightMatrixPointers.Free processor
 
-            requiredRightMatrixPointers.Free processor
+                // another way to get offsets ???
+                let offsets =
+                    removeDuplicates processor segmentsPointers
 
-            // another way to get offsets ???
-            let offsets =
-                removeDuplicates processor segmentsPointers
+                segmentPrefixSum processor offsets.Length rightMatrixPositions leftMatrixPositions offsets
 
-            segmentPrefixSum processor offsets.Length rightMatrixPositions leftMatrixPositions offsets
+                offsets.Free processor
 
-            offsets.Free processor
+                // compute columns
+                let columns =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
-            // compute columns
-            let columns =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
+                gather processor rightMatrixPositions rightMatrix.Columns columns
 
-            gather processor rightMatrixPositions rightMatrix.Columns columns
+                // compute left matrix values
+                let leftMatrixValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
-            // compute left matrix values
-            let leftMatrixValues =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
+                leftMatrixGather processor leftMatrixPositions leftMatrixRow.Values leftMatrixValues
 
-            leftMatrixGather processor leftMatrixPositions leftMatrixRow.Values leftMatrixValues
+                leftMatrixPositions.Free processor
 
-            leftMatrixPositions.Free processor
+                // compute right matrix values
+                let rightMatrixValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
-            // compute right matrix values
-            let rightMatrixValues =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, lengths)
+                rightMatrixGather processor rightMatrixPositions rightMatrix.Values rightMatrixValues
 
-            rightMatrixGather processor rightMatrixPositions rightMatrix.Values rightMatrixValues
+                rightMatrixPositions.Free processor
 
-            rightMatrixPositions.Free processor
-
-            // left, right matrix values, columns and rows indices
-            leftMatrixValues, rightMatrixValues, columns
+                // left, right matrix values, columns indices
+                Some (leftMatrixValues, rightMatrixValues, columns)
 
     let multiply (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
         let getBitmap =
@@ -235,42 +238,48 @@ module Expand =
             let length, segmentPointers =
                 getSegmentPointers processor leftMatrixRow leftMatrixRowsLengths
 
+            if length < 0 then failwith "length < 0"
+
             // expand
-            let leftMatrixValues, rightMatrixValues, columns =
+            let expandResult =
                 expand processor length segmentPointers leftMatrixRow rightMatrix
 
-            // multiplication
-            let mulResult =
-                multiply processor leftMatrixValues rightMatrixValues columns
+            segmentPointers.Free processor
 
-            leftMatrixValues.Free processor
-            rightMatrixValues.Free processor
-            columns.Free processor
+            expandResult
+            |> Option.bind (fun (leftMatrixValues, rightMatrixValues, columns) ->
+                // multiplication
+                let mulResult =
+                    multiply processor leftMatrixValues rightMatrixValues columns
 
-            // check multiplication result
-            mulResult
-            |> Option.bind (fun (resultValues, resultColumns) ->
-                // sort
-                let sortedValues, sortedColumns =
-                    sort processor resultValues resultColumns
+                leftMatrixValues.Free processor
+                rightMatrixValues.Free processor
+                columns.Free processor
 
-                resultValues.Free processor
-                resultColumns.Free processor
+                // check multiplication result
+                mulResult
+                |> Option.bind (fun (resultValues, resultColumns) ->
+                    // sort
+                    let sortedValues, sortedColumns =
+                        sort processor resultValues resultColumns
 
-                let reduceResult =
-                    reduce processor allocationMode sortedValues sortedColumns
+                    resultValues.Free processor
+                    resultColumns.Free processor
 
-                sortedValues.Free processor
-                sortedColumns.Free processor
+                    let reduceResult =
+                        reduce processor allocationMode sortedValues sortedColumns
 
-                // create sparse vector (TODO(empty vector))
-                reduceResult
-                |> Option.bind (fun (values, columns) ->
-                    { Context = clContext
-                      Indices = columns
-                      Values = values
-                      Size = rightMatrix.ColumnCount }
-                    |> Some))
+                    sortedValues.Free processor
+                    sortedColumns.Free processor
+
+                    // create sparse vector (TODO(empty vector))
+                    reduceResult
+                    |> Option.bind (fun (values, columns) ->
+                        { Context = clContext
+                          Indices = columns
+                          Values = values
+                          Size = rightMatrix.ColumnCount }
+                        |> Some)))
 
     let run<'a, 'b, 'c when 'a : struct and 'b : struct and 'c : struct>
         (clContext: ClContext)
@@ -296,4 +305,10 @@ module Expand =
             split processor allocationMode leftMatrix
             |> Seq.map (fun lazyRow -> Option.bind runRow lazyRow.Value)
             |> Seq.toArray
+            |> fun rows ->
+                { Rows.Context = clContext
+                  RowCount = leftMatrix.RowCount
+                  ColumnCount = rightMatrix.ColumnCount
+                  Rows = rows
+                  NNZ = -1 } // TODO(nnz count)
 

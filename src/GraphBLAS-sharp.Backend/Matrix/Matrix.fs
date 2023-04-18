@@ -424,19 +424,18 @@ module Matrix =
                 | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
                 | _ -> failwith "Matrix formats are not matching"
 
-        // let expand // TODO()
-        //     (clContext: ClContext)
-        //     workGroupSize
-        //     (opAdd: Expr<'c -> 'c -> 'c option>)
-        //     (opMul: Expr<'a -> 'b -> 'c option>)
-        //     =
-        //
-        //     let run =
-        //         SpGeMM.Expand.run clContext workGroupSize opAdd opMul
-        //
-        //     fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
-        //         match leftMatrix, rightMatrix with
-        //         | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
-        //             run processor allocationMode leftMatrix rightMatrix
-        //             |> ClMatrix.COO
-        //         | _ -> failwith "Matrix formats are not matching"
+        let expand
+            (clContext: ClContext)
+            workGroupSize
+            (opAdd: Expr<'c -> 'c -> 'c option>)
+            (opMul: Expr<'a -> 'b -> 'c option>)
+            =
+
+            let run =
+                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+
+            fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
+                match leftMatrix, rightMatrix with
+                | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
+                    ClMatrix.Rows <| run processor allocationMode leftMatrix rightMatrix
+                | _ -> failwith "Matrix formats are not matching"

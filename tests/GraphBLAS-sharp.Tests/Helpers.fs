@@ -25,7 +25,7 @@ module Utils =
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixAndVectorsCompatibleSize>
-                    typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
+                    typeof<Generators.PairOfSparseVectorAndMatrixAndMaskOfCompatibleSize>
                     typeof<Generators.ArrayOfDistinctKeys2D>
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.BufferCompatibleArray>
@@ -149,11 +149,6 @@ module Utils =
                 result.[i, j] <- array.[j, i]
 
         result
-
-    let castMatrixToCSR =
-        function
-        | Matrix.CSR matrix -> matrix
-        | _ -> failwith "matrix format must be CSR"
 
 module HostPrimitives =
     let prefixSumInclude zero add array =

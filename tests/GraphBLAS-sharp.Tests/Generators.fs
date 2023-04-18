@@ -318,7 +318,7 @@ module Generators =
                 Arb.generate<CustomDatatypes.WrappedInt>
             |> Arb.fromGen
 
-    type PairOfSparseVectorAndMatrixOfCompatibleSize() =
+    type PairOfSparseVectorAndMatrixAndMaskOfCompatibleSize() =
         static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
                 let! nRows, nColumns = dimension2DGenerator
@@ -330,6 +330,63 @@ module Generators =
 
                 let! mask = Arb.generate<bool> |> Gen.arrayOfLength nColumns
                 return (vector, matrix, mask)
+            }
+
+        static member IntType() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfVectorAndMatrixOfCompatibleSizeGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
+    type VectorXMatrix() =
+        static let pairOfVectorAndMatrixOfCompatibleSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! nRows, nColumns = dimension2DGenerator
+                let! vector = valuesGenerator |> Gen.arrayOfLength nRows
+
+                let! matrix =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRows, nColumns)
+
+                return (vector, matrix)
             }
 
         static member IntType() =

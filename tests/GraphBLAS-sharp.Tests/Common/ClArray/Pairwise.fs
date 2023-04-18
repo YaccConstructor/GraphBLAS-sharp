@@ -21,21 +21,17 @@ let makeTest<'a> isEqual testFun (array: 'a [] ) =
 
         let clArray = context.CreateClArray array
 
-        testFun processor HostInterop clArray
-        |> Option.bind (fun (actual: ClArray<_>) ->
-            let firstActual, secondActual =
-                actual.ToHostAndFree processor
-                |> Array.unzip
+        match testFun processor HostInterop clArray with
+        | Some (actual: ClArray<_>) ->
+            let actual = actual.ToHostAndFree processor
 
-            let firstExpected, secondExpected = Array.pairwise array |> Array.unzip
+            let expected = Array.pairwise array
 
             "First results must be the same"
-            |> Utils.compareArrays isEqual firstActual firstExpected
-
-            "Second results must be the same"
-            |> Utils.compareArrays isEqual secondActual secondExpected
-            None)
-        |> ignore
+            |> Utils.compareArrays isEqual actual expected
+        | None ->
+            "Result must be empty"
+            |> Expect.isTrue (array.Size <= 1)
 
 let createTest<'a> isEqual =
     ClArray.pairwise context Utils.defaultWorkGroupSize

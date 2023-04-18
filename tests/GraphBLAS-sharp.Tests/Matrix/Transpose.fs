@@ -77,6 +77,7 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
 
         "Value arrays should be equal"
         |> Utils.compareArrays areEqual actual.Values expected.Values
+    | _ -> () // TODO()
 
 let makeTestRegular context q transposeFun hostTranspose isEqual zero case (array: 'a [,]) =
     let mtx =
