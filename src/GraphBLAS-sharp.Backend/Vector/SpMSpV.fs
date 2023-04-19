@@ -201,6 +201,9 @@ module SpMSpV =
 
                 let resultIndices = removeDuplicates queue sortedIndices
 
+                gatherIndices.Dispose queue
+                sortedIndices.Dispose queue
+
                 { Context = clContext
                   Indices = resultIndices
                   Values = create queue DeviceOnly resultIndices.Length true

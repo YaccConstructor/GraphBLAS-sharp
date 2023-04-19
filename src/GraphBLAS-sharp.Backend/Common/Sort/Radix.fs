@@ -194,6 +194,7 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
+                (snd pair).Free processor
                 fst pair
 
     let standardRunKeysOnly clContext workGroupSize =

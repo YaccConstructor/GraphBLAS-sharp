@@ -41,7 +41,7 @@ module BFS =
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue HostInterop vertexCount
+            let levels = zeroCreate queue DeviceOnly vertexCount
 
             let frontier =
                 ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
@@ -89,7 +89,7 @@ module BFS =
 
         let ofList = Vector.ofList clContext workGroupSize
 
-        let maskComplementedTo =
+        let maskComplemented =
             SparseVector.map2SparseDense clContext Mask.complementedOp workGroupSize
 
         let fillSubVectorTo =
@@ -122,7 +122,7 @@ module BFS =
 
                     frontier.Dispose queue
 
-                    frontier <- ClVector.Sparse(maskComplementedTo queue DeviceOnly newFrontier levels)
+                    frontier <- ClVector.Sparse(maskComplemented queue DeviceOnly newFrontier levels)
 
                     newFrontier.Dispose queue
 

@@ -76,7 +76,7 @@ module internal Map2 =
     let private preparePositionsSparseDense<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
-            <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b option>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b option>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -121,8 +121,6 @@ module internal Map2 =
                         kernel.KernelFunc
                             ndRange
                             vectorLenght
-                            leftValues.Length
-                            rightValues.Length
                             leftValues
                             leftIndices
                             rightValues
