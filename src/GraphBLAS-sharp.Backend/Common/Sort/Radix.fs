@@ -163,7 +163,7 @@ module Radix =
 
         fun (processor: MailboxProcessor<_>) (keys: Indices) ->
             if keys.Length <= 1 then
-                keys
+                copy processor DeviceOnly keys
             else
                 let firstKeys = copy processor DeviceOnly keys
 
