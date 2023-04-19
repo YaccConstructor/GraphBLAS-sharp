@@ -34,8 +34,6 @@ module Expand =
             // extract needed lengths by left matrix nnz
             gather processor leftMatrixRow.Indices rightMatrixRowsLengths segmentsLengths
 
-            rightMatrixRowsLengths.Free processor
-
             // compute pointers
             let length =
                 (prefixSum processor segmentsLengths)
@@ -297,10 +295,14 @@ module Expand =
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
             let rightMatrixRowsLengths =
-                getRowsLength processor rightMatrix
+                getRowsLength processor DeviceOnly rightMatrix
+
+            printfn "right matrix rows lengths: %A" <| rightMatrixRowsLengths.ToHost processor
 
             let runRow =
                 runRow processor allocationMode rightMatrix rightMatrixRowsLengths
+
+            rightMatrixRowsLengths.Free processor
 
             split processor allocationMode leftMatrix
             |> Seq.map (fun lazyRow -> Option.bind runRow lazyRow.Value)

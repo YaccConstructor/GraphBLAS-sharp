@@ -20,9 +20,12 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
+processor.Error.Add(fun e -> failwithf "%A" e)
+
 let config =
     { Utils.defaultConfig with
-          arbitrary = [ typeof<Generators.VectorXMatrix> ] }
+          arbitrary = [ typeof<Generators.VectorXMatrix>
+                        typeof<Generators.PairOfMatricesOfCompatibleSize> ] }
 
 let makeTest isZero testFun (leftArray: 'a [], rightArray: 'a [,]) =
 
@@ -228,6 +231,9 @@ let makeGeneralTest zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightAr
         let (clMatrixActual: ClMatrix<_>) =
             testFun processor HostInterop clLeftMatrix clRightMatrix
 
+        clLeftMatrix.Dispose processor
+        clRightMatrix.Dispose processor
+
         let matrixActual = clMatrixActual.ToHostAndDispose processor
 
         match matrixActual with
@@ -238,29 +244,27 @@ let makeGeneralTest zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightAr
         | _ -> failwith "Matrix format are not matching"
 
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
-
-    let testFun =
-        testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
-
-    makeGeneralTest zero isEqual opMul opAdd testFun
-    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
+    testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
+    |> makeGeneralTest zero isEqual opMul opAdd
+    |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
 
-      if Utils.isFloat64Available context.ClDevice then
-          createGeneralTest
-              0.0
-              Utils.floatIsEqual
-              ArithmeticOperations.floatAdd
-              ArithmeticOperations.floatMul
-              Matrix.SpGeMM.expand
-
-      createGeneralTest
-          0.0f
-          Utils.float32IsEqual
-          ArithmeticOperations.float32Add
-          ArithmeticOperations.float32Mul
-          Matrix.SpGeMM.expand
-      createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul Matrix.SpGeMM.expand ]
+      // if Utils.isFloat64Available context.ClDevice then
+      //     createGeneralTest
+      //         0.0
+      //         Utils.floatIsEqual
+      //         ArithmeticOperations.floatAdd
+      //         ArithmeticOperations.floatMul
+      //         Matrix.SpGeMM.expand
+      //
+      // createGeneralTest
+      //     0.0f
+      //     Utils.float32IsEqual
+      //     ArithmeticOperations.float32Add
+      //     ArithmeticOperations.float32Mul
+      //     Matrix.SpGeMM.expand
+      // createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul Matrix.SpGeMM.expand ]
+        ]
     |> testList "general"

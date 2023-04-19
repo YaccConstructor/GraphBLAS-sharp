@@ -169,14 +169,14 @@ module Matrix =
         let subtract =
             ClArray.map clContext workGroupSize <@ fun (fst, snd) -> snd - fst @>
 
-        fun (processor: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'b>) ->
             let pointerPairs =
                 pairwise processor DeviceOnly matrix.RowPointers
                 // since row pointers length in matrix always >= 2
                 |> Option.defaultWith (fun () ->
                     failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
 
-            let rowsLength = subtract processor DeviceOnly pointerPairs
+            let rowsLength = subtract processor allocationMode pointerPairs
 
             pointerPairs.Free processor
 
