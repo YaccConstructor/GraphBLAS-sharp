@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 module Common =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let setPositionsUnsafe<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let indicesScatter =
             Scatter.lastOccurrence clContext workGroupSize
@@ -43,7 +43,7 @@ module Common =
 
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let setPositionsSafe<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let setPositionsOption<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let indicesScatter =
             Scatter.lastOccurrence clContext workGroupSize

@@ -2,12 +2,13 @@
 
 open Microsoft.FSharp.Quotations
 open Brahma.FSharp
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
@@ -197,7 +198,6 @@ module internal Kronecker =
 
             match matrixToInsert with
             | None -> resultMatrix
-
             | Some m ->
                 let rowOffset = rowOffset |> clContext.CreateClCell
                 let columnOffset = columnOffset |> clContext.CreateClCell
@@ -208,16 +208,16 @@ module internal Kronecker =
                 let newColumnIndices =
                     mapWithValueClArray queue allocationMode columnOffset m.Columns
 
-                queue.Post(Msg.CreateFreeMsg<_>(rowOffset))
-                queue.Post(Msg.CreateFreeMsg<_>(columnOffset))
+                rowOffset.Free queue
+                columnOffset.Free queue
 
                 match resultMatrix with
                 | None ->
-                    Some
-                        { m with
-                              Rows = newRowIndices
-                              Columns = newColumnIndices
-                              Values = copyClArray queue allocationMode m.Values }
+                    { m with
+                          Rows = newRowIndices
+                          Columns = newColumnIndices
+                          Values = copyClArray queue allocationMode m.Values }
+                    |> Some
 
                 | Some mainMatrix ->
 
@@ -231,13 +231,37 @@ module internal Kronecker =
                             newColumnIndices
                             m.Values
 
-                    Some
-                        { mainMatrix with
-                              Rows = newRows
-                              Columns = newCols
-                              Values = newValues }
+                    { mainMatrix with
+                          Rows = newRows
+                          Columns = newCols
+                          Values = newValues }
+                    |> Some
 
-    let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let insertMatricesMultipliedByZero
+        queue
+        insertFunc
+        (matrixToInsert: COO<'c> option)
+        (resultMatrix: COO<'c> option)
+        (rowOffset: int)
+        (columnOffsets: int [])
+        =
+
+        let mutable resultMatrix = resultMatrix
+
+        for columnOffset in columnOffsets do
+            let newResultMatrix =
+                insertFunc rowOffset columnOffset matrixToInsert resultMatrix
+
+            resultMatrix <-
+                match resultMatrix, matrixToInsert with
+                | Some oldMatrix, Some _ ->
+                    oldMatrix.Dispose queue
+                    newResultMatrix
+                | _ -> newResultMatrix
+
+        resultMatrix
+
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (op: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -255,122 +279,85 @@ module internal Kronecker =
             let mapWithZero =
                 mapWithValueToCOO queue allocationMode noneClCell matrixRight
 
-            queue.Post(Msg.CreateFreeMsg<_>(noneClCell))
+            noneClCell.Free queue
 
-            let mutable resultMatrix = None
+            let insert = insert queue allocationMode
+
+            let insertMatricesMultipliedByZero =
+                insertMatricesMultipliedByZero queue insert mapWithZero
 
             let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
             let leftMatrixCols = matrixLeft.Columns.ToHost queue
             let leftMatrixVals = matrixLeft.Values.ToHost queue
 
-            for row in 0 .. (matrixLeft.RowCount - 1) do
-                let NNZInRow =
-                    leftMatrixRows.[row + 1] - leftMatrixRows.[row]
+            let mutable resultMatrix = None
 
+            for row in 0 .. (matrixLeft.RowCount - 1) do
                 let firstElementIndex = leftMatrixRows.[row]
 
                 let rowOffset = row * matrixRight.RowCount
 
-                for offset in 0 .. (NNZInRow - 1) do
-                    let currentColumn =
-                        leftMatrixCols.[firstElementIndex + offset]
+                for elementIndex in firstElementIndex .. leftMatrixRows.[row + 1] - 1 do
+                    let currentColumn = leftMatrixCols.[elementIndex]
 
                     let numberOfZeroElements =
-                        match offset with
-                        | 0 -> currentColumn
-                        | _ ->
+                        if elementIndex = leftMatrixRows.[row] then
                             currentColumn
-                            - leftMatrixCols.[firstElementIndex + offset - 1]
+                        else
+                            currentColumn
+                            - leftMatrixCols.[elementIndex - 1]
                             - 1
 
                     // Inserting matrices resulting from multiplication by 0
                     if currentColumn <> 0 && numberOfZeroElements >= 0 then
-                        for i in (currentColumn - numberOfZeroElements) .. currentColumn - 1 do
-                            let columnOffset = i * matrixRight.ColumnCount
+                        resultMatrix <-
+                            [| currentColumn - numberOfZeroElements .. currentColumn - 1 |]
+                            |> Array.map ((*) matrixRight.ColumnCount)
+                            |> insertMatricesMultipliedByZero resultMatrix rowOffset
 
-                            let newMatrix =
-                                insert queue allocationMode rowOffset columnOffset mapWithZero resultMatrix
-
-                            resultMatrix <-
-                                match resultMatrix, mapWithZero with
-                                | Some oldMatrix, Some _ ->
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
-                                    queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
-                                    newMatrix
-                                | _ -> newMatrix
-
-                    // inserting new matrix resulting from multiplication by non None element of left matrix
+                    // inserting new matrix resulting from multiplication by non zero element of left matrix
                     let columnOffset = currentColumn * matrixRight.ColumnCount
 
                     let operand =
-                        Some leftMatrixVals.[firstElementIndex + offset]
+                        Some leftMatrixVals.[elementIndex]
                         |> clContext.CreateClCell
 
                     let mappedMatrix =
                         mapWithValueToCOO queue allocationMode operand matrixRight
 
-                    queue.Post(Msg.CreateFreeMsg<_>(operand))
+                    operand.Free queue
 
                     let newMatrix =
-                        insert queue allocationMode rowOffset columnOffset mappedMatrix resultMatrix
+                        insert rowOffset columnOffset mappedMatrix resultMatrix
 
                     resultMatrix <-
                         match resultMatrix, mappedMatrix with
                         | Some oldMatrix, Some m ->
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
-                            queue.Post(Msg.CreateFreeMsg<_>(m.Rows))
-                            queue.Post(Msg.CreateFreeMsg<_>(m.Columns))
-                            queue.Post(Msg.CreateFreeMsg<_>(m.Values))
+                            oldMatrix.Dispose queue
+                            m.Dispose queue
                             newMatrix
                         | _ -> newMatrix
 
                 // inserting matrices resulting from multiplication by 0 to the rest of the place in row
+                let nnzInRow =
+                    leftMatrixRows.[row + 1] - leftMatrixRows.[row]
+
                 let startColumn =
-                    match NNZInRow with
-                    | 0 -> 0
-                    | _ ->
-                        leftMatrixCols.[firstElementIndex + NNZInRow - 1]
+                    if nnzInRow = 0 then
+                        0
+                    else
+                        leftMatrixCols.[firstElementIndex + nnzInRow - 1]
                         + 1
 
-                for i in startColumn .. matrixLeft.ColumnCount - 1 do
-                    let columnOffset = i * matrixRight.ColumnCount
+                resultMatrix <-
+                    [| startColumn .. matrixLeft.ColumnCount - 1 |]
+                    |> Array.map ((*) matrixRight.ColumnCount)
+                    |> insertMatricesMultipliedByZero resultMatrix rowOffset
 
-                    let newMatrix =
-                        insert queue allocationMode rowOffset columnOffset mapWithZero resultMatrix
-
-                    resultMatrix <-
-                        match resultMatrix, mapWithZero with
-                        | Some oldMatrix, Some _ ->
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Rows))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Columns))
-                            queue.Post(Msg.CreateFreeMsg<_>(oldMatrix.Values))
-                            newMatrix
-                        | _ -> newMatrix
-
-            match resultMatrix with
-            | None -> None
-            | Some m ->
-                Some
+            resultMatrix
+            |> Option.bind
+                (fun m ->
                     { m with
                           RowCount = matrixLeft.RowCount * matrixRight.RowCount
                           ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount }
-
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (op: Expr<'a option -> 'b option -> 'c option>)
-        workGroupSize
-        =
-
-        let kroneckerToCOO = runToCOO clContext op workGroupSize
-
-        let toCSRInplace =
-            Matrix.toCSRInplace clContext workGroupSize
-
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-            let result =
-                kroneckerToCOO queue allocationMode matrixLeft matrixRight
-
-            Option.bind (Some << (toCSRInplace queue allocationMode)) result
+                    |> Some)

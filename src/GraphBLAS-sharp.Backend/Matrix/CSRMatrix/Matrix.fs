@@ -7,9 +7,6 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Matrix =
     let toCOO (clContext: ClContext) workGroupSize =
@@ -104,17 +101,7 @@ module Matrix =
             |> transposeInplace queue
             |> toCSRInplace queue allocationMode
 
-    let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
-        let runCSR =
-            Kronecker.runToCOO clContext op workGroupSize
-
-        fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix.CSR<'a>) (matrix2: ClMatrix.CSR<'b>) ->
-            let result =
-                runCSR queue allocationFlag matrix1 matrix2
-
-            match result with
-            | Some m -> m |> ClMatrix.COO
-            | _ -> failwith "zero matrix"
+    let kronecker = Kronecker.run
 
     module SpGeMM =
         let masked

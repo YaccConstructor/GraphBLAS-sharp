@@ -338,12 +338,14 @@ module Matrix =
                 |> ClMatrix.CSR
 
     let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
-        let runCSR =
-            CSR.Matrix.kronecker op clContext workGroupSize
+        let run =
+            CSR.Matrix.kronecker clContext op workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
             match matrix1, matrix2 with
-            | ClMatrix.CSR m1, ClMatrix.CSR m2 -> runCSR queue allocationFlag m1 m2
+            | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
+                let result = run queue allocationFlag m1 m2
+                Option.bind (Some << ClMatrix.COO) result
             | _ -> failwith "Matrix formats are not matching"
 
     module SpGeMM =

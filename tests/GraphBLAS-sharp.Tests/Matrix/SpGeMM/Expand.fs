@@ -43,29 +43,29 @@ let makeTest (testContext: TestContext) isZero testFun (leftArray: 'a [,], right
 
     let rightMatrix = createCSRMatrix rightArray isZero
 
-    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
+    let expectedPointers, expectedLength =
+        getSegmentsPointers leftMatrix rightMatrix
 
-        let expectedPointers, expectedLength =
-            getSegmentsPointers leftMatrix rightMatrix
+    if leftMatrix.NNZ > 0
+       && rightMatrix.NNZ > 0
+       && expectedLength > 0 then
+        let clLeftMatrix = leftMatrix.ToDevice context
 
-        if expectedLength > 0 then
-            let clLeftMatrix = leftMatrix.ToDevice context
+        let clRightMatrix = rightMatrix.ToDevice context
 
-            let clRightMatrix = rightMatrix.ToDevice context
+        let actualLength, (clActual: ClArray<int>) =
+            testFun processor clLeftMatrix clRightMatrix
 
-            let actualLength, (clActual: ClArray<int>) =
-                testFun processor clLeftMatrix clRightMatrix
+        clLeftMatrix.Dispose processor
+        clRightMatrix.Dispose processor
 
-            clLeftMatrix.Dispose processor
-            clRightMatrix.Dispose processor
+        let actualPointers = clActual.ToHostAndFree processor
 
-            let actualPointers = clActual.ToHostAndFree processor
+        "Results lengths must be the same"
+        |> Expect.equal actualLength expectedLength
 
-            "Results lengths must be the same"
-            |> Expect.equal actualLength expectedLength
-
-            "Result pointers must be the same"
-            |> Expect.sequenceEqual actualPointers expectedPointers
+        "Result pointers must be the same"
+        |> Expect.sequenceEqual actualPointers expectedPointers
 
 let createTest<'a when 'a: struct> (testContext: TestContext) (isZero: 'a -> bool) =
 
@@ -133,48 +133,49 @@ let makeExpandTest (testContext: TestContext) isEqual zero testFun (leftArray: '
     let rightMatrix =
         createCSRMatrix rightArray <| isEqual zero
 
-    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
-        let segmentPointers, length =
-            getSegmentsPointers leftMatrix rightMatrix
+    let segmentPointers, length =
+        getSegmentsPointers leftMatrix rightMatrix
 
-        let expectedLeftMatrixValues, expectedRightMatrixValues, expectedColumns, expectedRows =
-            expand length segmentPointers leftMatrix rightMatrix
+    let expectedLeftMatrixValues, expectedRightMatrixValues, expectedColumns, expectedRows =
+        expand length segmentPointers leftMatrix rightMatrix
 
-        if expectedColumns.Length > 0 then
-            let clLeftMatrix = leftMatrix.ToDevice context
-            let clRightMatrix = rightMatrix.ToDevice context
-            let clSegmentPointers = context.CreateClArray segmentPointers
+    if leftMatrix.NNZ > 0
+       && rightMatrix.NNZ > 0
+       && expectedColumns.Length > 0 then
+        let clLeftMatrix = leftMatrix.ToDevice context
+        let clRightMatrix = rightMatrix.ToDevice context
+        let clSegmentPointers = context.CreateClArray segmentPointers
 
-            let (clActualLeftValues: ClArray<'a>,
-                 clActualRightValues: ClArray<'a>,
-                 clActualColumns: ClArray<int>,
-                 clActualRows: ClArray<int>) =
-                testFun processor length clSegmentPointers clLeftMatrix clRightMatrix
+        let (clActualLeftValues: ClArray<'a>,
+             clActualRightValues: ClArray<'a>,
+             clActualColumns: ClArray<int>,
+             clActualRows: ClArray<int>) =
+            testFun processor length clSegmentPointers clLeftMatrix clRightMatrix
 
-            clLeftMatrix.Dispose processor
-            clRightMatrix.Dispose processor
-            clSegmentPointers.Free processor
+        clLeftMatrix.Dispose processor
+        clRightMatrix.Dispose processor
+        clSegmentPointers.Free processor
 
-            let actualLeftValues =
-                clActualLeftValues.ToHostAndFree processor
+        let actualLeftValues =
+            clActualLeftValues.ToHostAndFree processor
 
-            let actualRightValues =
-                clActualRightValues.ToHostAndFree processor
+        let actualRightValues =
+            clActualRightValues.ToHostAndFree processor
 
-            let actualColumns = clActualColumns.ToHostAndFree processor
-            let actualRows = clActualRows.ToHostAndFree processor
+        let actualColumns = clActualColumns.ToHostAndFree processor
+        let actualRows = clActualRows.ToHostAndFree processor
 
-            "Left values must be the same"
-            |> Utils.compareArrays isEqual actualLeftValues expectedLeftMatrixValues
+        "Left values must be the same"
+        |> Utils.compareArrays isEqual actualLeftValues expectedLeftMatrixValues
 
-            "Right values must be the same"
-            |> Utils.compareArrays isEqual actualRightValues expectedRightMatrixValues
+        "Right values must be the same"
+        |> Utils.compareArrays isEqual actualRightValues expectedRightMatrixValues
 
-            "Columns must be the same"
-            |> Utils.compareArrays (=) actualColumns expectedColumns
+        "Columns must be the same"
+        |> Utils.compareArrays (=) actualColumns expectedColumns
 
-            "Rows must be the same"
-            |> Utils.compareArrays (=) actualRows expectedRows
+        "Rows must be the same"
+        |> Utils.compareArrays (=) actualRows expectedRows
 
 let createExpandTest (testContext: TestContext) (isEqual: 'a -> 'a -> bool) (zero: 'a) =
     let testFun =
@@ -228,23 +229,24 @@ let makeGeneralTest
     let rightMatrix =
         Utils.createMatrixFromArray2D CSR rightArray (isEqual zero)
 
-    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
-        let matrixExpected =
-            HostPrimitives.array2DMultiplication zero opMul opAdd leftArray rightArray
-            |> fun array -> Utils.createMatrixFromArray2D COO array (isEqual zero)
+    let matrixExpected =
+        HostPrimitives.array2DMultiplication zero opMul opAdd leftArray rightArray
+        |> fun array -> Utils.createMatrixFromArray2D COO array (isEqual zero)
 
-        if matrixExpected.NNZ > 0 then
-            let clLeftMatrix = leftMatrix.ToDevice context
-            let clRightMatrix = rightMatrix.ToDevice context
+    if leftMatrix.NNZ > 0
+       && rightMatrix.NNZ > 0
+       && matrixExpected.NNZ > 0 then
+        let clLeftMatrix = leftMatrix.ToDevice context
+        let clRightMatrix = rightMatrix.ToDevice context
 
-            let (clMatrixActual: ClMatrix<_>) =
-                testFun processor HostInterop clLeftMatrix clRightMatrix
+        let (clMatrixActual: ClMatrix<_>) =
+            testFun processor HostInterop clLeftMatrix clRightMatrix
 
-            let matrixActual = clMatrixActual.ToHost processor
+        let matrixActual = clMatrixActual.ToHost processor
 
-            clMatrixActual.Dispose processor
+        clMatrixActual.Dispose processor
 
-            checkGeneralResult isEqual matrixActual matrixExpected
+        checkGeneralResult isEqual matrixActual matrixExpected
 
 let createGeneralTest (testContext: TestContext) (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
 

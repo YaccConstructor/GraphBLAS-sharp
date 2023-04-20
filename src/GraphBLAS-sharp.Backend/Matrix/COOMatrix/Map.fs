@@ -93,7 +93,7 @@ module internal Map =
             preparePositions clContext workGroupSize opAdd
 
         let setPositions =
-            Common.setPositionsUnsafe<'b> clContext workGroupSize
+            Common.setPositions<'b> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.COO<'a>) ->
 

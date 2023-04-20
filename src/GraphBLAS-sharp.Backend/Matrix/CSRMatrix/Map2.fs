@@ -104,7 +104,7 @@ module internal Map2 =
             preparePositions clContext workGroupSize opAdd
 
         let setPositions =
-            Common.setPositionsUnsafe<'c> clContext workGroupSize
+            Common.setPositions<'c> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
 

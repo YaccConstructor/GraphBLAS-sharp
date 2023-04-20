@@ -91,7 +91,7 @@ module internal Map =
             preparePositions clContext workGroupSize opAdd
 
         let setPositions =
-            Common.setPositionsUnsafe<'b> clContext workGroupSize
+            Common.setPositions<'b> clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
 
@@ -129,7 +129,7 @@ module internal Map =
             |> toCSRInplace queue allocationMode
 
     module WithValue =
-        let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize op =
+        let preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
 
             let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
                 <@ fun (ndRange: Range1D) (operand: ClCell<'a option>) rowCount columnCount (values: ClArray<'b>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -158,9 +158,9 @@ module internal Map =
 
             let kernel = clContext.Compile <| preparePositions op
 
-            fun (processor: MailboxProcessor<_>) (operand: ClCell<'a option>) rowCount columnCount (values: ClArray<'b>) (rowPointers: ClArray<int>) (columns: ClArray<int>) ->
+            fun (processor: MailboxProcessor<_>) (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
 
-                let (resultLength: int) = columnCount * rowCount
+                let resultLength = matrix.RowCount * matrix.ColumnCount
 
                 let resultBitmap =
                     clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, resultLength)
@@ -185,11 +185,11 @@ module internal Map =
                             kernel.KernelFunc
                                 ndRange
                                 operand
-                                rowCount
-                                columnCount
-                                values
-                                rowPointers
-                                columns
+                                matrix.RowCount
+                                matrix.ColumnCount
+                                matrix.Values
+                                matrix.RowPointers
+                                matrix.Columns
                                 resultBitmap
                                 resultValues
                                 resultRows
@@ -210,19 +210,11 @@ module internal Map =
                 preparePositions clContext workGroupSize op
 
             let setPositions =
-                Common.setPositionsSafe<'c> clContext workGroupSize
+                Common.setPositionsOption<'c> clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
 
-                let bitmap, values, rows, columns =
-                    mapWithValue
-                        queue
-                        operand
-                        matrix.RowCount
-                        matrix.ColumnCount
-                        matrix.Values
-                        matrix.RowPointers
-                        matrix.Columns
+                let bitmap, values, rows, columns = mapWithValue queue operand matrix
 
                 let result =
                     setPositions queue allocationMode rows columns values bitmap
@@ -232,16 +224,17 @@ module internal Map =
                 queue.Post(Msg.CreateFreeMsg<_>(rows))
                 queue.Post(Msg.CreateFreeMsg<_>(columns))
 
-                match result with
-                | None -> None
-                | Some (resultRows, resultColumns, resultValues, _) ->
-                    Some
+                result
+                |> Option.bind
+                    (fun (resRows, resCols, resValues, _) ->
                         { Context = clContext
                           RowCount = matrix.RowCount
                           ColumnCount = matrix.ColumnCount
-                          Rows = resultRows
-                          Columns = resultColumns
-                          Values = resultValues }
+                          Rows = resRows
+                          Columns = resCols
+                          Values = resValues }
+                        |> Some)
+
 
         let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
             (clContext: ClContext)
@@ -255,6 +248,7 @@ module internal Map =
                 Matrix.toCSRInplace clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
-                match (mapToCOO queue allocationMode operand matrix) with
-                | None -> None
-                | Some result -> Some(result |> toCSRInplace queue allocationMode)
+                let result =
+                    mapToCOO queue allocationMode operand matrix
+
+                Option.bind (Some << (toCSRInplace queue allocationMode)) result
