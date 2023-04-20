@@ -29,9 +29,7 @@ let commonTests =
     let reduceTests =
         testList
             "Reduce"
-            [ Common.Reduce.ByKey.sequentialTest
-              Common.Reduce.ByKey.sequentialSegmentTests
-              Common.Reduce.ByKey.oneWorkGroupTest
+            [ Common.Reduce.ByKey.allTests
               Common.Reduce.Reduce.tests
               Common.Reduce.Sum.tests ]
 

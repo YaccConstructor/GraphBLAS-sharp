@@ -149,7 +149,7 @@ module Matrix =
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
 
-    let toRows (clContext: ClContext) workGroupSize =
+    let toLIL (clContext: ClContext) workGroupSize =
 
         let byRows = byRows clContext workGroupSize
 

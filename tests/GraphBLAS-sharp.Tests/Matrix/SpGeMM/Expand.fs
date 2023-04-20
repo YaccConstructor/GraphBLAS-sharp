@@ -45,9 +45,7 @@ let makeTest isZero testFun (leftArray: 'a [], rightArray: 'a [,]) =
             |> Array.map (fun (fst, snd) -> snd - fst)
 
         let expectedPointers, expectedLength =
-            Array.init
-                leftMatrixRow.Indices.Length
-                (fun index -> rightMatrixRowsLength.[leftMatrixRow.Indices [ index ]])
+            Array.init leftMatrixRow.Indices.Length (fun index -> rightMatrixRowsLength.[leftMatrixRow.Indices.[index]])
             |> HostPrimitives.prefixSumExclude 0 (+)
 
         let clLeftMatrixRow = leftMatrixRow.ToDevice context
@@ -134,7 +132,7 @@ let makeExpandTest isEqual zero testFun (leftArray: 'a [], rightArray: 'a [,]) =
             |> fun rightMatrixRowsLengths ->
                 Array.init
                     leftMatrixRow.Indices.Length
-                    (fun index -> rightMatrixRowsLengths.[leftMatrixRow.Indices [ index ]])
+                    (fun index -> rightMatrixRowsLengths.[leftMatrixRow.Indices.[index]])
             |> HostPrimitives.prefixSumExclude 0 (+)
             |> fun (pointers, length) -> context.CreateClArray(pointers), length
 
@@ -213,9 +211,9 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
             clMatrixActual.ToHostAndDispose processor
 
         match matrixActual with
-        | Matrix.Rows actual ->
+        | Matrix.LIL actual ->
             HostPrimitives.array2DMultiplication zero opMul opAdd leftArray rightArray
-            |> fun array -> Matrix.Rows.FromArray2D(array, (isEqual zero))
+            |> fun array -> Matrix.LIL.FromArray2D(array, (isEqual zero))
             |> Utils.compareLILMatrix isEqual actual
         | _ -> failwith "Matrix format are not matching"
 
@@ -225,7 +223,7 @@ let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
-    [ //createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
+    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
 
       if Utils.isFloat64Available context.ClDevice then
           createGeneralTest

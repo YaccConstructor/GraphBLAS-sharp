@@ -52,7 +52,7 @@
     <Compile Include="Matrix\CSR\Map2.fs" />
     <Compile Include="Matrix\CSR\Map2AtLeastOne.fs" />
     <Compile Include="Matrix\CSR\Matrix.fs" />
-    <Compile Include="Matrix\Rows\Matrix.fs" />
+    <Compile Include="Matrix\LIL\Matrix.fs" />
     <Compile Include="Matrix\SpGeMM\Expand.fs" />
     <Compile Include="Matrix\SpGeMM\Masked.fs" />
     <Compile Include="Matrix\Matrix.fs" />

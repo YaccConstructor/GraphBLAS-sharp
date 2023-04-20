@@ -135,7 +135,7 @@ module Matrix =
               ColumnPointers = context.CreateClArray this.ColumnPointers
               Values = context.CreateClArray this.Values }
 
-    type Rows<'a when 'a: struct> =
+    type LIL<'a when 'a: struct> =
         { RowCount: int
           ColumnCount: int
           Rows: Vector.Sparse<'a> option []
@@ -184,32 +184,32 @@ type Matrix<'a when 'a: struct> =
     | CSR of Matrix.CSR<'a>
     | COO of Matrix.COO<'a>
     | CSC of Matrix.CSC<'a>
-    | Rows of Matrix.Rows<'a>
+    | LIL of Matrix.LIL<'a>
 
     member this.RowCount =
         match this with
         | CSR matrix -> matrix.RowCount
         | COO matrix -> matrix.RowCount
         | CSC matrix -> matrix.RowCount
-        | Rows matrix -> matrix.RowCount
+        | LIL matrix -> matrix.RowCount
 
     member this.ColumnCount =
         match this with
         | CSR matrix -> matrix.ColumnCount
         | COO matrix -> matrix.ColumnCount
         | CSC matrix -> matrix.ColumnCount
-        | Rows matrix -> matrix.ColumnCount
+        | LIL matrix -> matrix.ColumnCount
 
     member this.NNZ =
         match this with
         | COO m -> m.NNZ
         | CSR m -> m.NNZ
         | CSC m -> m.NNZ
-        | Rows m -> m.NNZ
+        | LIL m -> m.NNZ
 
     member this.ToDevice(context: ClContext) =
         match this with
         | COO matrix -> ClMatrix.COO <| matrix.ToDevice context
         | CSR matrix -> ClMatrix.CSR <| matrix.ToDevice context
         | CSC matrix -> ClMatrix.CSC <| matrix.ToDevice context
-        | Rows matrix -> ClMatrix.LIL <| matrix.ToDevice context
+        | LIL matrix -> ClMatrix.LIL <| matrix.ToDevice context

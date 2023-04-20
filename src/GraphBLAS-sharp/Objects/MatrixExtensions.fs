@@ -38,7 +38,7 @@ module MatrixExtensions =
                       m.Rows
                       |> Array.map (Option.bind (fun row -> Some <| row.ToHost q))
                   NNZ = m.NNZ }
-                |> Matrix.Rows
+                |> Matrix.LIL
 
         member this.ToHostAndDispose(processor: MailboxProcessor<_>) =
             let result = this.ToHost processor

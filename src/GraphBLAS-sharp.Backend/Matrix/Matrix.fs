@@ -71,8 +71,7 @@ module Matrix =
         let transpose =
             CSR.Matrix.transpose clContext workGroupSize
 
-        let rowsToCSR =
-            Rows.Matrix.toCSR clContext workGroupSize
+        let rowsToCSR = LIL.Matrix.toCSR clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -124,8 +123,7 @@ module Matrix =
         let transposeInPlace =
             COO.Matrix.transposeInPlace clContext workGroupSize
 
-        let rowsToCSR =
-            Rows.Matrix.toCSR clContext workGroupSize
+        let rowsToCSR = LIL.Matrix.toCSR clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -183,8 +181,7 @@ module Matrix =
         let transposeCOO =
             COO.Matrix.transpose clContext workGroupSize
 
-        let rowsToCSR =
-            Rows.Matrix.toCSR clContext workGroupSize
+        let rowsToCSR = LIL.Matrix.toCSR clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -233,7 +230,7 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Not yet implemented"
 
-    let toRows (clContext: ClContext) workGroupSize =
+    let toLIL (clContext: ClContext) workGroupSize =
 
         let copy = copy clContext workGroupSize
 
@@ -242,22 +239,21 @@ module Matrix =
         let transposeCSR =
             CSR.Matrix.transposeInPlace clContext workGroupSize
 
-        let CSRToRows =
-            CSR.Matrix.toRows clContext workGroupSize
+        let CSRToLIL = CSR.Matrix.toLIL clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
             | ClMatrix.CSC m ->
                 m.ToCSR
                 |> transposeCSR processor allocationMode
-                |> CSRToRows processor allocationMode
+                |> CSRToLIL processor allocationMode
                 |> ClMatrix.LIL
             | ClMatrix.CSR m ->
-                CSRToRows processor allocationMode m
+                CSRToLIL processor allocationMode m
                 |> ClMatrix.LIL
             | ClMatrix.COO m ->
                 COOToCSR processor allocationMode m
-                |> CSRToRows processor allocationMode
+                |> CSRToLIL processor allocationMode
                 |> ClMatrix.LIL
             | ClMatrix.LIL _ -> copy processor allocationMode matrix
 

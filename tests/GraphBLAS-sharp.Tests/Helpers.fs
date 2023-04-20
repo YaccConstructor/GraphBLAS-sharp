@@ -64,8 +64,8 @@ module Utils =
             Matrix.CSC
             <| Matrix.CSC.FromArray2D(array, isZero)
         | LIL ->
-            Matrix.Rows
-            <| Matrix.Rows.FromArray2D(array, isZero)
+            Matrix.LIL
+            <| Matrix.LIL.FromArray2D(array, isZero)
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
@@ -130,7 +130,7 @@ module Utils =
         "Indices must be the same"
         |> compareArrays (=) actual.Indices expected.Indices
 
-    let compareLILMatrix isEqual (actual: Matrix.Rows<'a>) (expected: Matrix.Rows<'a>) =
+    let compareLILMatrix isEqual (actual: Matrix.LIL<'a>) (expected: Matrix.LIL<'a>) =
         "Column count must be the same"
         |> Expect.equal actual.ColumnCount expected.ColumnCount
 

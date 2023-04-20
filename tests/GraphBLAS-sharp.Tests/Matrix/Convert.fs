@@ -70,8 +70,8 @@ let testFixtures formatTo =
         [ createTest<int> Matrix.toCSC formatTo ((=) 0)
           createTest<bool> Matrix.toCSC formatTo ((=) false) ]
     | LIL ->
-        [ createTest<int> Matrix.toRows formatTo ((=) 0)
-          createTest<bool> Matrix.toRows formatTo ((=) false) ]
+        [ createTest<int> Matrix.toLIL formatTo ((=) 0)
+          createTest<bool> Matrix.toLIL formatTo ((=) false) ]
     |> List.concat
     |> testList $"%A{formatTo}"
 
