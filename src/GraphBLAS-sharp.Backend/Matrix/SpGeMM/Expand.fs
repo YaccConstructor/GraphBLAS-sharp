@@ -29,7 +29,7 @@ module Expand =
         fun (processor: MailboxProcessor<_>) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrixRowsLengths: ClArray<int>) ->
 
             let segmentsLengths =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrixRow.Indices.Length)
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrixRow.NNZ)
 
             // extract needed lengths by left matrix nnz
             gather processor leftMatrixRow.Indices rightMatrixRowsLengths segmentsLengths
@@ -70,9 +70,9 @@ module Expand =
         let rightMatrixGather = Gather.run clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) length (segmentsPointers: Indices) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-            if length = 0 then None
+            if length = 0 then
+                None
             else
-                printfn "expand length: %A" length
                 // Compute left matrix positions
                 let leftMatrixPositions = zeroCreate processor DeviceOnly length
 
@@ -124,7 +124,7 @@ module Expand =
                 rightMatrixPositions.Free processor
 
                 // left, right matrix values, columns indices
-                Some (leftMatrixValues, rightMatrixValues, columns)
+                Some(leftMatrixValues, rightMatrixValues, columns)
 
     let multiply (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
         let getBitmap =
@@ -149,7 +149,8 @@ module Expand =
                 (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            if resultLength = 0 then None
+            if resultLength = 0 then
+                None
             else
                 let resultIndices =
                     clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
@@ -161,7 +162,7 @@ module Expand =
 
                 assignValues processor firstValues secondValues positions resultValues
 
-                Some (resultValues, resultIndices)
+                Some(resultValues, resultIndices)
 
     let sortByColumns (clContext: ClContext) workGroupSize =
 
@@ -236,8 +237,6 @@ module Expand =
             let length, segmentPointers =
                 getSegmentPointers processor leftMatrixRow leftMatrixRowsLengths
 
-            if length < 0 then failwith "length < 0"
-
             // expand
             let expandResult =
                 expand processor length segmentPointers leftMatrixRow rightMatrix
@@ -245,72 +244,85 @@ module Expand =
             segmentPointers.Free processor
 
             expandResult
-            |> Option.bind (fun (leftMatrixValues, rightMatrixValues, columns) ->
-                // multiplication
-                let mulResult =
-                    multiply processor leftMatrixValues rightMatrixValues columns
+            |> Option.bind
+                (fun (leftMatrixValues, rightMatrixValues, columns) ->
+                    // multiplication
+                    let mulResult =
+                        multiply processor leftMatrixValues rightMatrixValues columns
 
-                leftMatrixValues.Free processor
-                rightMatrixValues.Free processor
-                columns.Free processor
+                    leftMatrixValues.Free processor
+                    rightMatrixValues.Free processor
+                    columns.Free processor
 
-                // check multiplication result
-                mulResult
-                |> Option.bind (fun (resultValues, resultColumns) ->
-                    // sort
-                    let sortedValues, sortedColumns =
-                        sort processor resultValues resultColumns
+                    // check multiplication result
+                    mulResult
+                    |> Option.bind
+                        (fun (resultValues, resultColumns) ->
+                            // sort
+                            let sortedValues, sortedColumns =
+                                sort processor resultValues resultColumns
 
-                    resultValues.Free processor
-                    resultColumns.Free processor
+                            resultValues.Free processor
+                            resultColumns.Free processor
 
-                    let reduceResult =
-                        reduce processor allocationMode sortedValues sortedColumns
+                            let reduceResult =
+                                reduce processor allocationMode sortedValues sortedColumns
 
-                    sortedValues.Free processor
-                    sortedColumns.Free processor
+                            sortedValues.Free processor
+                            sortedColumns.Free processor
 
-                    // create sparse vector (TODO(empty vector))
-                    reduceResult
-                    |> Option.bind (fun (values, columns) ->
-                        { Context = clContext
-                          Indices = columns
-                          Values = values
-                          Size = rightMatrix.ColumnCount }
-                        |> Some)))
+                            // create sparse vector (TODO(empty vector))
+                            reduceResult
+                            |> Option.bind
+                                (fun (values, columns) ->
+                                    { Context = clContext
+                                      Indices = columns
+                                      Values = values
+                                      Size = rightMatrix.ColumnCount }
+                                    |> Some)))
 
-    let run<'a, 'b, 'c when 'a : struct and 'b : struct and 'c : struct>
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         workGroupSize
         opAdd
-        (opMul: Expr<'a -> 'b -> 'c option>) =
+        (opMul: Expr<'a -> 'b -> 'c option>)
+        =
 
-        let getRowsLength =
-            CSR.Matrix.getRowsLength clContext workGroupSize
+        let getNNZInRows =
+            CSR.Matrix.NNZInRows clContext workGroupSize
 
-        let split = CSR.Matrix.byRowsLazy clContext workGroupSize
+        let split =
+            CSR.Matrix.byRowsLazy clContext workGroupSize
 
-        let runRow = runRow clContext workGroupSize opAdd opMul
+        let runRow =
+            runRow clContext workGroupSize opAdd opMul
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
             let rightMatrixRowsLengths =
-                getRowsLength processor DeviceOnly rightMatrix
-
-            printfn "right matrix rows lengths: %A" <| rightMatrixRowsLengths.ToHost processor
+                getNNZInRows processor DeviceOnly rightMatrix
 
             let runRow =
                 runRow processor allocationMode rightMatrix rightMatrixRowsLengths
-
-            rightMatrixRowsLengths.Free processor
 
             split processor allocationMode leftMatrix
             |> Seq.map (fun lazyRow -> Option.bind runRow lazyRow.Value)
             |> Seq.toArray
             |> fun rows ->
-                { Rows.Context = clContext
+                rightMatrixRowsLengths.Free processor
+
+                // compute nnz
+                let nnz =
+                    rows
+                    |> Array.fold
+                        (fun count ->
+                            function
+                            | Some row -> count + row.Size
+                            | None -> count)
+                        0
+
+                { LIL.Context = clContext
                   RowCount = leftMatrix.RowCount
                   ColumnCount = rightMatrix.ColumnCount
                   Rows = rows
-                  NNZ = -1 } // TODO(nnz count)
-
+                  NNZ = nnz }

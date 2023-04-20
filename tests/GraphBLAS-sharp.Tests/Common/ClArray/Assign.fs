@@ -17,8 +17,7 @@ let config =
 
 let makeTest<'a> isEqual testFun (source: 'a [], target: 'a [], targetPosition: int) =
 
-    if source.Length > 0
-        && target.Length > 0 then
+    if source.Length > 0 && target.Length > 0 then
 
         let clSource = context.CreateClArray source
         let clTarget = context.CreateClArray target
@@ -34,7 +33,7 @@ let makeTest<'a> isEqual testFun (source: 'a [], target: 'a [], targetPosition: 
         "Results should be the same"
         |> Utils.compareArrays isEqual actual target
 
-let createTest<'a when 'a : equality> isEqual =
+let createTest<'a when 'a: equality> isEqual =
     ClArray.assign context Utils.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -43,7 +42,7 @@ let tests =
     [ createTest<int> (=)
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float> Utils.floatIsEqual
+          createTest<float> Utils.floatIsEqual
 
       createTest<float32> Utils.float32IsEqual
       createTest<bool> (=) ]

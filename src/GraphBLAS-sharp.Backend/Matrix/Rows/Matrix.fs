@@ -17,15 +17,17 @@ module Matrix =
 
         let concatValues = ClArray.concat clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (matrix: Rows<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: LIL<'a>) ->
 
             let rowsPointers =
                 matrix.Rows
-                |> Array.map (function None -> 0 | Some vector -> vector.Values.Length)
+                |> Array.map
+                    (function
+                    | None -> 0
+                    | Some vector -> vector.Values.Length)
                 // prefix sum
                 |> Array.scan (+) 0
-                |> fun pointers ->
-                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, pointers)
+                |> fun pointers -> clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, pointers)
 
             let valuesByRows, columnsIndicesByRows =
                 matrix.Rows
@@ -45,5 +47,3 @@ module Matrix =
               RowPointers = rowsPointers
               Columns = columnsIndices
               Values = values }
-
-

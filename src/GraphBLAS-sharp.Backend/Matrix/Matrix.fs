@@ -44,7 +44,7 @@ module Matrix =
                       Rows = copy processor allocationMode m.Rows
                       ColumnPointers = copy processor allocationMode m.ColumnPointers
                       Values = copyData processor allocationMode m.Values }
-            | ClMatrix.Rows matrix ->
+            | ClMatrix.LIL matrix ->
                 matrix.Rows
                 |> Array.map (
                     Option.bind
@@ -56,7 +56,7 @@ module Matrix =
                       ColumnCount = matrix.ColumnCount
                       Rows = rows
                       NNZ = matrix.NNZ }
-                    |> ClMatrix.Rows
+                    |> ClMatrix.LIL
 
     /// <summary>
     /// Creates a new matrix, represented in CSR format, that is equal to the given one.
@@ -82,7 +82,7 @@ module Matrix =
                 m.ToCSR
                 |> transpose processor allocationMode
                 |> ClMatrix.CSR
-            | ClMatrix.Rows m ->
+            | ClMatrix.LIL m ->
                 rowsToCSR processor allocationMode m
                 |> ClMatrix.CSR
 
@@ -136,7 +136,7 @@ module Matrix =
                 |> toCOO processor allocationMode
                 |> transposeInPlace processor
                 |> ClMatrix.COO
-            | ClMatrix.Rows m ->
+            | ClMatrix.LIL m ->
                 rowsToCSR processor allocationMode m
                 |> toCOO processor allocationMode
                 |> ClMatrix.COO
@@ -183,7 +183,8 @@ module Matrix =
         let transposeCOO =
             COO.Matrix.transpose clContext workGroupSize
 
-        let rowsToCSR = Rows.Matrix.toCSR clContext workGroupSize
+        let rowsToCSR =
+            Rows.Matrix.toCSR clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -196,7 +197,7 @@ module Matrix =
                  |> COOtoCSR processor allocationMode)
                     .ToCSC
                 |> ClMatrix.CSC
-            | ClMatrix.Rows m ->
+            | ClMatrix.LIL m ->
                 rowsToCSR processor allocationMode m
                 |> transposeCSR processor allocationMode
                 |> fun m -> m.ToCSC
@@ -241,7 +242,8 @@ module Matrix =
         let transposeCSR =
             CSR.Matrix.transposeInPlace clContext workGroupSize
 
-        let CSRToRows = CSR.Matrix.toRows clContext workGroupSize
+        let CSRToRows =
+            CSR.Matrix.toRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -249,15 +251,15 @@ module Matrix =
                 m.ToCSR
                 |> transposeCSR processor allocationMode
                 |> CSRToRows processor allocationMode
-                |> ClMatrix.Rows
+                |> ClMatrix.LIL
             | ClMatrix.CSR m ->
                 CSRToRows processor allocationMode m
-                |> ClMatrix.Rows
+                |> ClMatrix.LIL
             | ClMatrix.COO m ->
                 COOToCSR processor allocationMode m
                 |> CSRToRows processor allocationMode
-                |> ClMatrix.Rows
-            | ClMatrix.Rows _ -> copy processor allocationMode matrix
+                |> ClMatrix.LIL
+            | ClMatrix.LIL _ -> copy processor allocationMode matrix
 
     let map (clContext: ClContext) (opAdd: Expr<'a option -> 'b option>) workGroupSize =
         let mapCOO =
@@ -363,7 +365,7 @@ module Matrix =
             | ClMatrix.COO m -> COOTransposeInPlace processor m |> ClMatrix.COO
             | ClMatrix.CSR m -> ClMatrix.CSC m.ToCSC
             | ClMatrix.CSC m -> ClMatrix.CSR m.ToCSR
-            | ClMatrix.Rows _ -> failwith "Not yet implemented"
+            | ClMatrix.LIL _ -> failwith "Not yet implemented"
 
     /// <summary>
     /// Transposes the given matrix and returns result as a new matrix.
@@ -406,7 +408,7 @@ module Matrix =
                   Columns = copy processor allocationMode m.Rows
                   Values = copyData processor allocationMode m.Values }
                 |> ClMatrix.CSR
-            | ClMatrix.Rows _ -> failwith "Not yet implemented"
+            | ClMatrix.LIL _ -> failwith "Not yet implemented"
 
     module SpGeMM =
         let masked
@@ -437,5 +439,6 @@ module Matrix =
             fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
                 match leftMatrix, rightMatrix with
                 | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
-                    ClMatrix.Rows <| run processor allocationMode leftMatrix rightMatrix
+                    ClMatrix.LIL
+                    <| run processor allocationMode leftMatrix rightMatrix
                 | _ -> failwith "Matrix formats are not matching"

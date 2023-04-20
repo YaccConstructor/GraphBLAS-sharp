@@ -110,7 +110,8 @@ module internal Map =
             let scatter =
                 Scatter.lastOccurrence clContext workGroupSize
 
-            let setOption = ClArray.assignOption clContext workGroupSize op
+            let setOption =
+                ClArray.assignOption clContext workGroupSize op
 
             fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
 

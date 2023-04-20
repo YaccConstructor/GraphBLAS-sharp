@@ -30,15 +30,27 @@ let makeTest isZero testFun (array: 'a [,]) =
         let actual = clActual.ToHostAndFree processor
 
         let expected =
-            matrix.RowPointers
-            |> Array.pairwise
-            |> Array.map (fun (fst, snd) -> snd - fst)
+            Array.zeroCreate <| Array2D.length1 array
+
+        // count nnz in each row
+        for i in 0 .. Array2D.length1 array - 1 do
+            let nnzRowCount =
+                array.[i, *]
+                |> Array.fold
+                    (fun count item ->
+                        if not <| isZero item then
+                            count + 1
+                        else
+                            count)
+                    0
+
+            expected.[i] <- nnzRowCount
 
         "Results must be the same"
         |> Utils.compareArrays (=) actual expected
 
-let createTest<'a when 'a : struct> (isZero: 'a -> bool) =
-     CSR.Matrix.getRowsLength context Utils.defaultWorkGroupSize
+let createTest<'a when 'a: struct> (isZero: 'a -> bool) =
+    CSR.Matrix.NNZInRows context Utils.defaultWorkGroupSize
     |> makeTest isZero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

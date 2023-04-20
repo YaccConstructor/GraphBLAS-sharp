@@ -588,8 +588,7 @@ module ClArray =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc ndRange targetPosition sourceArray.Length sourceArray targetArray)
+                    (fun () -> kernel.KernelFunc ndRange targetPosition sourceArray.Length sourceArray targetArray)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -632,13 +631,17 @@ module ClArray =
         let kernel = clContext.Compile fill
 
         fun (processor: MailboxProcessor<_>) value firstPosition count (targetArray: ClArray<'a>) ->
-            if count = 0 then ()
+            if count = 0 then
+                ()
             else
                 if firstPosition + count > targetArray.Length then
                     failwith "The array should fit completely"
 
-                if firstPosition < 0 then failwith "The starting position cannot be less than zero"
-                if count < 0 then failwith "The count cannot be less than zero"
+                if firstPosition < 0 then
+                    failwith "The starting position cannot be less than zero"
+
+                if count < 0 then
+                    failwith "The count cannot be less than zero"
 
                 let ndRange =
                     Range1D.CreateValid(count, workGroupSize)
@@ -646,8 +649,7 @@ module ClArray =
                 let kernel = kernel.GetKernel()
 
                 processor.Post(
-                    Msg.MsgSetArguments
-                        (fun () -> kernel.KernelFunc ndRange firstPosition count value targetArray)
+                    Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange firstPosition count value targetArray)
                 )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
@@ -660,7 +662,8 @@ module ClArray =
         let incGather =
             Gather.runInit Map.inc clContext workGroupSize
 
-        let map = map2 clContext workGroupSize <@ fun first second -> (first, second) @>
+        let map =
+            map2 clContext workGroupSize <@ fun first second -> (first, second) @>
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) ->
             if values.Length > 1 then
@@ -676,10 +679,12 @@ module ClArray =
 
                 incGather processor values secondItems
 
-                let result = map processor allocationMode firstItems secondItems
+                let result =
+                    map processor allocationMode firstItems secondItems
 
                 firstItems.Free processor
                 secondItems.Free processor
 
                 Some result
-            else None
+            else
+                None

@@ -135,7 +135,7 @@ module Matrix =
               ColumnPointers = context.CreateClArray this.ColumnPointers
               Values = context.CreateClArray this.Values }
 
-    type Rows<'a when 'a : struct> =
+    type Rows<'a when 'a: struct> =
         { RowCount: int
           ColumnCount: int
           Rows: Vector.Sparse<'a> option []
@@ -146,12 +146,15 @@ module Matrix =
 
             let rows =
                 [ for i in 0 .. Array2D.length1 array - 1 do
-                    let vector = Vector.Sparse.FromArray(array.[i, *], isZero)
+                      let vector =
+                          Vector.Sparse.FromArray(array.[i, *], isZero)
 
-                    nnz <- nnz + vector.NNZ
+                      nnz <- nnz + vector.NNZ
 
-                    if vector.NNZ > 0 then Some vector
-                    else None ]
+                      if vector.NNZ > 0 then
+                          Some vector
+                      else
+                          None ]
                 |> Array.ofList
 
             { RowCount = Array2D.length1 array
@@ -163,8 +166,7 @@ module Matrix =
 
             let rows =
                 this.Rows
-                |> Array.map (Option.bind
-                    (fun vector -> Some <| vector.ToDevice(context)))
+                |> Array.map (Option.bind (fun vector -> Some <| vector.ToDevice(context)))
 
             { Context = context
               RowCount = this.RowCount
@@ -210,4 +212,4 @@ type Matrix<'a when 'a: struct> =
         | COO matrix -> ClMatrix.COO <| matrix.ToDevice context
         | CSR matrix -> ClMatrix.CSR <| matrix.ToDevice context
         | CSC matrix -> ClMatrix.CSC <| matrix.ToDevice context
-        | Rows matrix -> ClMatrix.Rows <| matrix.ToDevice context
+        | Rows matrix -> ClMatrix.LIL <| matrix.ToDevice context

@@ -16,7 +16,7 @@ let config =
     { Utils.defaultConfig with
           arbitrary = [ typeof<Generators.BufferCompatibleArray> ] }
 
-let makeTest<'a> isEqual testFun (array: 'a [] ) =
+let makeTest<'a> isEqual testFun (array: 'a []) =
     if array.Length > 0 then
 
         let clArray = context.CreateClArray array
@@ -42,7 +42,7 @@ let tests =
     [ createTest<int> (=)
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float> (=)
+          createTest<float> (=)
 
       createTest<float32> (=)
       createTest<bool> (=) ]

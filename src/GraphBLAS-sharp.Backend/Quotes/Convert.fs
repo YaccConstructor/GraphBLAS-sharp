@@ -28,6 +28,6 @@ module Convert =
         <@ fun rightItem -> (%op) None rightItem @>
 
     let map2ToMapRightNone (op: Expr<'a option -> 'b option -> 'c option>) =
-        <@ fun leftItem -> (%op) leftItem None  @>
+        <@ fun leftItem -> (%op) leftItem None @>
 
     let map2ToNoneNone (op: Expr<'a option -> 'b option -> 'c option>) = <@ (%op) None None @>

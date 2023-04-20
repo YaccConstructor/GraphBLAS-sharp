@@ -162,7 +162,7 @@ module Matrix =
               Rows = rows
               NNZ = matrix.NNZ }
 
-    let getRowsLength (clContext: ClContext) workGroupSize =
+    let NNZInRows (clContext: ClContext) workGroupSize =
 
         let pairwise = ClArray.pairwise clContext workGroupSize
 
@@ -173,10 +173,11 @@ module Matrix =
             let pointerPairs =
                 pairwise processor DeviceOnly matrix.RowPointers
                 // since row pointers length in matrix always >= 2
-                |> Option.defaultWith (fun () ->
-                    failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
+                |> Option.defaultWith
+                    (fun () -> failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
 
-            let rowsLength = subtract processor allocationMode pointerPairs
+            let rowsLength =
+                subtract processor allocationMode pointerPairs
 
             pointerPairs.Free processor
 

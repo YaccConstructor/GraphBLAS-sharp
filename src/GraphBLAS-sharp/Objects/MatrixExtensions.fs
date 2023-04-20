@@ -15,14 +15,14 @@ module MatrixExtensions =
                   ColumnCount = m.ColumnCount
                   Rows = m.Rows.ToHost q
                   Columns = m.Columns.ToHost q
-                  Values = m.Values.ToHost q  }
+                  Values = m.Values.ToHost q }
                 |> Matrix.COO
             | ClMatrix.CSR m ->
                 { RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   RowPointers = m.RowPointers.ToHost q
-                  ColumnIndices =  m.Columns.ToHost q
-                  Values = m.Values.ToHost q  }
+                  ColumnIndices = m.Columns.ToHost q
+                  Values = m.Values.ToHost q }
                 |> Matrix.CSR
             | ClMatrix.CSC m ->
                 { RowCount = m.RowCount
@@ -31,12 +31,12 @@ module MatrixExtensions =
                   ColumnPointers = m.ColumnPointers.ToHost q
                   Values = m.Values.ToHost q }
                 |> Matrix.CSC
-            | ClMatrix.Rows m ->
+            | ClMatrix.LIL m ->
                 { RowCount = m.RowCount
                   ColumnCount = m.ColumnCount
                   Rows =
-                    m.Rows
-                    |> Array.map (Option.bind (fun row -> Some <| row.ToHost q))
+                      m.Rows
+                      |> Array.map (Option.bind (fun row -> Some <| row.ToHost q))
                   NNZ = m.NNZ }
                 |> Matrix.Rows
 

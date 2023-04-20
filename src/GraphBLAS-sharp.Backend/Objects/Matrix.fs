@@ -6,7 +6,7 @@ type MatrixFormat =
     | CSR
     | COO
     | CSC
-    | Rows
+    | LIL
 
 module ClMatrix =
     type CSR<'elem when 'elem: struct> =
@@ -82,12 +82,12 @@ module ClMatrix =
 
         member this.NNZ = this.Values.Length
 
-    type Rows<'elem when 'elem: struct> =
+    type LIL<'elem when 'elem: struct> =
         { Context: ClContext
           RowCount: int
           ColumnCount: int
           Rows: ClVector.Sparse<'elem> option []
-          NNZ: int } // TODO(empty vector) (or only some with row index ???)
+          NNZ: int }
 
         interface IDeviceMemObject with
             member this.Dispose q =
@@ -117,32 +117,32 @@ type ClMatrix<'a when 'a: struct> =
     | CSR of ClMatrix.CSR<'a>
     | COO of ClMatrix.COO<'a>
     | CSC of ClMatrix.CSC<'a>
-    | Rows of ClMatrix.Rows<'a>
+    | LIL of ClMatrix.LIL<'a>
 
     member this.RowCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.RowCount
         | ClMatrix.COO matrix -> matrix.RowCount
         | ClMatrix.CSC matrix -> matrix.RowCount
-        | ClMatrix.Rows matrix -> matrix.RowCount
+        | ClMatrix.LIL matrix -> matrix.RowCount
 
     member this.ColumnCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.ColumnCount
         | ClMatrix.COO matrix -> matrix.ColumnCount
         | ClMatrix.CSC matrix -> matrix.ColumnCount
-        | ClMatrix.Rows matrix -> matrix.ColumnCount
+        | ClMatrix.LIL matrix -> matrix.ColumnCount
 
     member this.Dispose q =
         match this with
         | ClMatrix.CSR matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.COO matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.CSC matrix -> (matrix :> IDeviceMemObject).Dispose q
-        | ClMatrix.Rows matrix -> (matrix :> IDeviceMemObject).Dispose q
+        | ClMatrix.LIL matrix -> (matrix :> IDeviceMemObject).Dispose q
 
     member this.NNZ =
         match this with
         | ClMatrix.CSR matrix -> matrix.NNZ
         | ClMatrix.COO matrix -> matrix.NNZ
         | ClMatrix.CSC matrix -> matrix.NNZ
-        | ClMatrix.Rows matrix -> matrix.NNZ
+        | ClMatrix.LIL matrix -> matrix.NNZ

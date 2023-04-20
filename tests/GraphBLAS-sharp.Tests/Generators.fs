@@ -570,9 +570,7 @@ module Generators =
     type ArrayOfDistinctKeys() =
         static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
             let tuplesGenerator =
-                Gen.zip
-                <| keysGenerator
-                <| valuesGenerator
+                Gen.zip <| keysGenerator <| valuesGenerator
 
             gen {
                 let! length = Gen.sized <| fun size -> Gen.choose (1, size)
@@ -1079,13 +1077,13 @@ module Generators =
             gen {
                 let! value = valuesGenerator
 
-                let! targetArrayLength = Gen.sized <| fun size -> Gen.choose(1, size + 1)
+                let! targetArrayLength = Gen.sized <| fun size -> Gen.choose (1, size + 1)
 
                 let! targetArray = Gen.arrayOfLength targetArrayLength valuesGenerator
 
                 let! targetPosition = Gen.choose (0, targetArrayLength)
 
-                let! targetCount = Gen.choose(0, targetArrayLength - targetPosition)
+                let! targetCount = Gen.choose (0, targetArrayLength - targetPosition)
 
                 return (value, targetPosition, targetCount, targetArray)
             }

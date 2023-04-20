@@ -14,6 +14,5 @@ module ClVectorExtensions =
     type ClVector<'a when 'a: struct> with
         member this.ToHost(q: MailboxProcessor<_>) =
             match this with
-            | ClVector.Sparse vector ->
-                Vector.Sparse <| vector.ToHost q
+            | ClVector.Sparse vector -> Vector.Sparse <| vector.ToHost q
             | ClVector.Dense vector -> Vector.Dense <| vector.ToHost q

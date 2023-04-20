@@ -567,7 +567,8 @@ module Reduce =
                         (prefixSum processor resultPositions)
                             .ToHostAndFree processor
 
-                    if resultLength =  0 then None
+                    if resultLength = 0 then
+                        None
                     else
                         // write values
                         let resultValues =
@@ -586,7 +587,8 @@ module Reduce =
                         reducedKeys.Free processor
                         resultPositions.Free processor
 
-                        Some (resultValues, resultKeys)
+                        Some(resultValues, resultKeys)
+
     module ByKey2D =
         /// <summary>
         /// Reduce an array of values by 2D keys using a single work item.
@@ -845,7 +847,8 @@ module Reduce =
                         (prefixSum processor resultPositions)
                             .ToHostAndFree processor
 
-                    if resultLength = 0 then None
+                    if resultLength = 0 then
+                        None
                     else
                         // write value
                         let resultValues =
@@ -873,4 +876,4 @@ module Reduce =
 
                         resultPositions.Free processor
 
-                        Some (resultValues, resultFirstKeys, resultSecondKeys)
+                        Some(resultValues, resultFirstKeys, resultSecondKeys)

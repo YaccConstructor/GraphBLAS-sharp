@@ -368,11 +368,11 @@ let sequentialSegment2DTests =
 
 // segments sequential Option
 let createReduceOp reduceOp left right =
-        match left, right with
-        | Some left, Some right -> reduceOp left right
-        | Some value, None
-        | None, Some value -> Some value
-        | _ -> None
+    match left, right with
+    | Some left, Some right -> reduceOp left right
+    | Some value, None
+    | None, Some value -> Some value
+    | _ -> None
 
 let checkResultOption isEqual keys values reduceOp actual =
 
@@ -401,10 +401,9 @@ let checkResultOption isEqual keys values reduceOp actual =
 
         "Values must the same"
         |> Utils.compareArrays isEqual actualValues expectedValues
-    | None ->
-        Expect.isTrue (expectedValues.Length = 0) "Result should be Some _"
+    | None -> Expect.isTrue (expectedValues.Length = 0) "Result should be Some _"
 
-let testOption<'a> isEqual reduceOp testFun (array: (int  * 'a) []) =
+let testOption<'a> isEqual reduceOp testFun (array: (int * 'a) []) =
     if array.Length > 0 then
         let array = Array.sortBy fst array
 
@@ -422,12 +421,13 @@ let testOption<'a> isEqual reduceOp testFun (array: (int  * 'a) []) =
             context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
 
         testFun processor HostInterop offsets.Length clOffsets clKeys clValues
-        |> Option.bind (fun ((clActualValues, clActualKeys): ClArray<_> * ClArray<_>) ->
-            let actualValues = clActualValues.ToHostAndFree processor
-            let actualKeys = clActualKeys.ToHostAndFree processor
+        |> Option.bind
+            (fun ((clActualValues, clActualKeys): ClArray<_> * ClArray<_>) ->
+                let actualValues = clActualValues.ToHostAndFree processor
+                let actualKeys = clActualKeys.ToHostAndFree processor
 
-            Some (actualValues, actualKeys))
-        |>  checkResultOption isEqual keys values reduceOp
+                Some(actualValues, actualKeys))
+        |> checkResultOption isEqual keys values reduceOp
 
 let createTestOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
     Reduce.ByKey.Option.segmentSequential context Utils.defaultWorkGroupSize reduceOpQ
@@ -504,16 +504,17 @@ let test2DOption<'a> isEqual reduceOp reduce (array: (int * int * 'a) []) =
             context.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
 
         reduce processor DeviceOnly offsets.Length clOffsets clFirstKeys clSecondKeys clValues
-        |> Option.bind (fun ((clReducedValues, clFirstActualKeys, clSecondActualKeys): ClArray<'a> * ClArray<int> * ClArray<int>) ->
-            let reducedFirstKeys =
-                clFirstActualKeys.ToHostAndFree processor
+        |> Option.bind
+            (fun ((clReducedValues, clFirstActualKeys, clSecondActualKeys): ClArray<'a> * ClArray<int> * ClArray<int>) ->
+                let reducedFirstKeys =
+                    clFirstActualKeys.ToHostAndFree processor
 
-            let reducedSecondKeys =
-                clSecondActualKeys.ToHostAndFree processor
+                let reducedSecondKeys =
+                    clSecondActualKeys.ToHostAndFree processor
 
-            let reducedValues = clReducedValues.ToHostAndFree processor
+                let reducedValues = clReducedValues.ToHostAndFree processor
 
-            Some (reducedValues, reducedFirstKeys, reducedSecondKeys))
+                Some(reducedValues, reducedFirstKeys, reducedSecondKeys))
         |> checkResult2DOption isEqual firstKeys secondKeys values reduceOp
 
 let createTest2DOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =

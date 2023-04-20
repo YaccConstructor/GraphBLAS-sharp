@@ -48,13 +48,15 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
         "Matrices should be equal"
         |> Expect.equal actual expected
 
-let createTest<'a when 'a : struct and 'a : equality> convertFun formatTo (isZero: 'a -> bool) =
-    let convertFun = convertFun context Utils.defaultWorkGroupSize
+let createTest<'a when 'a: struct and 'a: equality> convertFun formatTo (isZero: 'a -> bool) =
+    let convertFun =
+        convertFun context Utils.defaultWorkGroupSize
 
     Utils.listOfUnionCases<MatrixFormat>
-    |> List.map (fun formatFrom ->
-        makeTest context q formatFrom formatTo convertFun isZero
-        |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>} from %A{formatFrom}")
+    |> List.map
+        (fun formatFrom ->
+            makeTest context q formatFrom formatTo convertFun isZero
+            |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>} from %A{formatFrom}")
 
 let testFixtures formatTo =
     match formatTo with
@@ -67,7 +69,7 @@ let testFixtures formatTo =
     | CSC ->
         [ createTest<int> Matrix.toCSC formatTo ((=) 0)
           createTest<bool> Matrix.toCSC formatTo ((=) false) ]
-    | Rows ->
+    | LIL ->
         [ createTest<int> Matrix.toRows formatTo ((=) 0)
           createTest<bool> Matrix.toRows formatTo ((=) false) ]
     |> List.concat

@@ -63,7 +63,7 @@ module Utils =
         | CSC ->
             Matrix.CSC
             <| Matrix.CSC.FromArray2D(array, isZero)
-        | Rows ->
+        | LIL ->
             Matrix.Rows
             <| Matrix.Rows.FromArray2D(array, isZero)
 
@@ -119,6 +119,32 @@ module Utils =
                     $"%s{message}. Arrays differ at position [%d{i}, %d{j}] of [%A{Array2D.length1 actual}, %A{Array2D.length2 actual}].
                     Actual value is %A{actual.[i, j]}, expected %A{expected.[i, j]}"
                     |> failtestf "%s"
+
+    let compareSparseVectors isEqual (actual: Vector.Sparse<'a>) (expected: Vector.Sparse<'a>) =
+        "Sparse vector size must be the same"
+        |> Expect.equal actual.Size expected.Size
+
+        "Value must be the same"
+        |> compareArrays isEqual actual.Values expected.Values
+
+        "Indices must be the same"
+        |> compareArrays (=) actual.Indices expected.Indices
+
+    let compareLILMatrix isEqual (actual: Matrix.Rows<'a>) (expected: Matrix.Rows<'a>) =
+        "Column count must be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
+
+        "Rows count must be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
+
+        Array.iter2
+            (fun actualRow expected ->
+                match actualRow, expected with
+                | Some actualVector, Some expectedVector -> compareSparseVectors isEqual actualVector expectedVector
+                | None, None -> ()
+                | _ -> failwith "Rows are not matching")
+        <| actual.Rows
+        <| expected.Rows
 
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>

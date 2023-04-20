@@ -16,7 +16,8 @@ let config = Utils.defaultConfig
 let makeTest<'a> isEqual testFun (arrays: 'a [] []) =
 
     if Seq.length arrays > 0
-        && arrays |> Seq.forall (fun array -> array.Length > 0) then
+       && arrays
+          |> Seq.forall (fun array -> array.Length > 0) then
 
         let clArrays = arrays |> Seq.map context.CreateClArray
 
@@ -24,7 +25,9 @@ let makeTest<'a> isEqual testFun (arrays: 'a [] []) =
 
         // release
         let actual = clActual.ToHostAndFree processor
-        clArrays |> Seq.iter (fun array -> array.Free processor)
+
+        clArrays
+        |> Seq.iter (fun array -> array.Free processor)
 
         let expected = Seq.concat arrays |> Seq.toArray
 
@@ -40,7 +43,7 @@ let tests =
     [ createTest<int> (=)
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float> Utils.floatIsEqual
+          createTest<float> Utils.floatIsEqual
 
       createTest<float32> Utils.float32IsEqual
       createTest<bool> (=) ]
