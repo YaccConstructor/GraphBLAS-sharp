@@ -19,8 +19,8 @@
     <Compile Include="Objects/ClContextExtensions.fs" />
     <Compile Include="Objects/ClCell.fs" />
     <Compile Include="Quotes/SubReduce.fs" />
+    <Compile Include="Quotes\Convert.fs" />
     <Compile Include="Quotes/Arithmetic.fs" />
-    <Compile Include="Quotes/Convert.fs" />
     <Compile Include="Quotes/Mask.fs" />
     <Compile Include="Quotes/SubSum.fs" />
     <Compile Include="Quotes/PreparePositions.fs" />

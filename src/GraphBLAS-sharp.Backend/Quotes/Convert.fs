@@ -12,6 +12,13 @@ module Convert =
             | Some left, None -> (%op) (Left left)
             | None, None -> None @>
 
+    let optionToAtLeastOne (op: Expr<'a option -> 'b option -> 'c option>) =
+        <@ fun (item: AtLeastOne<'a, 'b>) ->
+            match item with
+            | Both (left, right) -> (%op) (Some left) (Some right)
+            | Left left -> (%op) (Some left) None
+            | Right right -> (%op) None (Some right) @>
+
     let assignToOption (op: Expr<'a option -> 'a option -> 'a option>) =
         <@ fun (leftItem: 'a option) (rightItem: 'b option) (value: 'a) ->
             match rightItem with
