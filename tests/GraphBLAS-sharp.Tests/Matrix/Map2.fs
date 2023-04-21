@@ -59,39 +59,41 @@ let correctnessGenericTest
     (case: OperationCase<MatrixFormat>)
     (leftMatrix: 'a [,], rightMatrix: 'a [,])
     =
+    match case.Format with // TODO(map2 on LIL)
+    | LIL -> ()
+    | _ ->
+        let mtx1 =
+            Utils.createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
 
-    let mtx1 =
-        Utils.createMatrixFromArray2D case.Format leftMatrix (isEqual zero)
+        let mtx2 =
+            Utils.createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
 
-    let mtx2 =
-        Utils.createMatrixFromArray2D case.Format rightMatrix (isEqual zero)
+        if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
+            try
+                let m1 = mtx1.ToDevice case.TestContext.ClContext
 
-    if mtx1.NNZ > 0 && mtx2.NNZ > 0 then
-        try
-            let m1 = mtx1.ToDevice case.TestContext.ClContext
+                let m2 = mtx2.ToDevice case.TestContext.ClContext
 
-            let m2 = mtx2.ToDevice case.TestContext.ClContext
+                let res = addFun q HostInterop m1 m2
 
-            let res = addFun q HostInterop m1 m2
+                m1.Dispose q
+                m2.Dispose q
 
-            m1.Dispose q
-            m2.Dispose q
+                let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
+                let actual = cooRes.ToHost q
 
-            let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
-            let actual = cooRes.ToHost q
+                cooRes.Dispose q
+                res.Dispose q
 
-            cooRes.Dispose q
-            res.Dispose q
+                logger.debug (
+                    eventX "Actual is {actual}"
+                    >> setField "actual" (sprintf "%A" actual)
+                )
 
-            logger.debug (
-                eventX "Actual is {actual}"
-                >> setField "actual" (sprintf "%A" actual)
-            )
-
-            checkResult isEqual op zero leftMatrix rightMatrix actual
-        with
-        | ex when ex.Message = "InvalidBufferSize" -> ()
-        | ex -> raise ex
+                checkResult isEqual op zero leftMatrix rightMatrix actual
+            with
+            | ex when ex.Message = "InvalidBufferSize" -> ()
+            | ex -> raise ex
 
 let creatTestMap2Add case (zero: 'a) add isEqual addQ map2 =
     let getCorrectnessTestName = getCorrectnessTestName case

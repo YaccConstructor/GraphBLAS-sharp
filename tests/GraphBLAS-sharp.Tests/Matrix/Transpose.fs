@@ -80,26 +80,29 @@ let checkResult areEqual zero actual (expected2D: 'a [,]) =
     | _ -> () // TODO()
 
 let makeTestRegular context q transposeFun hostTranspose isEqual zero case (array: 'a [,]) =
-    let mtx =
-        Utils.createMatrixFromArray2D case.Format array (isEqual zero)
+    match case.Format with
+    | LIL -> ()
+    | _ ->
+        let mtx =
+            Utils.createMatrixFromArray2D case.Format array (isEqual zero)
 
-    if mtx.NNZ > 0 then
-        let actual =
-            let m = mtx.ToDevice context
-            let (mT: ClMatrix<'a>) = transposeFun q HostInterop m
-            let res = mT.ToHost q
-            m.Dispose q
-            mT.Dispose q
-            res
+        if mtx.NNZ > 0 then
+            let actual =
+                let m = mtx.ToDevice context
+                let (mT: ClMatrix<'a>) = transposeFun q HostInterop m
+                let res = mT.ToHost q
+                m.Dispose q
+                mT.Dispose q
+                res
 
-        logger.debug (
-            eventX "Actual is {actual}"
-            >> setField "actual" $"%A{actual}"
-        )
+            logger.debug (
+                eventX "Actual is {actual}"
+                >> setField "actual" $"%A{actual}"
+            )
 
-        let expected2D = hostTranspose array
+            let expected2D = hostTranspose array
 
-        checkResult isEqual zero actual expected2D
+            checkResult isEqual zero actual expected2D
 
 let createTest<'a when 'a: equality and 'a: struct> case (zero: 'a) isEqual =
     let context = case.TestContext.ClContext

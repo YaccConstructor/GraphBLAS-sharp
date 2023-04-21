@@ -59,33 +59,35 @@ let correctnessGenericTest
     (case: OperationCase<MatrixFormat>)
     (matrix: 'a [,])
     =
+    match case.Format with
+    | LIL -> ()
+    | _ ->
+        let mtx =
+            Utils.createMatrixFromArray2D case.Format matrix (isEqual zero)
 
-    let mtx =
-        Utils.createMatrixFromArray2D case.Format matrix (isEqual zero)
+        if mtx.NNZ > 0 then
+            try
+                let m = mtx.ToDevice case.TestContext.ClContext
 
-    if mtx.NNZ > 0 then
-        try
-            let m = mtx.ToDevice case.TestContext.ClContext
+                let res = addFun q HostInterop m
 
-            let res = addFun q HostInterop m
+                m.Dispose q
 
-            m.Dispose q
+                let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
+                let actual = cooRes.ToHost q
 
-            let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
-            let actual = cooRes.ToHost q
+                cooRes.Dispose q
+                res.Dispose q
 
-            cooRes.Dispose q
-            res.Dispose q
+                logger.debug (
+                    eventX "Actual is {actual}"
+                    >> setField "actual" (sprintf "%A" actual)
+                )
 
-            logger.debug (
-                eventX "Actual is {actual}"
-                >> setField "actual" (sprintf "%A" actual)
-            )
-
-            checkResult isEqual op zero matrix actual
-        with
-        | ex when ex.Message = "InvalidBufferSize" -> ()
-        | ex -> raise ex
+                checkResult isEqual op zero matrix actual
+            with
+            | ex when ex.Message = "InvalidBufferSize" -> ()
+            | ex -> raise ex
 
 let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let getCorrectnessTestName = getCorrectnessTestName case

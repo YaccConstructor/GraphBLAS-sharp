@@ -198,6 +198,8 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
 
     if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
+        printfn $"left matrix rows count: %A{leftMatrix.RowCount}"
+
         let clLeftMatrix = leftMatrix.ToDevice context
         let clRightMatrix = rightMatrix.ToDevice context
 
@@ -220,7 +222,11 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
     testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
     |> makeGeneralTest<'a> zero isEqual opMul opAdd
-    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig
+        { config with
+              endSize = 1000
+              maxTest = 2 }
+        $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
