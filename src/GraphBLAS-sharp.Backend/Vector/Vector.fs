@@ -5,8 +5,6 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Vector.Dense
-open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClVector
@@ -80,7 +78,7 @@ module Vector =
 
     let copy (clContext: ClContext) workGroupSize =
         let sparseCopy =
-            SparseVector.copy clContext workGroupSize
+            Sparse.Vector.copy clContext workGroupSize
 
         let copyOptionData = ClArray.copy clContext workGroupSize
 
@@ -95,7 +93,7 @@ module Vector =
 
     let toSparse (clContext: ClContext) workGroupSize =
         let toSparse =
-            DenseVector.toSparse clContext workGroupSize
+            Dense.Vector.toSparse clContext workGroupSize
 
         let copy = copy clContext workGroupSize
 
@@ -108,7 +106,7 @@ module Vector =
 
     let toDense (clContext: ClContext) workGroupSize =
         let toDense =
-            SparseVector.toDense clContext workGroupSize
+            Sparse.Vector.toDense clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 
@@ -123,10 +121,10 @@ module Vector =
 
     let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
         let map2Dense =
-            DenseVector.map2 clContext opAdd workGroupSize
+            Dense.Vector.map2 clContext opAdd workGroupSize
 
         let map2Sparse =
-            SparseVector.map2 clContext opAdd workGroupSize
+            Sparse.Vector.map2 clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -140,10 +138,10 @@ module Vector =
 
     let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
         let map2Sparse =
-            SparseVector.map2AtLeastOne clContext opAdd workGroupSize
+            Sparse.Vector.map2AtLeastOne clContext opAdd workGroupSize
 
         let map2Dense =
-            DenseVector.map2AtLeastOne clContext opAdd workGroupSize
+            Dense.Vector.map2AtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
             match leftVector, rightVector with
@@ -158,10 +156,10 @@ module Vector =
     let private assignByMaskGeneral<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
 
         let sparseFillVector =
-            SparseVector.assignByMask clContext op workGroupSize
+            Sparse.Vector.assignByMask clContext op workGroupSize
 
         let denseFillVector =
-            DenseVector.assignByMask clContext op workGroupSize
+            Dense.Vector.assignByMask clContext op workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: ClCell<'a>) ->
             match vector, mask with
@@ -181,10 +179,10 @@ module Vector =
 
     let reduce (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
         let sparseReduce =
-            SparseVector.reduce clContext workGroupSize opAdd
+            Sparse.Vector.reduce clContext workGroupSize opAdd
 
         let denseReduce =
-            DenseVector.reduce clContext workGroupSize opAdd
+            Dense.Vector.reduce clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
             match vector with

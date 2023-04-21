@@ -1012,20 +1012,24 @@ module Generators =
             arrayAndChunkPosition <| Arb.generate<bool>
             |> Arb.fromGen
 
-    type AssignArray() =
+    type Blit() =
         static let pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) =
             gen {
-                let! targetArrayLength = Gen.sized <| fun size -> Gen.choose (2, size + 2)
+                let! targetArrayLength = Gen.sized <| fun size -> Gen.choose (0, size)
 
                 let! targetArray = Gen.arrayOfLength targetArrayLength valuesGenerator
 
-                let! sourceArrayLength = Gen.choose (1, targetArrayLength)
+                let! sourceArrayLength = Gen.sized <| fun size -> Gen.choose (0, size)
 
                 let! sourceArray = Gen.arrayOfLength sourceArrayLength valuesGenerator
 
-                let! startPosition = Gen.choose (0, targetArrayLength - sourceArrayLength)
+                let! targetIndex = Gen.choose(0, targetArrayLength)
 
-                return (sourceArray, targetArray, startPosition)
+                let! sourceIndex = Gen.choose (0, sourceArrayLength)
+
+                let! count = Gen.choose(0, (min (targetArrayLength - targetIndex) (sourceArrayLength - sourceIndex)))
+
+                return (sourceArray, sourceIndex, targetArray, targetIndex, count)
             }
 
         static member IntType() =

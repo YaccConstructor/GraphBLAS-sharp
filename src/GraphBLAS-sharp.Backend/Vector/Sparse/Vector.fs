@@ -8,7 +8,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
-module SparseVector =
+module Vector =
     let copy (clContext: ClContext) workGroupSize =
         let copy = ClArray.copy clContext workGroupSize
 

@@ -6,6 +6,8 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Matrix =
     let map = Map.run
@@ -78,8 +80,7 @@ module Matrix =
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowIndices nnz rowPointers))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let result = scan processor rowPointers nnz
-            processor.Post <| Msg.CreateFreeMsg(result)
+            (scan processor rowPointers nnz).Free processor
 
             rowPointers
 
@@ -114,7 +115,7 @@ module Matrix =
             let rowPointers =
                 prepare processor allocationMode matrix.Rows matrix.RowCount
 
-            processor.Post(Msg.CreateFreeMsg(matrix.Rows))
+            matrix.Rows.Free processor
 
             { Context = clContext
               RowCount = matrix.RowCount

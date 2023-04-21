@@ -16,7 +16,7 @@ module Matrix =
         let copyData = ClArray.copy clContext workGroupSize
 
         let vectorCopy =
-            Vector.Sparse.SparseVector.copy clContext workGroupSize
+            Vector.Sparse.Vector.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -237,7 +237,7 @@ module Matrix =
         let COOToCSR = COO.Matrix.toCSR clContext workGroupSize
 
         let transposeCSR =
-            CSR.Matrix.transposeInPlace clContext workGroupSize
+            CSR.Matrix.transpose clContext workGroupSize
 
         let CSRToLIL = CSR.Matrix.toLIL clContext workGroupSize
 

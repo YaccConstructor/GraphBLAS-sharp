@@ -8,8 +8,8 @@ open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 
-module DenseVector =
-    let map2Inplace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+module Vector =
+    let map2InPlace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         workGroupSize
@@ -40,7 +40,7 @@ module DenseVector =
     let map2AtLeastOne clContext op workGroupSize =
         map2 clContext (Convert.atLeastOneToOption op) workGroupSize
 
-    let assignByMaskInplace<'a, 'b when 'a: struct and 'b: struct>
+    let assignByMaskInPlace<'a, 'b when 'a: struct and 'b: struct>
         (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
         workGroupSize
@@ -77,7 +77,7 @@ module DenseVector =
         =
 
         let assignByMask =
-            assignByMaskInplace clContext maskOp workGroupSize
+            assignByMaskInPlace clContext maskOp workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultVector =

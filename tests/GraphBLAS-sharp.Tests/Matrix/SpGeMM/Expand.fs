@@ -198,8 +198,6 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
 
     if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
-        printfn $"left matrix rows count: %A{leftMatrix.RowCount}"
-
         let clLeftMatrix = leftMatrix.ToDevice context
         let clRightMatrix = rightMatrix.ToDevice context
 

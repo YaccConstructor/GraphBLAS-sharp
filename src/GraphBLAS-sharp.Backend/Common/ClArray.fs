@@ -559,43 +559,53 @@ module ClArray =
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
 
-    let assign<'a> (clContext: ClContext) workGroupSize =
+    let blit<'a> (clContext: ClContext) workGroupSize =
 
         let assign =
-            <@ fun (ndRange: Range1D) targetPosition sourceArrayLength (sourceArray: ClArray<'a>) (targetArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) sourceIndex (sourceArray: ClArray<'a>) (targetArray: ClArray<'a>) targetPosition count ->
 
                 let gid = ndRange.GlobalID0
 
-                let resultPosition = gid + targetPosition
+                if gid < count then
+                    let readPosition = gid + sourceIndex
+                    let writePosition = gid + targetPosition
 
-                if gid < sourceArrayLength then
-
-                    targetArray.[resultPosition] <- sourceArray.[gid] @>
+                    targetArray.[writePosition] <- sourceArray.[readPosition] @>
 
         let kernel = clContext.Compile assign
 
-        fun (processor: MailboxProcessor<_>) (sourceArray: ClArray<'a>) targetPosition (targetArray: ClArray<'a>) ->
-            if targetPosition < 0 then
-                failwith "The starting position cannot be less than zero"
+        fun (processor: MailboxProcessor<_>) (sourceArray: ClArray<'a>) sourceIndex (targetArray: ClArray<'a>) targetIndex count ->
+            // check count
+            if count < 0 then failwith "Count must be greater than zero"
 
-            if targetPosition + sourceArray.Length > targetArray.Length then
-                failwith "The array should fit completely"
+            // check sourceIndex
+            if sourceIndex < 0
+               && sourceIndex + count >= sourceArray.Length
+               then failwith "The source index does not match"
 
-            let ndRange =
-                Range1D.CreateValid(targetArray.Length, workGroupSize)
+            // check targetPosition
+            if targetIndex < 0
+                && targetIndex + count >= targetArray.Length
+                then failwith "The target index does not match"
 
-            let kernel = kernel.GetKernel()
+            if count = 0 then ()
+                // nothing to do
+            else
+                let ndRange =
+                    Range1D.CreateValid(targetArray.Length, workGroupSize)
 
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange targetPosition sourceArray.Length sourceArray targetArray)
-            )
+                let kernel = kernel.GetKernel()
 
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernel.KernelFunc ndRange sourceIndex sourceArray targetArray targetIndex count)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let concat (clContext: ClContext) workGroupSize =
 
-        let assign = assign clContext workGroupSize
+        let blit = blit clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (sourceArrays: ClArray<'a> seq) ->
 
@@ -609,7 +619,7 @@ module ClArray =
             // write each array to result
             Seq.fold
                 (fun previousLength (array: ClArray<_>) ->
-                    assign processor array previousLength result
+                    blit processor array 0 result previousLength array.Length
                     previousLength + array.Length)
                 0
                 sourceArrays

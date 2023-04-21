@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Assign
+module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Blit
 
 open Expecto
 open Brahma.FSharp
@@ -13,28 +13,28 @@ let processor = Context.defaultContext.Queue
 
 let config =
     { Utils.defaultConfig with
-          arbitrary = [ typeof<Generators.AssignArray> ] }
+          arbitrary = [ typeof<Generators.Blit> ] }
 
-let makeTest<'a> isEqual testFun (source: 'a [], target: 'a [], targetPosition: int) =
+let makeTest<'a> isEqual testFun (source: 'a [], sourceIndex, target: 'a [], targetIndex, count) =
 
     if source.Length > 0 && target.Length > 0 then
 
         let clSource = context.CreateClArray source
         let clTarget = context.CreateClArray target
 
-        testFun processor clSource targetPosition clTarget
+        testFun processor clSource sourceIndex clTarget targetIndex count
 
         clSource.Free processor
         let actual = clTarget.ToHostAndFree processor
 
         // write to target --- target expected
-        Array.blit source 0 target targetPosition source.Length
+        Array.blit source sourceIndex target targetIndex count
 
         "Results should be the same"
         |> Utils.compareArrays isEqual actual target
 
 let createTest<'a when 'a: equality> isEqual =
-    ClArray.assign context Utils.defaultWorkGroupSize
+    ClArray.blit context Utils.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
@@ -46,4 +46,4 @@ let tests =
 
       createTest<float32> Utils.float32IsEqual
       createTest<bool> (=) ]
-    |> testList "Assign"
+    |> testList "Blit"

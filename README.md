@@ -25,23 +25,24 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API impleme
 
 ### Operations
 - **Matrix-Matrix**
-  - [x] COO-COO element-wize
-  - [x] CSR-CSR element-wize
-  - [ ] CSR-CSR multiplication
-  - [ ] COO transpose
-  - [ ] CSR transpose 
+  - [x] COO-COO `map2`
+  - [x] CSR-CSR `map2`
+  - [x] CSR-CSR multiplication
 - **Vector-Matrix**
   - [x] Dense-CSR multiplication
   - [ ] COO-CSR multiplication
 - **Vector-Vector**
   - [x] Dense-Dense element-wise
+  - [x] Sparse-Sparse element-wise
   - [ ] ...
 - **Matrix**
-  - [ ] `map`
+  - [x] `map`
+  - [x] COO transpose
+  - [x] CSR transpose
   - [ ] `iter`
   - [ ] ...
 - **Vector**
-  - [ ] `map`
+  - [x] `map`
   - [ ] `iter`
   - [ ] `filter`
   - [ ] `contains`

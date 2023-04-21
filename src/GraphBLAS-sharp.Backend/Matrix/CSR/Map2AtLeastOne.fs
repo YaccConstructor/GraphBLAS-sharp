@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Map2AtLeastOne =
     let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
@@ -310,8 +311,8 @@ module internal Map2AtLeastOne =
             let positions, allValues =
                 preparePositions queue allColumns leftMergedValues rightMergedValues isRowEnd isLeft
 
-            queue.Post(Msg.CreateFreeMsg<_>(leftMergedValues))
-            queue.Post(Msg.CreateFreeMsg<_>(rightMergedValues))
+            leftMergedValues.Free queue
+            rightMergedValues.Free queue
 
             let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allocationMode allRows allColumns allValues positions
@@ -338,9 +339,9 @@ module internal Map2AtLeastOne =
 
         let elementwiseToCOO = runToCOO clContext opAdd workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             elementwiseToCOO queue allocationMode matrixLeft matrixRight
-            |> toCSRInplace queue allocationMode
+            |> toCSRInPlace queue allocationMode

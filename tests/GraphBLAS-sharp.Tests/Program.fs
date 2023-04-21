@@ -45,7 +45,7 @@ let commonTests =
               Common.ClArray.Map2.mulTests
               Common.ClArray.Choose.allTests
               Common.ClArray.ChunkBySize.allTests
-              Common.ClArray.Assign.tests
+              Common.ClArray.Blit.tests
               Common.ClArray.Concat.tests
               Common.ClArray.Fill.tests
               Common.ClArray.Pairwise.tests ]
