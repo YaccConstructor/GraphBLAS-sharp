@@ -43,7 +43,7 @@ let commonTests =
               Common.ClArray.Map.tests
               Common.ClArray.Map2.addTests
               Common.ClArray.Map2.mulTests
-              Common.ClArray.Choose.tests
+              Common.ClArray.Choose.allTests
               Common.ClArray.ChunkBySize.allTests
               Common.ClArray.Assign.tests
               Common.ClArray.Concat.tests
@@ -62,7 +62,8 @@ let commonTests =
           sortTests
           reduceTests
           scanTests
-          Common.Scatter.tests ]
+          Common.Scatter.allTests
+          Common.Gather.allTests ]
     |> testSequenced
 
 let vectorTests =
