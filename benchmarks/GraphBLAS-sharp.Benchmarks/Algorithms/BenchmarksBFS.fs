@@ -31,7 +31,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
 
     member val ResultVector = Unchecked.defaultof<ClArray<'elem option>> with get,set
 
-    [<ParamsSource("AvailableContexts")>]
+    [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
     [<ParamsSource("InputMatricesProvider")>]
@@ -45,7 +45,7 @@ type BFSBenchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem :
         p.Error.Add(fun e -> failwithf "%A" e)
         p
 
-    static member AvailableContexts = Utils.avaliableContexts
+    static member AvaliableContexts = Utils.avaliableContexts
 
     static member InputMatricesProviderBuilder pathToConfig =
         let datasetFolder = ""
@@ -159,6 +159,6 @@ type BFSBenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceMemOb
         this.LoadMatrixToGPU()
         this.BFS()
         this.Processor.PostAndReply Msg.MsgNotifyMe
-        resultToHost this.ResultVector this.Processor
+        let res = resultToHost this.ResultVector this.Processor
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
