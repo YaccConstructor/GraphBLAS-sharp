@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Benchmarks
+﻿namespace GraphBLAS.FSharp.Benchmarks.Matrix.Map2
 
 open System.IO
 open GraphBLAS.FSharp.Objects
@@ -7,12 +7,13 @@ open BenchmarkDotNet.Attributes
 open MathNet.Numerics.LinearAlgebra
 open MathNet.Numerics
 open Microsoft.FSharp.Core
+open GraphBLAS.FSharp.Benchmarks
 
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<CommonConfig>)>]
-type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'elem> and 'elem :> System.IFormattable and 'elem :> System.ValueType and 'elem: (new :
+[<Config(typeof<Configs.Matrix2>)>]
+type MathNET<'elem when 'elem: struct and 'elem :> System.IEquatable<'elem> and 'elem :> System.IFormattable and 'elem :> System.ValueType and 'elem: (new :
     unit -> 'elem)>(converter: string -> 'elem, converterBool) =
     do Control.UseNativeMKL()
 
@@ -35,8 +36,8 @@ type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'e
             | Pattern -> converterBool
             | _ -> converter
 
-        let gbMatrix = reader.ReadMatrix converter
-        MathNETBenchmark<_>.COOMatrixToMathNETSparse gbMatrix
+        Matrix.COO (reader.ReadMatrix converter)
+        |> MathNET<_>.COOMatrixToMathNETSparse
 
     abstract member GlobalSetup : unit -> unit
 
@@ -46,7 +47,7 @@ type MathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'e
 
 type BinOpMathNETBenchmark<'elem when 'elem: struct and 'elem :> System.IEquatable<'elem> and 'elem :> System.IFormattable and 'elem :> System.ValueType and 'elem: (new :
     unit -> 'elem)>(funToBenchmark, converter: string -> 'elem, converterBool) =
-    inherit MathNETBenchmark<'elem>(converter, converterBool)
+    inherit MathNET<'elem>(converter, converterBool)
 
     let mutable firstMatrix = Unchecked.defaultof<Matrix<'elem>>
     let mutable secondMatrix = Unchecked.defaultof<Matrix<'elem>>

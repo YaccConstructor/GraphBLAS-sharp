@@ -1,33 +1,24 @@
 namespace GraphBLAS.FSharp.Benchmarks
 
-open Expecto
+namespace GraphBLAS.FSharp.Benchmarks.Synthetic
+
 open FsCheck
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Columns
+
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
-type VectorConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        )
-        |> ignore
-
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<VectorConfig>)>]
+[<Config(typeof<Configs.MinMaxMeanConfig>)>]
 type VectorEWiseBenchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
     generator: Gen<Vector<'elem> * Vector<'elem>>) =
@@ -45,7 +36,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
     [<ParamsSource("AvaliableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
-    [<Params(10000, 1000000, 100000000)>]
+    [<Params(1000000)>]
     member val Size = Unchecked.defaultof<int> with get, set
 
     member this.OclContext: ClContext = (fst this.OclContextInfo).ClContext
@@ -66,8 +57,14 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
             x
         | Some x -> x
 
-    member this.EWiseAddition() =
+    member this.Map2() =
+        try
+
         this.ResultVector <- this.FunToBenchmark this.Processor HostInterop firstVector secondVector
+
+        with
+            | ex when ex.Message = "InvalidBufferSize" -> ()
+            | ex -> raise ex
 
     member this.ClearInputVectors()=
         firstVector.Dispose this.Processor
@@ -83,15 +80,15 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
         firstVector <- (fst this.HostVectorPair).ToDevice this.OclContext
         secondVector <- (snd this.HostVectorPair).ToDevice this.OclContext
 
-    abstract member GlobalSetup : unit -> unit
+    abstract member GlobalSetup: unit -> unit
 
     abstract member IterationSetup: unit -> unit
 
-    abstract member Benchmark : unit -> unit
+    abstract member Benchmark: unit -> unit
 
-    abstract member IterationCleanup : unit -> unit
+    abstract member IterationCleanup: unit -> unit
 
-    abstract member GlobalCleanup : unit -> unit
+    abstract member GlobalCleanup: unit -> unit
 
 
 type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
@@ -107,16 +104,17 @@ type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
 
     [<IterationSetup>]
     override this.IterationSetup() =
-        this.CreateVectors ()
-        this.LoadVectorsToGPU ()
+        this.CreateVectors()
+        this.LoadVectorsToGPU()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
 
     [<Benchmark>]
-    override this.Benchmark () =
-        this.EWiseAddition()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+    override this.Benchmark() =
+        this.Map2()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
 
     [<IterationCleanup>]
-    override this.IterationCleanup () =
+    override this.IterationCleanup() =
         this.ClearResult()
         this.ClearInputVectors()
 
@@ -141,8 +139,7 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
     [<Benchmark>]
     override this.Benchmark () =
         this.LoadVectorsToGPU()
-        this.EWiseAddition()
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        this.Map2()
         this.ResultVector.ToHost this.Processor |> ignore
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
@@ -155,56 +152,52 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
     override this.GlobalCleanup() = ()
 
 /// Without data transfer
-/// AtLeastOne
-type VectorEWiseBenchmarks4FloatSparseWithoutDataTransfer() =
+type VectorSparseMap2FloatWithoutTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
         (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
         VectorGenerator.floatPair Sparse)
 
-type VectorEWiseBenchmarks4Int32SparseWithoutDataTransfer() =
+type VectorSparseMap2Int32WithoutTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
         (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
         VectorGenerator.intPair Sparse)
 
 /// General
-
-type VectorEWiseGeneralBenchmarks4FloatSparseWithoutDataTransfer() =
+type VectorSparseMap2GeneralFloatWithoutTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
         (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
         VectorGenerator.floatPair Sparse)
 
-type VectorEWiseGeneralBenchmarks4Int32SparseWithoutDataTransfer() =
+type VectorSparseMap2GeneralInt32WithoutTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
         (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
         VectorGenerator.intPair Sparse)
 
 /// With data transfer
-
-type VectorEWiseBenchmarks4FloatSparseWithDataTransfer() =
+type VectorSparseMap2FloatWithTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
         (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
         VectorGenerator.floatPair Sparse)
 
-type VectorEWiseBenchmarks4Int32SparseWithDataTransfer() =
+type VectorSparseMap2Int32WithTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
         (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
         VectorGenerator.intPair Sparse)
 
-/// General with data transfer
-
-type VectorEWiseGeneralBenchmarks4FloatSparseWithDataTransfer() =
+/// Map2 with data transfer
+type VectorMap2GeneralFloatSparseWithTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<float>(
         (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
         VectorGenerator.floatPair Sparse)
 
-type VectorEWiseGeneralBenchmarks4Int32SparseWithDataTransfer() =
+type VectorMap2GeneralInt32SparseWithTransferBenchmark() =
 
     inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
         (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),

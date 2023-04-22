@@ -7,13 +7,14 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Benchmarks.MatrixExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Benchmarks
+open GraphBLAS.FSharp.Backend
 
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<CommonConfig>)>]
+[<Config(typeof<Configs.Config>)>]
 type MxmBenchmarks<'elem when 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
@@ -88,7 +89,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
             x
         | Some x -> x
 
-    member this.ReadMatrix (reader:MtxReader) =
+    member this.ReadMatrix (reader: MtxReader) =
         let converter =
             match reader.Field with
             | Pattern -> converterBool
@@ -108,7 +109,7 @@ type MxmBenchmarks<'elem when 'elem : struct>(
         this.ResultMatrix.Dispose this.Processor
 
     member this.ReadMask(maskReader) =
-        maskHost <- this.ReadMatrix maskReader
+        maskHost <- Matrix.COO <| this.ReadMatrix maskReader
 
     member this.ReadMatrices() =
         let matrixReader, maskReader = this.InputMatrixReader
@@ -129,11 +130,11 @@ type MxmBenchmarks<'elem when 'elem : struct>(
 
     abstract member GlobalSetup : unit -> unit
 
+    abstract member Benchmark : unit -> unit
+
     abstract member IterationCleanup : unit -> unit
 
     abstract member GlobalCleanup : unit -> unit
-
-    abstract member Benchmark : unit -> unit
 
 type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
         buildFunToBenchmark,
@@ -153,6 +154,11 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
         this.LoadMatricesToGPU ()
         this.ConvertSecondMatrixToCSC()
 
+    [<Benchmark>]
+    override this.Benchmark () =
+        this.Mxm()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
     [<IterationCleanup>]
     override this.IterationCleanup () =
         this.ClearResult()
@@ -160,11 +166,6 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
     [<GlobalCleanup>]
     override this.GlobalCleanup () =
         this.ClearInputMatrices()
-
-    [<Benchmark>]
-    override this.Benchmark () =
-        this.Mxm()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
 type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
         buildFunToBenchmark,
@@ -179,120 +180,93 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
         buildMatrix)
 
     [<GlobalSetup>]
-    override this.GlobalSetup () =
-        this.ReadMatrices ()
+    override this.GlobalSetup() =
+        this.ReadMatrices()
         this.LoadMatricesToGPU ()
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () =
-        this.ClearInputMatrices()
-
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearResult()
-        this.ConvertSecondMatrixToCSR()
-
     [<Benchmark>]
-    override this.Benchmark () =
+    override this.Benchmark() =
         this.ConvertSecondMatrixToCSC()
         this.Mxm()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-module Operations =
-    let add = <@ fun x y -> Some (x + y) @>
 
-    let addWithFilter = <@ fun x y ->
-        let res = x + y
-        if abs res < 1e-8f then None else Some res
-    @>
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearResult()
+        this.ConvertSecondMatrixToCSR()
 
-    let mult = <@ fun x y -> Some (x * y) @>
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearInputMatrices()
 
-    let logicalOr = <@ fun x y ->
-        let mutable res = None
-
-        match x, y with
-        | false, false -> res <- None
-        | _            -> res <- Some true
-
-        res @>
-
-    let logicalAnd = <@ fun x y ->
-        let mutable res = None
-
-        match x, y with
-        | true, true -> res <- Some true
-        | _          -> res <- None
-
-        res @>
-
-type MxmBenchmarks4Float32MultiplicationOnly() =
+type Mxm4Float32MultiplicationOnlyBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        (Matrix.SpGeMM.masked Operations.add Operations.mult),
+        Matrix.SpGeMM.masked (Operations.add ()) (Operations.mult ()),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
-type MxmBenchmarks4Float32WithTransposing() =
+type Mxm4Float32WithTransposingBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        (Matrix.SpGeMM.masked Operations.add Operations.mult),
+        Matrix.SpGeMM.masked (Operations.add ()) (Operations.mult ()),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
-type MxmBenchmarks4BoolMultiplicationOnly() =
+type Mxm4BoolMultiplicationOnlyBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<bool>(
         (Matrix.SpGeMM.masked Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
 
-type MxmBenchmarks4BoolWithTransposing() =
+type Mxm4BoolWithTransposingBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<bool>(
         (Matrix.SpGeMM.masked Operations.logicalOr Operations.logicalAnd),
         (fun _ -> true),
         (fun _ -> true),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
 
-type MxmBenchmarks4Float32MultiplicationOnlyWithZerosFilter() =
+type Mxm4Float32MultiplicationOnlyWithZerosFilterBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        (Matrix.SpGeMM.masked Operations.addWithFilter Operations.mult),
+        (Matrix.SpGeMM.masked Operations.addWithFilter (Operations.mult ())),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
         MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
-type MxmBenchmarks4Float32WithTransposingWithZerosFilter() =
+type Mxm4Float32WithTransposingWithZerosFilterBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        (Matrix.SpGeMM.masked Operations.addWithFilter Operations.mult),
+        Matrix.SpGeMM.masked Operations.addWithFilter (Operations.mult ()),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
-        (fun context matrix -> ClMatrix.CSR (Matrix.ToBackendCSR context matrix))
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
         )
 
     static member InputMatrixProvider =
