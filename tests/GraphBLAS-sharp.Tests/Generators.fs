@@ -1023,11 +1023,11 @@ module Generators =
 
                 let! sourceArray = Gen.arrayOfLength sourceArrayLength valuesGenerator
 
-                let! targetIndex = Gen.choose(0, targetArrayLength)
+                let! targetIndex = Gen.choose (0, targetArrayLength)
 
                 let! sourceIndex = Gen.choose (0, sourceArrayLength)
 
-                let! count = Gen.choose(0, (min (targetArrayLength - targetIndex) (sourceArrayLength - sourceIndex)))
+                let! count = Gen.choose (0, (min (targetArrayLength - targetIndex) (sourceArrayLength - sourceIndex)))
 
                 return (sourceArray, sourceIndex, targetArray, targetIndex, count)
             }

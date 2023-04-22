@@ -576,20 +576,22 @@ module ClArray =
 
         fun (processor: MailboxProcessor<_>) (sourceArray: ClArray<'a>) sourceIndex (targetArray: ClArray<'a>) targetIndex count ->
             // check count
-            if count < 0 then failwith "Count must be greater than zero"
+            if count < 0 then
+                failwith "Count must be greater than zero"
 
             // check sourceIndex
             if sourceIndex < 0
-               && sourceIndex + count >= sourceArray.Length
-               then failwith "The source index does not match"
+               && sourceIndex + count >= sourceArray.Length then
+                failwith "The source index does not match"
 
             // check targetPosition
             if targetIndex < 0
-                && targetIndex + count >= targetArray.Length
-                then failwith "The target index does not match"
+               && targetIndex + count >= targetArray.Length then
+                failwith "The target index does not match"
 
-            if count = 0 then ()
-                // nothing to do
+            if count = 0 then
+                ()
+            // nothing to do
             else
                 let ndRange =
                     Range1D.CreateValid(targetArray.Length, workGroupSize)
