@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Benchmarks
+namespace GraphBLAS.FSharp.Benchmarks.Vector
 
 namespace GraphBLAS.FSharp.Benchmarks.Synthetic
 
@@ -18,8 +18,8 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Configs.MinMaxMeanConfig>)>]
-type VectorEWiseBenchmarks<'elem when 'elem : struct>(
+[<Config(typeof<Configs.MinMaxMean>)>]
+type Map2<'elem when 'elem : struct>(
     buildFunToBenchmark,
     generator: Gen<Vector<'elem> * Vector<'elem>>) =
 
@@ -33,7 +33,7 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
 
     member val ResultVector = Unchecked.defaultof<ClVector<'elem>> with get,set
 
-    [<ParamsSource("AvaliableContexts")>]
+    [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
 
     [<Params(1000000)>]
@@ -44,10 +44,10 @@ type VectorEWiseBenchmarks<'elem when 'elem : struct>(
 
     member this.Processor =
         let p = (fst this.OclContextInfo).Queue
-        p.Error.Add(fun e -> failwithf "%A" e)
+        p.Error.Add(fun e -> failwithf $"%A{e}")
         p
 
-    static member AvaliableContexts = Utils.avaliableContexts
+    static member AvailableContexts = Utils.avaliableContexts
 
     member this.FunToBenchmark =
         match funToBenchmark with
@@ -95,7 +95,7 @@ type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
         buildFunToBenchmark,
         generator) =
 
-    inherit VectorEWiseBenchmarks<'elem>(
+    inherit Map2<'elem>(
         buildFunToBenchmark,
         generator)
 
@@ -125,7 +125,7 @@ type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
         buildFunToBenchmark,
         generator) =
 
-    inherit VectorEWiseBenchmarks<'elem>(
+    inherit Map2<'elem>(
         buildFunToBenchmark,
         generator)
 

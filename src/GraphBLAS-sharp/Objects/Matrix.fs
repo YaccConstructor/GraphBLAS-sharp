@@ -73,7 +73,7 @@ module Matrix =
               Values = values }
 
         static member FromArray2D(array: 'a [,], isZero: 'a -> bool) =
-            let rows, cols, vals =
+            let rows, cols, values =
                 array
                 |> Seq.cast<'a>
                 |> Seq.mapi (fun idx v -> (idx / Array2D.length2 array, idx % Array2D.length2 array, v))
@@ -81,7 +81,7 @@ module Matrix =
                 |> Array.ofSeq
                 |> Array.unzip3
 
-            COO.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, vals)
+            COO.FromTuples(Array2D.length1 array, Array2D.length2 array, rows, cols, values)
 
         member this.ToDevice(context: ClContext) =
             { Context = context
@@ -91,7 +91,7 @@ module Matrix =
               Columns = context.CreateClArray this.Columns
               Values = context.CreateClArray this.Values }
 
-        member this.toCSR =
+        member this.ToCSR =
             let rowPointers =
                 let nnzPerRow = Array.zeroCreate this.RowCount
                 let rowPointers = Array.zeroCreate this.RowCount

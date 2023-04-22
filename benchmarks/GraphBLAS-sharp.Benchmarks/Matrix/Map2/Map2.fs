@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Benchmarks
+namespace GraphBLAS.FSharp.Benchmarks.Matrix.Map2
 
 open System.IO
 open GraphBLAS.FSharp.Backend.Quotes
@@ -16,7 +16,7 @@ open GraphBLAS.FSharp.Benchmarks
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Configs.Matrix2>)>]
-type Map2Benchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+type Map2<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
@@ -108,7 +108,7 @@ type Map2BenchmarksWithoutDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceM
         converterBool,
         buildMatrix) =
 
-    inherit Map2Benchmarks<'matrixT, 'elem>(
+    inherit Map2<'matrixT, 'elem>(
         buildFunToBenchmark,
         converter,
         converterBool,
@@ -140,7 +140,7 @@ type Map2BenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceMemO
         buildMatrix,
         resultToHost) =
 
-    inherit Map2Benchmarks<'matrixT, 'elem>(
+    inherit Map2<'matrixT, 'elem>(
         buildFunToBenchmark,
         converter,
         converterBool,
@@ -176,7 +176,7 @@ type MatrixCOOMap2Float32WithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
 type MatrixCOOMap2Float32WithTransferBenchmark() =
 
@@ -189,7 +189,7 @@ type MatrixCOOMap2Float32WithTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
 
 type MatrixCOOMap2BoolWithoutTransferBenchmark() =
@@ -202,7 +202,7 @@ type MatrixCOOMap2BoolWithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
+        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
 
 
 type MatrixCSRMap2Float32WithoutTransferBenchmark() =
@@ -215,7 +215,7 @@ type MatrixCSRMap2Float32WithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
+        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
 
 
 type MatrixCSRMap2BoolWithoutTransferBenchmark() =
@@ -228,7 +228,7 @@ type MatrixCSRMap2BoolWithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
 
 // AtLeastOne
 
@@ -242,7 +242,7 @@ type MatrixCOOMap2AtLeastOne4BoolWithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
 
 type MatrixCSRMap2AtLeastOne4BoolWithoutTransferBenchmark() =
 
@@ -254,7 +254,7 @@ type MatrixCSRMap2AtLeastOne4BoolWithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
 
 type MatrixCOOMap2AtLeastOne4Float32WithoutTransferBenchmark() =
 
@@ -266,7 +266,7 @@ type MatrixCOOMap2AtLeastOne4Float32WithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
 type MatrixCSRMap2AtLeastOne4Float32CSRWithoutTransferBenchmark() =
 
@@ -278,4 +278,4 @@ type MatrixCSRMap2AtLeastOne4Float32CSRWithoutTransferBenchmark() =
         )
 
     static member InputMatricesProvider =
-        Map2Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"

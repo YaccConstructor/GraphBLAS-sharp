@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Benchmarks
+namespace GraphBLAS.FSharp.Benchmarks.Matrix.SpGeMM
 
 open System.IO
 open GraphBLAS.FSharp.IO
@@ -14,8 +14,8 @@ open GraphBLAS.FSharp.Backend
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Configs.Config>)>]
-type MxmBenchmarks<'elem when 'elem : struct>(
+[<Config(typeof<Configs.Matrix2>)>]
+type Masked<'elem when 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
@@ -142,7 +142,7 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
         converterBool,
         buildMatrix) =
 
-    inherit MxmBenchmarks<'elem>(
+    inherit Masked<'elem>(
         buildFunToBenchmark,
         converter,
         converterBool,
@@ -173,7 +173,7 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
         converterBool,
         buildMatrix) =
 
-    inherit MxmBenchmarks<'elem>(
+    inherit Masked<'elem>(
         buildFunToBenchmark,
         converter,
         converterBool,
@@ -210,7 +210,7 @@ type Mxm4Float32MultiplicationOnlyBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
 type Mxm4Float32WithTransposingBenchmark() =
 
@@ -222,7 +222,7 @@ type Mxm4Float32WithTransposingBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
 type Mxm4BoolMultiplicationOnlyBenchmark() =
 
@@ -234,7 +234,7 @@ type Mxm4BoolMultiplicationOnlyBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
 
 type Mxm4BoolWithTransposingBenchmark() =
 
@@ -246,7 +246,7 @@ type Mxm4BoolWithTransposingBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Bool.txt"
 
 type Mxm4Float32MultiplicationOnlyWithZerosFilterBenchmark() =
 
@@ -258,7 +258,7 @@ type Mxm4Float32MultiplicationOnlyWithZerosFilterBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
 
 type Mxm4Float32WithTransposingWithZerosFilterBenchmark() =
 
@@ -270,4 +270,4 @@ type Mxm4Float32WithTransposingWithZerosFilterBenchmark() =
         )
 
     static member InputMatrixProvider =
-        MxmBenchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+        Masked<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"

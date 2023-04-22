@@ -104,7 +104,7 @@ let testFixturesSpMV (testContext: TestContext) =
       let q = testContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSum ArithmeticOperations.boolMulOption
+      createTest testContext false (=) (||) (&&) ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption
       createTest testContext 0 (=) (+) (*) ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption
 
       if Utils.isFloat64Available context.ClDevice then

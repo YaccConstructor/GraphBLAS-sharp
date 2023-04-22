@@ -6,31 +6,6 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open FSharp.Quotations.Evaluator
 
-[<AutoOpen>]
-module Extensions =
-    type ClosedBinaryOp<'a> with
-        member this.Invoke =
-            let (ClosedBinaryOp f) = this
-            QuotationEvaluator.Evaluate f
-
-module CustomDatatypes =
-    // мб заменить рекорд на структуру (не помогает)
-    [<Struct>]
-    type WrappedInt =
-        { InnerValue: int }
-        static member (+)(x: WrappedInt, y: WrappedInt) =
-            { InnerValue = x.InnerValue + y.InnerValue }
-
-        static member (*)(x: WrappedInt, y: WrappedInt) =
-            { InnerValue = x.InnerValue * y.InnerValue }
-
-    let addMultSemiringOnWrappedInt: Semiring<WrappedInt> =
-        { PlusMonoid =
-              { AssociativeOp = ClosedBinaryOp <@ (+) @>
-                Identity = { InnerValue = 0 } }
-
-          TimesSemigroup = { AssociativeOp = ClosedBinaryOp <@ (*) @> } }
-
 module Generators =
     let logger = Log.create "Generators"
 
@@ -309,13 +284,6 @@ module Generators =
         static member BoolType() =
             pairOfMatrixAndVectorOfCompatibleSizeGenerator
             |> genericSparseGenerator false Arb.generate<bool>
-            |> Arb.fromGen
-
-        static member WrappedInt() =
-            pairOfMatrixAndVectorOfCompatibleSizeGenerator
-            |> genericSparseGenerator
-                CustomDatatypes.addMultSemiringOnWrappedInt.PlusMonoid.Identity
-                Arb.generate<CustomDatatypes.WrappedInt>
             |> Arb.fromGen
 
     type PairOfSparseVectorAndMatrixAndMaskOfCompatibleSize() =

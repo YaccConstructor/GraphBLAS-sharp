@@ -1,134 +1,18 @@
 namespace rec GraphBLAS.FSharp.Benchmarks
 
-open BenchmarkDotNet.Columns
-open BenchmarkDotNet.Reports
-open BenchmarkDotNet.Running
+namespace GraphBLAS.FSharp.Benchmarks
+
 open Brahma.FSharp
 open Brahma.FSharp.OpenCL.Translator
+open Brahma.FSharp.OpenCL.Translator.QuotationTransformers
+open GraphBLAS.FSharp.Backend.Objects
 open OpenCL.Net
-open GraphBLAS.FSharp.IO
 open System.IO
 open System.Text.RegularExpressions
-open BenchmarkDotNet.Configs
-open BenchmarkDotNet.Jobs
 open GraphBLAS.FSharp.Tests
 open FsCheck
 open Expecto
 open GraphBLAS.FSharp.Test
-
-type CommonConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn<MtxReader * MtxReader>("RowCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn<MtxReader * MtxReader>("ColumnCount", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn<MtxReader * MtxReader>("NNZ", (fun (mtxReader, _) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            MatrixShapeColumn<MtxReader * MtxReader>("SqrNNZ", (fun (_, mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            TEPSColumn(fun (parameters: obj) -> parameters :?> MtxReader * MtxReader |> fst) :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        )
-        |> ignore
-
-        base.AddJob(
-            Job
-                .Dry
-                .WithWarmupCount(3)
-                .WithIterationCount(10)
-                .WithInvocationCount(3)
-        )
-        |> ignore
-
-type AlgorithmConfig() =
-    inherit ManualConfig()
-
-    do
-        base.AddColumn(
-            MatrixShapeColumn<MtxReader>("RowCount", (fun (mtxReader) -> mtxReader.ReadMatrixShape().RowCount)) :> IColumn,
-            MatrixShapeColumn<MtxReader>("ColumnCount", (fun (mtxReader) -> mtxReader.ReadMatrixShape().ColumnCount)) :> IColumn,
-            MatrixShapeColumn<MtxReader>("NNZ", (fun (mtxReader) -> mtxReader.ReadMatrixShape().Nnz)) :> IColumn,
-            TEPSColumn(fun (parameters: obj) -> parameters :?> MtxReader) :> IColumn,
-            StatisticColumn.Min,
-            StatisticColumn.Max
-        )
-        |> ignore
-
-        base.AddJob(
-            Job
-                .Dry
-                .WithWarmupCount(3)
-                .WithIterationCount(10)
-                .WithInvocationCount(3)
-        )
-        |> ignore
-
-type MatrixShapeColumn<'shape>(columnName: string, getShape: 'shape -> int) =
-    interface IColumn with
-        member this.AlwaysShow: bool = true
-        member this.Category: ColumnCategory = ColumnCategory.Params
-        member this.ColumnName: string = columnName
-
-        member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
-            let inputMatrix =
-                benchmarkCase.Parameters.["InputMatrixReader"] :?> 'shape
-
-            sprintf "%i" <| getShape inputMatrix
-
-        member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle) : string =
-            (this :> IColumn).GetValue(summary, benchmarkCase)
-
-        member this.Id: string =
-            sprintf "%s.%s" "MatrixShapeColumn" columnName
-
-        member this.IsAvailable(summary: Summary) : bool = true
-        member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase) : bool = false
-        member this.IsNumeric: bool = true
-        member this.Legend: string = sprintf "%s of input matrix" columnName
-        member this.PriorityInCategory: int = 1
-        member this.UnitType: UnitType = UnitType.Size
-
-type TEPSColumn(getMtxReader: obj -> MtxReader) =
-    interface IColumn with
-        member this.AlwaysShow: bool = true
-        member this.Category: ColumnCategory = ColumnCategory.Statistics
-        member this.ColumnName: string = "TEPS"
-
-        member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase) : string =
-            let inputMatrixReader = getMtxReader benchmarkCase.Parameters.["InputMatrixReader"]
-
-            let matrixShape = inputMatrixReader.ReadMatrixShape()
-
-            let (nrows, ncols) =
-                matrixShape.RowCount, matrixShape.ColumnCount
-
-            let (vertices, edges) =
-                match inputMatrixReader.Format with
-                | Coordinate ->
-                    if nrows = ncols then
-                        (nrows, matrixShape.Nnz)
-                    else
-                        (ncols, nrows)
-                | _ -> failwith "Unsupported"
-
-            if isNull summary.[benchmarkCase].ResultStatistics then
-                "NA"
-            else
-                let meanTime =
-                    summary.[benchmarkCase].ResultStatistics.Mean
-
-                sprintf "%f" <| float edges / (meanTime * 1e-6)
-
-        member this.GetValue(summary: Summary, benchmarkCase: BenchmarkCase, style: SummaryStyle) : string =
-            (this :> IColumn).GetValue(summary, benchmarkCase)
-
-        member this.Id: string = "TEPSColumn"
-        member this.IsAvailable(summary: Summary) : bool = true
-        member this.IsDefault(summary: Summary, benchmarkCase: BenchmarkCase) : bool = false
-        member this.IsNumeric: bool = true
-        member this.Legend: string = "Traversed edges per second"
-        member this.PriorityInCategory: int = 0
-        member this.UnitType: UnitType = UnitType.Dimensionless
 
 module Utils =
     type BenchmarkContext =
@@ -218,7 +102,7 @@ module Utils =
                             .GetDeviceInfo(device, DeviceInfo.Type, &e)
                             .CastTo<DeviceType>()
 
-                    let clDeviceType =
+                    let _ =
                         match deviceType with
                         | DeviceType.Cpu -> ClDeviceType.Cpu
                         | DeviceType.Gpu -> ClDeviceType.Gpu
@@ -248,8 +132,43 @@ module Utils =
         random.NextBytes buffer
         System.BitConverter.ToSingle(buffer, 0)
 
+    let normalFloatGenerator =
+        (Arb.Default.NormalFloat()
+        |> Arb.toGen
+        |> Gen.map float)
+
+    let fIsEqual x y = abs (x - y) < Accuracy.medium.absolute || x.Equals y
+
     let nextInt (random: System.Random) =
         random.Next()
+
+module Operations =
+    let inline add () = <@ fun x y -> Some(x + y) @>
+
+    let addWithFilter = <@ fun x y ->
+        let res = x + y
+        if abs res < 1e-8f then None else Some res
+    @>
+
+    let inline mult () = <@ fun x y -> Some <|x * y @>
+
+    let logicalOr = <@ fun x y ->
+        let mutable res = None
+
+        match x, y with
+        | false, false -> res <- None
+        | _            -> res <- Some true
+
+        res @>
+
+    let logicalAnd = <@ fun x y ->
+        let mutable res = None
+
+        match x, y with
+        | true, true -> res <- Some true
+        | _          -> res <- None
+
+        res @>
 
 module VectorGenerator =
     let private pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) createVector =
@@ -268,23 +187,19 @@ module VectorGenerator =
         |> pairOfVectorsOfEqualSize Arb.generate<int32>
 
     let floatPair format =
-        let normalFloatGenerator =
-            (Arb.Default.NormalFloat()
-            |> Arb.toGen
-            |> Gen.map float)
-
         let fIsEqual x y = abs (x - y) < Accuracy.medium.absolute || x = y
 
         let createVector array = Utils.createVectorFromArray format array (fIsEqual 0.0)
 
-        pairOfVectorsOfEqualSize normalFloatGenerator createVector
+        pairOfVectorsOfEqualSize Utils.normalFloatGenerator createVector
+
 
 module MatrixGenerator =
     let private pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) createMatrix =
         gen {
-            let! nrows, ncols = Generators.dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (nrows, ncols)
+            let! rowsCount, columnsCount = Generators.dimension2DGenerator
+            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
+            let! matrixB = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
             return (createMatrix matrixA, createMatrix matrixB)
         }
 
@@ -293,12 +208,47 @@ module MatrixGenerator =
         |> pairOfMatricesOfEqualSizeGenerator Arb.generate<int32>
 
     let floatPairOfEqualSizes format =
-        let normalFloatGenerator =
-            (Arb.Default.NormalFloat()
-            |> Arb.toGen
-            |> Gen.map float)
+        fun array -> Utils.createMatrixFromArray2D format array (Utils.fIsEqual 0.0)
+        |> pairOfMatricesOfEqualSizeGenerator Utils.normalFloatGenerator
 
-        let fIsEqual x y = abs (x - y) < Accuracy.medium.absolute || x = y
+    let private pairOfMatricesWithMaskOfEqualSizeGenerator (valuesGenerator: Gen<'a>) format createMatrix =
+        gen {
+            let! rowsCount, columnsCount = Generators.dimension2DGenerator
+            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
+            let! matrixB = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
+            let! mask = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
 
-        fun array -> Utils.createMatrixFromArray2D format array (fIsEqual 0.0)
-        |> pairOfMatricesOfEqualSizeGenerator normalFloatGenerator
+            return (createMatrix format matrixA,
+                    createMatrix format matrixB,
+                    createMatrix COO mask)
+        }
+
+    let intPairWithMaskOfEqualSizes format =
+        fun format array -> Utils.createMatrixFromArray2D format array ((=) 0)
+        |> pairOfMatricesWithMaskOfEqualSizeGenerator Arb.generate<int32> format
+
+    let floatPairWithMaskOfEqualSizes format =
+        fun format array -> Utils.createMatrixFromArray2D format array (Utils.fIsEqual 0.0)
+        |> pairOfMatricesWithMaskOfEqualSizeGenerator Utils.normalFloatGenerator format
+
+module MatrixVectorGenerator =
+    let private pairOfMatricesAndVectorGenerator (valuesGenerator: Gen<'a>) createVector createMatrix =
+        gen {
+            let! rowsCount, columnsCount = Generators.dimension2DGenerator
+            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
+            let! vector = valuesGenerator |> Gen.arrayOfLength columnsCount
+
+            return (createMatrix matrixA, createVector vector)
+        }
+
+    let intPairOfCompatibleSizes matrixFormat vectorFormat =
+        let createVector array = Utils.createVectorFromArray vectorFormat array ((=) 0)
+        let createMatrix array = Utils.createMatrixFromArray2D matrixFormat array ((=) 0)
+
+        pairOfMatricesAndVectorGenerator Arb.generate<int32> createVector createMatrix
+
+    let floatPairOfCompatibleSizes matrixFormat vectorFormat =
+        let createVector array = Utils.createVectorFromArray vectorFormat array (Utils.floatIsEqual 0.0)
+        let createMatrix array = Utils.createMatrixFromArray2D matrixFormat array (Utils.floatIsEqual 0.0)
+
+        pairOfMatricesAndVectorGenerator Utils.normalFloatGenerator createVector createMatrix

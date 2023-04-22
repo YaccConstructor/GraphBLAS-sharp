@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Benchmarks
+﻿namespace GraphBLAS.FSharp.Benchmarks.Algorithms
 
 open System.IO
 open BenchmarkDotNet.Attributes
@@ -15,8 +15,8 @@ open GraphBLAS.FSharp.Backend.Objects
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Configs.SingleMatrixConfig>)>]
-type BFSBenchmarks<'elem when 'elem : struct>(
+[<Config(typeof<Configs.Matrix>)>]
+type BFS<'elem when 'elem : struct>(
     buildFunToBenchmark,
     converter: string -> 'elem,
     binaryConverter,
@@ -98,7 +98,7 @@ type BFSBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
     boolConverter,
     vertex) =
 
-    inherit BFSBenchmarks<'elem>(
+    inherit BFS<'elem>(
         buildFunToBenchmark,
         converter,
         boolConverter,
@@ -128,7 +128,7 @@ type BFSBenchmarksWithTransfer<'elem when 'elem : struct>(
     boolConverter,
     vertex) =
 
-    inherit BFSBenchmarks<'elem>(
+    inherit BFS<'elem>(
         buildFunToBenchmark,
         converter,
         boolConverter,
@@ -163,7 +163,7 @@ type BFSIntWithoutTransferBenchmark() =
         0)
 
     static member InputMatrixProvider =
-        BFSBenchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+        BFS<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 
 type BFSIntWithTransferBenchmark() =
 
@@ -174,5 +174,5 @@ type BFSIntWithTransferBenchmark() =
         0)
 
     static member InputMatrixProvider =
-        BFSBenchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+        BFS<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 
