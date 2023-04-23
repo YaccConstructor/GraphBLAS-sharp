@@ -219,15 +219,16 @@ module BFS =
                         <| (containsNonZeroSparse queue newMaskedFrontier)
                             .ToHostAndFree queue
 
-                    //Push/pull
-                    if ((float32 newMaskedFrontier.NNZ)
-                        / (float32 newMaskedFrontier.Size)
-                        <= SPARSITY) then
-                        frontier <- ClVector.Sparse newMaskedFrontier
-                    else
-                        printfn "Sparse to dense, front size %i" (newMaskedFrontier.NNZ)
-                        frontier <- ClVector.Dense(toDense queue DeviceOnly newMaskedFrontier)
-                        newMaskedFrontier.Dispose queue
+                    if not stop then
+                        //Push/pull
+                        if ((float32 newMaskedFrontier.NNZ)
+                            / (float32 newMaskedFrontier.Size)
+                            <= SPARSITY) then
+                            frontier <- ClVector.Sparse newMaskedFrontier
+                        else
+                            printfn "Sparse to dense, front size %i" (newMaskedFrontier.NNZ)
+                            frontier <- ClVector.Dense(toDense queue DeviceOnly newMaskedFrontier)
+                            newMaskedFrontier.Dispose queue
 
                 | ClVector.Dense front ->
                     //Assigning new level values
