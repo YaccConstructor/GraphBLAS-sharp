@@ -132,12 +132,14 @@ module Matrix =
             |> Seq.map
                 (fun (first, second) ->
                     lazy
-                        (if second - first > 0 then
-                             let values = getChunkValues first second
-                             let columns = getChunkIndices first second
+                        (let count = second - first
+
+                         if count > 0 then
+                             let values = getChunkValues first count
+                             let columns = getChunkIndices first count
 
                              Some <| creatSparseVector values columns
-                         else
+                        else
                              None))
 
     let byRows (clContext: ClContext) workGroupSize =
