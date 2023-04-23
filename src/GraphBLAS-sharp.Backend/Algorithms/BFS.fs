@@ -147,7 +147,7 @@ module BFS =
         workGroupSize
         =
 
-        let SPARSITY = 0.01f
+        let SPARSITY = 0.001f
 
         let spMVTo =
             SpMV.runTo clContext add mul workGroupSize
@@ -225,7 +225,7 @@ module BFS =
                         <= SPARSITY) then
                         frontier <- ClVector.Sparse newMaskedFrontier
                     else
-                        printfn "Sparse to dense"
+                        printfn "Sparse to dense, front size %i" (newMaskedFrontier.NNZ)
                         frontier <- ClVector.Dense(toDense queue DeviceOnly newMaskedFrontier)
                         newMaskedFrontier.Dispose queue
 
@@ -246,7 +246,7 @@ module BFS =
                     //Push/pull
                     if not stop then
                         if ((float32 NNZ) / (float32 front.Length) <= SPARSITY) then
-                            printfn "Dense to sparse"
+                            printfn "Dense to sparse,  front size %i" NNZ
                             frontier <- ClVector.Sparse(toSparse queue DeviceOnly front)
                             front.Dispose queue
 
