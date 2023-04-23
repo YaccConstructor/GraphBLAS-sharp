@@ -21,10 +21,11 @@
     <Compile Include="Configs.fs" />
     <!--Compile Include="BenchmarksTranspose.fs" /-->
     <Compile Include="Matrix\SpGeMM\Masked.fs" />
+    <Compile Include="Matrix\SpGeMM\Expand.fs" />
     <Compile Include="Matrix\Map2\Map2.fs" />
     <Compile Include="Matrix\Map2\MathNET.fs" />
     <Compile Include="Vector\Map2.fs" />
-    <Compile Include="Algorithms\BFS.fs" />
+    <Compile Include="Algorithms\Benchmark.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

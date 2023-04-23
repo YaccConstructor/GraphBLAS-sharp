@@ -16,7 +16,7 @@ open GraphBLAS.FSharp.Benchmarks
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Configs.Matrix2>)>]
-type Map2<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+type Benchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
@@ -44,7 +44,7 @@ type Map2<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
         p.Error.Add(fun e -> failwithf "%A" e)
         p
 
-    static member AvailableContexts = Utils.avaliableContexts
+    static member AvailableContexts = Utils.availableContexts
 
     static member InputMatricesProviderBuilder pathToConfig =
         let datasetFolder = "EWiseAdd"
@@ -102,180 +102,184 @@ type Map2<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
 
     abstract member GlobalCleanup: unit -> unit
 
-type Map2BenchmarksWithoutDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
-        buildFunToBenchmark,
-        converter: string -> 'elem,
-        converterBool,
-        buildMatrix) =
+module WithoutTransfer =
+    type Benchmark<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+            buildFunToBenchmark,
+            converter: string -> 'elem,
+            converterBool,
+            buildMatrix) =
 
-    inherit Map2<'matrixT, 'elem>(
-        buildFunToBenchmark,
-        converter,
-        converterBool,
-        buildMatrix)
+        inherit Benchmarks<'matrixT, 'elem>(
+            buildFunToBenchmark,
+            converter,
+            converterBool,
+            buildMatrix)
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrices ()
-        this.LoadMatricesToGPU ()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        [<GlobalSetup>]
+        override this.GlobalSetup() =
+            this.ReadMatrices ()
+            this.LoadMatricesToGPU ()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-    [<Benchmark>]
-    override this.Benchmark () =
-        this.EWiseAddition()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        [<Benchmark>]
+        override this.Benchmark () =
+            this.EWiseAddition()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearResult()
+        [<IterationCleanup>]
+        override this.IterationCleanup () =
+            this.ClearResult()
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () =
-        this.ClearInputMatrices()
+        [<GlobalCleanup>]
+        override this.GlobalCleanup () =
+            this.ClearInputMatrices()
 
-type Map2BenchmarksWithDataTransfer<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
-        buildFunToBenchmark,
-        converter: string -> 'elem,
-        converterBool,
-        buildMatrix,
-        resultToHost) =
+    module COO =
+        type Float32() =
 
-    inherit Map2<'matrixT, 'elem>(
-        buildFunToBenchmark,
-        converter,
-        converterBool,
-        buildMatrix)
+            inherit Benchmark<ClMatrix.COO<float32>,float32>(
+                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                float32,
+                (fun _ -> Utils.nextSingle (System.Random())),
+                Matrix.COO
+                )
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrices()
+            static member InputMatricesProvider =
+                Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup() = ()
+        type Bool() =
 
-    [<IterationCleanup>]
-    override this.IterationCleanup() =
-        this.ClearInputMatrices()
-        this.ClearResult()
+            inherit Benchmark<ClMatrix.COO<bool>,bool>(
+                (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
+                (fun _ -> true),
+                (fun _ -> true),
+                Matrix.COO
+                )
 
-    [<Benchmark>]
-    override this.Benchmark() =
-        this.LoadMatricesToGPU()
-        this.EWiseAddition()
-        this.Processor.PostAndReply Msg.MsgNotifyMe
-        resultToHost this.ResultMatrix this.Processor |> ignore
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+            static member InputMatricesProvider =
+                Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
 
-type MatrixCOOMap2Float32WithoutTransferBenchmark() =
+    module CSR =
+        type Float32() =
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.COO<float32>,float32>(
-        (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
-        float32,
-        (fun _ -> Utils.nextSingle (System.Random())),
-        Matrix.COO
-        )
+            inherit Benchmark<ClMatrix.CSR<float32>,float32>(
+                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                float32,
+                (fun _ -> Utils.nextSingle (System.Random())),
+                (fun matrix -> Matrix.CSR matrix.ToCSR)
+                )
 
-    static member InputMatricesProvider =
-        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+            static member InputMatricesProvider =
+                Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
 
-type MatrixCOOMap2Float32WithTransferBenchmark() =
+        type Bool() =
 
-    inherit Map2BenchmarksWithDataTransfer<ClMatrix.COO<float32>,float32>(
-        (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
-        float32,
-        (fun _ -> Utils.nextSingle (System.Random())),
-        Matrix.COO,
-        (fun matrix -> matrix.ToHost)
-        )
+            inherit Benchmark<ClMatrix.CSR<bool>,bool>(
+                (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
+                (fun _ -> true),
+                (fun _ -> true),
+                (fun matrix -> Matrix.CSR matrix.ToCSR)
+                )
 
-    static member InputMatricesProvider =
-        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
+            static member InputMatricesProvider =
+                Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
 
+    module AtLeastOne =
+        module COO =
+            type Bool() =
 
-type MatrixCOOMap2BoolWithoutTransferBenchmark() =
+                inherit Benchmark<ClMatrix.COO<bool>,bool>(
+                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
+                    (fun _ -> true),
+                    (fun _ -> true),
+                    Matrix.COO
+                    )
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.COO<bool>,bool>(
-        (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
-        (fun _ -> true),
-        (fun _ -> true),
-        Matrix.COO
-        )
+                static member InputMatricesProvider =
+                    Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
 
-    static member InputMatricesProvider =
-        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCOO.txt"
+            type Float32() =
 
+                inherit Benchmark<ClMatrix.COO<float32>,float32>(
+                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
+                    float32,
+                    (fun _ -> Utils.nextSingle (System.Random())),
+                    Matrix.COO
+                    )
 
-type MatrixCSRMap2Float32WithoutTransferBenchmark() =
+                static member InputMatricesProvider =
+                    Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.CSR<float32>,float32>(
-        (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
-        float32,
-        (fun _ -> Utils.nextSingle (System.Random())),
-        (fun matrix -> Matrix.CSR matrix.ToCSR)
-        )
+        module CSR =
+            type Bool() =
 
-    static member InputMatricesProvider =
-        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32CSR.txt"
+                inherit Benchmark<ClMatrix.CSR<bool>,bool>(
+                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
+                    (fun _ -> true),
+                    (fun _ -> true),
+                    (fun matrix -> Matrix.CSR matrix.ToCSR)
+                    )
 
+                static member InputMatricesProvider =
+                    Benchmarks<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
 
-type MatrixCSRMap2BoolWithoutTransferBenchmark() =
+            type Float32() =
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.CSR<bool>,bool>(
-        (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
-        (fun _ -> true),
-        (fun _ -> true),
-        (fun matrix -> Matrix.CSR matrix.ToCSR)
-        )
+                inherit Benchmark<ClMatrix.CSR<float32>,float32>(
+                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
+                    float32,
+                    (fun _ -> Utils.nextSingle (System.Random())),
+                    (fun matrix -> Matrix.CSR matrix.ToCSR)
+                    )
 
-    static member InputMatricesProvider =
-        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+                static member InputMatricesProvider =
+                    Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-// AtLeastOne
+module WithTransfer =
+    type Benchmark<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : struct>(
+            buildFunToBenchmark,
+            converter: string -> 'elem,
+            converterBool,
+            buildMatrix,
+            resultToHost) =
 
-type MatrixCOOMap2AtLeastOne4BoolWithoutTransferBenchmark() =
+        inherit Benchmarks<'matrixT, 'elem>(
+            buildFunToBenchmark,
+            converter,
+            converterBool,
+            buildMatrix)
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.COO<bool>,bool>(
-        (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
-        (fun _ -> true),
-        (fun _ -> true),
-        Matrix.COO
-        )
+        [<GlobalSetup>]
+        override this.GlobalSetup() =
+            this.ReadMatrices()
 
-    static member InputMatricesProvider =
-        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+        [<GlobalCleanup>]
+        override this.GlobalCleanup() = ()
 
-type MatrixCSRMap2AtLeastOne4BoolWithoutTransferBenchmark() =
+        [<IterationCleanup>]
+        override this.IterationCleanup() =
+            this.ClearInputMatrices()
+            this.ClearResult()
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.CSR<bool>,bool>(
-        (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
-        (fun _ -> true),
-        (fun _ -> true),
-        (fun matrix -> Matrix.CSR matrix.ToCSR)
-        )
+        [<Benchmark>]
+        override this.Benchmark() =
+            this.LoadMatricesToGPU()
+            this.EWiseAddition()
+            this.Processor.PostAndReply Msg.MsgNotifyMe
+            resultToHost this.ResultMatrix this.Processor |> ignore
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    static member InputMatricesProvider =
-        Map2<_, _>.InputMatricesProviderBuilder "EWiseAddBenchmarks4BoolCSR.txt"
+    module COO =
+        type Float32() =
 
-type MatrixCOOMap2AtLeastOne4Float32WithoutTransferBenchmark() =
+            inherit Benchmark<ClMatrix.COO<float32>,float32>(
+                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                float32,
+                (fun _ -> Utils.nextSingle (System.Random())),
+                Matrix.COO,
+                (fun matrix -> matrix.ToHost)
+                )
 
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.COO<float32>,float32>(
-        (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
-        float32,
-        (fun _ -> Utils.nextSingle (System.Random())),
-        Matrix.COO
-        )
+            static member InputMatricesProvider =
+                Benchmarks<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
 
-    static member InputMatricesProvider =
-        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"
-
-type MatrixCSRMap2AtLeastOne4Float32CSRWithoutTransferBenchmark() =
-
-    inherit Map2BenchmarksWithoutDataTransfer<ClMatrix.CSR<float32>,float32>(
-        (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
-        float32,
-        (fun _ -> Utils.nextSingle (System.Random())),
-        (fun matrix -> Matrix.CSR matrix.ToCSR)
-        )
-
-    static member InputMatricesProvider =
-        Map2<_,_>.InputMatricesProviderBuilder "EWiseAddBenchmarks4Float32COO.txt"

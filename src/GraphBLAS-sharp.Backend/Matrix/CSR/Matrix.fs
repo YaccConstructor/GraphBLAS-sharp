@@ -109,9 +109,9 @@ module Matrix =
 
     let byRowsLazy (clContext: ClContext) workGroupSize =
 
-        let getChunkValues = ClArray.getChunk clContext workGroupSize
+        let getChunkValues = ClArray.sub clContext workGroupSize
 
-        let getChunkIndices = ClArray.getChunk clContext workGroupSize
+        let getChunkIndices = ClArray.sub clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
 

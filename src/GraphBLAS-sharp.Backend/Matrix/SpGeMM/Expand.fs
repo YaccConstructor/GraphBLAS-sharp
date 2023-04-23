@@ -14,10 +14,6 @@ open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
-type Indices = ClArray<int>
-
-type Values<'a> = ClArray<'a>
-
 module Expand =
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 
@@ -69,7 +65,7 @@ module Expand =
 
         let rightMatrixGather = Gather.run clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) length (segmentsPointers: Indices) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
+        fun (processor: MailboxProcessor<_>) length (segmentsPointers: ClArray<int>) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
             if length = 0 then
                 None
             else
@@ -140,7 +136,7 @@ module Expand =
         let scatter =
             Scatter.lastOccurrence clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (columns: Indices) ->
+        fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (columns: ClArray<int>) ->
 
             let positions =
                 getBitmap processor DeviceOnly firstValues secondValues
@@ -172,7 +168,7 @@ module Expand =
         let sortKeys =
             Radix.standardRunKeysOnly clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: Indices) ->
+        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: ClArray<int>) ->
             // sort by columns
             let sortedValues =
                 sortByKeyValues processor DeviceOnly columns values
@@ -195,7 +191,7 @@ module Expand =
         let idScatter =
             Scatter.initFirsOccurrence Map.id clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: Indices) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: ClArray<int>) ->
 
             let bitmap =
                 getUniqueBitmap processor DeviceOnly columns
@@ -231,7 +227,7 @@ module Expand =
         let reduce = reduce clContext workGroupSize opAdd
 
         // left matrix last --- for curring
-        fun (processor: MailboxProcessor<_>) allocationMode (rightMatrix: ClMatrix.CSR<'b>) (leftMatrixRowsLengths: Indices) (leftMatrixRow: ClVector.Sparse<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (rightMatrix: ClMatrix.CSR<'b>) (leftMatrixRowsLengths: ClArray<int>) (leftMatrixRow: ClVector.Sparse<'a>) ->
             // TODO(sort in range)
             // required right matrix lengths
             let length, segmentPointers =

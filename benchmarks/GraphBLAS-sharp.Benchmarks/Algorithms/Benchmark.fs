@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Benchmarks.Algorithms
+﻿namespace GraphBLAS.FSharp.Benchmarks.Algorithms.BFS
 
 open System.IO
 open BenchmarkDotNet.Attributes
@@ -16,7 +16,7 @@ open GraphBLAS.FSharp.Backend.Objects
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Configs.Matrix>)>]
-type BFS<'elem when 'elem : struct>(
+type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
     converter: string -> 'elem,
     binaryConverter,
@@ -43,7 +43,7 @@ type BFS<'elem when 'elem : struct>(
         p.Error.Add(fun e -> failwithf "%A" e)
         p
 
-    static member AvailableContexts = Utils.avaliableContexts
+    static member AvailableContexts = Utils.availableContexts
 
     static member InputMatrixProviderBuilder pathToConfig =
         let datasetFolder = "BFS"
@@ -92,87 +92,89 @@ type BFS<'elem when 'elem : struct>(
 
     abstract member Benchmark : unit -> unit
 
-type BFSBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
-    buildFunToBenchmark,
-    converter: string -> 'elem,
-    boolConverter,
-    vertex) =
-
-    inherit BFS<'elem>(
+module WithoutTransfer  =
+    type Benchmark<'elem when 'elem : struct>(
         buildFunToBenchmark,
-        converter,
+        converter: string -> 'elem,
         boolConverter,
-        vertex)
+        vertex) =
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrix()
-        this.LoadMatrixToGPU()
+        inherit Benchmarks<'elem>(
+            buildFunToBenchmark,
+            converter,
+            boolConverter,
+            vertex)
 
-    [<IterationCleanup>]
-    override this.IterationCleanup() =
-        this.ClearResult()
+        [<GlobalSetup>]
+        override this.GlobalSetup() =
+            this.ReadMatrix()
+            this.LoadMatrixToGPU()
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup() =
-        this.ClearInputMatrix()
+        [<IterationCleanup>]
+        override this.IterationCleanup() =
+            this.ClearResult()
 
-    [<Benchmark>]
-    override this.Benchmark() =
-        this.BFS()
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        [<GlobalCleanup>]
+        override this.GlobalCleanup() =
+            this.ClearInputMatrix()
 
-type BFSBenchmarksWithTransfer<'elem when 'elem : struct>(
-    buildFunToBenchmark,
-    converter: string -> 'elem,
-    boolConverter,
-    vertex) =
+        [<Benchmark>]
+        override this.Benchmark() =
+            this.BFS()
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    inherit BFS<'elem>(
+    type Int() =
+
+        inherit Benchmark<int>(
+            (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+            int32,
+            (fun _ -> Utils.nextInt (System.Random())),
+            0)
+
+        static member InputMatrixProvider =
+            Benchmark<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+
+module WithTransfer =
+    type Benchmark<'elem when 'elem : struct>(
         buildFunToBenchmark,
-        converter,
+        converter: string -> 'elem,
         boolConverter,
-        vertex)
+        vertex) =
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrix()
+        inherit Benchmarks<'elem>(
+            buildFunToBenchmark,
+            converter,
+            boolConverter,
+            vertex)
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup() =
-        this.ClearResult()
+        [<GlobalSetup>]
+        override this.GlobalSetup() =
+            this.ReadMatrix()
 
-    [<IterationCleanup>]
-    override this.IterationCleanup() =
-        this.ClearInputMatrix()
-        this.ClearResult()
+        [<GlobalCleanup>]
+        override this.GlobalCleanup() =
+            this.ClearResult()
 
-    [<Benchmark>]
-    override this.Benchmark() =
-        this.LoadMatrixToGPU()
-        this.BFS()
-        this.ResultLevels.ToHost this.Processor |> ignore
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        [<IterationCleanup>]
+        override this.IterationCleanup() =
+            this.ClearInputMatrix()
+            this.ClearResult()
 
-type BFSIntWithoutTransferBenchmark() =
+        [<Benchmark>]
+        override this.Benchmark() =
+            this.LoadMatrixToGPU()
+            this.BFS()
+            this.ResultLevels.ToHost this.Processor |> ignore
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    inherit BFSBenchmarksWithoutDataTransfer<int>(
-        (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
-        0)
+    type Int() =
 
-    static member InputMatrixProvider =
-        BFS<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+        inherit Benchmark<int>(
+            (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+            int32,
+            (fun _ -> Utils.nextInt (System.Random())),
+            0)
 
-type BFSIntWithTransferBenchmark() =
-
-    inherit BFSBenchmarksWithTransfer<int>(
-        (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
-        0)
-
-    static member InputMatrixProvider =
-        BFS<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+        static member InputMatrixProvider =
+            Benchmark<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 

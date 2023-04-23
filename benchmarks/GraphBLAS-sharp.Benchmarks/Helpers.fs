@@ -38,7 +38,7 @@ module Utils =
                         datasetsFolder
                         matrixFilename |]
 
-    let avaliableContexts =
+    let availableContexts =
         let pathToConfig =
             Path.Combine [| __SOURCE_DIRECTORY__
                             "Configs"
@@ -97,18 +97,6 @@ module Utils =
                             .ToString()
                         |> Platform.Custom
 
-                    let deviceType =
-                        Cl
-                            .GetDeviceInfo(device, DeviceInfo.Type, &e)
-                            .CastTo<DeviceType>()
-
-                    let _ =
-                        match deviceType with
-                        | DeviceType.Cpu -> ClDeviceType.Cpu
-                        | DeviceType.Gpu -> ClDeviceType.Gpu
-                        | DeviceType.Default -> ClDeviceType.Default
-                        | _ -> failwith "Unsupported"
-
                     let device =
                         ClDevice.GetFirstAppropriateDevice(clPlatform)
 
@@ -141,34 +129,6 @@ module Utils =
 
     let nextInt (random: System.Random) =
         random.Next()
-
-module Operations =
-    let inline add () = <@ fun x y -> Some(x + y) @>
-
-    let addWithFilter = <@ fun x y ->
-        let res = x + y
-        if abs res < 1e-8f then None else Some res
-    @>
-
-    let inline mult () = <@ fun x y -> Some <|x * y @>
-
-    let logicalOr = <@ fun x y ->
-        let mutable res = None
-
-        match x, y with
-        | false, false -> res <- None
-        | _            -> res <- Some true
-
-        res @>
-
-    let logicalAnd = <@ fun x y ->
-        let mutable res = None
-
-        match x, y with
-        | true, true -> res <- Some true
-        | _          -> res <- None
-
-        res @>
 
 module VectorGenerator =
     let private pairOfVectorsOfEqualSize (valuesGenerator: Gen<'a>) createVector =

@@ -14,42 +14,40 @@ let processor = Context.defaultContext.Queue
 
 let config =
     { Utils.defaultConfig with
-          arbitrary = [ typeof<Generators.ArrayAndChunkPositions> ] }
+          arbitrary = [ typeof<Generators.Sub> ] }
 
-let makeTestGetChunk<'a when 'a: equality> testFun (array: 'a [], startPosition: int, endPosition: int) =
+let makeTestGetChunk<'a when 'a: equality> testFun (array: 'a [], startPosition, count) =
 
     if array.Length > 0 then
 
         let clArray = context.CreateClArray array
 
         let (clActual: ClArray<'a>) =
-            testFun processor HostInterop clArray startPosition endPosition
+            testFun processor HostInterop clArray startPosition count
 
         clArray.Free processor
         let actual = clActual.ToHostAndFree processor
 
         "Results must be the same"
-        |> Expect.sequenceEqual actual array.[startPosition..endPosition - 1]
+        |> Expect.sequenceEqual actual (Array.sub array startPosition count)
 
-let creatTestGetChunk<'a when 'a: equality> =
-    ClArray.getChunk context Utils.defaultWorkGroupSize
+let creatTestSub<'a when 'a: equality> =
+    ClArray.sub context Utils.defaultWorkGroupSize
     |> makeTestGetChunk<'a>
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
-let getChunkTests =
-    [ creatTestGetChunk<int>
+let subTests =
+    [ creatTestSub<int>
 
       if Utils.isFloat64Available context.ClDevice then
-          creatTestGetChunk<float>
+          creatTestSub<float>
 
-      creatTestGetChunk<float32>
-      creatTestGetChunk<bool>
-      creatTestGetChunk<byte> ]
+      creatTestSub<float32>
+      creatTestSub<bool>
+      creatTestSub<byte> ]
     |> testList "getChunk"
 
-let makeTestChunkBySize<'a when 'a: equality> isEqual testFun (array: 'a [], chunkSize: uint) =
-
-    let chunkSize = int chunkSize
+let makeTestChunkBySize<'a when 'a: equality> isEqual testFun (array: 'a [], chunkSize: int) =
 
     if chunkSize > 0 && array.Length > 0 then
 
@@ -69,10 +67,14 @@ let makeTestChunkBySize<'a when 'a: equality> isEqual testFun (array: 'a [], chu
         "Results must be the same"
         |> Utils.compareChunksArrays isEqual actual expected
 
+let chunkBySizeConfig =
+    { config with
+          arbitrary = [ typeof<Generators.ChunkBySize> ] }
+
 let creatTestChunkBySize<'a when 'a: equality> isEqual =
     ClArray.chunkBySize context Utils.defaultWorkGroupSize
     |> makeTestChunkBySize<'a> isEqual
-    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig chunkBySizeConfig $"test on %A{typeof<'a>}"
 
 let chunkBySizeTests =
     [ creatTestChunkBySize<int> (=)
@@ -107,6 +109,6 @@ let lazyChunkBySizeTests =
 let allTests =
     testList
         "chunk"
-        [ getChunkTests
+        [ subTests
           chunkBySizeTests
           lazyChunkBySizeTests ]

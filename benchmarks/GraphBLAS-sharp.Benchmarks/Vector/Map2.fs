@@ -1,6 +1,4 @@
-namespace GraphBLAS.FSharp.Benchmarks.Vector
-
-namespace GraphBLAS.FSharp.Benchmarks.Synthetic
+module GraphBLAS.FSharp.Benchmarks.Vector.Map2
 
 open FsCheck
 open BenchmarkDotNet.Attributes
@@ -19,7 +17,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
 [<Config(typeof<Configs.MinMaxMean>)>]
-type Map2<'elem when 'elem : struct>(
+type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
     generator: Gen<Vector<'elem> * Vector<'elem>>) =
 
@@ -47,7 +45,7 @@ type Map2<'elem when 'elem : struct>(
         p.Error.Add(fun e -> failwithf $"%A{e}")
         p
 
-    static member AvailableContexts = Utils.avaliableContexts
+    static member AvailableContexts = Utils.availableContexts
 
     member this.FunToBenchmark =
         match funToBenchmark with
@@ -90,115 +88,114 @@ type Map2<'elem when 'elem : struct>(
 
     abstract member GlobalCleanup: unit -> unit
 
+module WithoutTransfer =
+    type Benchmark<'elem when 'elem : struct>(
+            buildFunToBenchmark,
+            generator) =
 
-type VectorEWiseBenchmarksWithoutDataTransfer<'elem when 'elem : struct>(
-        buildFunToBenchmark,
-        generator) =
+        inherit Benchmarks<'elem>(
+            buildFunToBenchmark,
+            generator)
 
-    inherit Map2<'elem>(
-        buildFunToBenchmark,
-        generator)
+        [<GlobalSetup>]
+        override this.GlobalSetup() = ()
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() = ()
+        [<IterationSetup>]
+        override this.IterationSetup() =
+            this.CreateVectors()
+            this.LoadVectorsToGPU()
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    [<IterationSetup>]
-    override this.IterationSetup() =
-        this.CreateVectors()
-        this.LoadVectorsToGPU()
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        [<Benchmark>]
+        override this.Benchmark() =
+            this.Map2()
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    [<Benchmark>]
-    override this.Benchmark() =
-        this.Map2()
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        [<IterationCleanup>]
+        override this.IterationCleanup() =
+            this.ClearResult()
+            this.ClearInputVectors()
 
-    [<IterationCleanup>]
-    override this.IterationCleanup() =
-        this.ClearResult()
-        this.ClearInputVectors()
+        [<GlobalCleanup>]
+        override this.GlobalCleanup() = ()
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup() = ()
+    type Float() =
 
-type VectorEWiseBenchmarksWithDataTransfer<'elem when 'elem : struct>(
-        buildFunToBenchmark,
-        generator) =
+        inherit Benchmark<float>(
+            (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
+            VectorGenerator.floatPair Sparse)
 
-    inherit Map2<'elem>(
-        buildFunToBenchmark,
-        generator)
+    type Int32() =
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() = ()
+        inherit Benchmark<int32>(
+            (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
+            VectorGenerator.intPair Sparse)
 
-    [<IterationSetup>]
-    override this.IterationSetup() =
-        this.CreateVectors()
+    module AtLeastOne =
+        type Float() =
 
-    [<Benchmark>]
-    override this.Benchmark () =
-        this.LoadVectorsToGPU()
-        this.Map2()
-        this.ResultVector.ToHost this.Processor |> ignore
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+            inherit Benchmark<float>(
+                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne),
+                VectorGenerator.floatPair Sparse)
 
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearInputVectors()
-        this.ClearResult()
+        type Int32() =
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup() = ()
+            inherit Benchmark<int32>(
+                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne),
+                VectorGenerator.intPair Sparse)
 
-/// Without data transfer
-type VectorSparseMap2FloatWithoutTransferBenchmark() =
+module WithTransfer =
+    type Benchmark<'elem when 'elem : struct>(
+            buildFunToBenchmark,
+            generator) =
 
-    inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
-        VectorGenerator.floatPair Sparse)
+        inherit Benchmarks<'elem>(
+            buildFunToBenchmark,
+            generator)
 
-type VectorSparseMap2Int32WithoutTransferBenchmark() =
+        [<GlobalSetup>]
+        override this.GlobalSetup() = ()
 
-    inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
-        VectorGenerator.intPair Sparse)
+        [<IterationSetup>]
+        override this.IterationSetup() =
+            this.CreateVectors()
 
-/// General
-type VectorSparseMap2GeneralFloatWithoutTransferBenchmark() =
+        [<Benchmark>]
+        override this.Benchmark () =
+            this.LoadVectorsToGPU()
+            this.Map2()
+            this.ResultVector.ToHost this.Processor |> ignore
+            this.Processor.PostAndReply Msg.MsgNotifyMe
 
-    inherit VectorEWiseBenchmarksWithoutDataTransfer<float>(
-        (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
-        VectorGenerator.floatPair Sparse)
+        [<IterationCleanup>]
+        override this.IterationCleanup () =
+            this.ClearInputVectors()
+            this.ClearResult()
 
-type VectorSparseMap2GeneralInt32WithoutTransferBenchmark() =
+        [<GlobalCleanup>]
+        override this.GlobalCleanup() = ()
 
-    inherit VectorEWiseBenchmarksWithoutDataTransfer<int32>(
-        (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
-        VectorGenerator.intPair Sparse)
+    type Float() =
 
-/// With data transfer
-type VectorSparseMap2FloatWithTransferBenchmark() =
+        inherit Benchmark<float>(
+            (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
+            VectorGenerator.floatPair Sparse)
 
-    inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
-        VectorGenerator.floatPair Sparse)
+    type Int32() =
 
-type VectorSparseMap2Int32WithTransferBenchmark() =
+        inherit Benchmark<int32>(
+            (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
+            VectorGenerator.intPair Sparse)
 
-    inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
-        VectorGenerator.intPair Sparse)
+    module AtLeastOne =
+        type Float() =
 
-/// Map2 with data transfer
-type VectorMap2GeneralFloatSparseWithTransferBenchmark() =
+            inherit Benchmark<float>(
+                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne),
+                VectorGenerator.floatPair Sparse)
 
-    inherit VectorEWiseBenchmarksWithDataTransfer<float>(
-        (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
-        VectorGenerator.floatPair Sparse)
+        type Int32() =
 
-type VectorMap2GeneralInt32SparseWithTransferBenchmark() =
-
-    inherit VectorEWiseBenchmarksWithDataTransfer<int32>(
-        (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
-        VectorGenerator.intPair Sparse)
+            inherit Benchmark<int32>(
+                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne),
+                VectorGenerator.intPair Sparse)

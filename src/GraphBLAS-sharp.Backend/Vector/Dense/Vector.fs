@@ -16,7 +16,7 @@ module Vector =
         =
 
         let map2InPlace =
-            ClArray.map2Inplace clContext workGroupSize opAdd
+            ClArray.map2InPlace clContext workGroupSize opAdd
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 

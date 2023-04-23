@@ -267,7 +267,7 @@ module ClArray =
 
             result
 
-    let map2Inplace<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
+    let map2InPlace<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
@@ -296,7 +296,7 @@ module ClArray =
 
     let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize map =
         let map2 =
-            map2Inplace<'a, 'b, 'c> clContext workGroupSize map
+            map2InPlace<'a, 'b, 'c> clContext workGroupSize map
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
 
@@ -472,43 +472,39 @@ module ClArray =
 
             result
 
-    let getChunk (clContext: ClContext) workGroupSize =
+    let sub (clContext: ClContext) workGroupSize =
 
         let kernel =
-            <@ fun (ndRange: Range1D) startIndex endIndex (sourceArray: ClArray<'a>) (targetChunk: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) startIndex count (sourceArray: ClArray<'a>) (targetChunk: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
-                let sourcePosition = gid + startIndex
 
-                if sourcePosition < endIndex then
+                if gid < count then
+                    let sourcePosition = gid + startIndex
 
                     targetChunk.[gid] <- sourceArray.[sourcePosition] @>
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) startIndex endIndex ->
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceArray: ClArray<'a>) startIndex count ->
+            if count <= 0 then
+                failwith "Count must be greater than zero"
+
             if startIndex < 0 then
-                failwith "startIndex is less than zero"
+                failwith "startIndex must be greater then zero"
 
-            if startIndex >= endIndex then
-                failwith "startIndex is greater than or equal to the endIndex"
-
-            if endIndex > sourceArray.Length then
-                failwith "endIndex is larger than the size of the array"
-
-            let resultLength = endIndex - startIndex
+            if startIndex + count > sourceArray.Length then
+                failwith "startIndex and count sum is larger than the size of the array"
 
             let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, count)
 
             let ndRange =
-                Range1D.CreateValid(resultLength, workGroupSize)
+                Range1D.CreateValid(count, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange startIndex endIndex sourceArray result)
-            )
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange startIndex count sourceArray result))
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
@@ -524,25 +520,24 @@ module ClArray =
     /// </remarks>
     let lazyChunkBySize (clContext: ClContext) workGroupSize =
 
-        let getChunk = getChunk clContext workGroupSize
+        let sub = sub clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode chunkSize (sourceArray: ClArray<'a>) ->
             if chunkSize <= 0 then
-                failwith "The size of the piece cannot be less than 1"
+                failwith "The size of the chunk cannot be less than 1"
 
-            let chunkCount = (sourceArray.Length - 1) / chunkSize
+            let chunkCount = (sourceArray.Length - 1) / chunkSize + 1
 
-            let getChunk =
-                getChunk processor allocationMode sourceArray
+            let sub = sub processor allocationMode sourceArray
 
             seq {
-                for i in 0 .. chunkCount do
+                for i in 0 .. chunkCount - 1 do
                     let startIndex = i * chunkSize
 
-                    let endIndex =
-                        min (startIndex + chunkSize) sourceArray.Length
+                    let count =
+                        min chunkSize (sourceArray.Length - startIndex)
 
-                    yield lazy (getChunk startIndex endIndex)
+                    yield lazy (sub startIndex count)
             }
 
     /// <summary>
@@ -575,24 +570,21 @@ module ClArray =
         let kernel = clContext.Compile assign
 
         fun (processor: MailboxProcessor<_>) (sourceArray: ClArray<'a>) sourceIndex (targetArray: ClArray<'a>) targetIndex count ->
-            // check count
-            if count < 0 then
-                failwith "Count must be greater than zero"
-
-            // check sourceIndex
-            if sourceIndex < 0
-               && sourceIndex + count >= sourceArray.Length then
-                failwith "The source index does not match"
-
-            // check targetPosition
-            if targetIndex < 0
-               && targetIndex + count >= targetArray.Length then
-                failwith "The target index does not match"
-
             if count = 0 then
+                // nothing to do
                 ()
-            // nothing to do
             else
+                if count < 0 then
+                    failwith "Count must be greater than zero"
+
+                if sourceIndex < 0
+                   && sourceIndex + count >= sourceArray.Length then
+                    failwith "The source index does not match"
+
+                if targetIndex < 0
+                   && targetIndex + count >= targetArray.Length then
+                    failwith "The target index does not match"
+
                 let ndRange =
                     Range1D.CreateValid(targetArray.Length, workGroupSize)
 
@@ -646,14 +638,11 @@ module ClArray =
             if count = 0 then
                 ()
             else
+                if count < 0 then
+                    failwith "Count must be greater than zero"
+
                 if firstPosition + count > targetArray.Length then
                     failwith "The array should fit completely"
-
-                if firstPosition < 0 then
-                    failwith "The starting position cannot be less than zero"
-
-                if count < 0 then
-                    failwith "The count cannot be less than zero"
 
                 let ndRange =
                     Range1D.CreateValid(count, workGroupSize)

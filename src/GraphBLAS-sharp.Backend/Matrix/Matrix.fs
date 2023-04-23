@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Backend.Vector
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
@@ -16,7 +16,7 @@ module Matrix =
         let copyData = ClArray.copy clContext workGroupSize
 
         let vectorCopy =
-            Vector.Sparse.Vector.copy clContext workGroupSize
+            Sparse.Vector.copy clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
