@@ -10,7 +10,7 @@ module internal Common =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let valuesScatter =
             Scatter.lastOccurrence clContext workGroupSize

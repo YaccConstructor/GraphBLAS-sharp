@@ -20,7 +20,7 @@ module Expand =
         let gather = Gather.run clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftMatrixRow: ClVector.Sparse<'a>) (rightMatrixRowsLengths: ClArray<int>) ->
 
@@ -49,14 +49,14 @@ module Expand =
             ClArray.zeroCreate clContext workGroupSize
 
         let maxPrefixSum =
-            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
+            PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 
         let gather = Gather.run clContext workGroupSize
 
         let segmentPrefixSum =
-            PrefixSum.ByKey.sequentialInclude clContext workGroupSize <@ (+) @> 0
+            PrefixSum.ByKey.sequentialInclude <@ (+) @> 0 clContext workGroupSize
 
         let removeDuplicates =
             ClArray.removeDuplications clContext workGroupSize
@@ -124,14 +124,13 @@ module Expand =
 
     let multiply (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
         let getBitmap =
-            ClArray.map2<'a, 'b, int> clContext workGroupSize
-            <| Map.choose2Bitmap predicate
+            ClArray.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
-            ClArray.assignOption2 clContext workGroupSize predicate
+            ClArray.assignOption2 predicate clContext workGroupSize
 
         let scatter =
             Scatter.lastOccurrence clContext workGroupSize
@@ -180,13 +179,13 @@ module Expand =
     let reduce (clContext: ClContext) workGroupSize opAdd =
 
         let reduce =
-            Reduce.ByKey.Option.segmentSequential clContext workGroupSize opAdd
+            Reduce.ByKey.Option.segmentSequential opAdd clContext workGroupSize
 
         let getUniqueBitmap =
             ClArray.getUniqueBitmapLastOccurrence clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let idScatter =
             Scatter.initFirsOccurrence Map.id clContext workGroupSize

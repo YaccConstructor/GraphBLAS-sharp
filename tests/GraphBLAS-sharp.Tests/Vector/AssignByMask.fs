@@ -96,7 +96,7 @@ let createTest case (isZero: 'a -> bool) isComplemented fill =
     let context = case.TestContext.ClContext
     let getCorrectnessTestName = getCorrectnessTestName case
 
-    let fill = fill context Mask.assign wgSize
+    let fill = fill Mask.assign context wgSize
 
     let toCoo = Vector.toDense context wgSize
 

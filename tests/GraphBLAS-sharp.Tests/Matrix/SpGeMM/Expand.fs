@@ -218,7 +218,7 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
         | _ -> failwith "Matrix format are not matching"
 
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
-    testFun context Utils.defaultWorkGroupSize opAddQ opMulQ
+    testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
     |> makeGeneralTest<'a> zero isEqual opMul opAdd
     |> testPropertyWithConfig
         { config with

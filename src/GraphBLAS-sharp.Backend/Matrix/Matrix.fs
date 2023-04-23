@@ -257,12 +257,12 @@ module Matrix =
                 |> ClMatrix.LIL
             | ClMatrix.LIL _ -> copy processor allocationMode matrix
 
-    let map (clContext: ClContext) (opAdd: Expr<'a option -> 'b option>) workGroupSize =
+    let map (opAdd: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
         let mapCOO =
-            COO.Matrix.map clContext opAdd workGroupSize
+            COO.Matrix.map opAdd clContext workGroupSize
 
         let mapCSR =
-            CSR.Matrix.map clContext opAdd workGroupSize
+            CSR.Matrix.map opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix ->
             match matrix with
@@ -273,12 +273,12 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Not yet implemented"
 
-    let map2 (clContext: ClContext) (opAdd: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+    let map2 (opAdd: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
         let map2COO =
-            COO.Matrix.map2 clContext opAdd workGroupSize
+            COO.Matrix.map2 opAdd clContext workGroupSize
 
         let map2CSR =
-            CSR.Matrix.map2 clContext opAdd workGroupSize
+            CSR.Matrix.map2 opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
@@ -294,7 +294,7 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 
-    let map2AtLeastOne (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let map2AtLeastOne (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
         let COOElementwise =
             COO.Matrix.map2AtLeastOne clContext opAdd workGroupSize
 
@@ -315,7 +315,7 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Matrix formats are not matching"
 
-    let map2AtLeastOneToCOO (clContext: ClContext) (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) workGroupSize =
+    let map2AtLeastOneToCOO (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
         let COOElementwise =
             COO.Matrix.map2AtLeastOne clContext opAdd workGroupSize
 
@@ -415,7 +415,7 @@ module Matrix =
             =
 
             let runCSRnCSC =
-                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
+                SpGeMM.Masked.run opAdd opMul clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) (mask: ClMatrix<_>) ->
                 match matrix1, matrix2, mask with
@@ -423,10 +423,10 @@ module Matrix =
                 | _ -> failwith "Matrix formats are not matching"
 
         let expand
-            (clContext: ClContext)
-            workGroupSize
             (opAdd: Expr<'c -> 'c -> 'c option>)
             (opMul: Expr<'a -> 'b -> 'c option>)
+            (clContext: ClContext)
+            workGroupSize
             =
 
             let run =

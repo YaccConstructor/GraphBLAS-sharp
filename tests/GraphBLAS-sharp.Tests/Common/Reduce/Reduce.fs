@@ -52,7 +52,7 @@ let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zer
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus plusQ zero name =
-    let reduce = Reduce.reduce context wgSize plusQ
+    let reduce = Reduce.reduce plusQ context wgSize
 
     makeTest reduce plus zero
     |> testPropertyWithConfig config $"Correctness on %s{name}"

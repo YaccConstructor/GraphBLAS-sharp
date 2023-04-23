@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Matrix.COO
 
 module internal Map2 =
-    let preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
+    let preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (leftValues: ClArray<'a>) (leftRowPointers: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRowPointers: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -95,13 +95,13 @@ module internal Map2 =
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let map2 =
-            preparePositions clContext workGroupSize opAdd
+            preparePositions opAdd clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'c> clContext workGroupSize
@@ -136,16 +136,16 @@ module internal Map2 =
               Values = resultValues }
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
-        let map2ToCOO = runToCOO clContext opAdd workGroupSize
+        let map2ToCOO = runToCOO opAdd clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
             map2ToCOO queue allocationMode matrixLeft matrixRight
-            |> toCSRInplace queue allocationMode
+            |> toCSRInPlace queue allocationMode

@@ -10,13 +10,13 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Vector =
     let map2InPlace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let map2InPlace =
-            ClArray.map2InPlace clContext workGroupSize opAdd
+            ClArray.map2InPlace opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
@@ -24,25 +24,25 @@ module Vector =
 
 
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let map2 =
-            ClArray.map2 clContext workGroupSize opAdd
+            ClArray.map2 opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
             map2 processor allocationMode leftVector rightVector
 
 
-    let map2AtLeastOne clContext op workGroupSize =
-        map2 clContext (Convert.atLeastOneToOption op) workGroupSize
+    let map2AtLeastOne op clContext workGroupSize =
+        map2 (Convert.atLeastOneToOption op) clContext workGroupSize
 
     let assignByMaskInPlace<'a, 'b when 'a: struct and 'b: struct>
-        (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -71,13 +71,13 @@ module Vector =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let assignByMask<'a, 'b when 'a: struct and 'b: struct>
-        (clContext: ClContext)
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let assignByMask =
-            assignByMaskInPlace clContext maskOp workGroupSize
+            assignByMaskInPlace maskOp clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
             let resultVector =
@@ -96,18 +96,16 @@ module Vector =
             Scatter.lastOccurrence clContext workGroupSize
 
         let getBitmap =
-            ClArray.map clContext workGroupSize
-            <| Map.option 1 0
+            ClArray.map (Map.option 1 0) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let allIndices =
-            ClArray.init clContext workGroupSize Map.id
+            ClArray.init Map.id clContext workGroupSize
 
         let allValues =
-            ClArray.map clContext workGroupSize
-            <| Map.optionToValueOrZero Unchecked.defaultof<'a>
+            ClArray.map (Map.optionToValueOrZero Unchecked.defaultof<'a>) clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 
@@ -145,16 +143,16 @@ module Vector =
               Values = resultValues
               Size = vector.Length }
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce<'a when 'a: struct> (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let choose =
-            ClArray.choose clContext workGroupSize Map.id
+            ClArray.choose Map.id clContext workGroupSize
 
         let reduce =
-            Reduce.reduce clContext workGroupSize opAdd
+            Reduce.reduce opAdd clContext workGroupSize
 
         let containsNonZero =
-            ClArray.exists clContext workGroupSize Predicates.isSome
+            ClArray.exists Predicates.isSome clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 

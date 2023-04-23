@@ -53,7 +53,7 @@ let createTest (zero: 'a) opAddQ opAdd isEqual deviceScan hostScan =
     let hostScan = hostScan zero opAdd
 
     let deviceScan =
-        deviceScan context Utils.defaultWorkGroupSize opAddQ zero
+        deviceScan opAddQ zero context Utils.defaultWorkGroupSize
 
     makeTestSequentialSegments isEqual hostScan deviceScan
     |> testPropertyWithConfig Utils.defaultConfig $"test on {typeof<'a>}"

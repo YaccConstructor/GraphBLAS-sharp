@@ -23,9 +23,9 @@ let testFixtures (testContext: TestContext) =
 
       let bfs =
           Algorithms.BFS.singleSource
-              context
               ArithmeticOperations.intSumOption
               ArithmeticOperations.intMulOption
+              context
               workGroupSize
 
       testPropertyWithConfig config testName

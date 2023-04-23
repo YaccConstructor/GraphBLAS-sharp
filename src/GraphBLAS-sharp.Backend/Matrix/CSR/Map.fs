@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Map =
-    let preparePositions<'a, 'b> (clContext: ClContext) workGroupSize op =
+    let preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -82,13 +82,13 @@ module internal Map =
             resultBitmap, resultValues, resultRows, resultColumns
 
     let runToCOO<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let map =
-            preparePositions clContext workGroupSize opAdd
+            preparePositions opAdd clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'b> clContext workGroupSize
@@ -114,16 +114,16 @@ module internal Map =
               Values = resultValues }
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
-        let mapToCOO = runToCOO clContext opAdd workGroupSize
+        let mapToCOO = runToCOO opAdd clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             mapToCOO queue allocationMode matrix
-            |> toCSRInplace queue allocationMode
+            |> toCSRInPlace queue allocationMode

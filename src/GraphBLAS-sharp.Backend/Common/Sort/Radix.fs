@@ -155,7 +155,7 @@ module Radix =
         let count = count clContext workGroupSize mask
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let scatter = scatter clContext workGroupSize mask
 
@@ -258,7 +258,7 @@ module Radix =
         let count = count clContext workGroupSize mask
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let scatterByKey =
             scatterByKey clContext workGroupSize mask

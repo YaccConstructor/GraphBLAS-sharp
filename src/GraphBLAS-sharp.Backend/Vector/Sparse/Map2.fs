@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Map2 =
-    let private preparePositions<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
+    let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
             <@ fun (ndRange: Range1D) length leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b>) (rightIndices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
@@ -72,10 +72,10 @@ module internal Map2 =
 
             resultBitmap, resultValues, resultIndices
 
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> op (clContext: ClContext) workGroupSize =
 
         let prepare =
-            preparePositions<'a, 'b, 'c> clContext workGroupSize op
+            preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
         let setPositions =
             Common.setPositions clContext workGroupSize
@@ -104,8 +104,8 @@ module internal Map2 =
               Size = max leftVector.Size rightVector.Size }
 
     let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
-        (clContext: ClContext)
         op
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -175,10 +175,10 @@ module internal Map2 =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let assignByMask<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) op workGroupSize =
+    let assignByMask<'a, 'b when 'a: struct and 'b: struct> op (clContext: ClContext) workGroupSize =
 
         let prepare =
-            preparePositionsAssignByMask clContext op workGroupSize
+            preparePositionsAssignByMask op clContext workGroupSize
 
         let setPositions =
             Common.setPositions clContext workGroupSize

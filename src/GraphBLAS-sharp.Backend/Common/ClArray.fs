@@ -10,7 +10,7 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 module ClArray =
-    let init (clContext: ClContext) workGroupSize (initializer: Expr<int -> 'a>) =
+    let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
 
         let init =
             <@ fun (range: Range1D) (outputBuffer: ClArray<'a>) (length: int) ->
@@ -190,7 +190,7 @@ module ClArray =
             getUniqueBitmapLastOccurrence clContext workGroupSize
 
         let prefixSumExclude =
-            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
+            PrefixSum.runExcludeInPlace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -210,7 +210,7 @@ module ClArray =
 
             outputArray
 
-    let exists (clContext: ClContext) workGroupSize (predicate: Expr<'a -> bool>) =
+    let exists (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
 
         let exists =
             <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (result: ClCell<bool>) ->
@@ -239,7 +239,7 @@ module ClArray =
 
             result
 
-    let map<'a, 'b> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b>) =
+    let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
             <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
@@ -267,7 +267,7 @@ module ClArray =
 
             result
 
-    let map2InPlace<'a, 'b, 'c> (clContext: ClContext) workGroupSize (map: Expr<'a -> 'b -> 'c>) =
+    let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
@@ -294,9 +294,9 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let map2<'a, 'b, 'c> (clContext: ClContext) workGroupSize map =
+    let map2<'a, 'b, 'c> map (clContext: ClContext) workGroupSize =
         let map2 =
-            map2InPlace<'a, 'b, 'c> clContext workGroupSize map
+            map2InPlace<'a, 'b, 'c> map clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
 
@@ -310,7 +310,7 @@ module ClArray =
     let getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
 
         let map =
-            map2 clContext workGroupSize <@ fun x y -> x ||| y @>
+            map2 <@ fun x y -> x ||| y @> clContext workGroupSize
 
         let firstGetBitmap = getUniqueBitmap clContext workGroupSize
 
@@ -335,7 +335,7 @@ module ClArray =
     let getUniqueBitmap2LastOccurrence clContext =
         getUniqueBitmap2General getUniqueBitmapLastOccurrence clContext
 
-    let assignOption (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b option>) =
+    let assignOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
 
         let assign =
             <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) resultLength ->
@@ -371,16 +371,15 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let choose<'a, 'b> (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b option>) =
+    let choose<'a, 'b> (predicate: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            map<'a, int> clContext workGroupSize
-            <| Map.chooseBitmap predicate
+            map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
-            assignOption clContext workGroupSize predicate
+            assignOption predicate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (sourceValues: ClArray<'a>) ->
 
@@ -398,7 +397,7 @@ module ClArray =
 
             result
 
-    let assignOption2 (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c option>) =
+    let assignOption2 (op: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
 
         let assign =
             <@ fun (ndRange: Range1D) length (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (positions: ClArray<int>) (result: ClArray<'c>) resultLength ->
@@ -445,16 +444,15 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let choose2 (clContext: ClContext) workGroupSize (predicate: Expr<'a -> 'b -> 'c option>) =
+    let choose2 (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            map2<'a, 'b, int> clContext workGroupSize
-            <| Map.choose2Bitmap predicate
+            map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
-            assignOption2 clContext workGroupSize predicate
+            assignOption2 predicate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) ->
 
@@ -664,7 +662,7 @@ module ClArray =
             Gather.runInit Map.inc clContext workGroupSize
 
         let map =
-            map2 clContext workGroupSize <@ fun first second -> (first, second) @>
+            map2 <@ fun first second -> (first, second) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) ->
             if values.Length > 1 then

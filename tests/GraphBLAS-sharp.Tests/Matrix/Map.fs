@@ -98,7 +98,7 @@ let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let unaryOp = binOp constant
     let unaryOpQ = opQ zero constant
 
-    let map = Matrix.map context unaryOpQ wgSize
+    let map = Matrix.map unaryOpQ context wgSize
 
     let toCOO = Matrix.toCOO context wgSize
 

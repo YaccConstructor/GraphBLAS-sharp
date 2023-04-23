@@ -126,7 +126,7 @@ module WithoutTransfer  =
     type Int() =
 
         inherit Benchmark<int>(
-            (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+            (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
             int32,
             (fun _ -> Utils.nextInt (System.Random())),
             0)
@@ -170,7 +170,7 @@ module WithTransfer =
     type Int() =
 
         inherit Benchmark<int>(
-            (fun context -> singleSource context ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+            (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
             int32,
             (fun _ -> Utils.nextInt (System.Random())),
             0)

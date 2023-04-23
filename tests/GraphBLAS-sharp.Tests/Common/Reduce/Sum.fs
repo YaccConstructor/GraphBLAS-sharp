@@ -51,7 +51,7 @@ let makeTest plus zero sum (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus (plusQ: Expr<'a -> 'a -> 'a>) zero name =
-    Reduce.sum context wgSize plusQ zero
+    Reduce.sum plusQ zero context wgSize
     |> makeTest plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 

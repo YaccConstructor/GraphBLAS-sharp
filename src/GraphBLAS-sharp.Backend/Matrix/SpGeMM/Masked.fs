@@ -10,10 +10,10 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module internal Masked =
     let private calculate
-        (context: ClContext)
-        workGroupSize
         (opAdd: Expr<'c -> 'c -> 'c option>)
         (opMul: Expr<'a -> 'b -> 'c option>)
+        (context: ClContext)
+        workGroupSize
         =
 
         let run =
@@ -142,14 +142,14 @@ module internal Masked =
             values, bitmap
 
     let run
-        (context: ClContext)
-        workGroupSize
         (opAdd: Expr<'c -> 'c -> 'c option>)
         (opMul: Expr<'a -> 'b -> 'c option>)
+        (context: ClContext)
+        workGroupSize
         =
 
         let calculate =
-            calculate context workGroupSize opAdd opMul
+            calculate opAdd opMul context workGroupSize
 
         let scatter =
             Scatter.lastOccurrence context workGroupSize
@@ -157,8 +157,8 @@ module internal Masked =
         let scatterData =
             Scatter.lastOccurrence context workGroupSize
 
-        let scanInplace =
-            PrefixSum.standardExcludeInplace context workGroupSize
+        let scanInPlace =
+            PrefixSum.standardExcludeInPlace context workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 
@@ -166,15 +166,15 @@ module internal Masked =
                 calculate queue matrixLeft matrixRight mask
 
             let resultNNZ =
-                (scanInplace queue positions).ToHostAndFree(queue)
+                (scanInPlace queue positions).ToHostAndFree(queue)
 
             let resultRows = context.CreateClArray<int> resultNNZ
-            let resultCols = context.CreateClArray<int> resultNNZ
-            let resultVals = context.CreateClArray<'c> resultNNZ
+            let resultColumns = context.CreateClArray<int> resultNNZ
+            let resultValues = context.CreateClArray<'c> resultNNZ
 
             scatter queue positions mask.Rows resultRows
-            scatter queue positions mask.Columns resultCols
-            scatterData queue positions values resultVals
+            scatter queue positions mask.Columns resultColumns
+            scatterData queue positions values resultValues
 
             queue.Post(Msg.CreateFreeMsg<_>(values))
             queue.Post(Msg.CreateFreeMsg<_>(positions))
@@ -183,5 +183,5 @@ module internal Masked =
               RowCount = matrixLeft.RowCount
               ColumnCount = matrixRight.ColumnCount
               Rows = resultRows
-              Columns = resultCols
-              Values = resultVals }
+              Columns = resultColumns
+              Values = resultValues }

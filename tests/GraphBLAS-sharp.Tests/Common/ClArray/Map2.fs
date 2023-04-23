@@ -42,7 +42,7 @@ let createTest<'a when 'a: equality> (testContext: TestContext) isEqual hostMapF
 
     let context = testContext.ClContext
 
-    let map = ClArray.map2 context wgSize mapFunQ
+    let map = ClArray.map2 mapFunQ context wgSize
 
     makeTest<'a> testContext map hostMapFun isEqual
     |> testPropertyWithConfig config $"Correctness on {typeof<'a>}"

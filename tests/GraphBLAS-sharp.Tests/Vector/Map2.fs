@@ -90,7 +90,7 @@ let correctnessGenericTest
 let createTest case isEqual (zero: 'a) plus plusQ map2 =
     let context = case.TestContext.ClContext
 
-    let map2 = map2 context plusQ wgSize
+    let map2 = map2 plusQ context wgSize
 
     let intToDense = Vector.toDense context wgSize
 

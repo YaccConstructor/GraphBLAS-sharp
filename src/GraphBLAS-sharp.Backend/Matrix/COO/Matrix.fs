@@ -23,7 +23,7 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        Map2AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
 
     let getTuples (clContext: ClContext) workGroupSize =
 
@@ -65,7 +65,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInplace <@ min @> clContext workGroupSize
+            PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 

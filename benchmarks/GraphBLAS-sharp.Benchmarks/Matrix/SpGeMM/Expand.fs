@@ -104,45 +104,45 @@ type Benchmarks<'elem when 'elem : struct>(
 
     abstract member GlobalCleanup : unit -> unit
 
-type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
-        buildFunToBenchmark,
-        converter: string -> 'elem,
-        converterBool,
-        buildMatrix) =
+module WithoutTransfer =
+    type Benchmark<'elem when 'elem : struct>(
+            buildFunToBenchmark,
+            converter: string -> 'elem,
+            converterBool,
+            buildMatrix) =
 
-    inherit Benchmarks<'elem>(
-        buildFunToBenchmark,
-        converter,
-        converterBool,
-        buildMatrix)
+        inherit Benchmarks<'elem>(
+            buildFunToBenchmark,
+            converter,
+            converterBool,
+            buildMatrix)
 
-    [<GlobalSetup>]
-    override this.GlobalSetup() =
-        this.ReadMatrices()
-        this.LoadMatricesToGPU()
+        [<GlobalSetup>]
+        override this.GlobalSetup() =
+            this.ReadMatrices()
+            this.LoadMatricesToGPU()
 
-    [<Benchmark>]
-    override this.Benchmark() =
-        this.Mxm()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        [<Benchmark>]
+        override this.Benchmark() =
+            this.Mxm()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-    [<IterationCleanup>]
-    override this.IterationCleanup () =
-        this.ClearResult()
+        [<IterationCleanup>]
+        override this.IterationCleanup () =
+            this.ClearResult()
 
-    [<GlobalCleanup>]
-    override this.GlobalCleanup () =
-        this.ClearInputMatrices()
+        [<GlobalCleanup>]
+        override this.GlobalCleanup () =
+            this.ClearInputMatrices()
 
+    type Float32() =
 
-// type Mxm4Float32WithTransposingWithZerosFilterBenchmark() =
-//
-//     inherit MxmBenchmarksWithTransposing<float32>(
-//         (fun context wgSize -> Matrix.SpGeMM.expand context wgSize (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul)),
-//         float32,
-//         (fun _ -> Utils.nextSingle (System.Random())),
-//         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
-//         )
-//
-//     static member InputMatrixProvider =
-//         Benchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+        inherit Benchmark<float32>(
+            Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+            float32,
+            (fun _ -> Utils.nextSingle (System.Random())),
+            (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
+            )
+
+        static member InputMatrixProvider =
+            Benchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"

@@ -101,7 +101,7 @@ let creatTestMap2Add case (zero: 'a) add isEqual addQ map2 =
     let context = case.TestContext.ClContext
     let q = case.TestContext.Queue
 
-    let map2 = map2 context addQ wgSize
+    let map2 = map2 addQ context wgSize
 
     let toCOO = Matrix.toCOO context wgSize
 

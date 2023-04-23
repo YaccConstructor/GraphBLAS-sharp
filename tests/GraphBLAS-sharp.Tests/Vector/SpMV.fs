@@ -92,7 +92,7 @@ let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, %A{testContext.ClContext}"
 
-    let spMV = SpMV.run context addQ mulQ wgSize
+    let spMV = SpMV.run addQ mulQ context wgSize
 
     testContext
     |> correctnessGenericTest zero add mul spMV isEqual q

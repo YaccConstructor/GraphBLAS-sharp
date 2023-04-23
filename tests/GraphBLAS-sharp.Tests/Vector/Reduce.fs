@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Tests
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"
@@ -22,15 +22,7 @@ let checkResult zero op (actual: 'a) (vector: 'a []) =
     "Results should be the same"
     |> Expect.equal actual expected
 
-let correctnessGenericTest
-    isEqual
-    zero
-    op
-    opQ
-    (reduce: Expr<'a -> 'a -> 'a> -> MailboxProcessor<_> -> ClVector<'a> -> ClCell<'a>)
-    case
-    (array: 'a [])
-    =
+let correctnessGenericTest isEqual zero op reduce case (array: 'a []) =
 
     let vector =
         Utils.createVectorFromArray case.Format array (isEqual zero)
@@ -41,27 +33,18 @@ let correctnessGenericTest
 
         let clVector = vector.ToDevice context
 
-        let resultCell = reduce opQ q clVector
-
-        let result = Array.zeroCreate 1
-
         let result =
-            let res =
-                q.PostAndReply(fun ch -> Msg.CreateToHostMsg<_>(resultCell, result, ch))
-
-            q.Post(Msg.CreateFreeMsg<_>(resultCell))
-
-            res.[0]
+            (reduce q clVector: ClCell<_>).ToHostAndFree q
 
         checkResult zero op result array
 
 let createTest<'a when 'a: equality and 'a: struct> case isEqual (zero: 'a) plus plusQ name =
     let context = case.TestContext.ClContext
 
-    let reduce = Vector.reduce context wgSize
+    let reduce = Vector.reduce plusQ context wgSize
 
     case
-    |> correctnessGenericTest isEqual zero plus plusQ reduce
+    |> correctnessGenericTest isEqual zero plus reduce
     |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}, %s{name} %A{case.Format}"
 
 

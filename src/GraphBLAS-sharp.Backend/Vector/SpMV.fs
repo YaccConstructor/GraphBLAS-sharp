@@ -8,9 +8,9 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module SpMV =
     let runTo
-        (clContext: ClContext)
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -144,12 +144,12 @@ module SpMV =
             queue.Post(Msg.CreateFreeMsg intermediateArray)
 
     let run
-        (clContext: ClContext)
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
-        let runTo = runTo clContext add mul workGroupSize
+        let runTo = runTo add mul clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) (vector: ClArray<'b option>) ->
 

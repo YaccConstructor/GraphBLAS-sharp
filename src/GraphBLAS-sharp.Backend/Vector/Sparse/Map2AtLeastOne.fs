@@ -170,8 +170,8 @@ module internal Map2AtLeastOne =
             allIndices, firstResultValues, secondResultValues, isLeftBitmap
 
     let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
-        (clContext: ClContext)
         op
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -225,12 +225,12 @@ module internal Map2AtLeastOne =
     ///<param name="clContext">.</param>
     ///<param name="op">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> (clContext: ClContext) op workGroupSize =
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> op (clContext: ClContext) workGroupSize =
 
         let merge = merge clContext workGroupSize
 
         let prepare =
-            preparePositions<'a, 'b, 'c> clContext op workGroupSize
+            preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
         let setPositions =
             Common.setPositions clContext workGroupSize

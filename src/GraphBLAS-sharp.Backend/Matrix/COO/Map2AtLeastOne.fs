@@ -11,8 +11,8 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Map2AtLeastOne =
     let preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -264,15 +264,15 @@ module internal Map2AtLeastOne =
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let merge = merge clContext workGroupSize
 
         let preparePositions =
-            preparePositionsAtLeastOne clContext opAdd workGroupSize
+            preparePositionsAtLeastOne opAdd clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'c> clContext workGroupSize

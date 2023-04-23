@@ -41,7 +41,7 @@ let createTest<'a, 'b> testContext mapFun mapFunQ isEqual =
     let context = testContext.ClContext
 
     let choose =
-        ClArray.choose context workGroupSize mapFunQ
+        ClArray.choose mapFunQ context workGroupSize
 
     makeTest<'a, 'b> testContext choose mapFun isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>} -> %A{typeof<'b>}"
@@ -83,7 +83,7 @@ let makeTest2 isEqual opMap testFun (firstArray: 'a [], secondArray: 'a []) =
 
 let createTest2 (isEqual: 'a -> 'a -> bool) (opMapQ, opMap) testFun =
     let testFun =
-        testFun context Utils.defaultWorkGroupSize opMapQ
+        testFun opMapQ context Utils.defaultWorkGroupSize
 
     makeTest2 isEqual opMap testFun
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"

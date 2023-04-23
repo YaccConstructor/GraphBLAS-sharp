@@ -13,8 +13,8 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Map2AtLeastOne =
     let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
@@ -283,15 +283,15 @@ module internal Map2AtLeastOne =
             allRows, allColumns, leftMergedValues, rightMergedValues, isEndOfRow, isLeft
 
     let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let merge = merge clContext workGroupSize
 
         let preparePositions =
-            preparePositions clContext opAdd workGroupSize
+            preparePositions opAdd clContext workGroupSize
 
         let setPositions =
             Matrix.Common.setPositions<'c> clContext workGroupSize
@@ -332,12 +332,12 @@ module internal Map2AtLeastOne =
               Values = resultValues }
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
-        let elementwiseToCOO = runToCOO clContext opAdd workGroupSize
+        let elementwiseToCOO = runToCOO opAdd clContext workGroupSize
 
         let toCSRInPlace =
             Matrix.toCSRInPlace clContext workGroupSize

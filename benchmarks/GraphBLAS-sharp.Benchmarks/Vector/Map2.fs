@@ -122,26 +122,26 @@ module WithoutTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
+            (Vector.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
+            (Vector.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne),
+                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne),
+                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)
 
 module WithTransfer =
@@ -178,24 +178,24 @@ module WithTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (fun context -> Vector.map2 context ArithmeticOperations.floatSumOption),
+            (Vector.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (fun context -> Vector.map2 context ArithmeticOperations.intSumOption),
+            (Vector.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.floatSumAtLeastOne),
+                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (fun context -> Vector.map2AtLeastOne context ArithmeticOperations.intSumAtLeastOne),
+                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)

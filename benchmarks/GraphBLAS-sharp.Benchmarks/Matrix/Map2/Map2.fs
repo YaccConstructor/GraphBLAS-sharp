@@ -138,7 +138,7 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 Matrix.COO
@@ -150,7 +150,7 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
+                (Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
                 Matrix.COO
@@ -163,7 +163,7 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -175,7 +175,7 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                (fun context -> Matrix.map2 context ArithmeticOperations.boolSumOption),
+                (Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
                 (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -189,7 +189,7 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
                     Matrix.COO
@@ -201,7 +201,7 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
                     Matrix.COO
@@ -214,7 +214,7 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.boolSumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
                     (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -226,7 +226,7 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                    (fun context -> Matrix.map2AtLeastOne context ArithmeticOperations.float32SumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
                     (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -273,7 +273,7 @@ module WithTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (fun context -> Matrix.map2 context ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 Matrix.COO,

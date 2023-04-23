@@ -22,8 +22,8 @@ module Vector =
 
     let map2 = Map2.run
 
-    let map2AtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
-        Map2AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
+    let map2AtLeastOne opAdd (clContext: ClContext) workGroupSize =
+        Map2AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
 
     let assignByMask = Map2.assignByMask
 
@@ -62,7 +62,7 @@ module Vector =
 
             resultVector
 
-    let reduce<'a when 'a: struct> (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) =
+    let reduce<'a when 'a: struct> (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let reduce =
             Reduce.reduce clContext workGroupSize opAdd

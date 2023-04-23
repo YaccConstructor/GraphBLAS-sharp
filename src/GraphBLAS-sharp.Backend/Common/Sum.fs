@@ -55,7 +55,7 @@ module Reduce =
 
             result
 
-    let private scanSum (clContext: ClContext) (workGroupSize: int) (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let private scanSum (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) (workGroupSize: int) zero =
 
         let subSum = SubSum.sequentialSum opAdd
 
@@ -92,7 +92,7 @@ module Reduce =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let private scanToCellSum (clContext: ClContext) workGroupSize (opAdd: Expr<'a -> 'a -> 'a>) zero =
+    let private scanToCellSum (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize zero =
 
         let subSum = SubSum.sequentialSum opAdd
 
@@ -139,12 +139,12 @@ module Reduce =
     /// <param name="workGroupSize">Work group size.</param>
     /// <param name="op">Summation operation.</param>
     /// <param name="zero">Neutral element for summation.</param>
-    let sum (clContext: ClContext) workGroupSize op zero =
+    let sum op zero (clContext: ClContext) workGroupSize =
 
-        let scan = scanSum clContext workGroupSize op zero
+        let scan = scanSum op clContext workGroupSize zero
 
         let scanToCell =
-            scanToCellSum clContext workGroupSize op zero
+            scanToCellSum op clContext workGroupSize zero
 
         let run =
             runGeneral clContext workGroupSize scan scanToCell
@@ -152,9 +152,9 @@ module Reduce =
         fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) -> run processor array
 
     let private scanReduce<'a when 'a: struct>
+        (opAdd: Expr<'a -> 'a -> 'a>)
         (clContext: ClContext)
         (workGroupSize: int)
-        (opAdd: Expr<'a -> 'a -> 'a>)
         =
 
         let scan =
@@ -193,9 +193,9 @@ module Reduce =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     let private scanToCellReduce<'a when 'a: struct>
+        (opAdd: Expr<'a -> 'a -> 'a>)
         (clContext: ClContext)
         (workGroupSize: int)
-        (opAdd: Expr<'a -> 'a -> 'a>)
         =
 
         let scan =
@@ -242,12 +242,12 @@ module Reduce =
     /// <param name="clContext">ClContext.</param>
     /// <param name="workGroupSize">Work group size.</param>
     /// <param name="op">Reduction operation.</param>
-    let reduce (clContext: ClContext) workGroupSize op =
+    let reduce op (clContext: ClContext) workGroupSize =
 
-        let scan = scanReduce clContext workGroupSize op
+        let scan = scanReduce op clContext workGroupSize
 
         let scanToCell =
-            scanToCellReduce clContext workGroupSize op
+            scanToCellReduce op clContext workGroupSize
 
         let run =
             runGeneral clContext workGroupSize scan scanToCell
@@ -267,7 +267,7 @@ module Reduce =
         /// <remarks>
         /// The length of the result must be calculated in advance.
         /// </remarks>
-        let sequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+        let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
@@ -326,7 +326,7 @@ module Reduce =
         /// <remarks>
         /// The length of the result must be calculated in advance.
         /// </remarks>
-        let segmentSequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+        let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
@@ -393,7 +393,7 @@ module Reduce =
         /// Reduces an array of values that does not exceed the size of the workgroup.
         /// The length of the result must be calculated in advance.
         /// </remarks>
-        let oneWorkGroupSegments (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+        let oneWorkGroupSegments (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (reducedKeys: ClArray<int>) ->
@@ -482,7 +482,7 @@ module Reduce =
             /// <remarks>
             /// The length of the result must be calculated in advance.
             /// </remarks>
-            let segmentSequential<'a> (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a option>) =
+            let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
 
                 let kernel =
                     <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (resultPositions: ClArray<int>) ->
@@ -528,7 +528,7 @@ module Reduce =
                     Scatter.lastOccurrence clContext workGroupSize
 
                 let prefixSum =
-                    PrefixSum.standardExcludeInplace clContext workGroupSize
+                    PrefixSum.standardExcludeInPlace clContext workGroupSize
 
                 fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) ->
 
@@ -599,7 +599,7 @@ module Reduce =
         /// <remarks>
         /// The length of the result must be calculated in advance.
         /// </remarks>
-        let sequential (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+        let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) length (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (secondReducedKeys: ClArray<int>) ->
@@ -678,7 +678,7 @@ module Reduce =
         /// <remarks>
         /// The length of the result must be calculated in advance.
         /// </remarks>
-        let segmentSequential<'a> (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a>) =
+        let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (secondReducedKeys: ClArray<int>) ->
@@ -754,7 +754,7 @@ module Reduce =
             /// <remarks>
             /// The length of the result must be calculated in advance.
             /// </remarks>
-            let segmentSequential<'a> (clContext: ClContext) workGroupSize (reduceOp: Expr<'a -> 'a -> 'a option>) =
+            let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
 
                 let kernel =
                     <@ fun (ndRange: Range1D) uniqueKeyCount keysLength (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) (reducedValues: ClArray<'a>) (firstReducedKeys: ClArray<int>) (secondReducedKeys: ClArray<int>) (resultPositions: ClArray<int>) ->
@@ -803,7 +803,7 @@ module Reduce =
                     Scatter.lastOccurrence clContext workGroupSize
 
                 let prefixSum =
-                    PrefixSum.standardExcludeInplace clContext workGroupSize
+                    PrefixSum.standardExcludeInPlace clContext workGroupSize
 
                 fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) ->
 
