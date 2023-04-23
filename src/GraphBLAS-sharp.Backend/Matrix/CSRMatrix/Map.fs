@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module internal Map =
@@ -212,9 +213,12 @@ module internal Map =
             let setPositions =
                 Common.setPositionsOption<'c> clContext workGroupSize
 
-            fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
+            fun (queue: MailboxProcessor<_>) allocationMode (value: 'a option) (matrix: ClMatrix.CSR<'b>) ->
+                let valueClCell = clContext.CreateClCell value
 
-                let bitmap, values, rows, columns = mapWithValue queue operand matrix
+                let bitmap, values, rows, columns = mapWithValue queue valueClCell matrix
+
+                valueClCell.Free queue
 
                 let result =
                     setPositions queue allocationMode rows columns values bitmap
@@ -247,8 +251,8 @@ module internal Map =
             let toCSRInplace =
                 Matrix.toCSRInplace clContext workGroupSize
 
-            fun (queue: MailboxProcessor<_>) allocationMode (operand: ClCell<'a option>) (matrix: ClMatrix.CSR<'b>) ->
+            fun (queue: MailboxProcessor<_>) allocationMode (value: 'a option) (matrix: ClMatrix.CSR<'b>) ->
                 let result =
-                    mapToCOO queue allocationMode operand matrix
+                    mapToCOO queue allocationMode value matrix
 
                 Option.bind (Some << (toCSRInplace queue allocationMode)) result

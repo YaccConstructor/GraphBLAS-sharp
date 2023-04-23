@@ -185,7 +185,7 @@ module internal Kronecker =
     /// <remarks>
     /// Inserted matrix with shifted indices should not intersect the main matrix.
     /// </remarks>
-    let private insertMatrixWithOffset (clContext: ClContext) workGroupSize =
+    let private insertWithOffset (clContext: ClContext) workGroupSize =
 
         let mapWithValueClArray =
             ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
@@ -194,72 +194,139 @@ module internal Kronecker =
 
         let copyClArray = ClArray.copy clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (rowOffset: int) (columnOffset: int) (matrixToInsert: ClMatrix.COO<'c> option) (resultMatrix: ClMatrix.COO<'c> option) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (rowOffset: int) (columnOffset: int) (matrixToInsert: ClMatrix.COO<'c>) (resultMatrix: ClMatrix.COO<'c> option) ->
+            let rowOffset = rowOffset |> clContext.CreateClCell
+            let columnOffset = columnOffset |> clContext.CreateClCell
 
-            match matrixToInsert with
-            | None -> resultMatrix
-            | Some m ->
-                let rowOffset = rowOffset |> clContext.CreateClCell
-                let columnOffset = columnOffset |> clContext.CreateClCell
+            let newRowIndices =
+                mapWithValueClArray queue allocationMode rowOffset matrixToInsert.Rows
 
-                let newRowIndices =
-                    mapWithValueClArray queue allocationMode rowOffset m.Rows
+            let newColumnIndices =
+                mapWithValueClArray queue allocationMode columnOffset matrixToInsert.Columns
 
-                let newColumnIndices =
-                    mapWithValueClArray queue allocationMode columnOffset m.Columns
+            rowOffset.Free queue
+            columnOffset.Free queue
 
-                rowOffset.Free queue
-                columnOffset.Free queue
+            match resultMatrix with
+            | None ->
+                { matrixToInsert with
+                      Rows = newRowIndices
+                      Columns = newColumnIndices
+                      Values = copyClArray queue allocationMode matrixToInsert.Values }
+                |> Some
+            | Some mainMatrix ->
+                let newRows, newCols, newValues =
+                    mergeDisjointCOO
+                        queue
+                        mainMatrix.Rows
+                        mainMatrix.Columns
+                        mainMatrix.Values
+                        newRowIndices
+                        newColumnIndices
+                        matrixToInsert.Values
 
-                match resultMatrix with
-                | None ->
-                    { m with
-                          Rows = newRowIndices
-                          Columns = newColumnIndices
-                          Values = copyClArray queue allocationMode m.Values }
-                    |> Some
+                { mainMatrix with
+                      Rows = newRows
+                      Columns = newCols
+                      Values = newValues }
+                |> Some
 
-                | Some mainMatrix ->
+    let disposeOption queue (matrix: COO<_> option) =
+        match matrix with
+        | Some m -> m.Dispose queue
+        | _ -> ()
 
-                    let newRows, newCols, newValues =
-                        mergeDisjointCOO
-                            queue
-                            mainMatrix.Rows
-                            mainMatrix.Columns
-                            mainMatrix.Values
-                            newRowIndices
-                            newColumnIndices
-                            m.Values
-
-                    { mainMatrix with
-                          Rows = newRows
-                          Columns = newCols
-                          Values = newValues }
-                    |> Some
-
-    let insertMatricesMultipliedByZero
+    let insertZero
         queue
-        insertFunc
-        (matrixToInsert: COO<'c> option)
-        (resultMatrix: COO<'c> option)
-        (rowOffset: int)
-        (columnOffsets: int [])
+        insert
+        (zeroCounts: int list array)
+        (mappedZero: COO<'c> option)
+        (matrixRight: CSR<'b>)
+        sourceMatrix
         =
 
-        let mutable resultMatrix = resultMatrix
+        let rowCount = zeroCounts.Length
 
-        for columnOffset in columnOffsets do
-            let newResultMatrix =
-                insertFunc rowOffset columnOffset matrixToInsert resultMatrix
+        let insertMany sourceMatrix row firstColumn count =
+            let rec insertManyRec iter matrix =
+                if iter >= count then
+                    matrix
+                else
+                    let rowOffset = row * matrixRight.RowCount
 
-            resultMatrix <-
-                match resultMatrix, matrixToInsert with
-                | Some oldMatrix, Some _ ->
-                    oldMatrix.Dispose queue
-                    newResultMatrix
-                | _ -> newResultMatrix
+                    let columnOffset =
+                        (firstColumn + iter) * matrixRight.ColumnCount
 
-        resultMatrix
+                    match mappedZero with
+                    | Some m ->
+                        let result = insert rowOffset columnOffset m matrix
+                        disposeOption queue matrix
+                        result
+                    | _ -> matrix
+                    |> insertManyRec (iter + 1)
+
+            insertManyRec 0 sourceMatrix
+
+        let rec insertInRowRec zeroCounts row column matrix =
+            match zeroCounts with
+            | [] -> matrix
+            | h :: tl ->
+                insertMany matrix row column h
+                |> insertInRowRec tl row (h + column + 1)
+
+        let rec insertZeroRec row matrix =
+            if row >= rowCount then
+                matrix
+            else
+                insertInRowRec zeroCounts.[row] row 0 matrix
+                |> insertZeroRec (row + 1)
+
+        insertZeroRec 0 sourceMatrix
+
+    let insertNonZero
+        queue
+        map
+        insert
+        (rowsEdges: (int * int) [])
+        (matrixRight: CSR<'b>)
+        (leftValuesHost: 'a [])
+        (leftColsHost: int [])
+        (sourceMatrix: COO<'c> option)
+        =
+
+        let rowCount = rowsEdges.Length
+
+        let rec insertInRowRec row rightEdge index matrix =
+            if index > rightEdge then
+                matrix
+            else
+                let value = leftValuesHost.[index] |> Some
+                let column = leftColsHost.[index]
+
+                let rowOffset = row * matrixRight.RowCount
+                let columnOffset = column * matrixRight.ColumnCount
+
+                let mappedMatrix = map value matrixRight
+
+                match mappedMatrix with
+                | Some m ->
+                    let result = insert rowOffset columnOffset m matrix
+                    disposeOption queue matrix
+                    disposeOption queue mappedMatrix
+                    result
+                | _ -> matrix
+                |> insertInRowRec row rightEdge (index + 1)
+
+        let rec insertNonZeroRec row matrix =
+            if row >= rowCount then
+                matrix
+            else
+                let leftEdge, rightEdge = rowsEdges.[row]
+
+                insertInRowRec row rightEdge leftEdge matrix
+                |> insertNonZeroRec (row + 1)
+
+        insertNonZeroRec 0 sourceMatrix
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -270,91 +337,43 @@ module internal Kronecker =
         let mapWithValueToCOO =
             Map.WithValue.runToCOO clContext op workGroupSize
 
-        let insert =
-            insertMatrixWithOffset clContext workGroupSize
+        let insert = insertWithOffset clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-            let noneClCell = None |> clContext.CreateClCell
-
-            let mapWithZero =
-                mapWithValueToCOO queue allocationMode noneClCell matrixRight
-
-            noneClCell.Free queue
-
+            let map = mapWithValueToCOO queue allocationMode
             let insert = insert queue allocationMode
 
-            let insertMatricesMultipliedByZero =
-                insertMatricesMultipliedByZero queue insert mapWithZero
+            let mappedZero = map None matrixRight
 
             let leftMatrixRows = matrixLeft.RowPointers.ToHost queue
             let leftMatrixCols = matrixLeft.Columns.ToHost queue
             let leftMatrixVals = matrixLeft.Values.ToHost queue
 
-            let mutable resultMatrix = None
+            let nnzInRows =
+                leftMatrixRows
+                |> Array.pairwise
+                |> Array.map (fun (fst, snd) -> snd - fst)
 
-            for row in 0 .. (matrixLeft.RowCount - 1) do
-                let firstElementIndex = leftMatrixRows.[row]
+            let rowsEdges =
+                leftMatrixRows
+                |> Array.pairwise
+                |> Array.map (fun (fst, snd) -> (fst, snd - 1))
 
-                let rowOffset = row * matrixRight.RowCount
+            let (zeroCounts: int list array) = Array.zeroCreate matrixLeft.RowCount
 
-                for elementIndex in firstElementIndex .. leftMatrixRows.[row + 1] - 1 do
-                    let currentColumn = leftMatrixCols.[elementIndex]
+            (rowsEdges, [| 0 .. matrixLeft.RowCount - 1 |])
+            ||> Array.iter2
+                    (fun edges i ->
+                        zeroCounts.[i] <-
+                            leftMatrixCols.[fst edges..snd edges]
+                            |> Array.toList
+                            |> List.insertAt 0 -1
+                            |> List.insertAt (nnzInRows.[i] + 1) matrixLeft.ColumnCount
+                            |> List.pairwise
+                            |> List.map (fun (fstCol, sndCol) -> sndCol - fstCol - 1))
 
-                    let numberOfZeroElements =
-                        if elementIndex = leftMatrixRows.[row] then
-                            currentColumn
-                        else
-                            currentColumn
-                            - leftMatrixCols.[elementIndex - 1]
-                            - 1
-
-                    // Inserting matrices resulting from multiplication by 0
-                    if currentColumn <> 0 && numberOfZeroElements >= 0 then
-                        resultMatrix <-
-                            [| currentColumn - numberOfZeroElements .. currentColumn - 1 |]
-                            |> Array.map ((*) matrixRight.ColumnCount)
-                            |> insertMatricesMultipliedByZero resultMatrix rowOffset
-
-                    // inserting new matrix resulting from multiplication by non zero element of left matrix
-                    let columnOffset = currentColumn * matrixRight.ColumnCount
-
-                    let operand =
-                        Some leftMatrixVals.[elementIndex]
-                        |> clContext.CreateClCell
-
-                    let mappedMatrix =
-                        mapWithValueToCOO queue allocationMode operand matrixRight
-
-                    operand.Free queue
-
-                    let newMatrix =
-                        insert rowOffset columnOffset mappedMatrix resultMatrix
-
-                    resultMatrix <-
-                        match resultMatrix, mappedMatrix with
-                        | Some oldMatrix, Some m ->
-                            oldMatrix.Dispose queue
-                            m.Dispose queue
-                            newMatrix
-                        | _ -> newMatrix
-
-                // inserting matrices resulting from multiplication by 0 to the rest of the place in row
-                let nnzInRow =
-                    leftMatrixRows.[row + 1] - leftMatrixRows.[row]
-
-                let startColumn =
-                    if nnzInRow = 0 then
-                        0
-                    else
-                        leftMatrixCols.[firstElementIndex + nnzInRow - 1]
-                        + 1
-
-                resultMatrix <-
-                    [| startColumn .. matrixLeft.ColumnCount - 1 |]
-                    |> Array.map ((*) matrixRight.ColumnCount)
-                    |> insertMatricesMultipliedByZero resultMatrix rowOffset
-
-            resultMatrix
+            insertZero queue insert zeroCounts mappedZero matrixRight None
+            |> insertNonZero queue map insert rowsEdges matrixRight leftMatrixVals leftMatrixCols
             |> Option.bind
                 (fun m ->
                     { m with
