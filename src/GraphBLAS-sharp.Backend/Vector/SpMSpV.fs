@@ -207,4 +207,4 @@ module SpMSpV =
                 { Context = clContext
                   Indices = resultIndices
                   Values = create queue DeviceOnly resultIndices.Length true
-                  Size = resultIndices.Length }
+                  Size = matrix.ColumnCount }

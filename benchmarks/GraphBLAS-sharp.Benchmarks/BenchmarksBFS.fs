@@ -129,10 +129,10 @@ type BFSBenchmarksWithoutDataTransfer() =
         this.BFS()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
-type BFSSparseBenchmarksWithoutDataTransfer() =
+type BFSPushPullBenchmarksWithoutDataTransfer() =
 
     inherit BFSBenchmarks<ClMatrix.CSR<bool>, bool>(
-        (fun context wgSize -> BFS.singleSourceSparse context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize),
+        (fun context wgSize -> BFS.singleSourcePushPull context ArithmeticOperations.boolSum ArithmeticOperations.boolMul wgSize),
         (fun _ -> true),
         (fun _ -> true),
         Matrix.ToBackendCSR)

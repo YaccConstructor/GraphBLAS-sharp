@@ -139,3 +139,117 @@ module BFS =
             frontier.Dispose queue
 
             levels
+
+    let singleSourcePushPull
+        (clContext: ClContext)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
+        workGroupSize
+        =
+
+        let SPARSITY = 0.01f
+
+        let spMVTo =
+            SpMV.runTo clContext add mul workGroupSize
+
+        let spMSpV =
+            SpMSpV.run clContext add mul workGroupSize
+
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
+
+        let ofList = Vector.ofList clContext workGroupSize
+
+        let maskComplementedTo =
+            DenseVector.map2Inplace clContext Mask.complementedOp workGroupSize
+
+        let maskComplemented =
+            SparseVector.map2SparseDense clContext Mask.complementedOp workGroupSize
+
+        let fillSubVectorDenseTo =
+            DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
+
+        let fillSubVectorSparseTo =
+            DenseVector.assignBySparseMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
+
+        let containsNonZeroSparse =
+            SparseVector.exists clContext workGroupSize (Predicates.notEquals false)
+
+        let toSparse =
+            DenseVector.toSparse clContext workGroupSize
+
+        let toDense =
+            SparseVector.toDense clContext workGroupSize
+
+        let countNNZ =
+            ClArray.count clContext workGroupSize Predicates.isSome
+
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<bool>) (source: int) ->
+            let vertexCount = matrix.RowCount
+
+            let levels = zeroCreate queue HostInterop vertexCount
+
+            let mutable frontier =
+                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
+
+            let mutable level = 0
+            let mutable stop = false
+
+            while not stop do
+                level <- level + 1
+
+                match frontier with
+                | ClVector.Sparse front ->
+                    //Assigning new level values
+                    fillSubVectorSparseTo queue levels front (clContext.CreateClCell level) levels
+
+                    //Getting new frontier
+                    let newFrontier = spMSpV queue matrix front
+
+                    frontier.Dispose queue
+
+                    let newMaskedFrontier =
+                        maskComplemented queue DeviceOnly newFrontier levels
+
+                    newFrontier.Dispose queue
+
+                    //Checking if front is empty
+                    stop <-
+                        not
+                        <| (containsNonZeroSparse queue newMaskedFrontier)
+                            .ToHostAndFree queue
+
+                    //Push/pull
+                    if ((float32 newMaskedFrontier.NNZ)
+                        / (float32 newMaskedFrontier.Size)
+                        <= SPARSITY) then
+                        frontier <- ClVector.Sparse newMaskedFrontier
+                    else
+                        printfn "Sparse to dense"
+                        frontier <- ClVector.Dense(toDense queue DeviceOnly newMaskedFrontier)
+                        newMaskedFrontier.Dispose queue
+
+                | ClVector.Dense front ->
+                    //Assigning new level values
+                    fillSubVectorDenseTo queue levels front (clContext.CreateClCell level) levels
+
+                    //Getting new frontier
+                    spMVTo queue matrix front front
+
+                    maskComplementedTo queue front levels front
+
+                    //Emptiness check
+                    let NNZ = countNNZ queue front
+
+                    stop <- NNZ = 0
+
+                    //Push/pull
+                    if not stop then
+                        if ((float32 NNZ) / (float32 front.Length) <= SPARSITY) then
+                            printfn "Dense to sparse"
+                            frontier <- ClVector.Sparse(toSparse queue DeviceOnly front)
+                            front.Dispose queue
+
+            frontier.Dispose queue
+
+            levels
