@@ -49,7 +49,7 @@ type Benchmarks<'elem when 'elem : struct>(
     static member AvailableContexts = Utils.availableContexts
 
     static member InputMatrixProviderBuilder pathToConfig =
-        let datasetFolder = "Mxm"
+        let datasetFolder = ""
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map
@@ -59,7 +59,6 @@ type Benchmarks<'elem when 'elem : struct>(
                 match Path.GetExtension matrixFilename with
                 | ".mtx" ->
                     MtxReader(Utils.getFullPathToMatrix datasetFolder matrixFilename)
-                    , MtxReader(Utils.getFullPathToMatrix datasetFolder (matrixFilename))
                 | _ -> failwith "Unsupported matrix format")
 
     member this.FunToBenchmark =
@@ -145,4 +144,4 @@ module WithoutTransfer =
             )
 
         static member InputMatrixProvider =
-            Benchmarks<_>.InputMatrixProviderBuilder "MxmBenchmarks4Float32.txt"
+            Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"

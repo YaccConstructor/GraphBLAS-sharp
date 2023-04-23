@@ -92,89 +92,87 @@ type Benchmarks<'elem when 'elem : struct>(
 
     abstract member Benchmark : unit -> unit
 
-module WithoutTransfer  =
-    type Benchmark<'elem when 'elem : struct>(
+type WithoutTransferBenchmark<'elem when 'elem : struct>(
+    buildFunToBenchmark,
+    converter: string -> 'elem,
+    boolConverter,
+    vertex) =
+
+    inherit Benchmarks<'elem>(
         buildFunToBenchmark,
-        converter: string -> 'elem,
+        converter,
         boolConverter,
-        vertex) =
+        vertex)
 
-        inherit Benchmarks<'elem>(
-            buildFunToBenchmark,
-            converter,
-            boolConverter,
-            vertex)
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix()
+        this.LoadMatrixToGPU()
 
-        [<GlobalSetup>]
-        override this.GlobalSetup() =
-            this.ReadMatrix()
-            this.LoadMatrixToGPU()
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearResult()
 
-        [<IterationCleanup>]
-        override this.IterationCleanup() =
-            this.ClearResult()
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearInputMatrix()
 
-        [<GlobalCleanup>]
-        override this.GlobalCleanup() =
-            this.ClearInputMatrix()
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.BFS()
+        this.Processor.PostAndReply Msg.MsgNotifyMe
 
-        [<Benchmark>]
-        override this.Benchmark() =
-            this.BFS()
-            this.Processor.PostAndReply Msg.MsgNotifyMe
+type BFSWithoutTransferBenchmarkInt32() =
 
-    type Int() =
+    inherit WithoutTransferBenchmark<int>(
+        (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        int32,
+        (fun _ -> Utils.nextInt (System.Random())),
+        0)
 
-        inherit Benchmark<int>(
-            (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-            int32,
-            (fun _ -> Utils.nextInt (System.Random())),
-            0)
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 
-        static member InputMatrixProvider =
-            Benchmark<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+type WithTransferBenchmark<'elem when 'elem : struct>(
+    buildFunToBenchmark,
+    converter: string -> 'elem,
+    boolConverter,
+    vertex) =
 
-module WithTransfer =
-    type Benchmark<'elem when 'elem : struct>(
+    inherit Benchmarks<'elem>(
         buildFunToBenchmark,
-        converter: string -> 'elem,
+        converter,
         boolConverter,
-        vertex) =
+        vertex)
 
-        inherit Benchmarks<'elem>(
-            buildFunToBenchmark,
-            converter,
-            boolConverter,
-            vertex)
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix()
 
-        [<GlobalSetup>]
-        override this.GlobalSetup() =
-            this.ReadMatrix()
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearResult()
 
-        [<GlobalCleanup>]
-        override this.GlobalCleanup() =
-            this.ClearResult()
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearInputMatrix()
+        this.ClearResult()
 
-        [<IterationCleanup>]
-        override this.IterationCleanup() =
-            this.ClearInputMatrix()
-            this.ClearResult()
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.LoadMatrixToGPU()
+        this.BFS()
+        this.ResultLevels.ToHost this.Processor |> ignore
+        this.Processor.PostAndReply Msg.MsgNotifyMe
 
-        [<Benchmark>]
-        override this.Benchmark() =
-            this.LoadMatrixToGPU()
-            this.BFS()
-            this.ResultLevels.ToHost this.Processor |> ignore
-            this.Processor.PostAndReply Msg.MsgNotifyMe
+type BFSWithTransferBenchmarkInt32() =
 
-    type Int() =
+    inherit WithTransferBenchmark<int>(
+        (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        int32,
+        (fun _ -> Utils.nextInt (System.Random())),
+        0)
 
-        inherit Benchmark<int>(
-            (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-            int32,
-            (fun _ -> Utils.nextInt (System.Random())),
-            0)
-
-        static member InputMatrixProvider =
-            Benchmark<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 

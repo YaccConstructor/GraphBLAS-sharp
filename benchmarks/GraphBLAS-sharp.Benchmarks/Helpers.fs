@@ -108,13 +108,16 @@ module Utils =
                     let queue = context.QueueProvider.CreateQueue()
 
                     { ClContext = context; Queue = queue })
+        let result =
+            seq {
+                for wgSize in workGroupSizes do
+                    for context in contexts do
+                        yield (context, wgSize)
+            }
 
-        seq {
-            for wgSize in workGroupSizes do
-                for context in contexts do
-                    yield (context, wgSize)
-        }
+        printfn "result length: %A" <| Seq.length result
 
+        result
     let nextSingle (random: System.Random) =
         let buffer = Array.zeroCreate<byte> 4
         random.NextBytes buffer

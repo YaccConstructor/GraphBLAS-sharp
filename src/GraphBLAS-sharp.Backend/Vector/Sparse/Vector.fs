@@ -65,6 +65,6 @@ module Vector =
     let reduce<'a when 'a: struct> (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let reduce =
-            Reduce.reduce clContext workGroupSize opAdd
+            Reduce.reduce opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values
