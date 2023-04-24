@@ -53,6 +53,7 @@
         <Compile Include="Matrix/SpGeMM/Masked.fs" />
         <Compile Include="Matrix/SpGeMM/Expand.fs" />
         <Compile Include="Matrix/RowsLengths.fs" />
+        <Compile Include="Matrix/ByRows.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

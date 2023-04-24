@@ -16,7 +16,8 @@ let matrixTests =
           Matrix.SpGeMM.Expand.generalTests
           Matrix.SpGeMM.Masked.tests
           Matrix.Transpose.tests
-          Matrix.RowsLengths.tests ]
+          Matrix.RowsLengths.tests
+          Matrix.ByRows.tests ]
     |> testSequenced
 
 let commonTests =

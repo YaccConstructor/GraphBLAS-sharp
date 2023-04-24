@@ -45,6 +45,12 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
         let expected =
             Utils.createMatrixFromArray2D formatTo array isZero
 
+        "Row count should be the same"
+        |> Expect.equal actual.RowCount (Array2D.length1 array)
+
+        "Column count should be the same"
+        |> Expect.equal actual.ColumnCount (Array2D.length2 array)
+
         "Matrices should be equal"
         |> Expect.equal actual expected
 
@@ -56,7 +62,7 @@ let createTest<'a when 'a: struct and 'a: equality> convertFun formatTo (isZero:
     |> List.map
         (fun formatFrom ->
             makeTest context q formatFrom formatTo convertFun isZero
-            |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>} from %A{formatFrom}")
+            |> testPropertyWithConfig config $"test on %A{typeof<'a>} from %A{formatFrom}")
 
 let testFixtures formatTo =
     match formatTo with

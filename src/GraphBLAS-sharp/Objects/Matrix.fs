@@ -24,7 +24,7 @@ module Matrix =
                         |> List.mapi (fun i x -> (x, i))
                         |> List.filter (fun pair -> not <| isZero (fst pair)))
                 |> List.fold
-                    (fun (rowPtrs, valueInx) row -> ((rowPtrs.Head + row.Length) :: rowPtrs), valueInx @ row)
+                    (fun (rowPointers, valueInx) row -> ((rowPointers.Head + row.Length) :: rowPointers), valueInx @ row)
                     ([ 0 ], [])
 
             { Values =
