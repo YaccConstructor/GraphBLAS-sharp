@@ -510,6 +510,76 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
+    type PairOfDisjointMatrices() =
+        static let pairOfDisjointMatricesGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! nRowsA, nColsA = dimension2DGenerator
+                let! nRowsB, nColsB = dimension2DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRowsA, nColsA)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (nRowsB, nColsB)
+
+                for row in 0 .. nRowsA - 1 do
+                    for col in 0 .. nColsA - 1 do
+                        let zero = Unchecked.defaultof<'a>
+
+                        if matrixA.[row, col] <> zero
+                           && row < nRowsB
+                           && col < nColsB then
+                            matrixB.[row, col] <- zero
+
+                return (matrixA, matrixB)
+            }
+
+        static member IntType() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfDisjointMatricesGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
     type ArrayOfDistinctKeys() =
         static let arrayOfDistinctKeysGenerator (keysGenerator: Gen<'n>) (valuesGenerator: Gen<'a>) =
             let tuplesGenerator =

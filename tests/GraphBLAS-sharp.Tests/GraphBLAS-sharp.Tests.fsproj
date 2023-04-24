@@ -49,6 +49,7 @@
         <Compile Include="Matrix/Map2.fs" />
         <Compile Include="Matrix/Transpose.fs" />
         <Compile Include="Matrix/Map.fs" />
+        <Compile Include="Matrix/MergeDisjoint.fs" />
         <Compile Include="Matrix/Kronecker.fs" />
         <Compile Include="Matrix/SpGeMM/Masked.fs" />
         <Compile Include="Matrix/SpGeMM/Expand.fs" />

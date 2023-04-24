@@ -276,6 +276,35 @@ module HostPrimitives =
 
             op leftElement rightElement
 
+    /// <remarks>
+    /// Matrices should be disjoint.
+    /// </remarks>
+    let array2DMergeDisjoint leftMatrix rightMatrix zero equal =
+        let leftRows = Array2D.length1 leftMatrix
+        let leftColumns = Array2D.length2 leftMatrix
+        let rightRows = Array2D.length1 rightMatrix
+        let rightColumns = Array2D.length2 rightMatrix
+
+        let rows = max leftRows rightRows
+        let cols = max leftColumns rightColumns
+
+        Array2D.init
+        <| rows
+        <| cols
+        <| fun i j ->
+            if
+                i < leftRows && j < leftColumns
+                && not (equal leftMatrix.[i, j] zero)
+            then
+                leftMatrix.[i, j]
+            else if
+                i < rightRows && j < rightColumns
+                && not (equal rightMatrix.[i, j] zero)
+            then
+                rightMatrix.[i, j]
+            else
+                zero
+
 module Context =
     type TestContext =
         { ClContext: ClContext

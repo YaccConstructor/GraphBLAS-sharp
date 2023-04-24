@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
     /// Merges 2 disjoint matrices.
-    let private mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+    let mergeDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let merge =
             <@ fun (ndRange: Range1D) firstSide secondSide sumOfSides (firstRowsBuffer: ClArray<int>) (firstColumnsBuffer: ClArray<int>) (firstValuesBuffer: ClArray<'a>) (secondRowsBuffer: ClArray<int>) (secondColumnsBuffer: ClArray<int>) (secondValuesBuffer: ClArray<'a>) (allRowsBuffer: ClArray<int>) (allColumnsBuffer: ClArray<int>) (mergedValuesBuffer: ClArray<'a>) ->
@@ -185,7 +185,7 @@ module internal Kronecker =
     /// <remarks>
     /// Inserted matrix with shifted indices should not intersect the main matrix.
     /// </remarks>
-    let private insertWithOffset (clContext: ClContext) workGroupSize =
+    let insertWithOffset (clContext: ClContext) workGroupSize =
 
         let mapWithValueClArray =
             ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>

@@ -16,7 +16,8 @@ let matrixTests =
           Matrix.Transpose.tests
           Matrix.SpGeMM.Masked.tests
           Matrix.SpGeMM.Expand.gpuTests
-          Matrix.kronecker.tests ]
+          Matrix.kronecker.tests
+          Matrix.MergeDisjoint.tests ]
     |> testSequenced
 
 let commonTests =
