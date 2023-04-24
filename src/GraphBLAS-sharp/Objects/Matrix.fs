@@ -93,15 +93,12 @@ module Matrix =
 
         member this.ToCSR =
             let rowPointers =
-                let nnzPerRow = Array.zeroCreate this.RowCount
-                let rowPointers = Array.zeroCreate this.RowCount
+                let pointers = Array.zeroCreate this.RowCount
 
-                Array.iter (fun rowIndex -> nnzPerRow.[rowIndex] <- nnzPerRow.[rowIndex] + 1) this.Rows
+                Array.countBy id this.Rows
+                |> Array.iter (fun (index, count) -> pointers.[index] <- count)
 
-                for i in 1 .. this.RowCount - 1 do
-                    rowPointers.[i] <- rowPointers.[i - 1] + nnzPerRow.[i - 1]
-
-                rowPointers
+                Array.scan (+) 0 pointers
 
             { RowCount = this.RowCount
               ColumnCount = this.ColumnCount
@@ -128,7 +125,7 @@ module Matrix =
                         |> List.mapi (fun i x -> (x, i))
                         |> List.filter (fun pair -> not <| isZero (fst pair)))
                 |> List.fold
-                    (fun (colPtrs, valueInx) col -> ((colPtrs.Head + col.Length) :: colPtrs), valueInx @ col)
+                    (fun (colPointers, valueInx) col -> ((colPointers.Head + col.Length) :: colPointers), valueInx @ col)
                     ([ 0 ], [])
 
             { Values =
