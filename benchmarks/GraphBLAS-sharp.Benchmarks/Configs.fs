@@ -18,7 +18,7 @@ type Matrix2() =
                 "NNZ",
                 fun (matrix,_) ->
                     match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Coordinate -> matrix.ReadMatrixShape().NNZ
                     | Array -> 0
             )
             :> IColumn,
@@ -26,7 +26,7 @@ type Matrix2() =
                 "SqrNNZ",
                 fun (_,matrix) ->
                     match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Coordinate -> matrix.ReadMatrixShape().NNZ
                     | Array -> 0
             )
             :> IColumn,
@@ -46,7 +46,7 @@ type Matrix() =
                 "NNZ",
                 fun matrix ->
                     match matrix.Format with
-                    | Coordinate -> matrix.ReadMatrixShape().Nnz
+                    | Coordinate -> matrix.ReadMatrixShape().NNZ
                     | Array -> 0
             )
             :> IColumn,

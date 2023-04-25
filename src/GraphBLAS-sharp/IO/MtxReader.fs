@@ -34,13 +34,13 @@ type MtxReader(pathToFile: string) =
             streamReader.ReadLine().Split(' ')
             |> Array.map int
 
-        let nrows = size.[0]
-        let ncols = size.[1]
+        let rowsCount = size.[0]
+        let columnsCount = size.[1]
         let nnz = size.[2]
 
-        {| RowCount = nrows
-           ColumnCount = ncols
-           Nnz = nnz |}
+        {| RowCount = rowsCount
+           ColumnCount = columnsCount
+           NNZ = nnz |}
 
     member this.ReadMatrix(converter: string -> 'a) : Matrix.COO<'a> =
         if object <> MtxMatrix then

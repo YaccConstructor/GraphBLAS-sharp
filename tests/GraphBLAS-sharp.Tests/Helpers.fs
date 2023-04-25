@@ -146,6 +146,22 @@ module Utils =
         <| actual.Rows
         <| expected.Rows
 
+    let compareCSRMatrix isEqual (actual: Matrix.CSR<'a>) (expected: Matrix.CSR<'a>) =
+        "Column count must be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
+
+        "Rows count must be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
+
+        "Values must be the same"
+        |> compareArrays isEqual actual.Values expected.Values
+
+        "Column indices must be the same"
+        |> compareArrays (=) actual.ColumnIndices expected.ColumnIndices
+
+        "Row pointers"
+        |> compareArrays (=) actual.RowPointers expected.RowPointers
+
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)

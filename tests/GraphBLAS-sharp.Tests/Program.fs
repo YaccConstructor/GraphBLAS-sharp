@@ -2,6 +2,14 @@ open Expecto
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests
 
+let hostTests =
+    testList
+        "Host"
+        [ Host.Matrix.FromArray2D.tests
+          Host.Matrix.Convert.tests
+          Host.IO.MtxReader.test ]
+    |> testSequenced
+
 let matrixTests =
     testList
         "Matrix tests"
@@ -89,15 +97,21 @@ let algorithmsTests =
     testList "Algorithms tests" [ Algorithms.BFS.tests ]
     |> testSequenced
 
-[<Tests>]
-let allTests =
+let deviceTests =
     testList
-        "All tests"
+        "Device"
         [ matrixTests
           commonTests
           vectorTests
           algorithmsTests ]
     |> testSequenced
 
+[<Tests>]
+let allTests =
+    testList "All tests" [ deviceTests; hostTests ]
+    |> testSequenced
+
 [<EntryPoint>]
-let main argv = allTests |> runTestsWithCLIArgs [] argv
+let main argv =
+    Host.IO.MtxReader.test
+    |> runTestsWithCLIArgs [] argv

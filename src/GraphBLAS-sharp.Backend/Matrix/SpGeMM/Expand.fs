@@ -301,13 +301,15 @@ module Expand =
                 runRow processor allocationMode rightMatrix rightMatrixRowsLengths
 
             split processor allocationMode leftMatrix
-            |> Seq.map (fun lazyRow ->
-                Option.bind (fun row ->
-                    let result = runRow row
-                    row.Dispose processor
+            |> Seq.map
+                (fun lazyRow ->
+                    Option.bind
+                        (fun row ->
+                            let result = runRow row
+                            row.Dispose processor
 
-                    result
-                ) lazyRow.Value)
+                            result)
+                        lazyRow.Value)
             |> Seq.toArray
             |> fun rows ->
                 rightMatrixRowsLengths.Free processor

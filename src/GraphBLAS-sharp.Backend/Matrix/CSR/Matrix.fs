@@ -139,7 +139,7 @@ module Matrix =
                              let columns = getChunkIndices first count
 
                              Some <| creatSparseVector values columns
-                        else
+                         else
                              None))
 
     let byRows (clContext: ClContext) workGroupSize =
