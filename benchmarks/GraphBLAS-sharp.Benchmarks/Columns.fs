@@ -5,7 +5,7 @@ open BenchmarkDotNet.Reports
 open BenchmarkDotNet.Running
 open GraphBLAS.FSharp.IO
 
-type CommonColumn<'a>(benchmarkCaseConvert, columnName: string, getShape: 'a -> 'b) =
+type CommonColumn<'a>(benchmarkCaseConvert, columnName: string, getShape: 'a -> _) =
     interface IColumn with
         member this.AlwaysShow = true
         member this.Category = ColumnCategory.Params

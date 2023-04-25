@@ -108,16 +108,12 @@ module Utils =
                     let queue = context.QueueProvider.CreateQueue()
 
                     { ClContext = context; Queue = queue })
-        let result =
-            seq {
-                for wgSize in workGroupSizes do
-                    for context in contexts do
-                        yield (context, wgSize)
-            }
+        seq {
+            for wgSize in workGroupSizes do
+                for context in contexts do
+                    yield (context, wgSize)
+        }
 
-        printfn "result length: %A" <| Seq.length result
-
-        result
     let nextSingle (random: System.Random) =
         let buffer = Array.zeroCreate<byte> 4
         random.NextBytes buffer
@@ -155,63 +151,3 @@ module VectorGenerator =
         let createVector array = Utils.createVectorFromArray format array (fIsEqual 0.0)
 
         pairOfVectorsOfEqualSize Utils.normalFloatGenerator createVector
-
-
-module MatrixGenerator =
-    let private pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) createMatrix =
-        gen {
-            let! rowsCount, columnsCount = Generators.dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-            return (createMatrix matrixA, createMatrix matrixB)
-        }
-
-    let intPairOfEqualSizes format =
-        fun array -> Utils.createMatrixFromArray2D format array ((=) 0)
-        |> pairOfMatricesOfEqualSizeGenerator Arb.generate<int32>
-
-    let floatPairOfEqualSizes format =
-        fun array -> Utils.createMatrixFromArray2D format array (Utils.fIsEqual 0.0)
-        |> pairOfMatricesOfEqualSizeGenerator Utils.normalFloatGenerator
-
-    let private pairOfMatricesWithMaskOfEqualSizeGenerator (valuesGenerator: Gen<'a>) format createMatrix =
-        gen {
-            let! rowsCount, columnsCount = Generators.dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-            let! matrixB = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-            let! mask = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-
-            return (createMatrix format matrixA,
-                    createMatrix format matrixB,
-                    createMatrix COO mask)
-        }
-
-    let intPairWithMaskOfEqualSizes format =
-        fun format array -> Utils.createMatrixFromArray2D format array ((=) 0)
-        |> pairOfMatricesWithMaskOfEqualSizeGenerator Arb.generate<int32> format
-
-    let floatPairWithMaskOfEqualSizes format =
-        fun format array -> Utils.createMatrixFromArray2D format array (Utils.fIsEqual 0.0)
-        |> pairOfMatricesWithMaskOfEqualSizeGenerator Utils.normalFloatGenerator format
-
-module MatrixVectorGenerator =
-    let private pairOfMatricesAndVectorGenerator (valuesGenerator: Gen<'a>) createVector createMatrix =
-        gen {
-            let! rowsCount, columnsCount = Generators.dimension2DGenerator
-            let! matrixA = valuesGenerator |> Gen.array2DOfDim (rowsCount, columnsCount)
-            let! vector = valuesGenerator |> Gen.arrayOfLength columnsCount
-
-            return (createMatrix matrixA, createVector vector)
-        }
-
-    let intPairOfCompatibleSizes matrixFormat vectorFormat =
-        let createVector array = Utils.createVectorFromArray vectorFormat array ((=) 0)
-        let createMatrix array = Utils.createMatrixFromArray2D matrixFormat array ((=) 0)
-
-        pairOfMatricesAndVectorGenerator Arb.generate<int32> createVector createMatrix
-
-    let floatPairOfCompatibleSizes matrixFormat vectorFormat =
-        let createVector array = Utils.createVectorFromArray vectorFormat array (Utils.floatIsEqual 0.0)
-        let createMatrix array = Utils.createMatrixFromArray2D matrixFormat array (Utils.floatIsEqual 0.0)
-
-        pairOfMatricesAndVectorGenerator Utils.normalFloatGenerator createVector createMatrix
