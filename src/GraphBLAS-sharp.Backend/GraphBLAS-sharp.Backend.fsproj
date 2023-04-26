@@ -35,7 +35,6 @@
     <Compile Include="Common/Sort/Radix.fs" />
     <Compile Include="Common/Sort/Bitonic.fs" />
     <Compile Include="Common/Sum.fs" />
-    <Compile Include="Common\Merge.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COOMatrix/Map2.fs" />
     <Compile Include="Matrix/COOMatrix/Map2AtLeastOne.fs" />
@@ -49,8 +48,8 @@
     <Compile Include="Matrix/CSRMatrix/Matrix.fs" />
     <Compile Include="Matrix/Matrix.fs" />
     <Compile Include="Vector/SparseVector/Common.fs" />
+    <Compile Include="Vector/SparseVector/Merge.fs" />
     <Compile Include="Vector/SparseVector/Map2.fs" />
-    <Compile Include="Vector/SparseVector/Map2AtLeastOne.fs" />
     <Compile Include="Vector/SparseVector/SparseVector.fs" />
     <Compile Include="Vector/DenseVector/DenseVector.fs" />
     <Compile Include="Vector/Vector.fs" />

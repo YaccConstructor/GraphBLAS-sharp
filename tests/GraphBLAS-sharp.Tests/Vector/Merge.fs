@@ -7,14 +7,13 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
 open Expecto
+open GraphBLAS.FSharp.Backend
 
 let processor = Context.defaultContext.Queue
 
 let context = Context.defaultContext.ClContext
 
-type Result<'a>= None | Left of 'a | Right of 'a
-
-let config = { Utils.defaultConfig with endSize = 100000 }
+let config = Utils.defaultConfig
 
 let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
     let firstVector = Vector.Sparse.FromArray(firstArray, isEqual zero)
@@ -67,7 +66,7 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
         |> Utils.compareArrays (=) actualIndices expectedIndices
 
 let createTest<'a when 'a : struct> isEqual (zero: 'a) =
-    Merge.Vector.run context Utils.defaultWorkGroupSize
+    Vector.Sparse.Merge.run context Utils.defaultWorkGroupSize
     |> makeTest isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
