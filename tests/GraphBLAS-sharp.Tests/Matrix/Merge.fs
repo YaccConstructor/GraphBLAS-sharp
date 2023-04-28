@@ -161,7 +161,7 @@ let makeTestCSR isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 let createTestCSR isEqual (zero: 'a) =
     Matrix.CSR.Merge.run context Utils.defaultWorkGroupSize
     |> makeTestCSR isEqual zero
-    |> testPropertyWithConfig { config with endSize = 10 } $"test on {typeof<'a>}"
+    |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
 let testsCSR =
     [ createTestCSR (=) 0

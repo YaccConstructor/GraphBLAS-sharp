@@ -35,6 +35,7 @@
     <Compile Include="Common/Sort/Radix.fs" />
     <Compile Include="Common/Sort/Bitonic.fs" />
     <Compile Include="Common/Sum.fs" />
+    <Compile Include="Common\Merge.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix\COO\Map.fs" />
     <Compile Include="Matrix\COO\Merge.fs" />

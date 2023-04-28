@@ -18,6 +18,7 @@
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Common/Scatter.fs" />
         <Compile Include="Common/Gather.fs" />
+        <Compile Include="Common\Merge.fs" />
         <Compile Include="Common/ClArray/Choose.fs" />
         <Compile Include="Common/ClArray/Exists.fs" />
         <Compile Include="Common/ClArray/Map.fs" />

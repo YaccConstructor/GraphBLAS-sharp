@@ -95,6 +95,6 @@ open GraphBLAS.FSharp.Tests
 
 [<EntryPoint>]
 let main argv =
-    Matrix.Merge.testsCOO
+    Common.Merge.tests
     |> testSequenced
     |> runTestsWithCLIArgs [] argv
