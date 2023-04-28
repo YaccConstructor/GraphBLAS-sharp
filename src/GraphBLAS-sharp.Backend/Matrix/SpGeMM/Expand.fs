@@ -10,7 +10,6 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
@@ -145,6 +144,8 @@ module Expand =
                     .ToHostAndFree(processor)
 
             if resultLength = 0 then
+                positions.Free processor
+
                 None
             else
                 let resultIndices =
@@ -156,6 +157,8 @@ module Expand =
                     clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
                 assignValues processor firstValues secondValues positions resultValues
+
+                positions.Free processor
 
                 Some(resultValues, resultIndices)
 
@@ -268,13 +271,12 @@ module Expand =
 
                             // create sparse vector (TODO(empty vector))
                             reduceResult
-                            |> Option.bind
+                            |> Option.map
                                 (fun (values, columns) ->
                                     { Context = clContext
                                       Indices = columns
                                       Values = values
-                                      Size = rightMatrix.ColumnCount }
-                                    |> Some)))
+                                      Size = rightMatrix.ColumnCount })))
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (clContext: ClContext)
