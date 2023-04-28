@@ -53,6 +53,7 @@ module Merge =
                 let beginIdx = beginIdxLocal
                 let endIdx = endIdxLocal
                 let firstLocalLength = endIdx - beginIdx
+
                 let mutable x = workGroupSize - firstLocalLength
 
                 if endIdx = firstSide then
@@ -68,7 +69,7 @@ module Merge =
                     localIndices.[lid] <- firstValues.[beginIdx + lid]
 
                 if lid < secondLocalLength then
-                    localIndices.[firstLocalLength + lid] <- firstValues.[gid - beginIdx]
+                    localIndices.[firstLocalLength + lid] <- secondValues.[gid - beginIdx]
 
                 barrierLocal ()
 
