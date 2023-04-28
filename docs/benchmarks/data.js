@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1681118957945,
+  "lastUpdate": 1682712381921,
   "repoUrl": "https://github.com/YaccConstructor/GraphBLAS-sharp",
   "entries": {
     "BFS": [
@@ -432,6 +432,54 @@ window.BENCHMARK_DATA = {
             "value": 78603232.3,
             "unit": "ns",
             "range": "± 3960711.5389918624"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rsdpisuy@gmail.com",
+            "name": "Semyon",
+            "username": "gsvgit"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb8a79181709f3d138b0777959177ecfdb2cddff",
+          "message": "Merge pull request #76 from IgorErin/merge\n\nMerge",
+          "timestamp": "2023-04-28T21:30:04+03:00",
+          "tree_id": "948b018e76afe327b0749b08bfc12735516ea17b",
+          "url": "https://github.com/YaccConstructor/GraphBLAS-sharp/commit/cb8a79181709f3d138b0777959177ecfdb2cddff"
+        },
+        "date": 1682712380356,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "coAuthorsCiteseer.mtx",
+            "value": 27163855.6,
+            "unit": "ns",
+            "range": "± 2068239.192699336"
+          },
+          {
+            "name": "hollywood-2009.mtx",
+            "value": 253817078.5,
+            "unit": "ns",
+            "range": "± 2019475.7332461313"
+          },
+          {
+            "name": "roadNet-CA.mtx",
+            "value": 425694647.9,
+            "unit": "ns",
+            "range": "± 2577824.803342688"
+          },
+          {
+            "name": "wing.mtx",
+            "value": 78471745.1,
+            "unit": "ns",
+            "range": "± 5467576.903812357"
           }
         ]
       }
