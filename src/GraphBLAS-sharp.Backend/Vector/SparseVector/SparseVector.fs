@@ -12,7 +12,7 @@ module SparseVector =
     let map2 = Map2.run
 
     let map2AtLeastOne (clContext: ClContext) opAdd workGroupSize allocationMode =
-        Map2AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
+        Map2.AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize allocationMode
 
     let assignByMask = Map2.assignByMask
 

@@ -14,6 +14,7 @@ let matrixTests =
           Matrix.Map.addTests
           Matrix.Map.mulTests
           Matrix.Transpose.tests
+          Matrix.Merge.allTests
           Matrix.SpGeMM.Masked.tests
           Matrix.SpGeMM.Expand.generalTests ]
     |> testSequenced
@@ -55,6 +56,7 @@ let commonTests =
         "Common tests"
         [ Common.Scatter.allTests
           Common.Gather.allTests
+          Common.Merge.tests
           clArrayTests
           sortTests
           reduceTests
@@ -76,7 +78,8 @@ let vectorTests =
           Vector.Map2.complementedGeneralTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
-          Vector.Reduce.tests ]
+          Vector.Reduce.tests
+          Vector.Merge.tests ]
     |> testSequenced
 
 let algorithmsTests =
