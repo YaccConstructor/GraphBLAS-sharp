@@ -18,7 +18,7 @@
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Common/Scatter.fs" />
         <Compile Include="Common/Gather.fs" />
-        <Compile Include="Common\Merge.fs" />
+        <Compile Include="Common/Merge.fs" />
         <Compile Include="Common/ClArray/Choose.fs" />
         <Compile Include="Common/ClArray/Exists.fs" />
         <Compile Include="Common/ClArray/Map.fs" />
@@ -49,7 +49,7 @@
         <Compile Include="Matrix/Map.fs" />
         <Compile Include="Matrix/SpGeMM/Masked.fs" />
         <Compile Include="Matrix/SpGeMM/Expand.fs" />
-        <Compile Include="Matrix\Merge.fs" />
+        <Compile Include="Matrix/Merge.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -10,7 +10,9 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
-let config = { Utils.defaultConfig with endSize = 10000000 }
+let config =
+    { Utils.defaultConfig with
+          endSize = 10000000 }
 
 let makeTest isEqual testFun (leftArray: 'a []) (rightArray: 'a []) =
     if leftArray.Length > 0 && rightArray.Length > 0 then
