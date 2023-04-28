@@ -149,14 +149,15 @@ module Matrix =
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             runLazy processor allocationMode matrix
             |> Seq.map (fun lazyValue -> lazyValue.Value)
-            |> Seq.toArray
 
     let toLIL (clContext: ClContext) workGroupSize =
 
         let byRows = byRows clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
-            let rows = byRows processor allocationMode matrix
+            let rows =
+                byRows processor allocationMode matrix
+                |> Seq.toList
 
             { Context = clContext
               RowCount = matrix.RowCount

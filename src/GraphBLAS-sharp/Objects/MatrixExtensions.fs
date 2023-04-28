@@ -36,7 +36,7 @@ module MatrixExtensions =
                   ColumnCount = m.ColumnCount
                   Rows =
                       m.Rows
-                      |> Array.map (Option.bind (fun row -> Some <| row.ToHost q))
+                      |> List.map (Option.map (fun row -> row.ToHost q))
                   NNZ = m.NNZ }
                 |> Matrix.LIL
 

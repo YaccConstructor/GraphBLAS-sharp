@@ -86,7 +86,7 @@ module ClMatrix =
         { Context: ClContext
           RowCount: int
           ColumnCount: int
-          Rows: ClVector.Sparse<'elem> option []
+          Rows: ClVector.Sparse<'elem> option list
           NNZ: int }
 
         interface IDeviceMemObject with

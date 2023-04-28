@@ -46,10 +46,7 @@ module Matrix =
                       Values = copyData processor allocationMode m.Values }
             | ClMatrix.LIL matrix ->
                 matrix.Rows
-                |> Array.map (
-                    Option.bind
-                    <| (Some << (vectorCopy processor allocationMode))
-                )
+                |> List.map (Option.map (vectorCopy processor allocationMode))
                 |> fun rows ->
                     { Context = clContext
                       RowCount = matrix.RowCount

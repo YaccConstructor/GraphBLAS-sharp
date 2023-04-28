@@ -310,7 +310,7 @@ module Expand =
 
                             result)
                         lazyRow.Value)
-            |> Seq.toArray
+            |> Seq.toList
             |> fun rows ->
                 rightMatrixRowsLengths.Free processor
 

@@ -155,7 +155,7 @@ module Matrix =
     type LIL<'a when 'a: struct> =
         { RowCount: int
           ColumnCount: int
-          Rows: Vector.Sparse<'a> option []
+          Rows: Vector.Sparse<'a> option list
           NNZ: int }
 
         static member FromArray2D(array: 'a [,], isZero: 'a -> bool) =
@@ -172,7 +172,6 @@ module Matrix =
                           Some vector
                       else
                           None ]
-                |> Array.ofList
 
             { RowCount = Array2D.length1 array
               ColumnCount = Array2D.length2 array
@@ -183,7 +182,7 @@ module Matrix =
 
             let rows =
                 this.Rows
-                |> Array.map (Option.bind (fun vector -> Some <| vector.ToDevice(context)))
+                |> List.map (Option.map (fun vector -> vector.ToDevice(context)))
 
             { Context = context
               RowCount = this.RowCount

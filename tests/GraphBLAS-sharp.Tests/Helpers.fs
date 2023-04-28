@@ -137,7 +137,7 @@ module Utils =
         "Rows count must be the same"
         |> Expect.equal actual.RowCount expected.RowCount
 
-        Array.iter2
+        List.iter2
             (fun actualRow expected ->
                 match actualRow, expected with
                 | Some actualVector, Some expectedVector -> compareSparseVectors isEqual actualVector expectedVector
