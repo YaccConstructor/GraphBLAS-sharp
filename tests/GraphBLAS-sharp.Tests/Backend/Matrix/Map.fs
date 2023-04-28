@@ -113,7 +113,7 @@ let testFixturesMapNot case =
       createTestMap case false true (fun _ -> not) (=) (fun _ _ -> ArithmeticOperations.notOption) ]
 
 let notTests =
-    operationGPUTests "Backend.Matrix.map not tests" testFixturesMapNot
+    operationGPUTests "not" testFixturesMapNot
 
 let testFixturesMapAdd case =
     [ let context = case.TestContext.ClContext
@@ -130,7 +130,7 @@ let testFixturesMapAdd case =
       createTestMap case 0uy 10uy (+) (=) ArithmeticOperations.addLeftConst ]
 
 let addTests =
-    operationGPUTests "Backend.Matrix.map add tests" testFixturesMapAdd
+    operationGPUTests "add" testFixturesMapAdd
 
 let testFixturesMapMul case =
     [ let context = case.TestContext.ClContext
@@ -147,4 +147,7 @@ let testFixturesMapMul case =
       createTestMap case 0uy 10uy (*) (=) ArithmeticOperations.mulLeftConst ]
 
 let mulTests =
-    operationGPUTests "Backend.Matrix.map mul tests" testFixturesMapMul
+    operationGPUTests "mul" testFixturesMapMul
+
+let allTests =
+    testList "Map" [ addTests; mulTests; notTests ]

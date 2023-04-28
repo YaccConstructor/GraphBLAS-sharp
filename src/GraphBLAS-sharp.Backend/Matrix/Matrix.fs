@@ -264,10 +264,10 @@ module Matrix =
         fun (processor: MailboxProcessor<_>) allocationMode matrix ->
             match matrix with
             | ClMatrix.COO m -> mapCOO processor allocationMode m |> ClMatrix.COO
-            | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.CSR
+            | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.COO
             | ClMatrix.CSC m ->
-                (mapCSR processor allocationMode m.ToCSR).ToCSC
-                |> ClMatrix.CSC
+                (mapCSR processor allocationMode m.ToCSR)
+                |> ClMatrix.COO
             | _ -> failwith "Not yet implemented"
 
     let map2 (opAdd: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
@@ -292,47 +292,22 @@ module Matrix =
             | _ -> failwith "Matrix formats are not matching"
 
     let map2AtLeastOne (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
-        let COOElementwise =
+        let COOMap2 =
             COO.Matrix.map2AtLeastOne clContext opAdd workGroupSize
 
-        let CSRElementwise =
+        let CSRMap2 =
             CSR.Matrix.map2AtLeastOne clContext opAdd workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
             | ClMatrix.COO m1, ClMatrix.COO m2 ->
-                COOElementwise processor allocationMode m1 m2
+                COOMap2 processor allocationMode m1 m2
                 |> ClMatrix.COO
             | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
-                CSRElementwise processor allocationMode m1 m2
-                |> ClMatrix.CSR
-            | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
-                (CSRElementwise processor allocationMode m1.ToCSR m2.ToCSR)
-                    .ToCSC
-                |> ClMatrix.CSC
-            | _ -> failwith "Matrix formats are not matching"
-
-    let map2AtLeastOneToCOO (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
-        let COOElementwise =
-            COO.Matrix.map2AtLeastOne clContext opAdd workGroupSize
-
-        let CSRElementwise =
-            CSR.Matrix.map2AtLeastOneToCOO clContext opAdd workGroupSize
-
-        let transposeCOOInPlace =
-            COO.Matrix.transposeInPlace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
-            match matrix1, matrix2 with
-            | ClMatrix.COO m1, ClMatrix.COO m2 ->
-                COOElementwise processor allocationMode m1 m2
-                |> ClMatrix.COO
-            | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
-                CSRElementwise processor allocationMode m1 m2
+                CSRMap2 processor allocationMode m1 m2
                 |> ClMatrix.COO
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
-                CSRElementwise processor allocationMode m1.ToCSR m2.ToCSR
-                |> transposeCOOInPlace processor
+                (CSRMap2 processor allocationMode m1.ToCSR m2.ToCSR)
                 |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 

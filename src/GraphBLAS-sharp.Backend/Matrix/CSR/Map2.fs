@@ -215,7 +215,7 @@ module internal Map2 =
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
                 rowPositions, allValues
 
-        let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
             (opAdd: Expr<'a option -> 'b option -> 'c option>)
             (clContext: ClContext)
             workGroupSize
@@ -257,18 +257,3 @@ module internal Map2 =
                   Rows = resultRows
                   Columns = resultColumns
                   Values = resultValues }
-
-        let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-            (opAdd: Expr<'a option -> 'b option -> 'c option>)
-            (clContext: ClContext)
-            workGroupSize
-            =
-
-            let elementwiseToCOO = runToCOO opAdd clContext workGroupSize
-
-            let toCSRInPlace =
-                Matrix.toCSRInPlace clContext workGroupSize
-
-            fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-                elementwiseToCOO queue allocationMode matrixLeft matrixRight
-                |> toCSRInPlace queue allocationMode

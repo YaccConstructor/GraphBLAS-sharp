@@ -81,7 +81,7 @@ module internal Map =
 
             resultBitmap, resultValues, resultRows, resultColumns
 
-    let runToCOO<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
+    let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
         (opAdd: Expr<'a option -> 'b option>)
         (clContext: ClContext)
         workGroupSize
@@ -112,18 +112,3 @@ module internal Map =
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
-
-    let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (opAdd: Expr<'a option -> 'b option>)
-        (clContext: ClContext)
-        workGroupSize
-        =
-
-        let mapToCOO = runToCOO opAdd clContext workGroupSize
-
-        let toCSRInPlace =
-            Matrix.toCSRInPlace clContext workGroupSize
-
-        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
-            mapToCOO queue allocationMode matrix
-            |> toCSRInPlace queue allocationMode

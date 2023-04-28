@@ -2,31 +2,19 @@ open Expecto
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests
 
-let hostTests =
-    testList
-        "Host"
-        [ Host.Matrix.FromArray2D.tests
-          Host.Matrix.Convert.tests
-          Host.IO.MtxReader.test ]
-    |> testSequenced
-
 let matrixTests =
     testList
-        "Matrix tests"
+        "Matrix"
         [ Matrix.Convert.tests
-          Matrix.Map2.addTests
-          Matrix.Map2.addAtLeastOneTests
-          Matrix.Map2.mulAtLeastOneTests
-          Matrix.Map2.addAtLeastOneToCOOTests
-          Matrix.Map.notTests
-          Matrix.Map.addTests
-          Matrix.Map.mulTests
-          Matrix.SpGeMM.Expand.generalTests
-          Matrix.SpGeMM.Masked.tests
+          Matrix.Map2.allTests
+          Matrix.Map.allTests
           Matrix.Merge.allTests
           Matrix.Transpose.tests
           Matrix.RowsLengths.tests
-          Matrix.ByRows.tests ]
+          Matrix.ByRows.tests
+
+          Matrix.SpGeMM.Expand.generalTests
+          Matrix.SpGeMM.Masked.tests ]
     |> testSequenced
 
 let commonTests =
@@ -67,7 +55,7 @@ let commonTests =
               Common.Sort.Radix.allTests ]
 
     testList
-        "Common tests"
+        "Common"
         [ Common.Scatter.allTests
           Common.Gather.allTests
           Common.Merge.tests
@@ -79,17 +67,13 @@ let commonTests =
 
 let vectorTests =
     testList
-        "Vector tests"
+        "Vector"
         [ Vector.SpMV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
-          Vector.Map2.addTests
-          Vector.Map2.mulTests
-          Vector.Map2.addAtLeastOneTests
-          Vector.Map2.mulAtLeastOneTests
-          Vector.Map2.complementedGeneralTests
+          Vector.Map2.allTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
           Vector.Reduce.tests
@@ -109,9 +93,17 @@ let deviceTests =
           algorithmsTests ]
     |> testSequenced
 
+let hostTests =
+    testList
+        "Host"
+        [ Host.Matrix.FromArray2D.tests
+          Host.Matrix.Convert.tests
+          Host.IO.MtxReader.test ]
+    |> testSequenced
+
 [<Tests>]
 let allTests =
-    testList "All tests" [ deviceTests; hostTests ]
+    testList "All" [ deviceTests; hostTests ]
     |> testSequenced
 
 [<EntryPoint>]

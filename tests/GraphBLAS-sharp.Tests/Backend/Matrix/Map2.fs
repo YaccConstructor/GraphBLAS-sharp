@@ -151,36 +151,6 @@ let testFixturesMap2AddAtLeastOne case =
 let addAtLeastOneTests =
     operationGPUTests "Backend.Matrix.map2AtLeastOne add tests" testFixturesMap2AddAtLeastOne
 
-let testFixturesMap2AddAtLeastOneToCOO case =
-    [ let context = case.TestContext.ClContext
-      let q = case.TestContext.Queue
-      q.Error.Add(fun e -> failwithf "%A" e)
-
-      creatTestMap2Add case false (||) (=) ArithmeticOperations.boolSumAtLeastOne Matrix.map2AtLeastOneToCOO
-      creatTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOneToCOO
-
-      if Utils.isFloat64Available context.ClDevice then
-          creatTestMap2Add
-              case
-              0.0
-              (+)
-              Utils.floatIsEqual
-              ArithmeticOperations.floatSumAtLeastOne
-              Matrix.map2AtLeastOneToCOO
-
-      creatTestMap2Add
-          case
-          0.0f
-          (+)
-          Utils.float32IsEqual
-          ArithmeticOperations.float32SumAtLeastOne
-          Matrix.map2AtLeastOneToCOO
-
-      creatTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumAtLeastOne Matrix.map2AtLeastOneToCOO ]
-
-let addAtLeastOneToCOOTests =
-    operationGPUTests "Backend.Matrix.map2AtLeastOneToCOO add tests" testFixturesMap2AddAtLeastOneToCOO
-
 let testFixturesMap2MulAtLeastOne case =
     [ let context = case.TestContext.ClContext
       let q = case.TestContext.Queue
@@ -204,3 +174,10 @@ let testFixturesMap2MulAtLeastOne case =
 
 let mulAtLeastOneTests =
     operationGPUTests "Backend.Matrix.map2AtLeastOne multiplication tests" testFixturesMap2MulAtLeastOne
+
+let allTests =
+    testList
+        "Map2"
+        [ addTests
+          addAtLeastOneTests
+          mulAtLeastOneTests ]

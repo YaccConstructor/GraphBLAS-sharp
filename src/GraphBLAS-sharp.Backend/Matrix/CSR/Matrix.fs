@@ -61,14 +61,6 @@ module Matrix =
 
     let map2 = Map2.run
 
-    let map2AtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        workGroupSize
-        =
-
-        Map2.AtLeastOne.runToCOO (Convert.atLeastOneToOption opAdd) clContext workGroupSize
-
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
@@ -76,7 +68,6 @@ module Matrix =
         =
 
         Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
-
 
     let transposeInPlace (clContext: ClContext) workGroupSize =
 

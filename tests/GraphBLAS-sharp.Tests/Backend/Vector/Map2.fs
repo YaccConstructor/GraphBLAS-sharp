@@ -110,8 +110,7 @@ let addTestFixtures case =
       createTest case (=) false (||) ArithmeticOperations.boolSumOption Vector.map2
       createTest case (=) 0uy (+) ArithmeticOperations.byteSumOption Vector.map2 ]
 
-let addTests =
-    operationGPUTests "Backend.Vector.Map2 add tests" addTestFixtures
+let addTests = operationGPUTests "add" addTestFixtures
 
 let mulTestFixtures case =
     let context = case.TestContext.ClContext
@@ -125,8 +124,7 @@ let mulTestFixtures case =
       createTest case (=) false (&&) ArithmeticOperations.boolMulOption Vector.map2
       createTest case (=) 0uy (*) ArithmeticOperations.byteMulOption Vector.map2 ]
 
-let mulTests =
-    operationGPUTests "Backend.Vector.map2 mul tests" addTestFixtures
+let mulTests = operationGPUTests "mul" addTestFixtures
 
 let addAtLeastOneTestFixtures case =
     let context = case.TestContext.ClContext
@@ -141,7 +139,7 @@ let addAtLeastOneTestFixtures case =
       createTest case (=) 0uy (+) ArithmeticOperations.byteSumAtLeastOne Vector.map2AtLeastOne ]
 
 let addAtLeastOneTests =
-    operationGPUTests "Backend.Vector.Map2LeastOne add tests" addTestFixtures
+    operationGPUTests "addAtLeastOne" addTestFixtures
 
 let mulAtLeastOneTestFixtures case =
     let context = case.TestContext.ClContext
@@ -156,7 +154,7 @@ let mulAtLeastOneTestFixtures case =
       createTest case (=) 0uy (*) ArithmeticOperations.byteMulAtLeastOne Vector.map2AtLeastOne ]
 
 let mulAtLeastOneTests =
-    operationGPUTests "Backend.Vector.Map2AtLeasOne mul tests" mulTestFixtures
+    operationGPUTests "mulAtLeastOne" mulTestFixtures
 
 let fillSubVectorComplementedQ<'a, 'b> value =
     <@ fun (left: 'a option) (right: 'b option) ->
@@ -199,4 +197,13 @@ let complementedGeneralTestFixtures case =
 
 
 let complementedGeneralTests =
-    operationGPUTests "Backend.Vector.Map2Gen mask tests" complementedGeneralTestFixtures
+    operationGPUTests "mask" complementedGeneralTestFixtures
+
+let allTests =
+    testList
+        "Map"
+        [ addTests
+          mulTests
+          addAtLeastOneTests
+          mulAtLeastOneTests
+          complementedGeneralTests ]
