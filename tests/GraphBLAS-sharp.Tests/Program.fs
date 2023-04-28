@@ -113,5 +113,4 @@ let allTests =
 
 [<EntryPoint>]
 let main argv =
-    Host.IO.MtxReader.test
-    |> runTestsWithCLIArgs [] argv
+    allTests |> runTestsWithCLIArgs [] argv

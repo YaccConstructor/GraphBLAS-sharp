@@ -220,11 +220,7 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
     testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
     |> makeGeneralTest<'a> zero isEqual opMul opAdd
-    |> testPropertyWithConfig
-        { config with
-              endSize = 1000
-              maxTest = 2 }
-        $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
