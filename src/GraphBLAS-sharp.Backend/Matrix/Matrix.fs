@@ -73,7 +73,7 @@ module Matrix =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         let transposeInplace =
-            CSR.Matrix.transposeInplace clContext workGroupSize
+            CSR.Matrix.transposeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) ->
             match matrix with
@@ -117,7 +117,7 @@ module Matrix =
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOOInplace (clContext: ClContext) workGroupSize =
         let toCOOInplace =
-            CSR.Matrix.toCOOInplace clContext workGroupSize
+            CSR.Matrix.toCOOInPlace clContext workGroupSize
 
         let transposeInplace =
             COO.Matrix.transposeInplace clContext workGroupSize
@@ -173,7 +173,7 @@ module Matrix =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         let transposeCSRInplace =
-            CSR.Matrix.transposeInplace clContext workGroupSize
+            CSR.Matrix.transposeInPlace clContext workGroupSize
 
         let transposeCOOInplace =
             COO.Matrix.transposeInplace clContext workGroupSize

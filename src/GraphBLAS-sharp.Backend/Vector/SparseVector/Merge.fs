@@ -24,11 +24,9 @@ module internal Merge =
 
                     let diagonalNumber = min (sumOfSides - 1) x
 
-                    let mutable leftEdge =
-                        max 0 (diagonalNumber + 1 - secondSide)
+                    let mutable leftEdge = max 0 (diagonalNumber + 1 - secondSide)
 
-                    let mutable rightEdge =
-                        min (firstSide - 1) diagonalNumber
+                    let mutable rightEdge = min (firstSide - 1) diagonalNumber
 
                     while leftEdge <= rightEdge do
                         let middleIdx = (leftEdge + rightEdge) / 2
@@ -167,4 +165,3 @@ module internal Merge =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allIndices, firstValues, secondValues, isLeftBitmap
-

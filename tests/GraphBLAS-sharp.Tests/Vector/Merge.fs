@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Common.Merge
+module GraphBLAS.FSharp.Tests.Vector.Merge
 
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Common
@@ -16,9 +16,11 @@ let context = Context.defaultContext.ClContext
 let config = Utils.defaultConfig
 
 let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
-    let firstVector = Vector.Sparse.FromArray(firstArray, isEqual zero)
+    let firstVector =
+        Vector.Sparse.FromArray(firstArray, isEqual zero)
 
-    let secondVector = Vector.Sparse.FromArray(secondArray, isEqual zero)
+    let secondVector =
+        Vector.Sparse.FromArray(secondArray, isEqual zero)
 
     if firstVector.NNZ > 0 && secondVector.NNZ > 0 then
 
@@ -27,7 +29,10 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
 
         let clSecondVector = secondVector.ToDevice context
 
-        let (allIndices: ClArray<int>), (firstValues: ClArray<'a>), (secondValues: ClArray<'a>), (isLeftBitmap: ClArray<int>) =
+        let ((allIndices: ClArray<int>),
+             (firstValues: ClArray<'a>),
+             (secondValues: ClArray<'a>),
+             (isLeftBitmap: ClArray<int>)) =
             testFun processor clFirstVector clSecondVector
 
         clFirstVector.Dispose processor
@@ -40,7 +45,12 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
 
         let actualValues =
             (actualFirstValues, actualSecondValues, actualIsLeftBitmap)
-            |||> Array.map3 (fun leftValue rightValue isLeft -> if isLeft = 1 then leftValue else rightValue)
+            |||> Array.map3
+                     (fun leftValue rightValue isLeft ->
+                         if isLeft = 1 then
+                             leftValue
+                         else
+                             rightValue)
 
         // expected run
         let firstValuesAndIndices =
@@ -51,7 +61,8 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
 
         // preserve order of values then use stable sort
         let allValuesAndIndices =
-            Array.concat [ firstValuesAndIndices; secondValuesAndIndices ]
+            Array.concat [ firstValuesAndIndices
+                           secondValuesAndIndices ]
 
         // stable sort
         let expectedValues, expectedIndices =
@@ -65,7 +76,7 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
         "Indices should be the same"
         |> Utils.compareArrays (=) actualIndices expectedIndices
 
-let createTest<'a when 'a : struct> isEqual (zero: 'a) =
+let createTest<'a when 'a: struct> isEqual (zero: 'a) =
     Vector.Sparse.Merge.run context Utils.defaultWorkGroupSize
     |> makeTest isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -74,9 +85,8 @@ let tests =
     [ createTest<int> (=) 0
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float> (=) 0.0
+          createTest<float> (=) 0.0
 
       createTest<float32> Utils.float32IsEqual 0.0f
       createTest<bool> (=) false ]
     |> testList "Merge"
-

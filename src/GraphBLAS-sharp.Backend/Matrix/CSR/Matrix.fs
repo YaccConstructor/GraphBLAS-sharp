@@ -37,7 +37,7 @@ module Matrix =
               Columns = cols
               Values = values }
 
-    let toCOOInplace (clContext: ClContext) workGroupSize =
+    let toCOOInPlace (clContext: ClContext) workGroupSize =
         let prepare =
             Common.expandRowPointers clContext workGroupSize
 
@@ -64,7 +64,7 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.runToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        Map2.AtLeastOne.runToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -72,37 +72,37 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        Map2.AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
-    let transposeInplace (clContext: ClContext) workGroupSize =
+    let transposeInPlace (clContext: ClContext) workGroupSize =
 
-        let toCOOInplace = toCOOInplace clContext workGroupSize
+        let toCOOInPlace = toCOOInPlace clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
-            toCOOInplace queue allocationMode matrix
-            |> transposeInplace queue
-            |> toCSRInplace queue allocationMode
+            toCOOInPlace queue allocationMode matrix
+            |> transposeInPlace queue
+            |> toCSRInPlace queue allocationMode
 
     let transpose (clContext: ClContext) workGroupSize =
 
         let toCOO = toCOO clContext workGroupSize
 
-        let transposeInplace =
+        let transposeInPlace =
             COO.Matrix.transposeInplace clContext workGroupSize
 
-        let toCSRInplace =
+        let toCSRInPlace =
             COO.Matrix.toCSRInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix
-            |> transposeInplace queue
-            |> toCSRInplace queue allocationMode
+            |> transposeInPlace queue
+            |> toCSRInPlace queue allocationMode
 
     module SpGeMM =
         let masked

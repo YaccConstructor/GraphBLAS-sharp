@@ -254,7 +254,15 @@ module internal Map2 =
                 processor.Post(
                     Msg.MsgSetArguments
                         (fun () ->
-                            kernel.KernelFunc ndRange length allIndices leftValues rightValues isLeft allValues positions)
+                            kernel.KernelFunc
+                                ndRange
+                                length
+                                allIndices
+                                leftValues
+                                rightValues
+                                isLeft
+                                allValues
+                                positions)
                 )
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
