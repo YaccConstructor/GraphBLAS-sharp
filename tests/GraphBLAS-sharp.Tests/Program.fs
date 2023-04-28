@@ -112,5 +112,4 @@ let allTests =
     |> testSequenced
 
 [<EntryPoint>]
-let main argv =
-    allTests |> runTestsWithCLIArgs [] argv
+let main argv = allTests |> runTestsWithCLIArgs [] argv
