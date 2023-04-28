@@ -23,7 +23,7 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
+        Map2.AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
     let getTuples (clContext: ClContext) workGroupSize =
 

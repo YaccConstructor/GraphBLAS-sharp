@@ -22,8 +22,8 @@ module Vector =
 
     let map2 = Map2.run
 
-    let map2AtLeastOne opAdd (clContext: ClContext) workGroupSize =
-        Map2AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
+    let map2AtLeastOne opAdd (clContext: ClContext) workGroupSize allocationMode =
+        Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize allocationMode
 
     let assignByMask = Map2.assignByMask
 

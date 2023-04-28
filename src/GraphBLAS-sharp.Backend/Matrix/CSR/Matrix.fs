@@ -67,7 +67,7 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.runToCOO (Convert.atLeastOneToOption opAdd) clContext workGroupSize
+        Map2.AtLeastOne.runToCOO (Convert.atLeastOneToOption opAdd) clContext workGroupSize
 
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
@@ -75,7 +75,8 @@ module Matrix =
         workGroupSize
         =
 
-        Map2AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
+        Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
+
 
     let transposeInPlace (clContext: ClContext) workGroupSize =
 
@@ -101,6 +102,7 @@ module Matrix =
 
         let toCSRInPlace =
             COO.Matrix.toCSRInPlace clContext workGroupSize
+
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix

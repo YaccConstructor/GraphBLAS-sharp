@@ -206,3 +206,101 @@ module internal Map2 =
               Values = resultValues
               Indices = resultIndices
               Size = rightVector.Size }
+
+    module AtLeastOne =
+        let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+            op
+            (clContext: ClContext)
+            workGroupSize
+            =
+
+            let preparePositions opAdd =
+                <@ fun (ndRange: Range1D) length (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) (allValues: ClArray<'c>) (positions: ClArray<int>) ->
+
+                    let gid = ndRange.GlobalID0
+
+                    if gid < length - 1
+                       && allIndices.[gid] = allIndices.[gid + 1] then
+                        let result =
+                            (%opAdd) (Some leftValues.[gid]) (Some rightValues.[gid + 1])
+
+                        (%PreparePositions.both) gid result positions allValues
+                    elif (gid < length
+                          && gid > 0
+                          && allIndices.[gid - 1] <> allIndices.[gid])
+                         || gid = 0 then
+                        let leftResult = (%opAdd) (Some leftValues.[gid]) None
+                        let rightResult = (%opAdd) None (Some rightValues.[gid])
+
+                        (%PreparePositions.leftRight) gid leftResult rightResult isLeft allValues positions @>
+
+            let kernel = clContext.Compile <| preparePositions op
+
+            fun (processor: MailboxProcessor<_>) (allIndices: ClArray<int>) (leftValues: ClArray<'a>) (rightValues: ClArray<'b>) (isLeft: ClArray<int>) ->
+
+                let length = allIndices.Length
+
+                let allValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, length)
+
+                let positions =
+                    clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, length)
+
+                let ndRange =
+                    Range1D.CreateValid(length, workGroupSize)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                length
+                                allIndices
+                                leftValues
+                                rightValues
+                                isLeft
+                                allValues
+                                positions)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+                allValues, positions
+
+        ///<param name="clContext">.</param>
+        ///<param name="op">.</param>
+        ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct> op (clContext: ClContext) workGroupSize =
+
+            let merge = Merge.run clContext workGroupSize
+
+            let prepare =
+                preparePositions<'a, 'b, 'c> op clContext workGroupSize
+
+            let setPositions =
+                Common.setPositions clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
+
+                let allIndices, leftValues, rightValues, isLeft = merge processor leftVector rightVector
+
+                let allValues, positions =
+                    prepare processor allIndices leftValues rightValues isLeft
+
+                processor.Post(Msg.CreateFreeMsg<_>(leftValues))
+                processor.Post(Msg.CreateFreeMsg<_>(rightValues))
+                processor.Post(Msg.CreateFreeMsg<_>(isLeft))
+
+                let resultValues, resultIndices =
+                    setPositions processor allocationMode allValues allIndices positions
+
+                processor.Post(Msg.CreateFreeMsg<_>(allIndices))
+                processor.Post(Msg.CreateFreeMsg<_>(allValues))
+                processor.Post(Msg.CreateFreeMsg<_>(positions))
+
+                { Context = clContext
+                  Values = resultValues
+                  Indices = resultIndices
+                  Size = max leftVector.Size rightVector.Size }
