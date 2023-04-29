@@ -29,7 +29,6 @@ module internal Gather =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-
     /// <summary>
     /// Creates a new array obtained from positions replaced with values from the given array at these positions (indices).
     /// </summary>

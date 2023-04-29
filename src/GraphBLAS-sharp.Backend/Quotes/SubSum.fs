@@ -72,6 +72,4 @@ module SubSum =
                 barrierLocal ()
                 array.[lid] <- value @>
 
-
-
     let localIntPrefixSum = localPrefixSum <@ (+) @>

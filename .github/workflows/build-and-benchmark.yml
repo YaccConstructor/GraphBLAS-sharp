@@ -36,7 +36,7 @@ jobs:
         with:
           name: BFS
           tool: 'benchmarkdotnet'
-          output-file-path: BenchmarkDotNet.Artifacts/results/GraphBLAS.FSharp.Benchmarks.BFSBenchmarksWithoutDataTransfer-report-brief.json
+          output-file-path: BenchmarkDotNet.Artifacts/results/GraphBLAS.FSharp.Benchmarks.BFSWithoutTransferBenchmarkInt32-report-brief.json
           # Access token to deploy GitHub Pages branch
           github-token: ${{ secrets._GITHUB_TOKEN }}
           # Push and deploy GitHub pages branch automatically

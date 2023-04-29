@@ -8,8 +8,9 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+
 
 module Matrix =
     let toCOO (clContext: ClContext) workGroupSize =
@@ -58,31 +59,23 @@ module Matrix =
 
     let map2 = Map2.run
 
-    let map2AtLeastOneToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (clContext: ClContext)
-        (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
-        workGroupSize
-        =
-
-        Map2.AtLeastOne.runToCOO clContext (Convert.atLeastOneToOption opAdd) workGroupSize
-
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
         workGroupSize
         =
 
-        Map2.AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
+        Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
 
     let transposeInPlace (clContext: ClContext) workGroupSize =
 
         let toCOOInPlace = toCOOInPlace clContext workGroupSize
 
         let transposeInPlace =
-            COO.Matrix.transposeInplace clContext workGroupSize
+            COO.Matrix.transposeInPlace clContext workGroupSize
 
         let toCSRInPlace =
-            COO.Matrix.toCSRInplace clContext workGroupSize
+            COO.Matrix.toCSRInPlace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOOInPlace queue allocationMode matrix
@@ -94,49 +87,92 @@ module Matrix =
         let toCOO = toCOO clContext workGroupSize
 
         let transposeInPlace =
-            COO.Matrix.transposeInplace clContext workGroupSize
+            COO.Matrix.transposeInPlace clContext workGroupSize
 
         let toCSRInPlace =
-            COO.Matrix.toCSRInplace clContext workGroupSize
+            COO.Matrix.toCSRInPlace clContext workGroupSize
+
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix
             |> transposeInPlace queue
             |> toCSRInPlace queue allocationMode
 
-    module SpGeMM =
-        let masked
-            (clContext: ClContext)
-            workGroupSize
-            (opAdd: Expr<'c -> 'c -> 'c option>)
-            (opMul: Expr<'a -> 'b -> 'c option>)
-            =
+    let byRowsLazy (clContext: ClContext) workGroupSize =
 
-            let run =
-                SpGeMM.Masked.run clContext workGroupSize opAdd opMul
+        let getChunkValues = ClArray.sub clContext workGroupSize
 
-            fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
+        let getChunkIndices = ClArray.sub clContext workGroupSize
 
-                run queue matrixLeft matrixRight mask
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
 
-        let expand
-            (clContext: ClContext)
-            workGroupSize
-            (opAdd: Expr<'c -> 'c -> 'c option>)
-            (opMul: Expr<'a -> 'b -> 'c option>)
-            =
+            let getChunkValues =
+                getChunkValues processor allocationMode matrix.Values
 
-            let run =
-                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+            let getChunkIndices =
+                getChunkIndices processor allocationMode matrix.Columns
 
-            fun (queue: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-
-                let values, columns, rows =
-                    run queue allocationMode leftMatrix rightMatrix
-
-                { COO.Context = clContext
-                  ColumnCount = rightMatrix.ColumnCount
-                  RowCount = leftMatrix.RowCount
+            let creatSparseVector values columns =
+                { Context = clContext
+                  Indices = columns
                   Values = values
-                  Columns = columns
-                  Rows = rows }
+                  Size = matrix.ColumnCount }
+
+            matrix.RowPointers.ToHost processor
+            |> Seq.pairwise
+            |> Seq.map
+                (fun (first, second) ->
+                    lazy
+                        (let count = second - first
+
+                         if count > 0 then
+                             let values = getChunkValues first count
+                             let columns = getChunkIndices first count
+
+                             Some <| creatSparseVector values columns
+                         else
+                             None))
+
+    let byRows (clContext: ClContext) workGroupSize =
+
+        let runLazy = byRowsLazy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+            runLazy processor allocationMode matrix
+            |> Seq.map (fun lazyValue -> lazyValue.Value)
+
+    let toLIL (clContext: ClContext) workGroupSize =
+
+        let byRows = byRows clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+            let rows =
+                byRows processor allocationMode matrix
+                |> Seq.toList
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              NNZ = matrix.NNZ }
+
+    let NNZInRows (clContext: ClContext) workGroupSize =
+
+        let pairwise = ClArray.pairwise clContext workGroupSize
+
+        let subtract =
+            ClArray.map <@ fun (fst, snd) -> snd - fst @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'b>) ->
+            let pointerPairs =
+                pairwise processor DeviceOnly matrix.RowPointers
+                // since row pointers length in matrix always >= 2
+                |> Option.defaultWith
+                    (fun () -> failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
+
+            let rowsLength =
+                subtract processor allocationMode pointerPairs
+
+            pointerPairs.Free processor
+
+            rowsLength

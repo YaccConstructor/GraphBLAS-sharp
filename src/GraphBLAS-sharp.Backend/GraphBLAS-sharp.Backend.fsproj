@@ -18,6 +18,7 @@
     <Compile Include="Objects/AtLeastOne.fs" />
     <Compile Include="Objects/ClContextExtensions.fs" />
     <Compile Include="Objects/ClCell.fs" />
+      
     <Compile Include="Quotes/SubReduce.fs" />
     <Compile Include="Quotes/Arithmetic.fs" />
     <Compile Include="Quotes/Convert.fs" />
@@ -26,16 +27,25 @@
     <Compile Include="Quotes/PreparePositions.fs" />
     <Compile Include="Quotes/Predicates.fs" />
     <Compile Include="Quotes/Map.fs" />
+      
     <Compile Include="Quotes/Search.fs" />
     <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/PrefixSum.fs" />
-    <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Gather.fs" />
+    <Compile Include="Common/ClArray.fs" />
     <Compile Include="Common/Sort/Radix.fs" />
     <Compile Include="Common/Sort/Bitonic.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/Merge.fs" />
+      
+    <Compile Include="Vector/Dense/Vector.fs" />
+    <Compile Include="Vector/Sparse/Common.fs" />
+    <Compile Include="Vector/Sparse/Merge.fs" />
+    <Compile Include="Vector/Sparse/Map2.fs" />
+    <Compile Include="Vector/Sparse/Vector.fs" />
+    <Compile Include="Vector/SpMV.fs" />
+    <Compile Include="Vector/Vector.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COO/Map.fs" />
     <Compile Include="Matrix/COO/Merge.fs" />
@@ -43,18 +53,13 @@
     <Compile Include="Matrix/COO/Matrix.fs" />
     <Compile Include="Matrix/CSR/Merge.fs" />
     <Compile Include="Matrix/CSR/Map2.fs" />
-    <Compile Include="Matrix/CSR/SpGEMM/Expand.fs" />
-    <Compile Include="Matrix/CSR/SpGEMM/Masked.fs" />
     <Compile Include="Matrix/CSR/Map.fs" />
     <Compile Include="Matrix/CSR/Matrix.fs" />
+    <Compile Include="Matrix/LIL/Matrix.fs" />
+    <Compile Include="Matrix/SpGeMM/Expand.fs" />
+    <Compile Include="Matrix/SpGeMM/Masked.fs" />
     <Compile Include="Matrix/Matrix.fs" />
-    <Compile Include="Vector/SparseVector/Common.fs" />
-    <Compile Include="Vector/SparseVector/Merge.fs" />
-    <Compile Include="Vector/SparseVector/Map2.fs" />
-    <Compile Include="Vector/SparseVector/SparseVector.fs" />
-    <Compile Include="Vector/DenseVector/DenseVector.fs" />
-    <Compile Include="Vector/Vector.fs" />
-    <Compile Include="Vector/SpMV.fs" />
+      
     <Compile Include="Algorithms/BFS.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

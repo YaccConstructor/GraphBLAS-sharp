@@ -19,32 +19,38 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API impleme
      | Left of 't1
      | Right of 't2
   ```
-  So, type of matrix-matrix elementwise oertion is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
-- No semirings. Just functions. Ofcourse one can implement semirings on the top of provided API.
+  So, type of matrix-matrix elementwise operation is ```Matrix<Option<'t1>> -> Matrix<Option<'t2>> -> (AtLeastOne<'t1,'t2> -> Option<'t3>) -> Matrix<Option<'t3>>```. 
+- No semirings. Just functions. Of course one can implement semirings on the top of provided API.
 - Minimal core: high-order functions allows us to minimaze core by functions unification. For example, such functions as matrix-matrix addition, matrix-matrix element-wise multiplication, masking all are partial case of `map2` function.
 
 ### Operations
 - **Matrix-Matrix**
-  - [x] COO-COO element-wize
-  - [x] CSR-CSR element-wize
-  - [ ] CSR-CSR multiplication
-  - [ ] COO transpose
-  - [ ] CSR transpose 
+  - [x] CSR-CSR `map2`
+  - [x] CSR-CSR `map2AtLeastOne`
+  - [x] COO-COO `map2`
+  - [x] COO-COO `map2AtLeastOne`
+  - [x] CSR-CSR multiplication
 - **Vector-Matrix**
   - [x] Dense-CSR multiplication
-  - [ ] COO-CSR multiplication
+  - [ ] Sparse-CSR multiplication
 - **Vector-Vector**
-  - [x] Dense-Dense element-wise
+  - [x] Dense-Dense `map2`
+  - [x] Dense-Dense `map2AtLeastOne`
+  - [x] Sparse-Sparse `map2`
+  - [x] Sparse-Sparse `map2AtLeastOne`
   - [ ] ...
 - **Matrix**
-  - [ ] `map`
-  - [ ] `iter`
+  - [x] `copy` 
+  - [x] `map`
+  - [x] COO transpose
+  - [x] CSR transpose
+  - [x] CSC transpose
   - [ ] ...
 - **Vector**
-  - [ ] `map`
-  - [ ] `iter`
-  - [ ] `filter`
-  - [ ] `contains`
+  - [x] `zeroCreate` 
+  - [x] `ofList`
+  - [x] `copy`
+  - [x] `reduce`
   - [ ] ...  
 
 ### Graph Analysis Algorithms

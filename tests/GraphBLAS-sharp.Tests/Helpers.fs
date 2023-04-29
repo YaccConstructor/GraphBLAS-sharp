@@ -25,8 +25,8 @@ module Utils =
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>
                     typeof<Generators.PairOfMatricesOfCompatibleSize>
                     typeof<Generators.PairOfSparseMatrixAndVectorsCompatibleSize>
-                    typeof<Generators.PairOfSparseVectorAndMatrixOfCompatibleSize>
-                    typeof<Generators.ArrayOfDistinctKeys>
+                    typeof<Generators.PairOfSparseVectorAndMatrixAndMaskOfCompatibleSize>
+                    typeof<Generators.ArrayOfDistinctKeys2D>
                     typeof<Generators.ArrayOfAscendingKeys>
                     typeof<Generators.BufferCompatibleArray>
                     typeof<Generators.PairOfVectorsOfEqualSize>
@@ -63,6 +63,9 @@ module Utils =
         | CSC ->
             Matrix.CSC
             <| Matrix.CSC.FromArray2D(array, isZero)
+        | LIL ->
+            Matrix.LIL
+            <| Matrix.LIL.FromArray2D(array, isZero)
 
     let createVectorFromArray vectorCase array isZero =
         match vectorCase with
@@ -99,6 +102,13 @@ module Utils =
                 Actual value is %A{actual.[i]}, expected %A{expected.[i]}, \n actual: %A{actual} \n expected: %A{expected}"
                 |> failtestf "%s"
 
+    let compareChunksArrays areEqual (actual: 'a [] []) (expected: 'a [] []) message =
+        $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
+        |> Expect.equal actual.Length expected.Length
+
+        for i in 0 .. actual.Length - 1 do
+            compareArrays areEqual actual.[i] expected.[i] message
+
     let compare2DArrays areEqual (actual: 'a [,]) (expected: 'a [,]) message =
         $"%s{message}. Lengths should be equal. Actual is %A{actual}, expected %A{expected}"
         |> Expect.equal actual.Length expected.Length
@@ -109,6 +119,48 @@ module Utils =
                     $"%s{message}. Arrays differ at position [%d{i}, %d{j}] of [%A{Array2D.length1 actual}, %A{Array2D.length2 actual}].
                     Actual value is %A{actual.[i, j]}, expected %A{expected.[i, j]}"
                     |> failtestf "%s"
+
+    let compareSparseVectors isEqual (actual: Vector.Sparse<'a>) (expected: Vector.Sparse<'a>) =
+        "Sparse vector size must be the same"
+        |> Expect.equal actual.Size expected.Size
+
+        "Value must be the same"
+        |> compareArrays isEqual actual.Values expected.Values
+
+        "Indices must be the same"
+        |> compareArrays (=) actual.Indices expected.Indices
+
+    let compareLILMatrix isEqual (actual: Matrix.LIL<'a>) (expected: Matrix.LIL<'a>) =
+        "Column count must be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
+
+        "Rows count must be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
+
+        List.iter2
+            (fun actualRow expected ->
+                match actualRow, expected with
+                | Some actualVector, Some expectedVector -> compareSparseVectors isEqual actualVector expectedVector
+                | None, None -> ()
+                | _ -> failwith "Rows are not matching")
+        <| actual.Rows
+        <| expected.Rows
+
+    let compareCSRMatrix isEqual (actual: Matrix.CSR<'a>) (expected: Matrix.CSR<'a>) =
+        "Column count must be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
+
+        "Rows count must be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
+
+        "Values must be the same"
+        |> compareArrays isEqual actual.Values expected.Values
+
+        "Column indices must be the same"
+        |> compareArrays (=) actual.ColumnIndices expected.ColumnIndices
+
+        "Row pointers"
+        |> compareArrays (=) actual.RowPointers expected.RowPointers
 
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
@@ -139,11 +191,6 @@ module Utils =
                 result.[i, j] <- array.[j, i]
 
         result
-
-    let castMatrixToCSR =
-        function
-        | Matrix.CSR matrix -> matrix
-        | _ -> failwith "matrix format must be CSR"
 
 module HostPrimitives =
     let prefixSumInclude zero add array =

@@ -7,8 +7,6 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
-type Indices = ClArray<int>
-
 module Radix =
     // the number of bits considered per iteration
     let defaultBitCount = 4
@@ -36,7 +34,7 @@ module Radix =
         let bitCount = mask + 1
 
         let kernel =
-            <@ fun (ndRange: Range1D) length (indices: Indices) (workGroupCount: ClCell<int>) (shift: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) ->
+            <@ fun (ndRange: Range1D) length (indices: ClArray<int>) (workGroupCount: ClCell<int>) (shift: ClCell<int>) (globalOffsets: ClArray<int>) (localOffsets: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
                 let lid = ndRange.LocalID0
@@ -77,7 +75,7 @@ module Radix =
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) (indices: Indices) (clWorkGroupCount: ClCell<int>) (shift: ClCell<int>) ->
+        fun (processor: MailboxProcessor<_>) (indices: ClArray<int>) (clWorkGroupCount: ClCell<int>) (shift: ClCell<int>) ->
             let ndRange =
                 Range1D.CreateValid(indices.Length, workGroupSize)
 
@@ -113,7 +111,7 @@ module Radix =
     let scatter (clContext: ClContext) workGroupSize mask =
 
         let kernel =
-            <@ fun (ndRange: Range1D) length (keys: Indices) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) (result: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: ClArray<int>) (localOffsets: ClArray<int>) (result: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
                 let wgId = gid / workGroupSize
@@ -134,7 +132,7 @@ module Radix =
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) (keys: Indices) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffset: Indices) (localOffsets: Indices) (result: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffset: ClArray<int>) (localOffsets: ClArray<int>) (result: ClArray<int>) ->
 
             let ndRange =
                 Range1D.CreateValid(keys.Length, workGroupSize)
@@ -157,11 +155,11 @@ module Radix =
         let count = count clContext workGroupSize mask
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let scatter = scatter clContext workGroupSize mask
 
-        fun (processor: MailboxProcessor<_>) (keys: Indices) ->
+        fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) ->
             if keys.Length <= 1 then
                 copy processor DeviceOnly keys // TODO(allocation mode)
             else
@@ -203,7 +201,7 @@ module Radix =
     let scatterByKey (clContext: ClContext) workGroupSize mask =
 
         let kernel =
-            <@ fun (ndRange: Range1D) length (keys: Indices) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: Indices) (localOffsets: Indices) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: ClArray<int>) (localOffsets: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
                 let wgId = gid / workGroupSize
@@ -225,7 +223,7 @@ module Radix =
 
         let kernel = clContext.Compile kernel
 
-        fun (processor: MailboxProcessor<_>) (keys: Indices) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffset: Indices) (localOffsets: Indices) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffset: ClArray<int>) (localOffsets: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
 
             let ndRange =
                 Range1D.CreateValid(keys.Length, workGroupSize)
@@ -260,12 +258,12 @@ module Radix =
         let count = count clContext workGroupSize mask
 
         let prefixSum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let scatterByKey =
             scatterByKey clContext workGroupSize mask
 
-        fun (processor: MailboxProcessor<_>) allocationMode (keys: Indices) (values: ClArray<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
             if values.Length <> keys.Length then
                 failwith "Mismatch of key lengths and value. Lengths must be the same"
 

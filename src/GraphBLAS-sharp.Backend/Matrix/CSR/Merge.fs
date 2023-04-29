@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 open Brahma.FSharp
 open System
 open GraphBLAS.FSharp.Backend.Objects
+
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Merge =

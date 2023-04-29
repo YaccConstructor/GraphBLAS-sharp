@@ -22,6 +22,8 @@ module ClVector =
 
         member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
+        member this.NNZ = this.Values.Length
+
 [<RequireQualifiedAccess>]
 type ClVector<'a when 'a: struct> =
     | Sparse of ClVector.Sparse<'a>

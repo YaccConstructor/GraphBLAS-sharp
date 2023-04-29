@@ -17,7 +17,7 @@ module Common =
             Scatter.lastOccurrence clContext workGroupSize
 
         let sum =
-            PrefixSum.standardExcludeInplace clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allRows: ClArray<int>) (allColumns: ClArray<int>) (allValues: ClArray<'a>) (positions: ClArray<int>) ->
 
@@ -60,7 +60,7 @@ module Common =
             ClArray.zeroCreate clContext workGroupSize
 
         let scan =
-            PrefixSum.runIncludeInplace <@ max @> clContext workGroupSize
+            PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
 

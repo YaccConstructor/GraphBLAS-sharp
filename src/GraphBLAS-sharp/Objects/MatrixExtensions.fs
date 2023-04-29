@@ -3,68 +3,46 @@ namespace GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects
 open Brahma.FSharp
 open Matrix
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 module MatrixExtensions =
     type ClMatrix<'a when 'a: struct> with
         member this.ToHost(q: MailboxProcessor<_>) =
             match this with
             | ClMatrix.COO m ->
-                let rows = Array.zeroCreate m.Rows.Length
-                let columns = Array.zeroCreate m.Columns.Length
-                let values = Array.zeroCreate m.Values.Length
-
-                q.Post(Msg.CreateToHostMsg(m.Rows, rows))
-
-                q.Post(Msg.CreateToHostMsg(m.Columns, columns))
-
-                ignore
-                <| q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
-
-                let result =
-                    { RowCount = m.RowCount
-                      ColumnCount = m.ColumnCount
-                      Rows = rows
-                      Columns = columns
-                      Values = values }
-
-                Matrix.COO result
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  Rows = m.Rows.ToHost q
+                  Columns = m.Columns.ToHost q
+                  Values = m.Values.ToHost q }
+                |> Matrix.COO
             | ClMatrix.CSR m ->
-                let rows = Array.zeroCreate m.RowPointers.Length
-                let columns = Array.zeroCreate m.Columns.Length
-                let values = Array.zeroCreate m.Values.Length
-
-                q.Post(Msg.CreateToHostMsg(m.RowPointers, rows))
-
-                q.Post(Msg.CreateToHostMsg(m.Columns, columns))
-
-                ignore
-                <| q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
-
-                let result =
-                    { RowCount = m.RowCount
-                      ColumnCount = m.ColumnCount
-                      RowPointers = rows
-                      ColumnIndices = columns
-                      Values = values }
-
-                Matrix.CSR result
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  RowPointers = m.RowPointers.ToHost q
+                  ColumnIndices = m.Columns.ToHost q
+                  Values = m.Values.ToHost q }
+                |> Matrix.CSR
             | ClMatrix.CSC m ->
-                let rows = Array.zeroCreate m.Rows.Length
-                let columns = Array.zeroCreate m.ColumnPointers.Length
-                let values = Array.zeroCreate m.Values.Length
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  RowIndices = m.Rows.ToHost q
+                  ColumnPointers = m.ColumnPointers.ToHost q
+                  Values = m.Values.ToHost q }
+                |> Matrix.CSC
+            | ClMatrix.LIL m ->
+                { RowCount = m.RowCount
+                  ColumnCount = m.ColumnCount
+                  Rows =
+                      m.Rows
+                      |> List.map (Option.map (fun row -> row.ToHost q))
+                  NNZ = m.NNZ }
+                |> Matrix.LIL
 
-                q.Post(Msg.CreateToHostMsg(m.Rows, rows))
+        member this.ToHostAndDispose(processor: MailboxProcessor<_>) =
+            let result = this.ToHost processor
 
-                q.Post(Msg.CreateToHostMsg(m.ColumnPointers, columns))
+            this.Dispose processor
 
-                ignore
-                <| q.PostAndReply(fun ch -> Msg.CreateToHostMsg(m.Values, values, ch))
-
-                let result =
-                    { RowCount = m.RowCount
-                      ColumnCount = m.ColumnCount
-                      RowIndices = rows
-                      ColumnPointers = columns
-                      Values = values }
-
-                Matrix.CSC result
+            result

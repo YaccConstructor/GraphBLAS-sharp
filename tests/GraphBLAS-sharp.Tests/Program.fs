@@ -4,19 +4,17 @@ open GraphBLAS.FSharp.Tests
 
 let matrixTests =
     testList
-        "Matrix tests"
+        "Matrix"
         [ Matrix.Convert.tests
-          Matrix.Map2.addTests
-          Matrix.Map2.addAtLeastOneTests
-          Matrix.Map2.mulAtLeastOneTests
-          Matrix.Map2.addAtLeastOneToCOOTests
-          Matrix.Map.notTests
-          Matrix.Map.addTests
-          Matrix.Map.mulTests
-          Matrix.Transpose.tests
+          Matrix.Map2.allTests
+          Matrix.Map.allTests
           Matrix.Merge.allTests
-          Matrix.SpGeMM.Masked.tests
-          Matrix.SpGeMM.Expand.generalTests ]
+          Matrix.Transpose.tests
+          Matrix.RowsLengths.tests
+          Matrix.ByRows.tests
+
+          Matrix.SpGeMM.Expand.generalTests
+          Matrix.SpGeMM.Masked.tests ]
     |> testSequenced
 
 let commonTests =
@@ -43,17 +41,21 @@ let commonTests =
               Common.ClArray.Map.tests
               Common.ClArray.Map2.addTests
               Common.ClArray.Map2.mulTests
-              Common.ClArray.Choose.allTests ]
+              Common.ClArray.Choose.allTests
+              Common.ClArray.ChunkBySize.allTests
+              Common.ClArray.Blit.tests
+              Common.ClArray.Concat.tests
+              Common.ClArray.Fill.tests
+              Common.ClArray.Pairwise.tests ]
 
     let sortTests =
         testList
             "Sort"
             [ Common.Sort.Bitonic.tests
-              Common.Sort.Radix.testByKeys
-              Common.Sort.Radix.testKeysOnly ]
+              Common.Sort.Radix.allTests ]
 
     testList
-        "Common tests"
+        "Common"
         [ Common.Scatter.allTests
           Common.Gather.allTests
           Common.Merge.tests
@@ -65,17 +67,13 @@ let commonTests =
 
 let vectorTests =
     testList
-        "Vector tests"
+        "Vector"
         [ Vector.SpMV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
-          Vector.Map2.addTests
-          Vector.Map2.mulTests
-          Vector.Map2.addAtLeastOneTests
-          Vector.Map2.mulAtLeastOneTests
-          Vector.Map2.complementedGeneralTests
+          Vector.Map2.allTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
           Vector.Reduce.tests
@@ -86,14 +84,26 @@ let algorithmsTests =
     testList "Algorithms tests" [ Algorithms.BFS.tests ]
     |> testSequenced
 
+let deviceTests =
+    testList
+        "Device"
+        [ matrixTests
+          commonTests
+          vectorTests
+          algorithmsTests ]
+    |> testSequenced
+
+let hostTests =
+    testList
+        "Host"
+        [ Host.Matrix.FromArray2D.tests
+          Host.Matrix.Convert.tests
+          Host.IO.MtxReader.test ]
+    |> testSequenced
+
 [<Tests>]
 let allTests =
-    testList
-        "All tests"
-        [ matrixTests
-          vectorTests
-          commonTests
-          algorithmsTests ]
+    testList "All" [ deviceTests; hostTests ]
     |> testSequenced
 
 [<EntryPoint>]

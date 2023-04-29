@@ -144,7 +144,7 @@ module PrefixSum =
                    && localID < workGroupSize - 1 then
                     resultBuffer.[i] <- resultLocalBuffer.[localID + 1] @>
 
-    let private runInplace (mirror: bool) scan (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
+    let private runInPlace (opAdd: Expr<'a -> 'a -> 'a>) (mirror: bool) scan (clContext: ClContext) workGroupSize =
 
         let scan = scan opAdd clContext workGroupSize
 
@@ -200,13 +200,13 @@ module PrefixSum =
 
             totalSum
 
-    let runExcludeInplace plus = runInplace false scanExclusive plus
+    let runExcludeInPlace plus = runInPlace plus false scanExclusive
 
-    let runIncludeInplace plus = runInplace false scanInclusive plus
+    let runIncludeInPlace plus = runInPlace plus false scanInclusive
 
-    let runBackwardsExcludeInplace plus = runInplace true scanExclusive plus
+    let runBackwardsExcludeInPlace plus = runInPlace plus true scanExclusive
 
-    let runBackwardsIncludeInplace plus = runInplace true scanInclusive plus
+    let runBackwardsIncludeInPlace plus = runInPlace plus true scanInclusive
 
     /// <summary>
     /// Exclude inplace prefix sum.
@@ -222,13 +222,14 @@ module PrefixSum =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
+    ///<param name="clContext">ClContext.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
-    let standardExcludeInplace (clContext: ClContext) workGroupSize =
+    let standardExcludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
-            runExcludeInplace <@ (+) @> clContext workGroupSize
+            runExcludeInPlace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 
@@ -248,20 +249,21 @@ module PrefixSum =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
+    ///<param name="clContext">ClContext.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     ///<param name="plus">Associative binary operation.</param>
     ///<param name="zero">Zero element for binary operation.</param>
-    let standardIncludeInplace (clContext: ClContext) workGroupSize =
+    let standardIncludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
-            runIncludeInplace <@ (+) @> clContext workGroupSize
+            runIncludeInPlace <@ (+) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
 
             scan processor inputArray 0
 
     module ByKey =
-        let private sequentialSegments opWrite (clContext: ClContext) workGroupSize opAdd zero =
+        let private sequentialSegments opWrite opAdd zero (clContext: ClContext) workGroupSize =
 
             let kernel =
                 <@ fun (ndRange: Range1D) lenght uniqueKeysCount (values: ClArray<'a>) (keys: ClArray<int>) (offsets: ClArray<int>) ->
@@ -313,8 +315,7 @@ module PrefixSum =
         /// > val result = [| 0; 0; 1; 2; 0; 1 |]
         /// </code>
         /// </example>
-        let sequentialExclude clContext =
-            sequentialSegments (Map.fst ()) clContext
+        let sequentialExclude op = sequentialSegments (Map.fst ()) op
 
         /// <summary>
         /// Include scan by key.
@@ -327,5 +328,4 @@ module PrefixSum =
         /// > val result = [| 1; 1; 2; 3; 1; 2 |]
         /// </code>
         /// </example>
-        let sequentialInclude clContext =
-            sequentialSegments (Map.snd ()) clContext
+        let sequentialInclude op = sequentialSegments (Map.snd ()) op
