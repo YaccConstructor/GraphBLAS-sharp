@@ -261,12 +261,16 @@ module Matrix =
         let mapCSR =
             CSR.Matrix.map opAdd clContext workGroupSize
 
+        let transposeCOO =
+            COO.Matrix.transposeInPlace clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) allocationMode matrix ->
             match matrix with
             | ClMatrix.COO m -> mapCOO processor allocationMode m |> ClMatrix.COO
             | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.COO
             | ClMatrix.CSC m ->
                 (mapCSR processor allocationMode m.ToCSR)
+                |> transposeCOO processor
                 |> ClMatrix.COO
             | _ -> failwith "Not yet implemented"
 
@@ -277,6 +281,9 @@ module Matrix =
         let map2CSR =
             CSR.Matrix.map2 opAdd clContext workGroupSize
 
+        let transposeCOO =
+            COO.Matrix.transposeInPlace clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
             | ClMatrix.COO m1, ClMatrix.COO m2 ->
@@ -284,11 +291,11 @@ module Matrix =
                 |> ClMatrix.COO
             | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
                 map2CSR processor allocationMode m1 m2
-                |> ClMatrix.CSR
+                |> ClMatrix.COO
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
                 (map2CSR processor allocationMode m1.ToCSR m2.ToCSR)
-                    .ToCSC
-                |> ClMatrix.CSC
+                |> transposeCOO processor
+                |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
     let map2AtLeastOne (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =

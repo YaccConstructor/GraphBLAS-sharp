@@ -94,7 +94,7 @@ module internal Map2 =
     ///<param name="clContext">.</param>
     ///<param name="opAdd">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let runToCOO<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
         workGroupSize
@@ -134,22 +134,6 @@ module internal Map2 =
               Rows = resultRows
               Columns = resultColumns
               Values = resultValues }
-
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
-        (opAdd: Expr<'a option -> 'b option -> 'c option>)
-        (clContext: ClContext)
-        workGroupSize
-        =
-
-        let map2ToCOO = runToCOO opAdd clContext workGroupSize
-
-        let toCSRInPlace =
-            Matrix.toCSRInPlace clContext workGroupSize
-
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
-            map2ToCOO queue allocationMode matrixLeft matrixRight
-            |> toCSRInPlace queue allocationMode
-
 
     module AtLeastOne =
         let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>

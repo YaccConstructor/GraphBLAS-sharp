@@ -156,18 +156,12 @@ module Vector =
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
 
-            let notEmpty =
-                (containsNonZero processor vector)
-                    .ToHostAndFree processor
+            choose processor DeviceOnly vector
+            |> function
+                | Some values ->
+                    let result = reduce processor values
 
-            if notEmpty then
-                let values = choose processor DeviceOnly vector
+                    processor.Post(Msg.CreateFreeMsg<_>(values))
 
-                let result = reduce processor values
-
-                processor.Post(Msg.CreateFreeMsg<_>(values))
-
-                result
-
-            else
-                clContext.CreateClCell Unchecked.defaultof<'a>
+                    result
+                | None -> clContext.CreateClCell Unchecked.defaultof<'a>

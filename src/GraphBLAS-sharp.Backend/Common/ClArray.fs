@@ -390,12 +390,19 @@ module ClArray =
                 (prefixSum processor positions)
                     .ToHostAndFree(processor)
 
-            let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+            if resultLength = 0 then
+                positions.Free processor
 
-            assignValues processor sourceValues positions result
+                None
+            else
+                let result =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 
-            result
+                assignValues processor sourceValues positions result
+
+                positions.Free processor
+
+                Some result
 
     let assignOption2 (op: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
 
