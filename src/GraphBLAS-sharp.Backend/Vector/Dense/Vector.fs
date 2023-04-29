@@ -151,11 +151,7 @@ module Vector =
         let reduce =
             Reduce.reduce opAdd clContext workGroupSize
 
-        let containsNonZero =
-            ClArray.exists Predicates.isSome clContext workGroupSize
-
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
-
             choose processor DeviceOnly vector
             |> function
                 | Some values ->
