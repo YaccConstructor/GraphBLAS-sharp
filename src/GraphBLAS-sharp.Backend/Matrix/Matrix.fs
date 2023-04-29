@@ -305,6 +305,9 @@ module Matrix =
         let CSRMap2 =
             CSR.Matrix.map2AtLeastOne clContext opAdd workGroupSize
 
+        let COOTranspose =
+            COO.Matrix.transposeInPlace clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) allocationMode matrix1 matrix2 ->
             match matrix1, matrix2 with
             | ClMatrix.COO m1, ClMatrix.COO m2 ->
@@ -315,6 +318,7 @@ module Matrix =
                 |> ClMatrix.COO
             | ClMatrix.CSC m1, ClMatrix.CSC m2 ->
                 (CSRMap2 processor allocationMode m1.ToCSR m2.ToCSR)
+                |> COOTranspose processor
                 |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
