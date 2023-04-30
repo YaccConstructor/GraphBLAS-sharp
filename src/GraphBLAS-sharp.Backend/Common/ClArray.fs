@@ -132,113 +132,6 @@ module ClArray =
 
             outputArray
 
-    let private getUniqueBitmapGeneral predicate (clContext: ClContext) workGroupSize =
-
-        let getUniqueBitmap =
-            <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < inputLength then
-                    let isUnique = (%predicate) gid inputLength inputArray // brahma error
-
-                    if isUnique then
-                        isUniqueBitmap.[gid] <- 1
-                    else
-                        isUniqueBitmap.[gid] <- 0 @>
-
-        let kernel = clContext.Compile(getUniqueBitmap)
-
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
-
-            let inputLength = inputArray.Length
-
-            let ndRange =
-                Range1D.CreateValid(inputLength, workGroupSize)
-
-            let bitmap =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputLength)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap))
-
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            bitmap
-
-    let getUniqueBitmapFirstOccurrence clContext =
-        getUniqueBitmapGeneral
-        <| Predicates.firstOccurrence ()
-        <| clContext
-
-    let getUniqueBitmapLastOccurrence clContext =
-        getUniqueBitmapGeneral
-        <| Predicates.lastOccurrence ()
-        <| clContext
-
-    ///<description>Remove duplicates form the given array.</description>
-    ///<param name="clContext">Computational context</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="inputArray">Should be sorted.</param>
-    let removeDuplications (clContext: ClContext) workGroupSize =
-
-        let scatter =
-            Scatter.lastOccurrence clContext workGroupSize
-
-        let getUniqueBitmap =
-            getUniqueBitmapLastOccurrence clContext workGroupSize
-
-        let prefixSumExclude =
-            PrefixSum.runExcludeInPlace <@ (+) @> clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
-
-            let bitmap =
-                getUniqueBitmap processor DeviceOnly inputArray
-
-            let resultLength =
-                (prefixSumExclude processor bitmap 0)
-                    .ToHostAndFree(processor)
-
-            let outputArray =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
-
-            scatter processor bitmap inputArray outputArray
-
-            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
-
-            outputArray
-
-    let exists (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
-
-        let exists =
-            <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (result: ClCell<bool>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length then
-                    let isExist = (%predicate) vector.[gid]
-
-                    if isExist then result.Value <- true @>
-
-        let kernel = clContext.Compile exists
-
-        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a>) ->
-
-            let result = clContext.CreateClCell false
-
-            let ndRange =
-                Range1D.CreateValid(vector.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            result
-
     let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
@@ -307,33 +200,139 @@ module ClArray =
 
             resultArray
 
-    let getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
+    module Bitmap =
+        let private getUniqueBitmapGeneral predicate (clContext: ClContext) workGroupSize =
 
-        let map =
-            map2 <@ fun x y -> x ||| y @> clContext workGroupSize
+            let getUniqueBitmap =
+                <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
 
-        let firstGetBitmap = getUniqueBitmap clContext workGroupSize
+                    let gid = ndRange.GlobalID0
 
-        fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
-            let firstBitmap =
-                firstGetBitmap processor DeviceOnly firstArray
+                    if gid < inputLength then
+                        let isUnique = (%predicate) gid inputLength inputArray // brahma error
 
-            let secondBitmap =
-                firstGetBitmap processor DeviceOnly secondArray
+                        if isUnique then
+                            isUniqueBitmap.[gid] <- 1
+                        else
+                            isUniqueBitmap.[gid] <- 0 @>
 
-            let result =
-                map processor allocationMode firstBitmap secondBitmap
+            let kernel = clContext.Compile(getUniqueBitmap)
 
-            firstBitmap.Free processor
-            secondBitmap.Free processor
+            fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
+
+                let inputLength = inputArray.Length
+
+                let ndRange =
+                    Range1D.CreateValid(inputLength, workGroupSize)
+
+                let bitmap =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputLength)
+
+                let kernel = kernel.GetKernel()
+
+                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap))
+
+                processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+                bitmap
+
+        let firstOccurrence clContext =
+            getUniqueBitmapGeneral
+            <| Predicates.firstOccurrence ()
+            <| clContext
+
+        let lastOccurrence clContext =
+            getUniqueBitmapGeneral
+            <| Predicates.lastOccurrence ()
+            <| clContext
+
+        let private getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
+
+            let map =
+                map2 <@ fun x y -> x ||| y @> clContext workGroupSize
+
+            let firstGetBitmap = getUniqueBitmap clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
+                let firstBitmap =
+                    firstGetBitmap processor DeviceOnly firstArray
+
+                let secondBitmap =
+                    firstGetBitmap processor DeviceOnly secondArray
+
+                let result =
+                    map processor allocationMode firstBitmap secondBitmap
+
+                firstBitmap.Free processor
+                secondBitmap.Free processor
+
+                result
+
+        let firstOccurrence2 clContext = getUniqueBitmap2General firstOccurrence clContext
+
+        let lastOccurrence2 clContext = getUniqueBitmap2General lastOccurrence clContext
+
+    ///<description>Remove duplicates form the given array.</description>
+    ///<param name="clContext">Computational context</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="inputArray">Should be sorted.</param>
+    let removeDuplications (clContext: ClContext) workGroupSize =
+
+        let scatter =
+            Scatter.lastOccurrence clContext workGroupSize
+
+        let getUniqueBitmap =
+            Bitmap.lastOccurrence clContext workGroupSize
+
+        let prefixSumExclude =
+            PrefixSum.runExcludeInPlace <@ (+) @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+
+            let bitmap =
+                getUniqueBitmap processor DeviceOnly inputArray
+
+            let resultLength =
+                (prefixSumExclude processor bitmap 0)
+                    .ToHostAndFree(processor)
+
+            let outputArray =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
+            scatter processor bitmap inputArray outputArray
+
+            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
+
+            outputArray
+
+    let exists (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
+
+        let exists =
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (result: ClCell<bool>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let isExist = (%predicate) vector.[gid]
+
+                    if isExist then result.Value <- true @>
+
+        let kernel = clContext.Compile exists
+
+        fun (processor: MailboxProcessor<_>) (vector: ClArray<'a>) ->
+
+            let result = clContext.CreateClCell false
+
+            let ndRange =
+                Range1D.CreateValid(vector.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange vector.Length vector result))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             result
-
-    let getUniqueBitmap2FirstOccurrence clContext =
-        getUniqueBitmap2General getUniqueBitmapFirstOccurrence clContext
-
-    let getUniqueBitmap2LastOccurrence clContext =
-        getUniqueBitmap2General getUniqueBitmapLastOccurrence clContext
 
     let assignOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
 
@@ -694,3 +693,4 @@ module ClArray =
                 Some result
             else
                 None
+

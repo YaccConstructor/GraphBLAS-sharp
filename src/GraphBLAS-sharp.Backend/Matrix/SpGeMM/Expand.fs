@@ -185,7 +185,7 @@ module Expand =
             Reduce.ByKey.Option.segmentSequential opAdd clContext workGroupSize
 
         let getUniqueBitmap =
-            ClArray.getUniqueBitmapLastOccurrence clContext workGroupSize
+            ClArray.Bitmap.lastOccurrence clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
