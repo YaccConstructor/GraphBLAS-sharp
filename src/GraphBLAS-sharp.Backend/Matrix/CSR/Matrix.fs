@@ -51,6 +51,84 @@ module Matrix =
 
             rows
 
+    let subRows (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) resultLength sourceRow pointersLength (pointers: ClArray<int>) (results: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                let shift = pointers.[sourceRow]
+                let shiftedId = gid + shift
+
+                if gid < resultLength then
+                    let result =
+                        (%Search.Bin.lowerBound 0) pointersLength shiftedId pointers
+
+                    results.[gid] <- result - 1  @>
+
+        let program = clContext.Compile kernel
+
+        let blit = ClArray.blit clContext workGroupSize
+
+        let blitData = ClArray.blit clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode startIndex count (matrix: ClMatrix.CSR<'a>) ->
+            if count <= 0 then
+                failwith "Count must be greater than zero"
+
+            if startIndex < 0 then
+                failwith "startIndex must be greater then zero"
+
+            if startIndex + count > matrix.RowCount then
+                failwith "startIndex and count sum is larger than the matrix row count"
+
+            // extract rows
+            let rowPointers = matrix.RowPointers.ToHost processor
+
+            let resultLength = rowPointers.[startIndex + count] - rowPointers.[startIndex]
+
+            let rows =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            let kernel = program.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid(matrix.Columns.Length, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(
+                fun () ->
+                    kernel.KernelFunc
+                        ndRange
+                        resultLength
+                        startIndex
+                        matrix.RowPointers.Length
+                        matrix.RowPointers
+                        rows))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            let startPosition = rowPointers.[startIndex]
+
+            // extract values
+            let values =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            blitData processor matrix.Values startPosition values 0 resultLength
+
+            // extract indices
+            let columns =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            blit processor matrix.Columns startPosition columns 0 resultLength
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              Columns = columns
+              Values = values }
+
     let toCOO (clContext: ClContext) workGroupSize =
         let prepare = expandRowPointers clContext workGroupSize
 

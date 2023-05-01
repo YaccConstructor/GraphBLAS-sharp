@@ -134,14 +134,14 @@ module WithoutTransfer =
         override this.GlobalCleanup () =
             this.ClearInputMatrices()
 
-    type Float32() =
-
-        inherit Benchmark<float32>(
-            Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
-            float32,
-            (fun _ -> Utils.nextSingle (System.Random())),
-            (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
-            )
-
-        static member InputMatrixProvider =
-            Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"
+    // type Float32() =
+    //
+    //     inherit Benchmark<float32>(
+    //         Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+    //         float32,
+    //         (fun _ -> Utils.nextSingle (System.Random())),
+    //         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
+    //         )
+    //
+    //     static member InputMatrixProvider =
+    //         Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"

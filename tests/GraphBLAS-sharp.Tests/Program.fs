@@ -4,4 +4,4 @@ open GraphBLAS.FSharp.Tests
 
 
 [<EntryPoint>]
-let main argv = Matrix.ExpandRows.tests |> testSequenced |> runTestsWithCLIArgs [] argv
+let main argv = Backend.Matrix.SubRows.tests |> testSequenced |> runTestsWithCLIArgs [] argv

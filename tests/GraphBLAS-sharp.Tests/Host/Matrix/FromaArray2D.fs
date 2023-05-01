@@ -69,13 +69,8 @@ let makeTest isEqual zero createMatrix (array: 'a [,]) =
 
         let expectedColumns, expectedRows, expectedValues =
             array
-            |> Seq.cast<'a>
-            |> Seq.mapi
-                (fun index value ->
-                    let columnIndex = index % arrayColumnCount
-                    let rowIndex = index / arrayColumnCount
-
-                    (columnIndex, rowIndex, value))
+            |> Array2D.mapi (fun rowIndex columnIndex value -> (columnIndex, rowIndex, value))
+            |> Seq.cast<int*int*'a>
             |> Seq.filter (fun (_, _, value) -> ((<<) not <| isEqual zero) value)
             |> Seq.toArray
             |> Array.unzip3
