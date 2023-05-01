@@ -42,10 +42,10 @@ module Search =
         /// In case there is a value at the given key position, it is returned.
         /// </summary>
         let byKey<'a> =
-            <@ fun lenght sourceIndex (keys: ClArray<int>) (values: ClArray<'a>) ->
+            <@ fun length sourceIndex (keys: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable result = None
 
@@ -69,10 +69,10 @@ module Search =
         /// In case there is a value at the given keys position, it is returned.
         /// </summary>
         let byKey2D<'a> =
-            <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
+            <@ fun length sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable result = None
 
@@ -98,10 +98,10 @@ module Search =
         /// Find lower position of item in array.
         /// </summary>
         let lowerPosition<'a when 'a: equality and 'a: comparison> =
-            <@ fun lenght sourceItem (keys: 'a []) ->
+            <@ fun length sourceItem (keys: 'a []) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
                 let mutable resultPosition = None
 
                 while leftEdge <= rightEdge do

@@ -20,6 +20,8 @@ module Vector =
               Values = copyData processor allocationMode vector.Values
               Size = vector.Size }
 
+    let mapWithValue = Map.WithValueOption.run
+
     let map2 = Map2.run
 
     let map2AtLeastOne opAdd (clContext: ClContext) workGroupSize allocationMode =

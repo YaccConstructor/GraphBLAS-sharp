@@ -9,7 +9,6 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
-
 module Vector =
     let zeroCreate (clContext: ClContext) workGroupSize =
         let zeroCreate =

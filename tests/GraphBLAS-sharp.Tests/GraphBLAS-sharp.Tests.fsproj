@@ -48,6 +48,7 @@
         <Compile Include="Backend/Matrix/SpGeMM/Masked.fs" />
         <Compile Include="Backend/Matrix/Transpose.fs" />
         <Compile Include="Backend/Matrix/Merge.fs" />
+        <Compile Include="Backend/Matrix/Kronecker/ByRows.fs" />
         <Compile Include="Backend/Vector/AssignByMask.fs" />
         <Compile Include="Backend/Vector/Convert.fs" />
         <Compile Include="Backend/Vector/Copy.fs" />

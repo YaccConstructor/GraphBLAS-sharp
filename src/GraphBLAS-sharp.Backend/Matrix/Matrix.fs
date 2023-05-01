@@ -389,6 +389,18 @@ module Matrix =
                 |> ClMatrix.CSR
             | ClMatrix.LIL _ -> failwith "Not yet implemented"
 
+    let kroneckerByRows (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+
+        let runByRows =
+            Kronecker.ByRows.run clContext workGroupSize op
+
+        fun (queue: MailboxProcessor<_>) allocationMode (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
+            match matrix1, matrix2 with
+            | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
+                runByRows queue allocationMode m1 m2
+                |> ClMatrix.LIL
+            | _ -> failwith "Not yet implemented"
+
     module SpGeMM =
         let masked
             (opAdd: Expr<'c -> 'c -> 'c option>)

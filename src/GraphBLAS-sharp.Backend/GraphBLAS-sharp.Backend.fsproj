@@ -43,6 +43,7 @@
     <Compile Include="Vector/Sparse/Common.fs" />
     <Compile Include="Vector/Sparse/Merge.fs" />
     <Compile Include="Vector/Sparse/Map2.fs" />
+    <Compile Include="Vector/Sparse/Map.fs" />
     <Compile Include="Vector/Sparse/Vector.fs" />
     <Compile Include="Vector/SpMV.fs" />
     <Compile Include="Vector/Vector.fs" />
@@ -58,6 +59,7 @@
     <Compile Include="Matrix/LIL/Matrix.fs" />
     <Compile Include="Matrix/SpGeMM/Expand.fs" />
     <Compile Include="Matrix/SpGeMM/Masked.fs" />
+    <Compile Include="Matrix/Kronecker/ByRows.fs" />
     <Compile Include="Matrix/Matrix.fs" />
       
     <Compile Include="Algorithms/BFS.fs" />

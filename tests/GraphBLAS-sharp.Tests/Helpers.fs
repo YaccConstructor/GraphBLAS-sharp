@@ -278,6 +278,21 @@ module HostPrimitives =
 
         result
 
+    let array2DKroneckerProduct leftMatrix rightMatrix op =
+        Array2D.init
+        <| (Array2D.length1 leftMatrix)
+           * (Array2D.length1 rightMatrix)
+        <| (Array2D.length2 leftMatrix)
+           * (Array2D.length2 rightMatrix)
+        <| fun i j ->
+            let leftElement =
+                leftMatrix.[i / (Array2D.length1 rightMatrix), j / (Array2D.length2 rightMatrix)]
+
+            let rightElement =
+                rightMatrix.[i % (Array2D.length1 rightMatrix), j % (Array2D.length2 rightMatrix)]
+
+            op leftElement rightElement
+
     let array2DMultiplication zero mul add leftArray rightArray =
         if Array2D.length2 leftArray
            <> Array2D.length1 rightArray then
