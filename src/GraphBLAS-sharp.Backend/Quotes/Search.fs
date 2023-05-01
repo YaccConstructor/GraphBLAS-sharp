@@ -121,6 +121,23 @@ module Search =
 
                 resultPosition @>
 
+        /// <summary>
+        /// lowerBound is a version of binary search: it attempts to find the element value in an ordered range [first, last).
+        /// Specifically, it returns the last position where value could be inserted without violating the ordering.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let array = [ 0; 2; 5; 7; 8; ]
+        ///
+        /// lowerBound array 0 // return 1
+        /// lowerBound array 1 // return 1
+        /// lowerBound array 2 // return 2
+        /// lowerBound array 3 // return 2
+        /// lowerBound array 8 // return array.Length - 1
+        /// lowerBound array 9 // return array.Length - 1
+        /// </code>
+        /// </example>
+        /// <param name="startValue">Position value before search.</param>
         let lowerBound<'a when 'a: comparison> startValue  =
             <@ fun lenght sourceItem (keys: ClArray<'a>) ->
 

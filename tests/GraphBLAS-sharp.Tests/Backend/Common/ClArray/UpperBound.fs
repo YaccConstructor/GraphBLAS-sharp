@@ -47,7 +47,7 @@ let makeTest testFun (array: 'a [], value: 'a) =
 let createTest<'a when 'a : equality and 'a : comparison> =
     ClArray.upperBound<'a> context Utils.defaultWorkGroupSize
     |> makeTest
-    |> testPropertyWithConfig { config with endSize = 10 } $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let tests =
     [ createTest<int>
