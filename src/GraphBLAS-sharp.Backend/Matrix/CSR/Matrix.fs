@@ -13,9 +13,46 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 
 module Matrix =
+    let expandRowPointers (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) columnsLength pointersLength (pointers: ClArray<int>) (results: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < columnsLength then
+                    let result =
+                        (%Search.Bin.lowerBound 0) pointersLength gid pointers
+
+                    results.[gid] <- result - 1  @>
+
+        let program = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
+
+            let rows =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, matrix.Columns.Length)
+
+            let kernel = program.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid(matrix.Columns.Length, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(
+                fun () ->
+                    kernel.KernelFunc
+                        ndRange
+                        matrix.Columns.Length
+                        matrix.RowPointers.Length
+                        matrix.RowPointers
+                        rows))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            rows
+
     let toCOO (clContext: ClContext) workGroupSize =
-        let prepare =
-            Common.expandRowPointers clContext workGroupSize
+        let prepare = expandRowPointers clContext workGroupSize
 
         let copy = ClArray.copy clContext workGroupSize
 
@@ -23,7 +60,7 @@ module Matrix =
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =
-                prepare processor allocationMode matrix.RowPointers matrix.Columns.Length matrix.RowCount
+                prepare processor allocationMode matrix
 
             let cols =
                 copy processor allocationMode matrix.Columns
@@ -39,12 +76,11 @@ module Matrix =
               Values = values }
 
     let toCOOInPlace (clContext: ClContext) workGroupSize =
-        let prepare =
-            Common.expandRowPointers clContext workGroupSize
+        let prepare = expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             let rows =
-                prepare processor allocationMode matrix.RowPointers matrix.Columns.Length matrix.RowCount
+                prepare processor allocationMode matrix
 
             processor.Post(Msg.CreateFreeMsg(matrix.RowPointers))
 
@@ -91,7 +127,6 @@ module Matrix =
 
         let toCSRInPlace =
             COO.Matrix.toCSRInPlace clContext workGroupSize
-
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'a>) ->
             toCOO queue allocationMode matrix

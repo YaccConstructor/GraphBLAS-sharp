@@ -102,6 +102,7 @@ module Search =
 
                 let mutable leftEdge = 0
                 let mutable rightEdge = lenght - 1
+
                 let mutable resultPosition = None
 
                 while leftEdge <= rightEdge do
@@ -114,6 +115,27 @@ module Search =
 
                         rightEdge <- currentPosition - 1
                     elif sourceItem < currentKey then
+                        rightEdge <- currentPosition - 1
+                    else
+                        leftEdge <- currentPosition + 1
+
+                resultPosition @>
+
+        let lowerBound<'a when 'a : equality and 'a : comparison> startValue  =
+            <@ fun lenght sourceItem (keys: ClArray<'a>) ->
+
+                let mutable leftEdge = 0
+                let mutable rightEdge = lenght - 1
+
+                let mutable resultPosition = startValue
+
+                while leftEdge <= rightEdge do
+                    let currentPosition = (leftEdge + rightEdge) / 2
+                    let currentKey = keys.[currentPosition]
+
+                    if sourceItem < currentKey then
+                        resultPosition <- currentPosition
+
                         rightEdge <- currentPosition - 1
                     else
                         leftEdge <- currentPosition + 1
