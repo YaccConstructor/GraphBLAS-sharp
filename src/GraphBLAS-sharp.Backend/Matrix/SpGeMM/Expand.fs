@@ -72,7 +72,16 @@ module Expand =
                 let segmentPointersByLeftMatrixRows =
                     clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrix.RowPointers.Length)
 
+                gather processor segmentLengths leftMatrix.RowPointers segmentPointersByLeftMatrixRows
 
+                let segmentPointersByLeftMatrixRows = segmentPointersByLeftMatrixRows.ToHostAndFree processor
+
+                let beginRow = 0
+                let totalWork = 0
+
+                while beginRow < leftMatrix.RowCount do
+
+                    //let endRow =
 
                 ()
 

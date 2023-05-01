@@ -121,7 +121,7 @@ module Search =
 
                 resultPosition @>
 
-        let lowerBound<'a when 'a : equality and 'a : comparison> startValue  =
+        let lowerBound<'a when 'a: comparison> startValue  =
             <@ fun lenght sourceItem (keys: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
@@ -129,15 +129,17 @@ module Search =
 
                 let mutable resultPosition = startValue
 
-                while leftEdge <= rightEdge do
-                    let currentPosition = (leftEdge + rightEdge) / 2
-                    let currentKey = keys.[currentPosition]
+                if sourceItem >= keys.[lenght - 1] then lenght - 1
+                else
+                    while leftEdge <= rightEdge do
+                        let currentPosition = (leftEdge + rightEdge) / 2
+                        let currentKey = keys.[currentPosition]
 
-                    if sourceItem < currentKey then
-                        resultPosition <- currentPosition
+                        if sourceItem < currentKey then
+                            resultPosition <- currentPosition
 
-                        rightEdge <- currentPosition - 1
-                    else
-                        leftEdge <- currentPosition + 1
+                            rightEdge <- currentPosition - 1
+                        else
+                            leftEdge <- currentPosition + 1
 
-                resultPosition @>
+                    resultPosition @>

@@ -694,3 +694,33 @@ module ClArray =
             else
                 None
 
+    let upperBound<'a when 'a : equality and 'a : comparison> (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (value: ClCell<'a>) (result: ClCell<int>) ->
+
+                let value = value.Value
+                let gid = ndRange.GlobalID0
+
+                if gid = 0 then
+
+                    result.Value <-
+                        (%Search.Bin.lowerBound 0) length value values @>
+
+        let program = clContext.Compile(kernel)
+
+        fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (value: ClCell<'a>) ->
+            let result = clContext.CreateClCell 0
+
+            let kernel = program.GetKernel()
+
+            let ndRange =
+                Range1D.CreateValid(1, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange values.Length values value result))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            result
+
+
+
