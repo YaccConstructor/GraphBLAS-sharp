@@ -181,8 +181,6 @@ let expandTests =
 
 let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
-    printfn "run test"
-
     let leftMatrix =
         Utils.createMatrixFromArray2D CSR leftArray (isEqual zero)
 
@@ -214,9 +212,7 @@ let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightAr
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
     testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
     |> makeGeneralTest zero isEqual opAdd opMul
-    |> testPropertyWithConfig
-        { config with endSize = 100; maxTest = 10 }
-        $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand

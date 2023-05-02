@@ -77,6 +77,8 @@ module Expand =
 
                 assignValues processor firstValues secondValues positions resultValues
 
+                positions.Free processor
+
                 Some(resultValues, resultColumns, resultRows)
 
     let expand (clContext: ClContext) workGroupSize =
@@ -238,8 +240,7 @@ module Expand =
 
             offsets.Free processor
 
-            // reducedValues, reducedColumns, reducedRows
-
+            // reducedValues, reducedColumns, reducedRows option
             reduceResult
 
     let runCOO opAdd opMul (clContext: ClContext) workGroupSize =
@@ -270,6 +271,8 @@ module Expand =
                 let leftMatrixValues, rightMatrixValues, columns, rows =
                     expand processor length segmentPointers leftMatrix rightMatrix
 
+                segmentPointers.Free processor
+
                 // multiply
                 let mulResult =
                     multiply processor leftMatrixValues rightMatrixValues columns rows
@@ -294,15 +297,11 @@ module Expand =
                         let reduceResult =
                             reduce processor allocationMode sortedValues sortedColumns sortedRows
 
-                        reduceResult
-                        |> Option.map
-                            (fun (reducedValues, reducedColumns, reducedRows) ->
+                        sortedValues.Free processor
+                        sortedColumns.Free processor
+                        sortedRows.Free processor
 
-                                sortedValues.Free processor
-                                sortedColumns.Free processor
-                                sortedRows.Free processor
-
-                                reducedValues, reducedColumns, reducedRows))
+                        reduceResult)
 
     let runOneStep opAdd opMul (clContext: ClContext) workGroupSize =
 
@@ -398,7 +397,6 @@ module Expand =
             let result = helper 0 0 [] |> List.rev
 
             segmentPointersByLeftMatrixRows.Free processor
-            rightMatrixRowsNNZ.Free processor
 
             result
 
@@ -429,6 +427,8 @@ module Expand =
                 getSegmentPointers processor leftMatrix.Columns rightMatrixRowsNNZ
 
             if length < maxAllocSize then
+                segmentLengths.Free processor
+
                 runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
             else
                 let result =
@@ -440,6 +440,9 @@ module Expand =
                         segmentLengths
                         rightMatrixRowsNNZ
                         rightMatrix
+
+                rightMatrixRowsNNZ.Free processor
+                segmentLengths.Free processor
 
                 match result with
                 | _ :: _ ->
