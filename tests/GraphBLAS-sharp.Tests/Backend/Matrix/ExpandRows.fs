@@ -27,7 +27,8 @@ let makeTest isZero testFun (array: 'a [,]) =
 
         let actual = clRows.ToHostAndFree processor
 
-        let expected = Matrix.COO.FromArray2D(array, isZero).Rows
+        let expected =
+            Matrix.COO.FromArray2D(array, isZero).Rows
 
         "Result must be the same"
         |> Expect.sequenceEqual actual expected
@@ -41,7 +42,7 @@ let tests =
     [ createTest ((=) 0)
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest ((=) 0.0)
+          createTest ((=) 0.0)
 
       createTest ((=) 0.0f)
       createTest ((=) false) ]

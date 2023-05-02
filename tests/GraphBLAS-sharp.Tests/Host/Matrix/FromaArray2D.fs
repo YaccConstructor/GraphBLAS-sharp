@@ -70,7 +70,7 @@ let makeTest isEqual zero createMatrix (array: 'a [,]) =
         let expectedColumns, expectedRows, expectedValues =
             array
             |> Array2D.mapi (fun rowIndex columnIndex value -> (columnIndex, rowIndex, value))
-            |> Seq.cast<int*int*'a>
+            |> Seq.cast<int * int * 'a>
             |> Seq.filter (fun (_, _, value) -> ((<<) not <| isEqual zero) value)
             |> Seq.toArray
             |> Array.unzip3

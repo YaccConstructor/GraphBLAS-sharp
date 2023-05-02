@@ -137,16 +137,16 @@ module Search =
         /// lowerBound array 9 // return array.Length - 1
         /// </code>
         /// </example>
-        /// <param name="startValue">Position value before search.</param>
-        let lowerBound<'a when 'a: comparison> startValue  =
+        let lowerBound<'a when 'a: comparison> =
             <@ fun lenght sourceItem (keys: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
                 let mutable rightEdge = lenght - 1
 
-                let mutable resultPosition = startValue
+                let mutable resultPosition = 0
 
-                if sourceItem >= keys.[lenght - 1] then lenght - 1
+                if sourceItem >= keys.[lenght - 1] then
+                    lenght - 1
                 else
                     while leftEdge <= rightEdge do
                         let currentPosition = (leftEdge + rightEdge) / 2
@@ -154,6 +154,32 @@ module Search =
 
                         if sourceItem < currentKey then
                             resultPosition <- currentPosition
+
+                            rightEdge <- currentPosition - 1
+                        else
+                            leftEdge <- currentPosition + 1
+
+                    resultPosition @>
+
+        let lowerBoundAndValue<'a when 'a: comparison> =
+            let defaultValue = Unchecked.defaultof<'a>
+
+            <@ fun lenght sourceItem (keys: ClArray<'a>) ->
+
+                let mutable leftEdge = 0
+                let mutable rightEdge = lenght - 1
+
+                let mutable resultPosition = 0, defaultValue
+
+                if sourceItem >= keys.[lenght - 1] then
+                    (lenght - 1), keys.[lenght - 1]
+                else
+                    while leftEdge <= rightEdge do
+                        let currentPosition = (leftEdge + rightEdge) / 2
+                        let currentKey = keys.[currentPosition]
+
+                        if sourceItem < currentKey then
+                            resultPosition <- currentPosition, currentKey
 
                             rightEdge <- currentPosition - 1
                         else

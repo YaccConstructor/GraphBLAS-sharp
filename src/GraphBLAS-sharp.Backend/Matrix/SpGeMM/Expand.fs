@@ -244,7 +244,8 @@ module Expand =
 
     let runCOO opAdd opMul (clContext: ClContext) workGroupSize =
 
-        let getSegmentPointers = getSegmentPointers clContext workGroupSize
+        let getSegmentPointers =
+            getSegmentPointers clContext workGroupSize
 
         let expand = expand clContext workGroupSize
 
@@ -279,38 +280,42 @@ module Expand =
                 rows.Free processor
 
                 mulResult
-                |> Option.bind (fun (resultValues, resultColumns, resultRows) ->
-                    // sort
-                    let sortedValues, sortedColumns, sortedRows =
-                        sort processor resultValues resultColumns resultRows
+                |> Option.bind
+                    (fun (resultValues, resultColumns, resultRows) ->
+                        // sort
+                        let sortedValues, sortedColumns, sortedRows =
+                            sort processor resultValues resultColumns resultRows
 
-                    resultValues.Free processor
-                    resultColumns.Free processor
-                    resultRows.Free processor
+                        resultValues.Free processor
+                        resultColumns.Free processor
+                        resultRows.Free processor
 
-                    // addition
-                    let reduceResult =
-                        reduce processor allocationMode sortedValues sortedColumns sortedRows
+                        // addition
+                        let reduceResult =
+                            reduce processor allocationMode sortedValues sortedColumns sortedRows
 
-                    reduceResult
-                    |> Option.map (fun (reducedValues, reducedColumns, reducedRows) ->
+                        reduceResult
+                        |> Option.map
+                            (fun (reducedValues, reducedColumns, reducedRows) ->
 
-                        sortedValues.Free processor
-                        sortedColumns.Free processor
-                        sortedRows.Free processor
+                                sortedValues.Free processor
+                                sortedColumns.Free processor
+                                sortedRows.Free processor
 
-                        reducedValues, reducedColumns, reducedRows))
+                                reducedValues, reducedColumns, reducedRows))
 
     let runOneStep opAdd opMul (clContext: ClContext) workGroupSize =
 
-        let runCOO = runCOO opAdd opMul clContext workGroupSize
+        let runCOO =
+            runCOO opAdd opMul clContext workGroupSize
 
         let expandRowPointers =
             CSR.Matrix.expandRowPointers clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.CSR<'a>) rightMatrixRowsNNZ (rightMatrix: ClMatrix.CSR<'b>) ->
 
-            let rows = expandRowPointers processor DeviceOnly leftMatrix
+            let rows =
+                expandRowPointers processor DeviceOnly leftMatrix
 
             let leftMatrixCOO =
                 { Context = clContext
@@ -326,74 +331,76 @@ module Expand =
             rows.Free processor
 
             result
-            |> Option.map ( fun (values, columns, rows) ->
-                { Context = clContext
-                  RowCount = leftMatrix.RowCount
-                  ColumnCount = rightMatrix.ColumnCount
-                  Rows = rows
-                  Columns = columns
-                  Values = values })
+            |> Option.map
+                (fun (values, columns, rows) ->
+                    { Context = clContext
+                      RowCount = leftMatrix.RowCount
+                      ColumnCount = rightMatrix.ColumnCount
+                      Rows = rows
+                      Columns = columns
+                      Values = values })
 
     let runManySteps opAdd opMul (clContext: ClContext) workGroupSize =
 
-        let gather =
-            Gather.run clContext workGroupSize
+        let gather = Gather.run clContext workGroupSize
 
-        let upperBound = ClArray.upperBound<int> clContext workGroupSize
+        let upperBound =
+            ClArray.upperBoundAndValue clContext workGroupSize
 
-        let subMatrix = CSR.Matrix.subRows clContext workGroupSize
+        let subMatrix =
+            CSR.Matrix.subRows clContext workGroupSize
 
-        let runCOO = runCOO opAdd opMul clContext workGroupSize
+        let runCOO =
+            runCOO opAdd opMul clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode maxAllocSize (leftMatrix: ClMatrix.CSR<'a>) segmentLengths rightMatrixRowsNNZ (rightMatrix: ClMatrix.CSR<'b>) ->
             // extract segment lengths by left matrix rows pointers
-                let segmentPointersByLeftMatrixRows =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrix.RowPointers.Length)
+            let segmentPointersByLeftMatrixRows =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrix.RowPointers.Length)
 
-                gather processor leftMatrix.RowPointers segmentLengths segmentPointersByLeftMatrixRows
+            gather processor leftMatrix.RowPointers segmentLengths segmentPointersByLeftMatrixRows
 
-                // curring
-                let upperBound = upperBound processor segmentPointersByLeftMatrixRows
-                let subMatrix = subMatrix processor DeviceOnly
-                let runCOO = runCOO processor allocationMode rightMatrixRowsNNZ rightMatrix
+            // curring
+            let upperBound =
+                upperBound processor segmentPointersByLeftMatrixRows
 
-                let rec helper beginRow workOffset previousResult =
-                    if beginRow < leftMatrix.RowCount then
-                        let currentBound =
-                            clContext.CreateClCell(workOffset + maxAllocSize: int)
+            let subMatrix = subMatrix processor DeviceOnly
 
-                        // find largest row that fit into maxAllocSize
-                        let endRow = (upperBound currentBound).ToHostAndFree processor
+            let runCOO =
+                runCOO processor allocationMode rightMatrixRowsNNZ rightMatrix
 
-                        // TODO(handle largest rows)
-                        // (we can split row, multiply and merge them but merge path needed)
-                        if endRow = beginRow then
-                            let segments = segmentPointersByLeftMatrixRows.ToHost processor
-                            printfn "seg pointers: %A" <| segments.[beginRow + 1]
+            let rec helper beginRow workOffset previousResult =
+                if beginRow < leftMatrix.RowCount then
+                    let currentBound =
+                        clContext.CreateClCell(workOffset + maxAllocSize: int)
 
-                            failwith "It is impossible to multiply such a long row"
+                    // find largest row that fit into maxAllocSize
+                    let endRow, value =
+                        (upperBound currentBound).ToHostAndFree processor
 
-                        // extract matrix
-                        let subMatrix = subMatrix beginRow (endRow - beginRow) leftMatrix
-                        // compute sub result
-                        let result = runCOO subMatrix
+                    // TODO(handle largest rows)
+                    // (we can split row, multiply and merge them but merge path needed)
+                    if endRow = beginRow then
+                        failwith "It is impossible to multiply such a long row"
 
-                        let workOffset = workOffset + (endRow - beginRow)
+                    // extract matrix TODO(Transfer overhead)
+                    let subMatrix =
+                        subMatrix beginRow (endRow - beginRow) leftMatrix
+                    // compute sub result
+                    let result = runCOO subMatrix
 
-                        match result with
-                        | Some result ->
-                            helper endRow workOffset <| result :: previousResult
-                        | None ->
-                            helper endRow workOffset previousResult
-                    else
-                        previousResult
+                    match result with
+                    | Some result -> helper endRow value <| result :: previousResult
+                    | None -> helper endRow value previousResult
+                else
+                    previousResult
 
-                let result = helper 0 0 [] |> List.rev
+            let result = helper 0 0 [] |> List.rev
 
-                segmentPointersByLeftMatrixRows.Free processor
-                rightMatrixRowsNNZ.Free processor
+            segmentPointersByLeftMatrixRows.Free processor
+            rightMatrixRowsNNZ.Free processor
 
-                result
+            result
 
     let run opAdd opMul (clContext: ClContext) workGroupSize =
 
@@ -403,13 +410,15 @@ module Expand =
         let getSegmentPointers =
             getSegmentPointers clContext workGroupSize
 
-        let runOneStep = runOneStep opAdd opMul clContext workGroupSize
+        let runOneStep =
+            runOneStep opAdd opMul clContext workGroupSize
 
         let concat = ClArray.concat clContext workGroupSize
 
         let concatData = ClArray.concat clContext workGroupSize
 
-        let runManySteps = runManySteps opAdd opMul clContext workGroupSize
+        let runManySteps =
+            runManySteps opAdd opMul clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode maxAllocSize (leftMatrix: ClMatrix.CSR<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
@@ -423,22 +432,36 @@ module Expand =
                 runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
             else
                 let result =
-                    runManySteps processor allocationMode maxAllocSize leftMatrix segmentLengths rightMatrixRowsNNZ rightMatrix
+                    runManySteps
+                        processor
+                        allocationMode
+                        maxAllocSize
+                        leftMatrix
+                        segmentLengths
+                        rightMatrixRowsNNZ
+                        rightMatrix
 
                 match result with
                 | _ :: _ ->
-                    let valuesList, columnsList, rowsList =
-                        result
-                        |> List.unzip3
+                    let valuesList, columnsList, rowsList = result |> List.unzip3
 
-                    let values = concatData processor allocationMode valuesList
-                    let columns = concat processor allocationMode columnsList
+                    let values =
+                        concatData processor allocationMode valuesList
+
+                    let columns =
+                        concat processor allocationMode columnsList
+
                     let rows = concat processor allocationMode rowsList
 
                     // release resources
-                    valuesList |> List.iter (fun array -> array.Free processor)
-                    columnsList |> List.iter (fun array -> array.Free processor)
-                    rowsList |> List.iter (fun array -> array.Free processor)
+                    valuesList
+                    |> List.iter (fun array -> array.Free processor)
+
+                    columnsList
+                    |> List.iter (fun array -> array.Free processor)
+
+                    rowsList
+                    |> List.iter (fun array -> array.Free processor)
 
                     { Context = clContext
                       RowCount = leftMatrix.RowCount
@@ -448,4 +471,3 @@ module Expand =
                       Values = values }
                     |> Some
                 | _ -> None
-

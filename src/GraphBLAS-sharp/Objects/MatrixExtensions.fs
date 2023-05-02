@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 module MatrixExtensions =
     // Matrix.Free
-    type ClMatrix.COO<'a when 'a : struct> with
+    type ClMatrix.COO<'a when 'a: struct> with
         member this.Free(q: MailboxProcessor<_>) =
             this.Columns.Free q
             this.Values.Free q
@@ -27,7 +27,7 @@ module MatrixExtensions =
 
             result
 
-    type ClMatrix.CSR<'a when 'a : struct> with
+    type ClMatrix.CSR<'a when 'a: struct> with
         member this.Free(q: MailboxProcessor<_>) =
             this.Values.Free q
             this.Columns.Free q
@@ -46,7 +46,7 @@ module MatrixExtensions =
 
             result
 
-    type ClMatrix.CSC<'a when 'a : struct> with
+    type ClMatrix.CSC<'a when 'a: struct> with
         member this.Free(q: MailboxProcessor<_>) =
             this.Values.Free q
             this.Rows.Free q
@@ -65,10 +65,10 @@ module MatrixExtensions =
 
             result
 
-    type ClMatrix.LIL<'a when 'a : struct> with
+    type ClMatrix.LIL<'a when 'a: struct> with
         member this.Free(q: MailboxProcessor<_>) =
-              this.Rows
-              |> List.iter (Option.iter (fun row -> row.Dispose q))
+            this.Rows
+            |> List.iter (Option.iter (fun row -> row.Dispose q))
 
         member this.ToHost(q: MailboxProcessor<_>) =
             { RowCount = this.RowCount

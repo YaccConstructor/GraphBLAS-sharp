@@ -36,7 +36,7 @@ let makeTest testFun (array: 'a [], value: 'a) =
             for i in 0 .. array.Length - 1 do
                 let currentValue = array.[i]
 
-                if value < currentValue  then
+                if value < currentValue then
                     expected <- i
 
             array.Length - expected - 1
@@ -44,7 +44,7 @@ let makeTest testFun (array: 'a [], value: 'a) =
         "Results must be the same"
         |> Expect.equal actual expected
 
-let createTest<'a when 'a : equality and 'a : comparison> =
+let createTest<'a when 'a: equality and 'a: comparison> =
     ClArray.upperBound<'a> context Utils.defaultWorkGroupSize
     |> makeTest
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -53,7 +53,7 @@ let tests =
     [ createTest<int>
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float>
+          createTest<float>
 
       createTest<float32>
       createTest<bool> ]

@@ -21,19 +21,24 @@ let context = Context.defaultContext.ClContext
 let processor = Context.defaultContext.Queue
 
 let config =
-    { Utils.defaultConfig with arbitrary = [ typeof<Generators.PairOfSparseMatricesWithCompatibleSizes> ] }
+    { Utils.defaultConfig with
+          arbitrary = [ typeof<Generators.PairOfSparseMatricesWithCompatibleSizes> ] }
 
 let getSegmentsPointers (leftMatrixColumns: int []) (rightRowsPointers: int []) =
     Array.map
-        (fun item -> rightRowsPointers.[item + 1] - rightRowsPointers.[item])
+        (fun item ->
+            rightRowsPointers.[item + 1]
+            - rightRowsPointers.[item])
         leftMatrixColumns
     |> HostPrimitives.prefixSumExclude 0 (+)
 
 let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
-    let leftMatrix = Matrix.CSR.FromArray2D(leftArray, isZero)
+    let leftMatrix =
+        Matrix.CSR.FromArray2D(leftArray, isZero)
 
-    let rightMatrix = Matrix.CSR.FromArray2D(rightArray, isZero)
+    let rightMatrix =
+        Matrix.CSR.FromArray2D(rightArray, isZero)
 
     if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
@@ -107,9 +112,11 @@ let expand length segmentPointers (leftMatrix: Matrix.COO<'a>) (rightMatrix: Mat
 // Expand tests (debug only)
 let makeExpandTest isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
-    let leftMatrix = Matrix.COO.FromArray2D(leftArray, isEqual zero)
+    let leftMatrix =
+        Matrix.COO.FromArray2D(leftArray, isEqual zero)
 
-    let rightMatrix = Matrix.CSR.FromArray2D(rightArray, isEqual zero)
+    let rightMatrix =
+        Matrix.CSR.FromArray2D(rightArray, isEqual zero)
 
     if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
@@ -174,6 +181,8 @@ let expandTests =
 
 let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
+    printfn "run test"
+
     let leftMatrix =
         Utils.createMatrixFromArray2D CSR leftArray (isEqual zero)
 
@@ -205,7 +214,11 @@ let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightAr
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
     testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
     |> makeGeneralTest zero isEqual opAdd opMul
-    |> testPropertyWithConfig { config with endSize = 1000; maxTest = 100 } $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig
+        { config with
+              endSize = 10000
+              maxTest = 100 }
+        $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand

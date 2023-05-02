@@ -228,7 +228,7 @@ module Generators =
             |> genericSparseGenerator false Arb.generate<bool>
             |> Arb.fromGen
 
-    type PairOfSparseMatricesWithCompatibleSizes() = // TODO to module Matrix
+    type PairOfSparseMatricesWithCompatibleSizes() =
         static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
             gen {
                 let! firstCount, secondCount, thirdCount = dimension3DGenerator
@@ -1221,62 +1221,62 @@ module Generators =
             |> Arb.fromGen
 
     type UpperBound() =
-            static let arrayAndChunkPosition (valuesGenerator: Gen<'a>) =
-                gen {
-                    let! size = Gen.sized <| fun size -> Gen.choose (1, size + 1)
+        static let arrayAndChunkPosition (valuesGenerator: Gen<'a>) =
+            gen {
+                let! size = Gen.sized <| fun size -> Gen.choose (1, size + 1)
 
-                    let! array = Gen.arrayOfLength size valuesGenerator
+                let! array = Gen.arrayOfLength size valuesGenerator
 
-                    let! valueIndex = Gen.choose (0, array.Length - 1)
+                let! valueIndex = Gen.choose (0, array.Length - 1)
 
-                    let value = array.[valueIndex]
+                let value = array.[valueIndex]
 
-                    return (array, value)
-                }
+                return (array, value)
+            }
 
-            static member IntType() =
-                arrayAndChunkPosition <| Arb.generate<int>
-                |> Arb.fromGen
+        static member IntType() =
+            arrayAndChunkPosition <| Arb.generate<int>
+            |> Arb.fromGen
 
-            static member FloatType() =
-                arrayAndChunkPosition
-                <| (Arb.Default.NormalFloat()
-                    |> Arb.toGen
-                    |> Gen.map float)
-                |> Arb.fromGen
+        static member FloatType() =
+            arrayAndChunkPosition
+            <| (Arb.Default.NormalFloat()
+                |> Arb.toGen
+                |> Gen.map float)
+            |> Arb.fromGen
 
-            static member Float32Type() =
-                arrayAndChunkPosition
-                <| (normalFloat32Generator <| System.Random())
-                |> Arb.fromGen
+        static member Float32Type() =
+            arrayAndChunkPosition
+            <| (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
 
-            static member SByteType() =
-                arrayAndChunkPosition <| Arb.generate<sbyte>
-                |> Arb.fromGen
+        static member SByteType() =
+            arrayAndChunkPosition <| Arb.generate<sbyte>
+            |> Arb.fromGen
 
-            static member ByteType() =
-                arrayAndChunkPosition <| Arb.generate<byte>
-                |> Arb.fromGen
+        static member ByteType() =
+            arrayAndChunkPosition <| Arb.generate<byte>
+            |> Arb.fromGen
 
-            static member Int16Type() =
-                arrayAndChunkPosition <| Arb.generate<int16>
-                |> Arb.fromGen
+        static member Int16Type() =
+            arrayAndChunkPosition <| Arb.generate<int16>
+            |> Arb.fromGen
 
-            static member UInt16Type() =
-                arrayAndChunkPosition <| Arb.generate<uint16>
-                |> Arb.fromGen
+        static member UInt16Type() =
+            arrayAndChunkPosition <| Arb.generate<uint16>
+            |> Arb.fromGen
 
-            static member Int32Type() =
-                arrayAndChunkPosition <| Arb.generate<int32>
-                |> Arb.fromGen
+        static member Int32Type() =
+            arrayAndChunkPosition <| Arb.generate<int32>
+            |> Arb.fromGen
 
-            static member UInt32Type() =
-                arrayAndChunkPosition <| Arb.generate<uint32>
-                |> Arb.fromGen
+        static member UInt32Type() =
+            arrayAndChunkPosition <| Arb.generate<uint32>
+            |> Arb.fromGen
 
-            static member BoolType() =
-                arrayAndChunkPosition <| Arb.generate<bool>
-                |> Arb.fromGen
+        static member BoolType() =
+            arrayAndChunkPosition <| Arb.generate<bool>
+            |> Arb.fromGen
 
     module Matrix =
         type Sub() =
