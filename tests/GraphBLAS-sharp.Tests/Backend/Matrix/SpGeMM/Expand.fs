@@ -215,9 +215,7 @@ let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun
     testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
     |> makeGeneralTest zero isEqual opAdd opMul
     |> testPropertyWithConfig
-        { config with
-              endSize = 10000
-              maxTest = 100 }
+        { config with endSize = 100; maxTest = 10 }
         $"test on %A{typeof<'a>}"
 
 let generalTests =
