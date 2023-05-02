@@ -37,7 +37,7 @@ module Generators =
 
     let genericSparseGenerator zero valuesGen handler =
         let maxSparsity = 100
-        let sparsityGen = Gen.choose (0, maxSparsity)
+        let sparsityGen = Gen.choose (1, 10)
 
         let genWithSparsity sparseValuesGenProvider =
             gen {
@@ -54,8 +54,8 @@ module Generators =
 
         genWithSparsity
         <| fun sparsity ->
-            [ (maxSparsity - sparsity, valuesGen)
-              (sparsity, Gen.constant zero) ]
+            [ (sparsity, valuesGen)
+              (maxSparsity - sparsity, Gen.constant zero) ]
             |> Gen.frequency
             |> handler
 
@@ -180,6 +180,66 @@ module Generators =
                 let! matrixB =
                     valuesGenerator
                     |> Gen.array2DOfDim (nRows, nColumns)
+
+                return (matrixA, matrixB)
+            }
+
+        static member IntType() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0 Arb.generate<int>
+            |> Arb.fromGen
+
+        static member FloatType() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator
+                0.
+                (Arb.Default.NormalFloat()
+                 |> Arb.toGen
+                 |> Gen.map float)
+            |> Arb.fromGen
+
+        static member Float32Type() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0.0f (normalFloat32Generator <| System.Random())
+            |> Arb.fromGen
+
+        static member SByteType() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0y Arb.generate<sbyte>
+            |> Arb.fromGen
+
+        static member ByteType() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0uy Arb.generate<byte>
+            |> Arb.fromGen
+
+        static member Int16Type() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0s Arb.generate<int16>
+            |> Arb.fromGen
+
+        static member UInt16Type() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator 0us Arb.generate<uint16>
+            |> Arb.fromGen
+
+        static member BoolType() =
+            pairOfMatricesOfEqualSizeGenerator
+            |> genericSparseGenerator false Arb.generate<bool>
+            |> Arb.fromGen
+
+    type PairOfSparseMatricesWithCompatibleSizes() = // TODO to module Matrix
+        static let pairOfMatricesOfEqualSizeGenerator (valuesGenerator: Gen<'a>) =
+            gen {
+                let! firstCount, secondCount, thirdCount = dimension3DGenerator
+
+                let! matrixA =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (firstCount, secondCount)
+
+                let! matrixB =
+                    valuesGenerator
+                    |> Gen.array2DOfDim (secondCount, thirdCount)
 
                 return (matrixA, matrixB)
             }
