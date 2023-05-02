@@ -111,6 +111,8 @@ module Expand =
 
         fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: ClArray<int>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
 
+            assert (lengths < clContext.MaxMemAllocSize)
+
             // Compute left matrix positions
             let leftMatrixPositions = zeroCreate processor DeviceOnly lengths
 
@@ -456,6 +458,7 @@ module Expand =
 
                     let rows = concat processor allocationMode rowsList
 
+                    // TODO(overhead: compute result length 3 time)
                     // release resources
                     valuesList
                     |> List.iter (fun array -> array.Free processor)
