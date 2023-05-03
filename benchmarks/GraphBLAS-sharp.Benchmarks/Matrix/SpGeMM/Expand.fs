@@ -30,7 +30,7 @@ type Benchmarks<'elem when 'elem : struct>(
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
 
-    member val ResultMatrix = Unchecked.defaultof<ClMatrix<'elem>> with get, set
+    member val ResultMatrix = Unchecked.defaultof<ClMatrix.COO<'elem> option> with get, set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -85,7 +85,9 @@ type Benchmarks<'elem when 'elem : struct>(
         secondMatrix.Dispose this.Processor
 
     member this.ClearResult() =
-        this.ResultMatrix.Dispose this.Processor
+        match this.ResultMatrix with
+        | Some matrix -> matrix.Dispose this.Processor
+        | None -> ()
 
     member this.ReadMatrices() =
         firstMatrixHost <- this.ReadMatrix this.InputMatrixReader
@@ -134,14 +136,14 @@ module WithoutTransfer =
         override this.GlobalCleanup () =
             this.ClearInputMatrices()
 
-    // type Float32() =
-    //
-    //     inherit Benchmark<float32>(
-    //         Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
-    //         float32,
-    //         (fun _ -> Utils.nextSingle (System.Random())),
-    //         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
-    //         )
-    //
-    //     static member InputMatrixProvider =
-    //         Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"
+    type Float32() =
+
+        inherit Benchmark<float32>(
+            Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+            float32,
+            (fun _ -> Utils.nextSingle (System.Random())),
+            (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
+            )
+
+        static member InputMatrixProvider =
+            Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"
