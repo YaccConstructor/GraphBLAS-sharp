@@ -48,3 +48,4 @@ module ClContext =
             Cl
                 .GetDeviceInfo(this.ClDevice.Device, OpenCL.Net.DeviceInfo.MaxMemAllocSize, error)
                 .CastTo<int>()
+            * 1<Byte>

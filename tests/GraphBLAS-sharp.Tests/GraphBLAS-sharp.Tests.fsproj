@@ -29,7 +29,7 @@
         <Compile Include="Backend/Common/ClArray/Pairwise.fs" />
         <Compile Include="Backend/Common/ClArray/RemoveDuplicates.fs" />
         <Compile Include="Backend/Common/ClArray/Replicate.fs" />
-        <Compile Include="Backend\Common\ClArray\UpperBound.fs" />
+        <Compile Include="Backend/Common/ClArray/UpperBound.fs" />
         <Compile Include="Backend/Common/Gather.fs" />
         <Compile Include="Backend/Common/Reduce/Reduce.fs" />
         <Compile Include="Backend/Common/Reduce/ReduceByKey.fs" />
@@ -49,8 +49,8 @@
         <Compile Include="Backend/Matrix/SpGeMM/Masked.fs" />
         <Compile Include="Backend/Matrix/Transpose.fs" />
         <Compile Include="Backend/Matrix/Merge.fs" />
-        <Compile Include="Backend\Matrix\ExpandRows.fs" />
-        <Compile Include="Backend\Matrix\SubRows.fs" />
+        <Compile Include="Backend/Matrix/ExpandRows.fs" />
+        <Compile Include="Backend/Matrix/SubRows.fs" />
         <Compile Include="Backend/Vector/AssignByMask.fs" />
         <Compile Include="Backend/Vector/Convert.fs" />
         <Compile Include="Backend/Vector/Copy.fs" />

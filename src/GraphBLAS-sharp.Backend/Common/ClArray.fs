@@ -613,9 +613,6 @@ module ClArray =
                 sourceArrays
                 |> Seq.sumBy (fun array -> array.Length)
 
-            if resultLength >= clContext.MaxMemAllocSize then
-                failwith "It is impossible to allocate more than MaxAllocSize"
-
             let result =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
 

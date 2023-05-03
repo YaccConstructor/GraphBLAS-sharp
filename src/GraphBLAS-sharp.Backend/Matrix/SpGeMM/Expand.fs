@@ -109,10 +109,7 @@ module Expand =
 
         let rightMatrixGather = Gather.run clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) lengths (segmentsPointers: ClArray<int>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
-
-            assert (lengths < clContext.MaxMemAllocSize)
-
+        fun (processor: MailboxProcessor<_>) (lengths: int) (segmentsPointers: ClArray<int>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
             // Compute left matrix positions
             let leftMatrixPositions = zeroCreate processor DeviceOnly lengths
 
