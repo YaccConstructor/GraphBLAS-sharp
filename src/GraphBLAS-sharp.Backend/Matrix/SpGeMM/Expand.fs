@@ -264,7 +264,7 @@ module Expand =
             if length = 0 then
                 segmentPointers.Free processor
 
-                None
+                length, None
             else
                 // expand
                 let leftMatrixValues, rightMatrixValues, columns, rows =
@@ -281,26 +281,28 @@ module Expand =
                 columns.Free processor
                 rows.Free processor
 
-                mulResult
-                |> Option.bind
-                    (fun (resultValues, resultColumns, resultRows) ->
-                        // sort
-                        let sortedValues, sortedColumns, sortedRows =
-                            sort processor resultValues resultColumns resultRows
+                let result =
+                    mulResult
+                    |> Option.bind
+                        (fun (resultValues, resultColumns, resultRows) ->
+                            // sort
+                            let sortedValues, sortedColumns, sortedRows =
+                                sort processor resultValues resultColumns resultRows
 
-                        resultValues.Free processor
-                        resultColumns.Free processor
-                        resultRows.Free processor
+                            resultValues.Free processor
+                            resultColumns.Free processor
+                            resultRows.Free processor
 
-                        // addition
-                        let reduceResult =
-                            reduce processor allocationMode sortedValues sortedColumns sortedRows
+                            // addition
+                            let reduceResult =
+                                reduce processor allocationMode sortedValues sortedColumns sortedRows
 
-                        sortedValues.Free processor
-                        sortedColumns.Free processor
-                        sortedRows.Free processor
+                            sortedValues.Free processor
+                            sortedColumns.Free processor
+                            sortedRows.Free processor
 
-                        reduceResult)
+                            reduceResult)
+                length, result
 
     let runOneStep opAdd opMul (clContext: ClContext) workGroupSize =
 
@@ -323,7 +325,7 @@ module Expand =
                   Columns = leftMatrix.Columns
                   Values = leftMatrix.Values }
 
-            let result =
+            let _, result =
                 runCOO processor allocationMode rightMatrixRowsNNZ rightMatrix leftMatrixCOO
 
             rows.Free processor
@@ -343,7 +345,7 @@ module Expand =
         let gather = Gather.run clContext workGroupSize
 
         let upperBound =
-            ClArray.upperBoundAndValue clContext workGroupSize
+            ClArray.upperBound clContext workGroupSize
 
         let set = ClArray.set clContext workGroupSize
 
@@ -378,8 +380,12 @@ module Expand =
                         clContext.CreateClCell(workOffset + maxAllocSize: int)
 
                     // find largest row that fit into maxAllocSize
-                    let endRow, value =
+                    let upperBound =
                         (upperBound currentBound).ToHostAndFree processor
+
+                    let endRow = upperBound - 2
+
+                    currentBound.Free processor
 
                     // TODO(handle largest rows)
                     // (we can split row, multiply and merge them but merge path needed)
@@ -389,12 +395,15 @@ module Expand =
                     // extract matrix TODO(Transfer overhead)
                     let subMatrix =
                         subMatrix beginRow (endRow - beginRow) leftMatrix
+
                     // compute sub result
-                    let result = runCOO subMatrix
+                    let length, result = runCOO subMatrix
+                    // increase workOffset according to previous expand
+                    let workOffset = workOffset + length
 
                     match result with
-                    | Some result -> helper endRow value <| result :: previousResult
-                    | None -> helper endRow value previousResult
+                    | Some result -> helper endRow workOffset <| result :: previousResult
+                    | None -> helper endRow workOffset previousResult
                 else
                     previousResult
 
