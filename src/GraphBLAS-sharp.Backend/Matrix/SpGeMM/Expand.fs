@@ -302,6 +302,7 @@ module Expand =
                             sortedRows.Free processor
 
                             reduceResult)
+
                 length, result
 
     let runOneStep opAdd opMul (clContext: ClContext) workGroupSize =
@@ -402,7 +403,9 @@ module Expand =
                     let workOffset = workOffset + length
 
                     match result with
-                    | Some result -> helper endRow workOffset <| result :: previousResult
+                    | Some result ->
+                        helper endRow workOffset
+                        <| result :: previousResult
                     | None -> helper endRow workOffset previousResult
                 else
                     previousResult
