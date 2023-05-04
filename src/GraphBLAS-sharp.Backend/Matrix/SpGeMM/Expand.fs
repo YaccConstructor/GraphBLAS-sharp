@@ -345,18 +345,23 @@ module Expand =
         let upperBound =
             ClArray.upperBoundAndValue clContext workGroupSize
 
+        let set = ClArray.set clContext workGroupSize
+
         let subMatrix =
             CSR.Matrix.subRows clContext workGroupSize
 
         let runCOO =
             runCOO opAdd opMul clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode maxAllocSize (leftMatrix: ClMatrix.CSR<'a>) segmentLengths rightMatrixRowsNNZ (rightMatrix: ClMatrix.CSR<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode maxAllocSize generalLength (leftMatrix: ClMatrix.CSR<'a>) segmentLengths rightMatrixRowsNNZ (rightMatrix: ClMatrix.CSR<'b>) ->
             // extract segment lengths by left matrix rows pointers
             let segmentPointersByLeftMatrixRows =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, leftMatrix.RowPointers.Length)
 
             gather processor leftMatrix.RowPointers segmentLengths segmentPointersByLeftMatrixRows
+
+            // set last element to one step length
+            set processor segmentPointersByLeftMatrixRows (leftMatrix.RowPointers.Length - 1) generalLength
 
             // curring
             let upperBound =
@@ -422,10 +427,10 @@ module Expand =
             let rightMatrixRowsNNZ =
                 getNNZInRows processor DeviceOnly rightMatrix
 
-            let length, segmentLengths =
+            let generalLength, segmentLengths =
                 getSegmentPointers processor leftMatrix.Columns rightMatrixRowsNNZ
 
-            if length < maxAllocSize then
+            if generalLength < maxAllocSize then
                 segmentLengths.Free processor
 
                 runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
@@ -435,6 +440,7 @@ module Expand =
                         processor
                         allocationMode
                         maxAllocSize
+                        generalLength
                         leftMatrix
                         segmentLengths
                         rightMatrixRowsNNZ
