@@ -53,6 +53,7 @@
     <Compile Include="Vector/SpMV.fs" />
     <Compile Include="Vector/SpMSpV.fs" />
     <Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/SSSP.fs" />
     <!--Compile Include="Backend/CSRMatrix/GetTuples.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/SpMSpV.fs" /-->
     <!--Compile Include="Backend/CSRMatrix/Transpose.fs" /-->

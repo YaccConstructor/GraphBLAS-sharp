@@ -16,6 +16,7 @@
         <Compile Include="QuickGraph/CreateGraph.fs" />
         <Compile Include="QuickGraph/Algorithms/ConnectedComponents.fs" />
         <Compile Include="QuickGraph/Algorithms/BFS.fs" />
+        <Compile Include="QuickGraph/Algorithms/SSSP.fs" />
         <Compile Include="Common/Scatter.fs" />
         <Compile Include="Common/ClArray/Choose.fs" />
         <Compile Include="Common/ClArray/Exists.fs" />
@@ -44,6 +45,7 @@
         <Compile Include="Vector/SpMV.fs" />
         <Compile Include="Vector/SpMSpV.fs" />
         <Compile Include="Algorithms/BFS.fs" />
+        <Compile Include="Algorithms/SSSP.fs" />
         <Compile Include="Matrix/Convert.fs" />
         <Compile Include="Matrix/Map2.fs" />
         <Compile Include="Matrix/Mxm.fs" />

@@ -30,3 +30,20 @@ module CreateGraph =
             |> Seq.choose id
 
         edgeList.ToUndirectedGraph()
+
+    let undirectedListFromArray2D (matrix: 'a [,]) zero =
+        let edgeMatrix =
+            Array2D.mapi
+                (fun r c v ->
+                    if v <> zero then
+                        Some(Edge<int>(r, c))
+                    else
+                        None)
+                matrix
+
+        let edgeList =
+            edgeMatrix
+            |> Seq.cast<Edge<'a> option>
+            |> Seq.choose id
+
+        edgeList.ToAdjacencyGraph
