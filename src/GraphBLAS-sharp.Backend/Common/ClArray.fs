@@ -779,8 +779,7 @@ module ClArray =
             if index < 0 || index >= array.Length then
                 failwith "Index out of range"
 
-            let value =
-                clContext.CreateClCell value
+            let value = clContext.CreateClCell value
 
             let kernel = program.GetKernel()
 

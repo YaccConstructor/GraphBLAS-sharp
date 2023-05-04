@@ -11,9 +11,11 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
-let config = { Utils.defaultConfig with arbitrary = [typeof<Generators.ClArray.Set>]}
+let config =
+    { Utils.defaultConfig with
+          arbitrary = [ typeof<Generators.ClArray.Set> ] }
 
-let makeTest<'a when 'a : equality> testFun (array: 'a [], position, value: 'a) =
+let makeTest<'a when 'a: equality> testFun (array: 'a [], position, value: 'a) =
 
     if array.Length > 0 then
 
@@ -27,7 +29,7 @@ let makeTest<'a when 'a : equality> testFun (array: 'a [], position, value: 'a) 
         "Results must be the same"
         |> Utils.compareArrays (=) actual array
 
-let createTest<'a when 'a : equality> =
+let createTest<'a when 'a: equality> =
     ClArray.set context Utils.defaultWorkGroupSize
     |> makeTest<'a>
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -36,9 +38,8 @@ let tests =
     [ createTest<int>
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float>
+          createTest<float>
 
       createTest<float32>
       createTest<bool> ]
     |> testList "Set"
-

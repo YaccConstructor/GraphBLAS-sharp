@@ -37,7 +37,7 @@ module Generators =
 
     let genericSparseGenerator zero valuesGen handler =
         let maxSparsity = 100
-        let sparsityGen = Gen.choose (1, 10)
+        let sparsityGen = Gen.choose (1, maxSparsity)
 
         let genWithSparsity sparseValuesGenProvider =
             gen {

@@ -12,7 +12,9 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
-let config = { Utils.defaultConfig with arbitrary = [ typeof<Generators.ClArray.Item> ] }
+let config =
+    { Utils.defaultConfig with
+          arbitrary = [ typeof<Generators.ClArray.Item> ] }
 
 let makeTest<'a when 'a: equality> testFun (array: 'a [], position) =
 
@@ -39,7 +41,7 @@ let tests =
     [ createTest<int>
 
       if Utils.isFloat64Available context.ClDevice then
-        createTest<float>
+          createTest<float>
 
       createTest<float32>
       createTest<bool> ]
