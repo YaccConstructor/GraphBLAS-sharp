@@ -1278,6 +1278,121 @@ module Generators =
             arrayAndChunkPosition <| Arb.generate<bool>
             |> Arb.fromGen
 
+    module ClArray =
+        type Set() =
+            static let arrayAndChunkPosition (valuesGenerator: Gen<'a>) =
+                gen {
+                    let! size = Gen.sized <| fun size -> Gen.choose (1, size + 1)
+
+                    let! array = Gen.arrayOfLength size valuesGenerator
+
+                    let! position = Gen.choose (0, array.Length - 1)
+
+                    let! value = valuesGenerator
+
+                    return (array, position, value)
+                }
+
+            static member IntType() =
+                arrayAndChunkPosition <| Arb.generate<int>
+                |> Arb.fromGen
+
+            static member FloatType() =
+                arrayAndChunkPosition
+                <| (Arb.Default.NormalFloat()
+                    |> Arb.toGen
+                    |> Gen.map float)
+                |> Arb.fromGen
+
+            static member Float32Type() =
+                arrayAndChunkPosition
+                <| (normalFloat32Generator <| System.Random())
+                |> Arb.fromGen
+
+            static member SByteType() =
+                arrayAndChunkPosition <| Arb.generate<sbyte>
+                |> Arb.fromGen
+
+            static member ByteType() =
+                arrayAndChunkPosition <| Arb.generate<byte>
+                |> Arb.fromGen
+
+            static member Int16Type() =
+                arrayAndChunkPosition <| Arb.generate<int16>
+                |> Arb.fromGen
+
+            static member UInt16Type() =
+                arrayAndChunkPosition <| Arb.generate<uint16>
+                |> Arb.fromGen
+
+            static member Int32Type() =
+                arrayAndChunkPosition <| Arb.generate<int32>
+                |> Arb.fromGen
+
+            static member UInt32Type() =
+                arrayAndChunkPosition <| Arb.generate<uint32>
+                |> Arb.fromGen
+
+            static member BoolType() =
+                arrayAndChunkPosition <| Arb.generate<bool>
+                |> Arb.fromGen
+
+        type Item() =
+            static let arrayAndChunkPosition (valuesGenerator: Gen<'a>) =
+                gen {
+                    let! size = Gen.sized <| fun size -> Gen.choose (1, size + 1)
+
+                    let! array = Gen.arrayOfLength size valuesGenerator
+
+                    let! position = Gen.choose (0, array.Length - 1)
+
+                    return (array, position)
+                }
+
+            static member IntType() =
+                arrayAndChunkPosition <| Arb.generate<int>
+                |> Arb.fromGen
+
+            static member FloatType() =
+                arrayAndChunkPosition
+                <| (Arb.Default.NormalFloat()
+                    |> Arb.toGen
+                    |> Gen.map float)
+                |> Arb.fromGen
+
+            static member Float32Type() =
+                arrayAndChunkPosition
+                <| (normalFloat32Generator <| System.Random())
+                |> Arb.fromGen
+
+            static member SByteType() =
+                arrayAndChunkPosition <| Arb.generate<sbyte>
+                |> Arb.fromGen
+
+            static member ByteType() =
+                arrayAndChunkPosition <| Arb.generate<byte>
+                |> Arb.fromGen
+
+            static member Int16Type() =
+                arrayAndChunkPosition <| Arb.generate<int16>
+                |> Arb.fromGen
+
+            static member UInt16Type() =
+                arrayAndChunkPosition <| Arb.generate<uint16>
+                |> Arb.fromGen
+
+            static member Int32Type() =
+                arrayAndChunkPosition <| Arb.generate<int32>
+                |> Arb.fromGen
+
+            static member UInt32Type() =
+                arrayAndChunkPosition <| Arb.generate<uint32>
+                |> Arb.fromGen
+
+            static member BoolType() =
+                arrayAndChunkPosition <| Arb.generate<bool>
+                |> Arb.fromGen
+
     module Matrix =
         type Sub() =
             static let arrayAndChunkPosition (valuesGenerator: Gen<'a>) =

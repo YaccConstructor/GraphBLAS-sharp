@@ -732,3 +732,59 @@ module ClArray =
 
     let upperBound<'a when 'a: comparison> clContext =
         bound<'a, int> Search.Bin.lowerBound clContext
+
+    let item<'a> (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) index (array: ClArray<'a>) (result: ClCell<'a>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid = 0 then
+                    result.Value <- array.[index] @>
+
+        let program = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (index: int) (array: ClArray<'a>) ->
+
+            if index < 0 || index >= array.Length then
+                failwith "Index out of range"
+
+            let result =
+                clContext.CreateClCell Unchecked.defaultof<'a>
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(1, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange index array result))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            result
+
+    let set<'a> (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) index (array: ClArray<'a>) (value: ClCell<'a>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid = 0 then
+                    array.[index] <- value.Value @>
+
+        let program = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) (index: int) (value: 'a) ->
+
+            if index < 0 || index >= array.Length then
+                failwith "Index out of range"
+
+            let value =
+                clContext.CreateClCell value
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(1, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange index array value))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)

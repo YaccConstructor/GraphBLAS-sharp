@@ -49,7 +49,9 @@ let commonTests =
               Common.ClArray.Concat.tests
               Common.ClArray.Fill.tests
               Common.ClArray.Pairwise.tests
-              Common.ClArray.UpperBound.tests ]
+              Common.ClArray.UpperBound.tests
+              Common.ClArray.Set.tests
+              Common.ClArray.Item.tests ]
 
     let sortTests =
         testList
