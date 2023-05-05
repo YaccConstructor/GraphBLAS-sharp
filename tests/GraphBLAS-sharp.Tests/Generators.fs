@@ -36,7 +36,8 @@ module Generators =
         }
 
     let genericSparseGenerator zero valuesGen handler =
-        let maxSparsity = 100
+        let maxSparsity = 10
+        let upperBound = 100
         let sparsityGen = Gen.choose (1, maxSparsity)
 
         let genWithSparsity sparseValuesGenProvider =
@@ -55,7 +56,7 @@ module Generators =
         genWithSparsity
         <| fun sparsity ->
             [ (sparsity, valuesGen)
-              (maxSparsity - sparsity, Gen.constant zero) ]
+              (upperBound - sparsity, Gen.constant zero) ]
             |> Gen.frequency
             |> handler
 
