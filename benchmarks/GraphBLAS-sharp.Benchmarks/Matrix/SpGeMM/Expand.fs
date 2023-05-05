@@ -30,7 +30,7 @@ type Benchmarks<'elem when 'elem : struct>(
     let mutable firstMatrixHost = Unchecked.defaultof<_>
     let mutable secondMatrixHost = Unchecked.defaultof<_>
 
-    member val ResultMatrix = Unchecked.defaultof<ClMatrix<'elem>> with get, set
+    member val ResultMatrix = Unchecked.defaultof<ClMatrix.COO<'elem> option> with get, set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -85,7 +85,9 @@ type Benchmarks<'elem when 'elem : struct>(
         secondMatrix.Dispose this.Processor
 
     member this.ClearResult() =
-        this.ResultMatrix.Dispose this.Processor
+        match this.ResultMatrix with
+        | Some matrix -> matrix.Dispose this.Processor
+        | None -> ()
 
     member this.ReadMatrices() =
         firstMatrixHost <- this.ReadMatrix this.InputMatrixReader

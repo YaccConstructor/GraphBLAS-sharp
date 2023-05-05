@@ -12,6 +12,8 @@ let matrixTests =
           Matrix.Transpose.tests
           Matrix.RowsLengths.tests
           Matrix.ByRows.tests
+          Matrix.ExpandRows.tests
+          Matrix.SubRows.tests
 
           Matrix.SpGeMM.Expand.generalTests
           Matrix.SpGeMM.Masked.tests ]
@@ -46,7 +48,10 @@ let commonTests =
               Common.ClArray.Blit.tests
               Common.ClArray.Concat.tests
               Common.ClArray.Fill.tests
-              Common.ClArray.Pairwise.tests ]
+              Common.ClArray.Pairwise.tests
+              Common.ClArray.UpperBound.tests
+              Common.ClArray.Set.tests
+              Common.ClArray.Item.tests ]
 
     let sortTests =
         testList

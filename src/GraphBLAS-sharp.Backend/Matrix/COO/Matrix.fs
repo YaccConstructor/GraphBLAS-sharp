@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Matrix =
     let map = Map.run
