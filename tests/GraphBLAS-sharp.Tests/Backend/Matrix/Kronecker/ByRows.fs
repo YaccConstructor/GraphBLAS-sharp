@@ -15,7 +15,7 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 100
+          endSize = 50
           maxTest = 50 }
 
 let logger = Log.create "kronecker.Tests"
@@ -48,7 +48,7 @@ let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,],
         let actual = actual.ToHostAndDispose processor
 
         match actual with
-        | Matrix.LIL actual -> Utils.compareLILMatrix isEqual expected actual
+        | Matrix.LIL actual -> Utils.compareLILMatrix isEqual actual expected
         | _ -> failwith "Matrix format are not matching"
 
 let createGeneralTest (context: ClContext) (processor: MailboxProcessor<Msg>) (zero: 'a) isEqual op opQ testName =

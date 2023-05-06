@@ -2,7 +2,6 @@
 
 open FSharp.Quotations.Evaluator
 open Microsoft.FSharp.Quotations
-open FSharp.Linq.RuntimeHelpers
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
@@ -80,12 +79,15 @@ module Map =
             let map =
                 preparePositions op clContext workGroupSize
 
+            let opOnHost = op |> QuotationEvaluator.Evaluate
+
             let setPositions =
                 Common.setPositionsOption<'c> clContext workGroupSize
 
             let create = create clContext workGroupSize
 
-            let init = init <@ id @> clContext workGroupSize
+            let init =
+                init <@ fun x -> x @> clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (value: 'a option) size ->
                 function
@@ -112,8 +114,7 @@ module Map =
                               Values = resultValues }
                             |> Some)
                 | None ->
-                    <@ (%op) value None @>
-                    |> QuotationEvaluator.Evaluate
+                    opOnHost value None
                     |> Option.bind
                         (fun resultValue ->
                             let resultValues =

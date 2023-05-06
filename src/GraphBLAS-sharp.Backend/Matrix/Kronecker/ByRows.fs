@@ -26,16 +26,17 @@ module ByRows =
                 vectors
                 |> Seq.mapi
                     (fun offset ->
-                        Option.bind
-                            (fun v ->
-                                let offsetClCell =
-                                    offset * v.Size |> clContext.CreateClCell
+                        function
+                        | Some v ->
+                            let offsetClCell =
+                                offset * v.Size |> clContext.CreateClCell
 
-                                let newIndices =
-                                    mapIndices processor allocationMode offsetClCell v.Indices
+                            let newIndices =
+                                mapIndices processor allocationMode offsetClCell v.Indices
 
-                                offsetClCell.Free processor
-                                newIndices |> Some))
+                            offsetClCell.Free processor
+                            newIndices |> Some
+                        | _ -> None)
                 |> Seq.choose id
 
             if Seq.isEmpty vectorIndices then
@@ -43,7 +44,7 @@ module ByRows =
             else
                 let vectorValues =
                     vectors
-                    |> (Seq.choose id)
+                    |> Seq.choose id
                     |> Seq.map (fun vector -> vector.Values)
 
                 let resultIndices =
@@ -62,7 +63,7 @@ module ByRows =
 
                 if element = index then
                     Some mid
-                else if element > index then
+                else if element < index then
                     binSearch (mid + 1) right
                 else
                     binSearch left (mid - 1)
@@ -78,7 +79,7 @@ module ByRows =
         let concat =
             concatOptionalVectors clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode row leftLength rightLength (leftIndicesOnHost: int array) (leftValuesOnHost: 'a array) (rightRow: Sparse<'b> option) ->
+        fun (processor: MailboxProcessor<_>) allocationMode leftLength rightLength (leftIndicesOnHost: int array) (leftValuesOnHost: 'a array) (rightRow: Sparse<'b> option) ->
 
             let zeroVector =
                 lazy (map processor allocationMode None rightLength rightRow)
@@ -99,7 +100,7 @@ module ByRows =
                     { Context = clContext
                       Indices = indices
                       Values = values
-                      Size = rightLength }
+                      Size = rightLength * leftLength }
                     |> Some)
 
     let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
@@ -123,47 +124,38 @@ module ByRows =
             let splitRightMatrix =
                 splitRight processor allocationMode rightMatrix
 
-            let resultRows: Sparse<'c> option list = List.empty
-
-            let leftRowIndices = { 0 .. leftMatrix.RowCount - 1 }
-            let rightRowIndices = { 0 .. rightMatrix.RowCount - 1 }
-
             let resultRows =
-                (resultRows, leftRowIndices, splitLeftMatrix)
-                |||> Seq.fold2
-                         (fun rows leftRowIndex leftRow ->
-                             let leftIndices, leftValues =
-                                 match leftRow.Value with
-                                 | Some row -> (row.Indices.ToHostAndFree processor, row.Values.ToHostAndFree processor)
-                                 | None -> Array.empty, Array.empty
+                splitLeftMatrix
+                |> Seq.fold
+                    (fun rows leftRow ->
+                        let leftIndices, leftValues =
+                            match leftRow.Value with
+                            | Some row -> (row.Indices.ToHostAndFree processor, row.Values.ToHostAndFree processor)
+                            | None -> Array.empty, Array.empty
 
-                             (rows, rightRowIndices, splitRightMatrix)
-                             |||> Seq.fold2
-                                      (fun rows rightRowIndex rightRow ->
-                                          let rightRow = rightRow.Value
-
-                                          let rowIndex =
-                                              leftRowIndex * rightMatrix.RowCount
-                                              + rightRowIndex
-
-                                          [ makeRow
-                                                processor
-                                                allocationMode
-                                                rowIndex
-                                                leftMatrix.ColumnCount
-                                                rightMatrix.ColumnCount
-                                                leftIndices
-                                                leftValues
-                                                rightRow ]
-                                          |> List.append rows))
+                        splitRightMatrix
+                        |> Seq.fold
+                            (fun rows rightRow ->
+                                [ makeRow
+                                      processor
+                                      allocationMode
+                                      leftMatrix.ColumnCount
+                                      rightMatrix.ColumnCount
+                                      leftIndices
+                                      leftValues
+                                      rightRow.Value ]
+                                |> List.append rows)
+                            rows)
+                    List.empty
 
             let nnz =
-                (0, resultRows)
-                ||> List.fold
-                        (fun count ->
-                            function
-                            | Some row -> count + row.Size
-                            | None -> count)
+                resultRows
+                |> List.fold
+                    (fun count ->
+                        function
+                        | Some row -> count + row.Size
+                        | None -> count)
+                    0
 
             { Context = clContext
               RowCount = leftMatrix.RowCount * rightMatrix.RowCount
