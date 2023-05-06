@@ -361,22 +361,22 @@ module internal Kronecker =
 
             let (zeroCounts: int list array) = Array.zeroCreate matrixLeft.RowCount
 
-            (rowsEdges, [| 0 .. matrixLeft.RowCount - 1 |])
-            ||> Array.iter2
-                    (fun edges i ->
-                        zeroCounts.[i] <-
-                            leftMatrixCols.[fst edges..snd edges]
-                            |> Array.toList
-                            |> List.insertAt 0 -1
-                            |> List.insertAt (nnzInRows.[i] + 1) matrixLeft.ColumnCount
-                            |> List.pairwise
-                            |> List.map (fun (fstCol, sndCol) -> sndCol - fstCol - 1))
+            [| 0 .. matrixLeft.RowCount - 1 |]
+            |> Array.iter2
+                (fun edges i ->
+                    zeroCounts.[i] <-
+                        leftMatrixCols.[fst edges..snd edges]
+                        |> Array.toList
+                        |> List.insertAt 0 -1
+                        |> List.insertAt (nnzInRows.[i] + 1) matrixLeft.ColumnCount
+                        |> List.pairwise
+                        |> List.map (fun (fstCol, sndCol) -> sndCol - fstCol - 1))
+                rowsEdges
 
             insertZero queue insert zeroCounts mappedZero matrixRight None
             |> insertNonZero queue map insert rowsEdges matrixRight leftMatrixVals leftMatrixCols
-            |> Option.bind
+            |> Option.map
                 (fun m ->
                     { m with
                           RowCount = matrixLeft.RowCount * matrixRight.RowCount
-                          ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount }
-                    |> Some)
+                          ColumnCount = matrixLeft.ColumnCount * matrixRight.ColumnCount })
