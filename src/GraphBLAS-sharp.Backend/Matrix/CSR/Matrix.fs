@@ -177,6 +177,8 @@ module Matrix =
 
     let map = CSR.Map.run
 
+    let mapWithValueOption = CSR.Map.WithValue.run
+
     let map2 = Map2.run
 
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>

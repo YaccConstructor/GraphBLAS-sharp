@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Sparse.Vector
 
 module ByRows =
@@ -55,23 +56,6 @@ module ByRows =
 
                 (resultIndices, resultValues) |> Some
 
-    let tryFindIndex index (indices: int array) =
-        let rec binSearch left right =
-            if left <= right then
-                let mid = (left + right) / 2
-                let element = indices.[mid]
-
-                if element = index then
-                    Some mid
-                else if element < index then
-                    binSearch (mid + 1) right
-                else
-                    binSearch left (mid - 1)
-            else
-                None
-
-        binSearch 0 (indices.Length - 1)
-
     let makeRow (clContext: ClContext) workGroupSize (op: Expr<'a option -> 'b option -> 'c option>) =
 
         let map = mapWithValue clContext workGroupSize op
@@ -79,41 +63,44 @@ module ByRows =
         let concat =
             concatOptionalVectors clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode leftLength rightLength (leftIndicesOnHost: int array) (leftValuesOnHost: 'a array) (rightRow: Sparse<'b> option) ->
+        fun (processor: MailboxProcessor<_>) allocationMode rightLength (zero: Sparse<'c> option) (leftRow: 'a option array) (rightRow: Sparse<'b> option) ->
 
-            let zeroVector =
-                lazy (map processor allocationMode None rightLength rightRow)
-
-            { 0 .. leftLength - 1 }
-            |> Seq.map
-                (fun i ->
-                    leftIndicesOnHost
-                    |> tryFindIndex i
-                    |> function
-                        | Some index ->
-                            let value = leftValuesOnHost.[index] |> Some
-                            map processor allocationMode value rightLength rightRow
-                        | None -> zeroVector.Value)
+            leftRow
+            |> Array.map
+                (function
+                | Some value -> map processor allocationMode (Some value) rightLength rightRow
+                | _ -> zero)
             |> concat processor allocationMode
-            |> Option.bind
+            |> Option.map
                 (fun (indices, values) ->
                     { Context = clContext
                       Indices = indices
                       Values = values
-                      Size = rightLength * leftLength }
-                    |> Some)
+                      Size = rightLength * leftRow.Length })
 
-    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+    let run<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         workGroupSize
         (op: Expr<'a option -> 'b option -> 'c option>)
         =
+
+        let map =
+            CSR.Matrix.mapWithValueOption clContext op workGroupSize
+
+        let toDense =
+            Sparse.Vector.toDense clContext workGroupSize
+
+        let toCSR =
+            COO.Matrix.toCSRInPlace clContext workGroupSize
 
         let splitLeft =
             CSR.Matrix.byRowsLazy clContext workGroupSize
 
         let splitRight =
             CSR.Matrix.byRowsLazy clContext workGroupSize
+
+        let splitResult =
+            CSR.Matrix.byRows clContext workGroupSize
 
         let makeRow = makeRow clContext workGroupSize op
 
@@ -124,28 +111,41 @@ module ByRows =
             let splitRightMatrix =
                 splitRight processor allocationMode rightMatrix
 
+            let zeroMatrix =
+                rightMatrix
+                |> map processor allocationMode None
+                |> function
+                    | Some m ->
+                        m
+                        |> toCSR processor allocationMode
+                        |> splitResult processor allocationMode
+                    | None -> Seq.replicate rightMatrix.RowCount None
+
             let resultRows =
                 splitLeftMatrix
                 |> Seq.fold
                     (fun rows leftRow ->
-                        let leftIndices, leftValues =
+                        let denseLeftRow =
                             match leftRow.Value with
-                            | Some row -> (row.Indices.ToHostAndFree processor, row.Values.ToHostAndFree processor)
-                            | None -> Array.empty, Array.empty
+                            | Some row ->
+                                let denseRow = toDense processor allocationMode row
+                                row.Dispose processor
+                                denseRow.ToHostAndFree processor
+                            | None -> Array.create leftMatrix.ColumnCount None
 
                         splitRightMatrix
-                        |> Seq.fold
-                            (fun rows rightRow ->
+                        |> Seq.fold2
+                            (fun rows zero rightRow ->
                                 [ makeRow
                                       processor
                                       allocationMode
-                                      leftMatrix.ColumnCount
                                       rightMatrix.ColumnCount
-                                      leftIndices
-                                      leftValues
+                                      zero
+                                      denseLeftRow
                                       rightRow.Value ]
                                 |> List.append rows)
-                            rows)
+                            rows
+                            zeroMatrix)
                     List.empty
 
             let nnz =

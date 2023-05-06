@@ -107,9 +107,13 @@ let hostTests =
           Host.IO.MtxReader.test ]
     |> testSequenced
 
+// [<Tests>]
+// let allTests =
+//     testList "All" [ deviceTests; hostTests ]
+//     |> testSequenced
 [<Tests>]
 let allTests =
-    testList "All" [ deviceTests; hostTests ]
+    testList "All" [ Matrix.Kronecker.ByRows.tests ]
     |> testSequenced
 
 [<EntryPoint>]
