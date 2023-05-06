@@ -4,8 +4,10 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Backend.Quotes
 
-module Common =
+module internal Common =
     ///<param name="clContext">.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
@@ -40,40 +42,3 @@ module Common =
             valuesScatter processor positions allValues resultValues
 
             resultRows, resultColumns, resultValues, resultLength
-
-    let expandRowPointers (clContext: ClContext) workGroupSize =
-
-        let expandRowPointers =
-            <@ fun (ndRange: Range1D) (rowPointers: ClArray<int>) (rowCount: int) (rows: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i < rowCount then
-                    let rowPointer = rowPointers.[i]
-
-                    if rowPointer <> rowPointers.[i + 1] then
-                        rows.[rowPointer] <- i @>
-
-        let program = clContext.Compile expandRowPointers
-
-        let create =
-            ClArray.zeroCreate clContext workGroupSize
-
-        let scan =
-            PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (rowPointers: ClArray<int>) nnz rowCount ->
-
-            let rows = create processor allocationMode nnz
-
-            let kernel = program.GetKernel()
-
-            let ndRange =
-                Range1D.CreateValid(rowCount, workGroupSize)
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowPointers rowCount rows))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-            (scan processor rows 0).Free processor
-
-            rows

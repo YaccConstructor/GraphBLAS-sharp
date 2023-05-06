@@ -162,6 +162,22 @@ module Utils =
         "Row pointers"
         |> compareArrays (=) actual.RowPointers expected.RowPointers
 
+    let compareCOOMatrix isEqual (actual: Matrix.COO<'a>) (expected: Matrix.COO<'a>) =
+        "Column count must be the same"
+        |> Expect.equal actual.ColumnCount expected.ColumnCount
+
+        "Rows count must be the same"
+        |> Expect.equal actual.RowCount expected.RowCount
+
+        "Values must be the same"
+        |> compareArrays isEqual actual.Values expected.Values
+
+        "Column indices must be the same"
+        |> compareArrays (=) actual.Columns expected.Columns
+
+        "Row pointers"
+        |> compareArrays (=) actual.Rows expected.Rows
+
     let listOfUnionCases<'a> =
         FSharpType.GetUnionCases typeof<'a>
         |> Array.map (fun caseInfo -> FSharpValue.MakeUnion(caseInfo, [||]) :?> 'a)

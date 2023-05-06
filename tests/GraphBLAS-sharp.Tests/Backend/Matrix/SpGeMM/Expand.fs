@@ -20,45 +20,42 @@ let context = Context.defaultContext.ClContext
 
 let processor = Context.defaultContext.Queue
 
-processor.Error.Add(fun e -> failwithf "%A" e)
-
 let config =
     { Utils.defaultConfig with
-          arbitrary =
-              [ typeof<Generators.VectorXMatrix>
-                typeof<Generators.PairOfMatricesOfCompatibleSize> ] }
+          arbitrary = [ typeof<Generators.PairOfSparseMatricesWithCompatibleSizes> ] }
 
-let makeTest isZero testFun (leftArray: 'a [], rightArray: 'a [,]) =
+let getSegmentsPointers (leftMatrixColumns: int []) (rightRowsPointers: int []) =
+    Array.map
+        (fun item ->
+            rightRowsPointers.[item + 1]
+            - rightRowsPointers.[item])
+        leftMatrixColumns
+    |> HostPrimitives.prefixSumExclude 0 (+)
 
-    let leftMatrixRow =
-        Vector.Sparse.FromArray(leftArray, isZero)
+let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
+
+    let leftMatrix =
+        Matrix.CSR.FromArray2D(leftArray, isZero)
 
     let rightMatrix =
         Matrix.CSR.FromArray2D(rightArray, isZero)
 
-    if leftMatrixRow.NNZ > 0 && rightMatrix.NNZ > 0 then
+    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
-        // compute expected result
-        let rightMatrixRowsLength =
-            rightMatrix.RowPointers
-            |> Array.pairwise
-            |> Array.map (fun (fst, snd) -> snd - fst)
+        let clLeftMatrix = leftMatrix.ToDevice context
 
-        let expectedPointers, expectedLength =
-            Array.init leftMatrixRow.Indices.Length (fun index -> rightMatrixRowsLength.[leftMatrixRow.Indices.[index]])
-            |> HostPrimitives.prefixSumExclude 0 (+)
-
-        let clLeftMatrixRow = leftMatrixRow.ToDevice context
-
-        let clRightMatrixRowsLength =
-            context.CreateClArray rightMatrixRowsLength
+        let clRightMatrix = rightMatrix.ToDevice context
 
         let actualLength, (clActual: ClArray<int>) =
-            testFun processor clLeftMatrixRow clRightMatrixRowsLength
+            testFun processor clLeftMatrix.Columns clRightMatrix.RowPointers
 
-        clLeftMatrixRow.Dispose processor
+        clLeftMatrix.Dispose processor
+        clRightMatrix.Dispose processor
 
         let actualPointers = clActual.ToHostAndFree processor
+
+        let expectedPointers, expectedLength =
+            getSegmentsPointers leftMatrix.ColumnIndices rightMatrix.RowPointers
 
         "Results lengths must be the same"
         |> Expect.equal actualLength expectedLength
@@ -71,7 +68,6 @@ let createTest<'a when 'a: struct> (isZero: 'a -> bool) =
     |> makeTest isZero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
-// Debug tests
 let getSegmentsTests =
     [ createTest ((=) 0)
 
@@ -83,73 +79,64 @@ let getSegmentsTests =
       createTest ((=) 0uy) ]
     |> testList "get segment pointers"
 
-let expand (leftMatrixRow: Vector.Sparse<'a>) (rightMatrix: Matrix.CSR<'b>) =
-    let rightMatrixRowsLengths =
-        rightMatrix.RowPointers
+let expand length segmentPointers (leftMatrix: Matrix.COO<'a>) (rightMatrix: Matrix.CSR<'b>) =
+    let segmentsLengths =
+        Array.append segmentPointers [| length |]
         |> Array.pairwise
         |> Array.map (fun (fst, snd) -> snd - fst)
 
-    let segmentsLengths =
-        Array.map (fun columnIndex -> rightMatrixRowsLengths.[columnIndex]) leftMatrixRow.Indices
+    let leftMatrixValues, expectedRows =
+        let tripleFst (fst, _, _) = fst
 
-    let leftMatrixValues =
-        Array.map2 Array.create segmentsLengths leftMatrixRow.Values
-        |> Array.concat
+        Array.zip3 segmentsLengths leftMatrix.Values leftMatrix.Rows
+        // select items each segment length not zero
+        |> Array.filter (tripleFst >> ((=) 0) >> not)
+        |> Array.collect (fun (length, value, rowIndex) -> Array.create length (value, rowIndex))
+        |> Array.unzip
 
-    let rightMatrixRowPointers =
-        Array.map (fun index -> rightMatrix.RowPointers.[index]) leftMatrixRow.Indices
+    let rightMatrixValues, expectedColumns =
+        let valuesAndColumns =
+            Array.zip rightMatrix.Values rightMatrix.ColumnIndices
 
-    let rightMatrixValues =
         Array.map2
-            (fun rowPointer segmentLength -> Array.take segmentLength rightMatrix.Values.[rowPointer..])
-            rightMatrixRowPointers
+            (fun column length ->
+                let rowStart = rightMatrix.RowPointers.[column]
+                Array.take length valuesAndColumns.[rowStart..])
+            leftMatrix.Columns
             segmentsLengths
         |> Array.concat
+        |> Array.unzip
 
-    let columns =
-        Array.map2
-            (fun rowPointer segmentLength -> Array.take segmentLength rightMatrix.ColumnIndices.[rowPointer..])
-            rightMatrixRowPointers
-            segmentsLengths
-        |> Array.concat
+    leftMatrixValues, rightMatrixValues, expectedColumns, expectedRows
 
-    leftMatrixValues, rightMatrixValues, columns
+// Expand tests (debug only)
+let makeExpandTest isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
-let makeExpandTest isEqual zero testFun (leftArray: 'a [], rightArray: 'a [,]) =
-
-    let leftMatrixRow =
-        Vector.Sparse.FromArray(leftArray, (isEqual zero))
+    let leftMatrix =
+        Matrix.COO.FromArray2D(leftArray, isEqual zero)
 
     let rightMatrix =
-        Matrix.CSR.FromArray2D(rightArray, (isEqual zero))
+        Matrix.CSR.FromArray2D(rightArray, isEqual zero)
 
-    if leftMatrixRow.NNZ > 0 && rightMatrix.NNZ > 0 then
+    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
 
-        let clPointers, lenght =
-            rightMatrix.RowPointers
-            |> Array.pairwise
-            |> Array.map (fun (fst, snd) -> snd - fst)
-            |> fun rightMatrixRowsLengths ->
-                Array.init
-                    leftMatrixRow.Indices.Length
-                    (fun index -> rightMatrixRowsLengths.[leftMatrixRow.Indices.[index]])
-            |> HostPrimitives.prefixSumExclude 0 (+)
-            |> fun (pointers, length) -> context.CreateClArray(pointers), length
+        let segmentPointers, length =
+            getSegmentsPointers leftMatrix.Columns rightMatrix.RowPointers
 
-        let clLeftMatrixRow = leftMatrixRow.ToDevice context
-        let clRightMatrix = rightMatrix.ToDevice context
+        if length > 0 then
+            let clLeftMatrix = leftMatrix.ToDevice context
+            let clRightMatrix = rightMatrix.ToDevice context
+            let clSegmentPointers = context.CreateClArray segmentPointers
 
-        let result =
-            testFun processor lenght clPointers clLeftMatrixRow clRightMatrix
+            let (clActualLeftValues: ClArray<'a>,
+                 clActualRightValues: ClArray<'a>,
+                 clActualColumns: ClArray<int>,
+                 clActualRows: ClArray<int>) =
+                testFun processor length clSegmentPointers clLeftMatrix clRightMatrix
 
-        clLeftMatrixRow.Dispose processor
-        clRightMatrix.Dispose processor
-        clPointers.Free processor
-
-        let expectedLeftMatrixValues, expectedRightMatrixValues, expectedColumns = expand leftMatrixRow rightMatrix
-
-        match result with
-        | Some (clActualLeftValues: ClArray<'a>, clActualRightValues: ClArray<'a>, clActualColumns: ClArray<int>) ->
+            clLeftMatrix.Dispose processor
+            clRightMatrix.Dispose processor
+            clSegmentPointers.Free processor
 
             let actualLeftValues =
                 clActualLeftValues.ToHostAndFree processor
@@ -158,6 +145,10 @@ let makeExpandTest isEqual zero testFun (leftArray: 'a [], rightArray: 'a [,]) =
                 clActualRightValues.ToHostAndFree processor
 
             let actualColumns = clActualColumns.ToHostAndFree processor
+            let actualRows = clActualRows.ToHostAndFree processor
+
+            let expectedLeftMatrixValues, expectedRightMatrixValues, expectedColumns, expectedRows =
+                expand length segmentPointers leftMatrix rightMatrix
 
             "Left values must be the same"
             |> Utils.compareArrays isEqual actualLeftValues expectedLeftMatrixValues
@@ -167,16 +158,16 @@ let makeExpandTest isEqual zero testFun (leftArray: 'a [], rightArray: 'a [,]) =
 
             "Columns must be the same"
             |> Utils.compareArrays (=) actualColumns expectedColumns
-        | None ->
-            "Result must be empty"
-            |> Expect.isTrue (expectedColumns.Length = 0)
+
+            "Rows must be the same"
+            |> Utils.compareArrays (=) actualRows expectedRows
 
 let createExpandTest isEqual (zero: 'a) testFun =
     testFun context Utils.defaultWorkGroupSize
     |> makeExpandTest isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
-// (Debug only) expand phase tests
+// expand phase tests
 let expandTests =
     [ createExpandTest (=) 0 Expand.expand
 
@@ -188,7 +179,7 @@ let expandTests =
       createExpandTest (=) 0uy Expand.expand ]
     |> testList "Expand.expand"
 
-let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftArray: 'a [,], rightArray: 'a [,]) =
+let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightArray: 'a [,]) =
 
     let leftMatrix =
         Utils.createMatrixFromArray2D CSR leftArray (isEqual zero)
@@ -197,30 +188,31 @@ let makeGeneralTest<'a when 'a: struct> zero isEqual opMul opAdd testFun (leftAr
         Utils.createMatrixFromArray2D CSR rightArray (isEqual zero)
 
     if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
-
         let clLeftMatrix = leftMatrix.ToDevice context
         let clRightMatrix = rightMatrix.ToDevice context
 
-        let (clMatrixActual: ClMatrix<_>) =
+        let (clMatrixActual: ClMatrix.COO<_> option) =
             testFun processor HostInterop clLeftMatrix clRightMatrix
 
-        clLeftMatrix.Dispose processor
-        clRightMatrix.Dispose processor
-
-        let matrixActual =
-            clMatrixActual.ToHostAndDispose processor
-
-        match matrixActual with
-        | Matrix.LIL actual ->
+        let expected =
             HostPrimitives.array2DMultiplication zero opMul opAdd leftArray rightArray
-            |> fun array -> Matrix.LIL.FromArray2D(array, (isEqual zero))
-            |> Utils.compareLILMatrix isEqual actual
-        | _ -> failwith "Matrix format are not matching"
+            |> fun array -> Matrix.COO.FromArray2D(array, isEqual zero)
+
+        match clMatrixActual with
+        | Some clMatrixActual ->
+
+            let matrixActual = clMatrixActual.ToHost processor
+            clMatrixActual.Dispose processor
+
+            Utils.compareCOOMatrix isEqual matrixActual expected
+        | None ->
+            "Expected should be empty"
+            |> Expect.isTrue (expected.NNZ = 0)
 
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
     testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
-    |> makeGeneralTest<'a> zero isEqual opMul opAdd
-    |> testPropertyWithConfig { config with endSize = 500 } $"test on %A{typeof<'a>}"
+    |> makeGeneralTest zero isEqual opAdd opMul
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
     [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
@@ -239,6 +231,5 @@ let generalTests =
           ArithmeticOperations.float32Add
           ArithmeticOperations.float32Mul
           Matrix.SpGeMM.expand
-
       createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul Matrix.SpGeMM.expand ]
     |> testList "general"

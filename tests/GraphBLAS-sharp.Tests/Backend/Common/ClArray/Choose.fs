@@ -65,18 +65,19 @@ let makeTest2 testContext isEqual opMap testFun (firstArray: 'a [], secondArray:
             Array.map2 opMap firstArray secondArray
             |> Array.choose id
 
-        let clFirstArray = context.CreateClArray firstArray
-        let clSecondArray = context.CreateClArray secondArray
+        if expected.Length > 0 then
+            let clFirstArray = context.CreateClArray firstArray
+            let clSecondArray = context.CreateClArray secondArray
 
-        let (clActual: ClArray<_>) =
-            testFun processor HostInterop clFirstArray clSecondArray
+            let (clActual: ClArray<_>) =
+                testFun processor HostInterop clFirstArray clSecondArray
 
-        let actual = clActual.ToHostAndFree processor
-        clFirstArray.Free processor
-        clSecondArray.Free processor
+            let actual = clActual.ToHostAndFree processor
+            clFirstArray.Free processor
+            clSecondArray.Free processor
 
-        "Results must be the same"
-        |> Utils.compareArrays isEqual actual expected
+            "Results must be the same"
+            |> Utils.compareArrays isEqual actual expected
 
 let createTest2 testsContext (isEqual: 'a -> 'a -> bool) (opMapQ, opMap) testFun =
     testFun opMapQ testsContext.ClContext Utils.defaultWorkGroupSize

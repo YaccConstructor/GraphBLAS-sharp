@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 module Matrix =
     let copy (clContext: ClContext) workGroupSize =
@@ -425,11 +426,19 @@ module Matrix =
             =
 
             let run =
-                SpGeMM.Expand.run clContext workGroupSize opAdd opMul
+                SpGeMM.Expand.run opAdd opMul clContext workGroupSize
 
             fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
                 match leftMatrix, rightMatrix with
                 | ClMatrix.CSR leftMatrix, ClMatrix.CSR rightMatrix ->
-                    ClMatrix.LIL
-                    <| run processor allocationMode leftMatrix rightMatrix
+                    let allocCapacity =
+                        List.max [ sizeof<'a>
+                                   sizeof<'c>
+                                   sizeof<'b> ]
+                        * 1<Byte>
+
+                    let resultCapacity =
+                        (clContext.MaxMemAllocSize / allocCapacity) / 3
+
+                    run processor allocationMode resultCapacity leftMatrix rightMatrix
                 | _ -> failwith "Matrix formats are not matching"

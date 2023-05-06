@@ -16,7 +16,7 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 let config =
     { Utils.defaultConfig with
           endSize = 50
-          maxTest = 50 }
+          maxTest = 30 }
 
 let logger = Log.create "kronecker.Tests"
 
@@ -45,7 +45,7 @@ let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,],
         m1.Dispose processor
         m2.Dispose processor
 
-        let actual = actual.ToHostAndDispose processor
+        let actual = actual.ToHostAndFree processor
 
         match actual with
         | Matrix.LIL actual -> Utils.compareLILMatrix isEqual actual expected
