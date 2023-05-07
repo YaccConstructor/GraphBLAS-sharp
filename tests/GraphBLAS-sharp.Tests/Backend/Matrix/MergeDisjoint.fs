@@ -14,7 +14,7 @@ open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 10
+          endSize = 100
           maxTest = 10
           arbitrary = [ typeof<Generators.PairOfDisjointMatrices> ] }
 
