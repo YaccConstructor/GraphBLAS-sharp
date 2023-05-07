@@ -117,7 +117,8 @@ module ByRows =
                         |> splitResult processor allocationMode
                     | None -> Seq.replicate rightMatrix.RowCount None
 
-            let noneArray = lazy Array.create leftMatrix.ColumnCount None
+            let noneArray =
+                lazy (Array.create leftMatrix.ColumnCount None)
 
             let resultRows =
                 splitLeftMatrix
