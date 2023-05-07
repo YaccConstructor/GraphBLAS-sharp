@@ -7,7 +7,6 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Sparse.Vector
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions

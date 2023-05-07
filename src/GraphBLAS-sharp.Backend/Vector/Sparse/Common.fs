@@ -82,12 +82,8 @@ module internal Common =
                 (0, vectors)
                 ||> Seq.mapFold
                         (fun offset vector ->
-                            let offsetClCell = offset |> clContext.CreateClCell
-
                             let newIndices =
-                                mapIndices processor allocationMode offsetClCell vector.Indices
-
-                            offsetClCell.Free processor
+                                mapIndices processor allocationMode offset vector.Indices
 
                             newIndices, offset + vector.Size)
 
