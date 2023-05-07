@@ -22,7 +22,7 @@ module Map =
             | Some _ -> 1
             | None -> 0 @>
 
-    let chooseBitmap2<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c option>) =
+    let choose2Bitmap<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c option>) =
         <@ fun (leftItem: 'a) (rightItem: 'b) ->
             match (%map) leftItem rightItem with
             | Some _ -> 1
