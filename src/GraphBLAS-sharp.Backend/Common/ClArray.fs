@@ -188,9 +188,9 @@ module ClArray =
                 Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length valueClCell inputArray result)
             )
 
-            valueClCell.Free processor
-
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            valueClCell.Free processor
 
             result
 
