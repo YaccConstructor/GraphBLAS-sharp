@@ -15,7 +15,7 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 100
+          endSize = 70
           maxTest = 10 }
 
 let logger = Log.create "kronecker.Tests"

@@ -29,13 +29,9 @@ module ByRows =
                     (fun offset ->
                         function
                         | Some v ->
-                            let offsetClCell =
-                                offset * v.Size |> clContext.CreateClCell
-
                             let newIndices =
-                                mapIndices processor allocationMode offsetClCell v.Indices
+                                mapIndices processor allocationMode (offset * v.Size) v.Indices
 
-                            offsetClCell.Free processor
                             newIndices |> Some
                         | _ -> None)
                 |> Seq.choose id
