@@ -4,13 +4,13 @@ open FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend.Vector.Sparse.Vector
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Vector
-open GraphBLAS.FSharp.Backend.Vector.Sparse.Vector
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module ByRows =
     let concatOptionalVectors (clContext: ClContext) workGroupSize =
@@ -121,6 +121,8 @@ module ByRows =
                         |> splitResult processor allocationMode
                     | None -> Seq.replicate rightMatrix.RowCount None
 
+            let noneArray = lazy Array.create leftMatrix.ColumnCount None
+
             let resultRows =
                 splitLeftMatrix
                 |> Seq.fold
@@ -131,7 +133,7 @@ module ByRows =
                                 let denseRow = toDense processor allocationMode row
                                 row.Dispose processor
                                 denseRow.ToHostAndFree processor
-                            | None -> Array.create leftMatrix.ColumnCount None
+                            | None -> noneArray.Value
 
                         splitRightMatrix
                         |> Seq.fold2

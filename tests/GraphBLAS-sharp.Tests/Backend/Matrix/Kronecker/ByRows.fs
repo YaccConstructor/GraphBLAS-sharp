@@ -59,12 +59,12 @@ let createGeneralTest (context: ClContext) (processor: MailboxProcessor<Msg>) (z
     makeTest context processor zero isEqual op kronecker
     |> testPropertyWithConfig config $"test on %A{typeof<'a>} %s{testName}"
 
-let generalTests (testContext: TestContext) =
-    [ let context = testContext.ClContext
-      let queue = testContext.Queue
-      queue.Error.Add(fun e -> failwithf "%A" e)
+let testFixtures (testContext: TestContext) =
+    let context = testContext.ClContext
+    let queue = testContext.Queue
+    queue.Error.Add(fun e -> failwithf "%A" e)
 
-      createGeneralTest context queue false (=) (&&) ArithmeticOperations.boolMulOption "mul"
+    [ createGeneralTest context queue false (=) (&&) ArithmeticOperations.boolMulOption "mul"
       createGeneralTest context queue false (=) (||) ArithmeticOperations.boolSumOption "sum"
 
       createGeneralTest context queue 0 (=) (*) ArithmeticOperations.intMulOption "mul"
@@ -81,4 +81,4 @@ let generalTests (testContext: TestContext) =
           createGeneralTest context queue 0.0 Utils.floatIsEqual (+) ArithmeticOperations.floatSumOption "sum" ]
 
 let tests =
-    gpuTests "Backend.Matrix.kronecker tests" generalTests
+    gpuTests "Backend.Matrix.kronecker tests" testFixtures
