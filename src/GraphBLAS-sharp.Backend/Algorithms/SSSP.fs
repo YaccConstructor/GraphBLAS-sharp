@@ -37,8 +37,11 @@ module SSSP =
         let fillSubVectorTo =
             DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assignComplemented) workGroupSize
 
-        let countNNZ =
-            ClArray.count clContext workGroupSize Predicates.isSome
+        //let countNNZ =
+        //    ClArray.count clContext workGroupSize Predicates.isSome
+
+        let containsNonZero =
+            ClArray.exists clContext workGroupSize Predicates.isSome
 
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<int>) (source: int) ->
             let vertexCount = matrix.RowCount
@@ -80,7 +83,9 @@ module SSSP =
                     f2 <- temp
 
                     //Checking if no distances were updated
-                    stop <- (countNNZ queue mask) = 0
+                    stop <-
+                        not
+                        <| (containsNonZero queue mask).ToHostAndFree(queue)
 
                 | _ -> failwith "not implemented"
 
@@ -88,4 +93,6 @@ module SSSP =
             f2.Dispose queue
             m.Dispose queue
 
-            distance
+            match distance with
+            | ClVector.Dense dist -> dist
+            | _ -> failwith "not implemented"

@@ -5,7 +5,8 @@ open BenchmarkDotNet.Running
 let main argv =
     let benchmarks =
         BenchmarkSwitcher [| typeof<BFSBenchmarksWithoutDataTransfer>
-                             typeof<BFSPushPullBenchmarksWithoutDataTransfer> |]
+                             typeof<BFSPushPullBenchmarksWithoutDataTransfer>
+                             typeof<SSSPBenchmarksWithoutDataTransfer> |]
 
     benchmarks.Run argv |> ignore
     0

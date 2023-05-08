@@ -129,6 +129,35 @@ type BFSBenchmarksWithoutDataTransfer() =
         this.BFS()
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
+type SSSPBenchmarksWithoutDataTransfer() =
+
+    inherit BFSBenchmarks<ClMatrix.CSR<int>, int>(
+        (fun context wgSize -> SSSP.run context wgSize),
+        int,
+        (fun _ -> Utils.nextInt (System.Random())),
+        Matrix.ToBackendCSR)
+
+    static member InputMatricesProvider =
+        BFSBenchmarks<_,_>.InputMatricesProviderBuilder "BFSBenchmarks.txt"
+
+    [<GlobalSetup>]
+    override this.GlobalSetup() =
+        this.ReadMatrix ()
+        this.LoadMatrixToGPU ()
+
+    [<IterationCleanup>]
+    override this.IterationCleanup() =
+        this.ClearResult()
+
+    [<GlobalCleanup>]
+    override this.GlobalCleanup() =
+        this.ClearInputMatrix()
+
+    [<Benchmark>]
+    override this.Benchmark() =
+        this.BFS()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+
 type BFSPushPullBenchmarksWithoutDataTransfer() =
 
     inherit BFSBenchmarks<ClMatrix.CSR<bool>, bool>(
