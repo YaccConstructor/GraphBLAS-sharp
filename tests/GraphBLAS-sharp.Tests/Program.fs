@@ -14,6 +14,8 @@ let matrixTests =
           Matrix.ByRows.tests
           Matrix.ExpandRows.tests
           Matrix.SubRows.tests
+          Matrix.MergeDisjoint.tests
+          Matrix.kronecker.tests
 
           Matrix.SpGeMM.Expand.generalTests
           Matrix.SpGeMM.Masked.tests ]
