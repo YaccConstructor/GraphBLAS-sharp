@@ -195,7 +195,7 @@ module SpMSpV =
                 { Context = clContext
                   Indices = gatherIndices
                   Values = clContext.CreateClArray [| false |]
-                  Size = 1 }
+                  Size = matrix.ColumnCount }
             else
                 let sortedIndices = sort queue gatherIndices
 
