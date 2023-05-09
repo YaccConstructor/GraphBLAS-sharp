@@ -6,7 +6,6 @@ open Microsoft.FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
 open GraphBLAS.FSharp.Backend.Objects.ClCell
@@ -24,19 +23,25 @@ module internal Kronecker =
 
                 if gid = 0 then
 
+                    let item = resultBitmap.[0]
+                    let newItem = item + zeroCount
+
                     match (%op) (Some operand.Value) None with
-                    | Some _ -> resultBitmap.[0] <- resultBitmap.[0] + zeroCount
+                    | Some _ -> resultBitmap.[0] <- newItem
                     | _ -> ()
 
                 else if (gid - 1) < valuesLength then
 
+                    let item = resultBitmap.[gid]
+                    let newItem = item + 1
+
                     match (%op) (Some operand.Value) (Some values.[gid - 1]) with
-                    | Some _ -> resultBitmap.[gid] <- resultBitmap.[gid] + 1
+                    | Some _ -> resultBitmap.[gid] <- newItem
                     | _ -> () @>
 
         let updateBitmap = clContext.Compile <| updateBitmap op
 
-        fun (processor: MailboxProcessor<_>) (operand: ClCell<'a>) (matrixRight: ClMatrix.CSR<'b>) (bitmap: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (operand: ClCell<'a>) (matrixRight: CSR<'b>) (bitmap: ClArray<int>) ->
 
             let resultLength = matrixRight.NNZ + 1
 
@@ -137,7 +142,7 @@ module internal Kronecker =
 
         let kernel = clContext.Compile <| preparePositions op
 
-        fun (processor: MailboxProcessor<_>) (operand: ClCell<'a>) (matrix: ClMatrix.CSR<'b>) (resultDenseMatrix: ClArray<'c>) (resultBitmap: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (operand: ClCell<'a>) (matrix: CSR<'b>) (resultDenseMatrix: ClArray<'c>) (resultBitmap: ClArray<int>) ->
 
             let resultLength = matrix.RowCount * matrix.ColumnCount
 
@@ -163,10 +168,10 @@ module internal Kronecker =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-    let setPositions<'c when 'c: struct> (clContext: ClContext) workGroupSize =
+    let private setPositions<'c when 'c: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) rowCount columnCount startIndex (nnz: ClCell<int>) (rowOffset: ClCell<int>) (columnOffset: ClCell<int>) (bitmap: ClArray<int>) (values: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'c>) ->
+            <@ fun (ndRange: Range1D) rowCount columnCount startIndex (rowOffset: ClCell<int>) (columnOffset: ClCell<int>) (bitmap: ClArray<int>) (values: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'c>) ->
 
                 let gid = ndRange.GlobalID0
 
@@ -208,7 +213,6 @@ module internal Kronecker =
                             rowCount
                             columnCount
                             startIndex
-                            sum
                             rowOffset
                             columnOffset
                             bitmap
@@ -222,7 +226,7 @@ module internal Kronecker =
 
             (sum.ToHostAndFree processor) + startIndex
 
-    let copyToResult (clContext: ClContext) workGroupSize =
+    let private copyToResult (clContext: ClContext) workGroupSize =
 
         let copyToResult =
             <@ fun (ndRange: Range1D) startIndex sourceLength (rowOffset: ClCell<int>) (columnOffset: ClCell<int>) (sourceRows: ClArray<int>) (sourceColumns: ClArray<int>) (sourceValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'c>) ->
@@ -267,7 +271,7 @@ module internal Kronecker =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-    let insertZero (clContext: ClContext) workGroupSize =
+    let private insertZero (clContext: ClContext) workGroupSize =
 
         let copy = copyToResult clContext workGroupSize
 
@@ -299,7 +303,7 @@ module internal Kronecker =
             for row in 0 .. rowCount - 1 do
                 insertInRowRec zeroCounts.[row] row 0
 
-    let insertNonZero (clContext: ClContext) workGroupSize op =
+    let private insertNonZero (clContext: ClContext) workGroupSize op =
 
         let item = ClArray.item clContext workGroupSize
 
@@ -347,7 +351,7 @@ module internal Kronecker =
 
             startIndex
 
-    let mapAll<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+    let private mapAll<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         workGroupSize
         (op: Expr<'a option -> 'b option -> 'c option>)
@@ -429,7 +433,7 @@ module internal Kronecker =
         let bitonic =
             Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+        fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 
             let matrixZero =
                 mapWithValue queue allocationMode None matrixRight
