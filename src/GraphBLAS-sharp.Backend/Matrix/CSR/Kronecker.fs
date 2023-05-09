@@ -15,66 +15,63 @@ open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Kronecker =
-    let private getBitmap (clContext: ClContext) workGroupSize op =
+    let private updateBitmap (clContext: ClContext) workGroupSize op =
 
-        let getBitmap (op: Expr<'a option -> 'b option -> 'c option>) =
-            <@ fun (ndRange: Range1D) (prevSum: ClCell<int>) (operand: ClCell<'a>) valuesLength numberOfZeros (values: ClArray<'b>) (resultBitmap: ClArray<int>) ->
+        let updateBitmap (op: Expr<'a option -> 'b option -> 'c option>) =
+            <@ fun (ndRange: Range1D) (operand: ClCell<'a>) valuesLength zeroCount (values: ClArray<'b>) (resultBitmap: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
 
                 if gid = 0 then
 
                     match (%op) (Some operand.Value) None with
-                    | Some _ -> resultBitmap.[0] <- prevSum.Value + numberOfZeros
-                    | _ -> resultBitmap.[0] <- prevSum.Value
+                    | Some _ -> resultBitmap.[0] <- resultBitmap.[0] + zeroCount
+                    | _ -> ()
 
                 else if (gid - 1) < valuesLength then
 
                     match (%op) (Some operand.Value) (Some values.[gid - 1]) with
-                    | Some _ -> resultBitmap.[gid] <- 1
-                    | _ -> resultBitmap.[gid] <- 0 @>
+                    | Some _ -> resultBitmap.[gid] <- resultBitmap.[gid] + 1
+                    | _ -> () @>
 
-        let getBitmap = clContext.Compile <| getBitmap op
+        let updateBitmap = clContext.Compile <| updateBitmap op
 
-        fun (processor: MailboxProcessor<_>) (prevSum: ClCell<int>) (operand: ClCell<'a>) (matrixRight: ClMatrix.CSR<'b>) (bitmap: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) (operand: ClCell<'a>) (matrixRight: ClMatrix.CSR<'b>) (bitmap: ClArray<int>) ->
 
             let resultLength = matrixRight.NNZ + 1
 
             let ndRange =
                 Range1D.CreateValid(resultLength, workGroupSize)
 
-            let getBitmap = getBitmap.GetKernel()
+            let updateBitmap = updateBitmap.GetKernel()
 
             let numberOfZeros =
-                matrixRight.ColumnCount * matrixRight.RowCount - matrixRight.NNZ
+                matrixRight.ColumnCount * matrixRight.RowCount
+                - matrixRight.NNZ
 
             processor.Post(
                 Msg.MsgSetArguments
                     (fun () ->
-                        getBitmap.KernelFunc
-                            ndRange
-                            prevSum
-                            operand
-                            matrixRight.NNZ
-                            numberOfZeros
-                            matrixRight.Values
-                            bitmap)
+                        updateBitmap.KernelFunc ndRange operand matrixRight.NNZ numberOfZeros matrixRight.Values bitmap)
             )
 
-            processor.Post(Msg.CreateRunMsg<_, _> getBitmap)
+            processor.Post(Msg.CreateRunMsg<_, _> updateBitmap)
 
     let private getAllocationSize (clContext: ClContext) workGroupSize op =
 
-        let getBitmap = getBitmap clContext workGroupSize op
+        let updateBitmap = updateBitmap clContext workGroupSize op
 
         let sum =
             Reduce.sum <@ fun x y -> x + y @> 0 clContext workGroupSize
 
         let item = ClArray.item clContext workGroupSize
 
+        let createClArray =
+            ClArray.zeroCreate clContext workGroupSize
+
         let opOnHost = QuotationEvaluator.Evaluate op
 
-        fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSR<'b>) ->
+        fun (queue: MailboxProcessor<_>) (matrixZero: COO<'c> option) (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 
             let nnz =
                 match opOnHost None None with
@@ -89,28 +86,30 @@ module internal Kronecker =
 
                     leftZeroCount * rightZeroCount
                 | _ -> 0
-                |> clContext.CreateClCell
 
             let bitmap =
-                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, matrixRight.NNZ + 1)
+                createClArray queue DeviceOnly (matrixRight.NNZ + 1)
 
-            let nnz =
-                { 0 .. matrixLeft.NNZ - 1 }
-                |> Seq.fold
-                    (fun acc index ->
-                        let value = item queue index matrixLeft.Values
+            for index in 0 .. matrixLeft.NNZ - 1 do
+                let value = item queue index matrixLeft.Values
 
-                        getBitmap queue acc value matrixRight bitmap
+                updateBitmap queue value matrixRight bitmap
 
-                        let nnz = sum queue bitmap
+                value.Free queue
 
-                        acc.Free queue
-                        value.Free queue
+            let bitmapSum = sum queue bitmap
 
-                        nnz)
-                    nnz
+            bitmap.Free queue
 
-            nnz.ToHostAndFree queue
+            let leftZeroCount =
+                matrixLeft.ColumnCount * matrixLeft.RowCount
+                - matrixLeft.NNZ
+
+            match matrixZero with
+            | Some m -> m.NNZ * leftZeroCount
+            | _ -> 0
+            + nnz
+            + bitmapSum.ToHostAndFree queue
 
     let private preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
 
@@ -241,7 +240,8 @@ module internal Kronecker =
 
         fun (processor: MailboxProcessor<_>) startIndex (rowOffset: int) (columnOffset: int) (resultMatrix: COO<'c>) (sourceMatrix: COO<'c>) ->
 
-            let ndRange = Range1D.CreateValid(sourceMatrix.NNZ, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(sourceMatrix.NNZ, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -278,22 +278,15 @@ module internal Kronecker =
             let mutable startIndex = startIndex
 
             let insertMany row firstColumn count =
-                let rec insertManyRec iter =
-                    if iter >= count then
-                        ()
-                    else
-                        let rowOffset = row * matrixZero.RowCount
+                for i in 0 .. count - 1 do
+                    let rowOffset = row * matrixZero.RowCount
 
-                        let columnOffset =
-                            (firstColumn + iter) * matrixZero.ColumnCount
+                    let columnOffset =
+                        (firstColumn + i) * matrixZero.ColumnCount
 
-                        copy queue startIndex rowOffset columnOffset resultMatrix matrixZero
+                    copy queue startIndex rowOffset columnOffset resultMatrix matrixZero
 
-                        startIndex <- startIndex + matrixZero.NNZ
-
-                        insertManyRec (iter + 1)
-
-                insertManyRec 0
+                    startIndex <- startIndex + matrixZero.NNZ
 
             let rec insertInRowRec zeroCounts row column =
                 match zeroCounts with
@@ -303,15 +296,8 @@ module internal Kronecker =
 
                     insertInRowRec tl row (h + column + 1)
 
-            let rec insertZeroRec row =
-                if row >= rowCount then
-                    ()
-                else
-                    insertInRowRec zeroCounts.[row] row 0
-
-                    insertZeroRec (row + 1)
-
-            insertZeroRec 0
+            for row in 0 .. rowCount - 1 do
+                insertInRowRec zeroCounts.[row] row 0
 
     let insertNonZero (clContext: ClContext) workGroupSize op =
 
@@ -340,12 +326,12 @@ module internal Kronecker =
 
             let mutable startIndex = 0
 
-            let rec insertInRowRec row rightEdge index =
-                if index > rightEdge then
-                    ()
-                else
-                    let value = item queue index leftValues
-                    let column = leftColsHost.[index]
+            for row in 0 .. rowCount - 1 do
+                let leftEdge, rightEdge = rowsEdges.[row]
+
+                for i in leftEdge .. rightEdge do
+                    let value = item queue i leftValues
+                    let column = leftColsHost.[i]
 
                     let rowOffset = row * matrixRight.RowCount
                     let columnOffset = column * matrixRight.ColumnCount
@@ -354,26 +340,7 @@ module internal Kronecker =
 
                     value.Free queue
 
-                    startIndex <-
-                        setPositions rowOffset columnOffset startIndex resultMatrix mappedMatrix bitmap
-                    // printfn $"resultMatrix.Values: %A{resultMatrix.Values.ToHost queue}"
-                    // printfn $"resultMatrix.Rows: %A{resultMatrix.Rows.ToHost queue}"
-                    // printfn $"resultMatrix.Columns: %A{resultMatrix.Columns.ToHost queue}"
-                    // printfn $"startIndex: %A{startIndex.ToHost queue}"
-
-                    insertInRowRec row rightEdge (index + 1)
-
-            let rec insertNonZeroRec row =
-                if row >= rowCount then
-                    ()
-                else
-                    let leftEdge, rightEdge = rowsEdges.[row]
-
-                    insertInRowRec row rightEdge leftEdge
-
-                    insertNonZeroRec (row + 1)
-
-            insertNonZeroRec 0
+                    startIndex <- setPositions rowOffset columnOffset startIndex resultMatrix mappedMatrix bitmap
 
             bitmap.Free queue
             mappedMatrix.Free queue
@@ -440,8 +407,7 @@ module internal Kronecker =
                 insertNonZero queue rowsEdges matrixRight matrixLeft.Values leftColumns resultMatrix
 
             match matrixZero with
-            | Some m ->
-                insertZero queue startIndex zeroCounts m resultMatrix
+            | Some m -> insertZero queue startIndex zeroCounts m resultMatrix
             | _ -> ()
 
             resultMatrix
@@ -468,16 +434,8 @@ module internal Kronecker =
             let matrixZero =
                 mapWithValue queue allocationMode None matrixRight
 
-            let size = getSize queue matrixLeft matrixRight
-
-            let leftZeroCount =
-                matrixLeft.ColumnCount * matrixLeft.RowCount
-                - matrixLeft.NNZ
-
             let size =
-                match matrixZero with
-                | Some m -> size + m.NNZ * leftZeroCount
-                | _ -> size
+                getSize queue matrixZero matrixLeft matrixRight
 
             if size = 0 then
                 None

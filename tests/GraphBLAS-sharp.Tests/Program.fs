@@ -106,6 +106,11 @@ open GraphBLAS.FSharp.Tests
 //           Host.Matrix.Convert.tests
 //           Host.IO.MtxReader.test ]
 //     |> testSequenced
+//
+// [<Tests>]
+// let allTests =
+//     testList "All" [ deviceTests; hostTests ]
+//     |> testSequenced
 
 [<Tests>]
 let allTests =
