@@ -390,6 +390,17 @@ module Matrix =
                 |> ClMatrix.CSR
             | ClMatrix.LIL _ -> failwith "Not yet implemented"
 
+    let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+        let run =
+            CSR.Matrix.kronecker clContext workGroupSize op
+
+        fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
+            match matrix1, matrix2 with
+            | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
+                let result = run queue allocationFlag m1 m2
+                Option.map ClMatrix.COO result
+            | _ -> failwith "Matrix formats are not matching"
+
     module SpGeMM =
         let masked
             (opAdd: Expr<'c -> 'c -> 'c option>)

@@ -53,6 +53,7 @@
         <Compile Include="Backend/Matrix/Merge.fs" />
         <Compile Include="Backend/Matrix/ExpandRows.fs" />
         <Compile Include="Backend/Matrix/SubRows.fs" />
+        <Compile Include="Backend\Matrix\Kronecker.fs" />
         <Compile Include="Backend/Vector/AssignByMask.fs" />
         <Compile Include="Backend/Vector/Convert.fs" />
         <Compile Include="Backend/Vector/Copy.fs" />
