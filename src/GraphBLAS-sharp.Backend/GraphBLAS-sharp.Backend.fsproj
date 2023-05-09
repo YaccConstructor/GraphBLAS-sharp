@@ -43,6 +43,7 @@
     <Compile Include="Vector/Sparse/Common.fs" />
     <Compile Include="Vector/Sparse/Merge.fs" />
     <Compile Include="Vector/Sparse/Map2.fs" />
+    <Compile Include="Vector/Sparse/Map.fs" />
     <Compile Include="Vector/Sparse/Vector.fs" />
     <Compile Include="Vector/SpMV.fs" />
     <Compile Include="Vector/Vector.fs" />

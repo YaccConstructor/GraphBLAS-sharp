@@ -172,10 +172,12 @@ module ClArray =
 
         let kernel = clContext.Compile map
 
-        fun (processor: MailboxProcessor<_>) allocationMode (value: ClCell<'a>) (inputArray: ClArray<'b>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (value: 'a) (inputArray: ClArray<'b>) ->
 
             let result =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
+
+            let valueClCell = value |> clContext.CreateClCell
 
             let ndRange =
                 Range1D.CreateValid(inputArray.Length, workGroupSize)
@@ -183,7 +185,7 @@ module ClArray =
             let kernel = kernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length value inputArray result)
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length valueClCell inputArray result)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
