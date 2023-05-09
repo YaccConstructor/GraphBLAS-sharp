@@ -15,22 +15,14 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config =
     { Utils.defaultConfig with
-          endSize = 8
-          maxTest = 50 }
+          endSize = 100
+          maxTest = 20 }
 
 let logger = Log.create "kronecker.Tests"
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeTest context processor zero isEqual op kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
-    let leftMatrix = [[false; false]
-                      [false; false]
-                      [true; false]] |> array2D
-
-    let rightMatrix = [[false; false]
-                       [false; true]
-                       [false; false]] |> array2D
-
     let m1 =
         Utils.createMatrixFromArray2D CSR leftMatrix (isEqual zero)
 
@@ -83,22 +75,21 @@ let generalTests (testContext: TestContext) =
       let queue = testContext.Queue
       queue.Error.Add(fun e -> failwithf "%A" e)
 
-      // createGeneralTest context queue false (=) (&&) ArithmeticOperations.boolMulOption "mul"
+      createGeneralTest context queue false (=) (&&) ArithmeticOperations.boolMulOption "mul"
       createGeneralTest context queue false (=) (||) ArithmeticOperations.boolSumOption "sum"
-      //
-      // createGeneralTest context queue 0 (=) (*) ArithmeticOperations.intMulOption "mul"
-      // createGeneralTest context queue 0 (=) (+) ArithmeticOperations.intSumOption "sum"
-      //
-      // createGeneralTest context queue 0uy (=) (*) ArithmeticOperations.byteMulOption "mul"
-      // createGeneralTest context queue 0uy (=) (+) ArithmeticOperations.byteSumOption "sum"
 
-      // createGeneralTest context queue 0.0f Utils.float32IsEqual (*) ArithmeticOperations.float32MulOption "mul"
-      // createGeneralTest context? queue 0.0f Utils.float32IsEqual (+) ArithmeticOperations.float32SumOption "sum"
+      createGeneralTest context queue 0 (=) (*) ArithmeticOperations.intMulOption "mul"
+      createGeneralTest context queue 0 (=) (+) ArithmeticOperations.intSumOption "sum"
 
-      // if Utils.isFloat64Available context.ClDevice then
-      //     createGeneralTest context queue 0.0 Utils.floatIsEqual (*) ArithmeticOperations.floatMulOption "mul"
-      //     createGeneralTest context queue 0.0 Utils.floatIsEqual (+) ArithmeticOperations.floatSumOption "sum"
-      ]
+      createGeneralTest context queue 0uy (=) (*) ArithmeticOperations.byteMulOption "mul"
+      createGeneralTest context queue 0uy (=) (+) ArithmeticOperations.byteSumOption "sum"
+
+      createGeneralTest context queue 0.0f Utils.float32IsEqual (*) ArithmeticOperations.float32MulOption "mul"
+      createGeneralTest context queue 0.0f Utils.float32IsEqual (+) ArithmeticOperations.float32SumOption "sum"
+
+      if Utils.isFloat64Available context.ClDevice then
+          createGeneralTest context queue 0.0 Utils.floatIsEqual (*) ArithmeticOperations.floatMulOption "mul"
+          createGeneralTest context queue 0.0 Utils.floatIsEqual (+) ArithmeticOperations.floatSumOption "sum" ]
 
 let tests =
     gpuTests "Backend.Matrix.kronecker tests" generalTests

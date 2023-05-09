@@ -1,6 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open FSharp.Quotations.Evaluator
+open FSharpx.Collections
 open Microsoft.FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
@@ -166,12 +167,9 @@ module internal Kronecker =
     let setPositions<'c when 'c: struct> (clContext: ClContext) workGroupSize =
 
         let setPositions =
-            <@ fun (ndRange: Range1D) rowCount columnCount (nnz: ClCell<int>) (rowOffset: ClCell<int>) (columnOffset: ClCell<int>) (startIndex: ClCell<int>) (bitmap: ClArray<int>) (values: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'c>) ->
+            <@ fun (ndRange: Range1D) rowCount columnCount startIndex (nnz: ClCell<int>) (rowOffset: ClCell<int>) (columnOffset: ClCell<int>) (bitmap: ClArray<int>) (values: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) (resultValues: ClArray<'c>) ->
 
                 let gid = ndRange.GlobalID0
-
-                if gid = 0 then
-                    nnz.Value <- nnz.Value + startIndex.Value
 
                 if gid < rowCount * columnCount
                    && (gid = 0 && bitmap.[gid] = 1
@@ -180,7 +178,7 @@ module internal Kronecker =
                     let columnIndex = gid % columnCount
                     let rowIndex = gid / columnCount
 
-                    let index = startIndex.Value + bitmap.[gid] - 1
+                    let index = startIndex + bitmap.[gid] - 1
 
                     resultRows.[index] <- rowIndex + rowOffset.Value
                     resultColumns.[index] <- columnIndex + columnOffset.Value
@@ -191,7 +189,7 @@ module internal Kronecker =
         let scan =
             PrefixSum.standardIncludeInPlace clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) rowCount columnCount (rowOffset: int) (columnOffset: int) (startIndex: ClCell<int>) (resultMatrix: COO<'c>) (values: ClArray<'c>) (bitmap: ClArray<int>) ->
+        fun (processor: MailboxProcessor<_>) rowCount columnCount (rowOffset: int) (columnOffset: int) (startIndex: int) (resultMatrix: COO<'c>) (values: ClArray<'c>) (bitmap: ClArray<int>) ->
 
             let sum = scan processor bitmap
 
@@ -210,10 +208,10 @@ module internal Kronecker =
                             ndRange
                             rowCount
                             columnCount
+                            startIndex
                             sum
                             rowOffset
                             columnOffset
-                            startIndex
                             bitmap
                             values
                             resultMatrix.Rows
@@ -222,6 +220,8 @@ module internal Kronecker =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            (sum.ToHostAndFree processor) + startIndex
 
     let copyToResult (clContext: ClContext) workGroupSize =
 
@@ -257,12 +257,12 @@ module internal Kronecker =
                             sourceMatrix.NNZ
                             rowOffset
                             columnOffset
-                            resultMatrix.Rows
-                            resultMatrix.Columns
-                            resultMatrix.Values
                             sourceMatrix.Rows
                             sourceMatrix.Columns
-                            sourceMatrix.Values)
+                            sourceMatrix.Values
+                            resultMatrix.Rows
+                            resultMatrix.Columns
+                            resultMatrix.Values)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -271,7 +271,7 @@ module internal Kronecker =
 
         let copy = copyToResult clContext workGroupSize
 
-        fun queue (startIndex: int) (zeroCounts: int list array) (matrixZero: COO<'c>) (matrixRight: CSR<'b>) resultMatrix ->
+        fun queue startIndex (zeroCounts: int list array) (matrixZero: COO<'c>) resultMatrix ->
 
             let rowCount = zeroCounts.Length
 
@@ -282,10 +282,10 @@ module internal Kronecker =
                     if iter >= count then
                         ()
                     else
-                        let rowOffset = row * matrixRight.RowCount
+                        let rowOffset = row * matrixZero.RowCount
 
                         let columnOffset =
-                            (firstColumn + iter) * matrixRight.ColumnCount
+                            (firstColumn + iter) * matrixZero.ColumnCount
 
                         copy queue startIndex rowOffset columnOffset resultMatrix matrixZero
 
@@ -338,7 +338,7 @@ module internal Kronecker =
             let mappedMatrix =
                 clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, length)
 
-            let startIndex = clContext.CreateClCell 0
+            let mutable startIndex = 0
 
             let rec insertInRowRec row rightEdge index =
                 if index > rightEdge then
@@ -354,7 +354,12 @@ module internal Kronecker =
 
                     value.Free queue
 
-                    setPositions rowOffset columnOffset startIndex resultMatrix mappedMatrix bitmap
+                    startIndex <-
+                        setPositions rowOffset columnOffset startIndex resultMatrix mappedMatrix bitmap
+                    // printfn $"resultMatrix.Values: %A{resultMatrix.Values.ToHost queue}"
+                    // printfn $"resultMatrix.Rows: %A{resultMatrix.Rows.ToHost queue}"
+                    // printfn $"resultMatrix.Columns: %A{resultMatrix.Columns.ToHost queue}"
+                    // printfn $"startIndex: %A{startIndex.ToHost queue}"
 
                     insertInRowRec row rightEdge (index + 1)
 
@@ -434,12 +439,9 @@ module internal Kronecker =
             let startIndex =
                 insertNonZero queue rowsEdges matrixRight matrixLeft.Values leftColumns resultMatrix
 
-            let startIndex = startIndex.ToHostAndFree queue
-
             match matrixZero with
             | Some m ->
-                insertZero queue startIndex zeroCounts m matrixRight resultMatrix
-                m.Dispose queue
+                insertZero queue startIndex zeroCounts m resultMatrix
             | _ -> ()
 
             resultMatrix
@@ -482,6 +484,10 @@ module internal Kronecker =
             else
                 let result =
                     mapAll queue allocationMode size matrixZero matrixLeft matrixRight
+
+                match matrixZero with
+                | Some m -> m.Dispose queue
+                | _ -> ()
 
                 bitonic queue result.Rows result.Columns result.Values
 
