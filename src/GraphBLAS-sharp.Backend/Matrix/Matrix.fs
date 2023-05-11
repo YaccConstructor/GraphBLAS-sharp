@@ -399,7 +399,7 @@ module Matrix =
             | ClMatrix.CSR m1, ClMatrix.CSR m2 ->
                 let result = run queue allocationFlag m1 m2
                 Option.map ClMatrix.COO result
-            | _ -> failwith "Matrix formats are not matching"
+            | _ -> failwith "Both matrices should be in CSR format."
 
     module SpGeMM =
         let masked
