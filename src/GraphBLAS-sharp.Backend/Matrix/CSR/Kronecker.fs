@@ -30,7 +30,7 @@ module internal Kronecker =
                     | Some _ -> resultBitmap.[0] <- newItem
                     | _ -> ()
 
-                else if (gid - 1) < valuesLength then
+                elif (gid - 1) < valuesLength then
 
                     let item = resultBitmap.[gid]
                     let newItem = item + 1

@@ -86,8 +86,7 @@ module Map =
 
             let create = create clContext workGroupSize
 
-            let init =
-                init <@ fun x -> x @> clContext workGroupSize
+            let init = init <@ id @> clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (value: 'a option) size ->
                 function
