@@ -208,10 +208,10 @@ module internal Map =
                 let result =
                     setPositions queue allocationMode rows columns values bitmap
 
-                queue.Post(Msg.CreateFreeMsg<_>(bitmap))
-                queue.Post(Msg.CreateFreeMsg<_>(values))
-                queue.Post(Msg.CreateFreeMsg<_>(rows))
-                queue.Post(Msg.CreateFreeMsg<_>(columns))
+                bitmap.Free queue
+                values.Free queue
+                rows.Free queue
+                columns.Free queue
 
                 result
                 |> Option.map
