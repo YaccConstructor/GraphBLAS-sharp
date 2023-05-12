@@ -3,58 +3,6 @@
 open GraphBLAS.FSharp.Backend.Objects
 
 module ArithmeticOperations =
-    let byteSumOption =
-        <@ fun (x: byte option) (y: byte option) ->
-            let mutable res = 0
-
-            let xInt =
-                match x with
-                | Some x -> Some(int x)
-                | None -> None
-
-            let yInt =
-                match y with
-                | Some y -> Some(int y)
-                | None -> None
-
-            match xInt, yInt with
-            | Some f, Some s -> res <- f + s
-            | Some f, None -> res <- f
-            | None, Some s -> res <- s
-            | None, None -> ()
-
-            let byteRes = byte res
-
-            if byteRes = 0uy then
-                None
-            else
-                Some byteRes @>
-
-    let byteMulOption =
-        <@ fun (x: byte option) (y: byte option) ->
-            let mutable res = 0
-
-            let xInt =
-                match x with
-                | Some x -> Some(int x)
-                | None -> None
-
-            let yInt =
-                match y with
-                | Some y -> Some(int y)
-                | None -> None
-
-            match xInt, yInt with
-            | Some f, Some s -> res <- f * s
-            | _ -> ()
-
-            let byteRes = byte res
-
-            if byteRes = 0uy then
-                None
-            else
-                Some byteRes @>
-
     let inline mkUnaryOp zero unaryOp =
         <@ fun x ->
             let mutable res = zero
@@ -108,6 +56,33 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
+    let byteSumOption =
+        <@ fun (x: byte option) (y: byte option) ->
+            let mutable res = 0
+
+            let xInt =
+                match x with
+                | Some x -> Some(int x)
+                | None -> None
+
+            let yInt =
+                match y with
+                | Some y -> Some(int y)
+                | None -> None
+
+            match xInt, yInt with
+            | Some f, Some s -> res <- f + s
+            | Some f, None -> res <- f
+            | None, Some s -> res <- s
+            | None, None -> ()
+
+            let byteRes = byte res
+
+            if byteRes = 0uy then
+                None
+            else
+                Some byteRes @>
+
     let boolSumOption =
         <@ fun (x: bool option) (y: bool option) ->
             let mutable res = false
@@ -137,6 +112,31 @@ module ArithmeticOperations =
     let floatSumAtLeastOne = mkNumericSumAtLeastOne 0.0
     let float32SumAtLeastOne = mkNumericSumAtLeastOne 0f
 
+    let byteMulOption =
+        <@ fun (x: byte option) (y: byte option) ->
+            let mutable res = 0
+
+            let xInt =
+                match x with
+                | Some x -> Some(int x)
+                | None -> None
+
+            let yInt =
+                match y with
+                | Some y -> Some(int y)
+                | None -> None
+
+            match xInt, yInt with
+            | Some f, Some s -> res <- f * s
+            | _ -> ()
+
+            let byteRes = byte res
+
+            if byteRes = 0uy then
+                None
+            else
+                Some byteRes @>
+
     let boolMulOption =
         <@ fun (x: bool option) (y: bool option) ->
             let mutable res = false
@@ -154,7 +154,6 @@ module ArithmeticOperations =
         mkUnaryOp zero <@ fun x -> x * constant @>
 
     let intMulOption = mkNumericMul 0
-    // let byteMulOption = mkNumericMul 0uy
     let floatMulOption = mkNumericMul 0.0
     let float32MulOption = mkNumericMul 0f
 
