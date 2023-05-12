@@ -60,6 +60,7 @@ module ArithmeticOperations =
         <@ fun (x: byte option) (y: byte option) ->
             let mutable res = 0
 
+            // Converted to int because of Quotations Evaluator issue.
             let xInt =
                 match x with
                 | Some x -> Some(int x)
@@ -116,6 +117,7 @@ module ArithmeticOperations =
         <@ fun (x: byte option) (y: byte option) ->
             let mutable res = 0
 
+            // Converted to int because of Quotations Evaluator issue.
             let xInt =
                 match x with
                 | Some x -> Some(int x)
