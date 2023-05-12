@@ -79,13 +79,14 @@ module internal Common =
         fun (processor: MailboxProcessor<_>) allocationMode (vectors: Sparse<'a> seq) ->
 
             let vectorIndices, _ =
-                (0, vectors)
-                ||> Seq.mapFold
-                        (fun offset vector ->
-                            let newIndices =
-                                mapIndices processor allocationMode offset vector.Indices
+                vectors
+                |> Seq.mapFold
+                    (fun offset vector ->
+                        let newIndices =
+                            mapIndices processor allocationMode offset vector.Indices
 
-                            newIndices, offset + vector.Size)
+                        newIndices, offset + vector.Size)
+                    0
 
             let vectorValues =
                 vectors |> Seq.map (fun vector -> vector.Values)

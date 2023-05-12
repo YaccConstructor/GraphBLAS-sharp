@@ -1,8 +1,8 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
-open FSharp.Quotations.Evaluator
 open FSharpx.Collections
 open Microsoft.FSharp.Quotations
+open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Common
@@ -74,7 +74,7 @@ module internal Kronecker =
         let createClArray =
             ClArray.zeroCreate clContext workGroupSize
 
-        let opOnHost = QuotationEvaluator.Evaluate op
+        let opOnHost = op.Evaluate()
 
         fun (queue: MailboxProcessor<_>) (matrixZero: COO<'c> option) (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 
@@ -410,9 +410,8 @@ module internal Kronecker =
             let startIndex =
                 insertNonZero queue rowsEdges matrixRight matrixLeft.Values leftColumns resultMatrix
 
-            match matrixZero with
-            | Some m -> insertZero queue startIndex zeroCounts m resultMatrix
-            | _ -> ()
+            matrixZero
+            |> Option.iter (fun m -> insertZero queue startIndex zeroCounts m resultMatrix)
 
             resultMatrix
 
@@ -442,14 +441,16 @@ module internal Kronecker =
                 getSize queue matrixZero matrixLeft matrixRight
 
             if size = 0 then
+                matrixZero
+                |> Option.iter (fun m -> m.Dispose queue)
+
                 None
             else
                 let result =
                     mapAll queue allocationMode size matrixZero matrixLeft matrixRight
 
-                match matrixZero with
-                | Some m -> m.Dispose queue
-                | _ -> ()
+                matrixZero
+                |> Option.iter (fun m -> m.Dispose queue)
 
                 bitonic queue result.Rows result.Columns result.Values
 

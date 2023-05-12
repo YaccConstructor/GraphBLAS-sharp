@@ -1,6 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
-open FSharp.Quotations.Evaluator
+open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Microsoft.FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Common.ClArray
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module Map =
     module WithValueOption =
@@ -79,7 +80,7 @@ module Map =
             let map =
                 preparePositions op clContext workGroupSize
 
-            let opOnHost = op |> QuotationEvaluator.Evaluate
+            let opOnHost = op.Evaluate()
 
             let setPositions =
                 Common.setPositionsOption<'c> clContext workGroupSize
@@ -100,29 +101,22 @@ module Map =
                     let result =
                         setPositions queue allocationMode values indices bitmap
 
-                    queue.Post(Msg.CreateFreeMsg<_>(indices))
-                    queue.Post(Msg.CreateFreeMsg<_>(values))
-                    queue.Post(Msg.CreateFreeMsg<_>(bitmap))
+                    indices.Free queue
+                    values.Free queue
+                    bitmap.Free queue
 
                     result
-                    |> Option.bind
+                    |> Option.map
                         (fun (resultValues, resultIndices) ->
                             { Context = clContext
                               Size = size
                               Indices = resultIndices
-                              Values = resultValues }
-                            |> Some)
+                              Values = resultValues })
                 | None ->
                     opOnHost value None
-                    |> Option.bind
+                    |> Option.map
                         (fun resultValue ->
-                            let resultValues =
-                                create queue allocationMode size resultValue
-
-                            let resultIndices = init queue allocationMode size
-
                             { Context = clContext
                               Size = size
-                              Indices = resultIndices
-                              Values = resultValues }
-                            |> Some)
+                              Indices = init queue allocationMode size
+                              Values = create queue allocationMode size resultValue })

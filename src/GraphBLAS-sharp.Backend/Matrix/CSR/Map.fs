@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 module internal Map =
     let preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
@@ -101,10 +102,10 @@ module internal Map =
             let resultRows, resultColumns, resultValues, _ =
                 setPositions queue allocationMode rows columns values bitmap
 
-            queue.Post(Msg.CreateFreeMsg<_>(bitmap))
-            queue.Post(Msg.CreateFreeMsg<_>(values))
-            queue.Post(Msg.CreateFreeMsg<_>(rows))
-            queue.Post(Msg.CreateFreeMsg<_>(columns))
+            bitmap.Free queue
+            values.Free queue
+            rows.Free queue
+            columns.Free queue
 
             { Context = clContext
               RowCount = matrix.RowCount
