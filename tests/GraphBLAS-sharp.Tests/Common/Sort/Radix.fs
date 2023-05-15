@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Tests.Backend.Common.Sort
 
 open Expecto
 open GraphBLAS.FSharp.Backend.Common.Sort
+open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
@@ -17,10 +18,16 @@ module Radix =
 
     let context = Context.defaultContext.ClContext
 
-    let checkResultByKeys (inputArray: (int * 'a) []) (actualValues: 'a []) =
+    let checkResultByKeys (inputArray: (int * 'a) []) (actualKeys: int []) (actualValues: 'a []) =
+        let expected =
+            Array.sortBy fst inputArray
+        let expectedKeys =
+            Array.map fst expected
         let expectedValues =
-            Array.sortBy fst inputArray |> Array.map snd
+            Array.map snd expected
 
+        "Keys must be the same"
+        |> Expect.sequenceEqual expectedKeys actualKeys
         "Values must be the same"
         |> Expect.sequenceEqual expectedValues actualValues
 
@@ -35,11 +42,12 @@ module Radix =
             let clKeys = keys.ToDevice context
             let clValues = values.ToDevice context
 
-            let clActualValues: ClArray<'a> = sortFun processor clKeys clValues
+            let clActualKeys, clActualValues: ClArray<int> * ClArray<'a> = sortFun processor clKeys clValues
 
+            let actualKeys = clActualKeys.ToHostAndFree processor
             let actualValues = clActualValues.ToHostAndFree processor
 
-            checkResultByKeys array actualValues
+            checkResultByKeys array actualKeys actualValues
 
     let createTestByKeys<'a when 'a: equality and 'a: struct> =
         let sort =

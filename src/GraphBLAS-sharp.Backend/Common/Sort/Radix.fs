@@ -270,20 +270,21 @@ module Radix =
                 failwith "Mismatch of key lengths and value. Lengths must be the same"
 
             if values.Length <= 1 then
-                values
+                copy processor DeviceOnly keys, dataCopy processor DeviceOnly values
             else
                 let firstKeys = copy processor DeviceOnly keys
 
                 let secondKeys =
                     clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, keys.Length)
 
+                let firstValues = dataCopy processor DeviceOnly values
                 let secondValues = dataCopy processor DeviceOnly values
 
                 let workGroupCount =
                     clContext.CreateClCell((keys.Length - 1) / workGroupSize + 1)
 
                 let mutable keysPair = (firstKeys, secondKeys)
-                let mutable valuesPair = (values, secondValues)
+                let mutable valuesPair = (firstValues, secondValues)
 
                 let swap (x, y) = y, x
                 // compute bound of iterations
@@ -320,11 +321,10 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
-                (fst keysPair).Free processor
                 (snd keysPair).Free processor
                 (snd valuesPair).Free processor
 
-                (fst valuesPair)
+                (fst keysPair, fst valuesPair)
 
     let runByKeysStandard clContext workGroupSize =
         runByKeys clContext workGroupSize defaultBitCount
