@@ -162,14 +162,7 @@ module ClArray =
 
             bitmap
 
-    ///<description>Remove duplicates form the given array.</description>
-    ///<param name="clContext">Computational context</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="inputArray">Should be sorted.</param>
-    let removeDuplications (clContext: ClContext) workGroupSize =
-
-        let scatter =
-            Scatter.runInplace clContext workGroupSize
+    let getPositions (clContext: ClContext) workGroupSize =
 
         let getUniqueBitmap = getUniqueBitmap clContext workGroupSize
 
@@ -185,12 +178,29 @@ module ClArray =
                 (prefixSumExclude processor bitmap 0)
                     .ToHostAndFree(processor)
 
+            bitmap, resultLength
+
+    ///<description>Remove duplicates form the given array.</description>
+    ///<param name="clContext">Computational context</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    ///<param name="inputArray">Should be sorted.</param>
+    let removeDuplications (clContext: ClContext) workGroupSize =
+
+        let scatter =
+            Scatter.runInplace clContext workGroupSize
+
+        let getPositions = getPositions clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+
+            let positions, resultLength = getPositions processor inputArray
+
             let outputArray =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
 
-            scatter processor bitmap inputArray outputArray
+            scatter processor positions inputArray outputArray
 
-            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
+            processor.Post <| Msg.CreateFreeMsg<_>(positions)
 
             outputArray
 
@@ -329,6 +339,31 @@ module ClArray =
             scatter processor positions values result
 
             result
+
+    //Same version of choose but with keys being attached to each value
+    let filterOption<'a> (clContext: ClContext) workGroupSize (predicate: Expr<'a option -> bool>) =
+        let getBitmap =
+            map<'a option, int> clContext workGroupSize
+            <| Map.bitmapOption predicate
+
+        let prefixSum =
+            PrefixSum.runExcludeInplace <@ (+) @> clContext workGroupSize
+
+        let scatter =
+            Scatter.runWithKeys clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (array: ClArray<'a option>) (keys: ClArray<int>) ->
+
+            let positions = getBitmap processor DeviceOnly array
+
+            let resultLength =
+                (prefixSum processor positions 0)
+                    .ToHostAndFree(processor)
+
+            let resultValues, resultKeys =
+                scatter processor positions array keys resultLength
+
+            resultKeys, resultValues
 
     let count (clContext: ClContext) workGroupSize (predicate: Expr<'a -> bool>) =
 
