@@ -2,6 +2,8 @@ namespace GraphBLAS.FSharp.Backend.Vector
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Vector.Sparse
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
@@ -87,7 +89,7 @@ module SpMSpV =
     let private gather (clContext: ClContext) workGroupSize =
 
         let gather =
-            <@ fun (ndRange: Range1D) vectorNNZ (rowOffsets: ClArray<int>) (matrixRowPointers: ClArray<int>) (matrixColumns: ClArray<int>) (matrixValues: ClArray<'a>) (vectorIndices: ClArray<int>) (resultIndicesArray: ClArray<int>) (resultValuesArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) vectorNNZ (rowOffsets: ClArray<int>) (matrixRowPointers: ClArray<int>) (matrixColumns: ClArray<int>) (matrixValues: ClArray<'a>) (vectorIndices: ClArray<int>) (resultRowsArray: ClArray<int>) (resultIndicesArray: ClArray<int>) (resultValuesArray: ClArray<'a>) ->
 
                 //Serial number of row to gather
                 let row = ndRange.GlobalID0
@@ -97,12 +99,14 @@ module SpMSpV =
                     let rowOffset = rowOffsets.[offsetIndex]
 
                     //vectorIndices.[row] --- actual number of row in matrix
-                    let matrixIndexOffset = matrixRowPointers.[vectorIndices.[row]]
+                    let actualRow = vectorIndices.[row]
+                    let matrixIndexOffset = matrixRowPointers.[actualRow]
 
                     if rowOffset <> rowOffsets.[offsetIndex + 1] then
                         let rowSize = rowOffsets.[offsetIndex + 1] - rowOffset
 
                         for i in 0 .. rowSize - 1 do
+                            resultRowsArray.[i + rowOffset] <- actualRow
                             resultIndicesArray.[i + rowOffset] <- matrixColumns.[matrixIndexOffset + i]
                             resultValuesArray.[i + rowOffset] <- matrixValues.[matrixIndexOffset + i] @>
 
@@ -123,52 +127,173 @@ module SpMSpV =
             let gatherArraySize =
                 computeOffsetsInplace queue (vector.NNZ * 2 + 1) collectedRows
 
+            if gatherArraySize = 0 then
+                let resultRows =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
+
+                let resultValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
+
+                let resultColumns =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
+
+                resultRows, resultColumns, resultValues, gatherArraySize
+            else
+                let ndRange =
+                    Range1D.CreateValid(vector.NNZ, workGroupSize)
+
+                let gather = gather.GetKernel()
+
+                let resultRows =
+                    clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, gatherArraySize)
+
+                let resultIndices =
+                    clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, gatherArraySize)
+
+                let resultValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode<'a>(DeviceOnly, gatherArraySize)
+
+                if gatherArraySize > 0 then
+                    queue.Post(
+                        Msg.MsgSetArguments
+                            (fun () ->
+                                gather.KernelFunc
+                                    ndRange
+                                    vector.NNZ
+                                    collectedRows
+                                    matrix.RowPointers
+                                    matrix.Columns
+                                    matrix.Values
+                                    vector.Indices
+                                    resultRows
+                                    resultIndices
+                                    resultValues)
+                    )
+
+                    queue.Post(Msg.CreateRunMsg<_, _>(gather))
+
+                collectedRows.Free queue
+
+                resultRows, resultIndices, resultValues, gatherArraySize
+
+    let private multiplyScalar (clContext: ClContext) (mul: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
+
+        let multiply =
+            <@ fun (ndRange: Range1D) resultLength vectorLength (rowIndices: ClArray<int>) (matrixValues: ClArray<'a>) (vectorIndices: ClArray<int>) (vectorValues: ClArray<'b>) (resultValues: ClArray<'c option>) ->
+                let i = ndRange.GlobalID0
+
+                if i < resultLength then
+                    let index = rowIndices.[i]
+                    let matrixValue = matrixValues.[i]
+
+                    let vectorValue =
+                        (%Search.Bin.byKey) vectorLength index vectorIndices vectorValues
+
+                    let res = (%mul) (Some matrixValue) vectorValue
+                    resultValues.[i] <- res @>
+
+        let multiply = clContext.Compile multiply
+
+        fun (queue: MailboxProcessor<_>) (columnIndices: ClArray<int>) (matrixValues: ClArray<'a>) (vector: Sparse<'b>) ->
+
+            let resultLength = columnIndices.Length
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, resultLength)
+
             let ndRange =
-                Range1D.CreateValid(vector.NNZ, workGroupSize)
+                Range1D.CreateValid(resultLength, workGroupSize)
 
-            let gather = gather.GetKernel()
+            let multiply = multiply.GetKernel()
 
-            let resultIndices =
-                clContext.CreateClArrayWithSpecificAllocationMode<int>(
-                    DeviceOnly,
-                    if gatherArraySize > 0 then
-                        gatherArraySize
-                    else
-                        1
-                )
+            queue.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        multiply.KernelFunc
+                            ndRange
+                            resultLength
+                            vector.NNZ
+                            columnIndices
+                            matrixValues
+                            vector.Indices
+                            vector.Values
+                            result)
+            )
 
-            let resultValues =
-                clContext.CreateClArrayWithSpecificAllocationMode<'a>(
-                    DeviceOnly,
-                    if gatherArraySize > 0 then
-                        gatherArraySize
-                    else
-                        1
-                )
+            queue.Post(Msg.CreateRunMsg<_, _>(multiply))
 
-            if gatherArraySize > 0 then
-                queue.Post(
-                    Msg.MsgSetArguments
-                        (fun () ->
-                            gather.KernelFunc
-                                ndRange
-                                vector.NNZ
-                                collectedRows
-                                matrix.RowPointers
-                                matrix.Columns
-                                matrix.Values
-                                vector.Indices
-                                resultIndices
-                                resultValues)
-                )
-
-                queue.Post(Msg.CreateRunMsg<_, _>(gather))
-
-            collectedRows.Free queue
-
-            resultIndices, resultValues, gatherArraySize
+            result
 
     let run
+        (clContext: ClContext)
+        (add: Expr<'c option -> 'c option -> 'c option>)
+        (mul: Expr<'a option -> 'b option -> 'c option>)
+        workGroupSize
+        =
+
+        let gather = gather clContext workGroupSize
+
+        //TODO: Radix sort
+        let sort =
+            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
+
+        let multiplyScalar =
+            multiplyScalar clContext mul workGroupSize
+
+        let segReduce =
+            Reduce.ByKey.segmentSequentialOption add clContext workGroupSize
+
+        let filterNone =
+            ClArray.filterOption clContext workGroupSize Predicates.isSome
+
+        let unwrapOption =
+            ClArray.map clContext workGroupSize (Map.optionToValueOrZero Unchecked.defaultof<'c>)
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
+
+            let gatherRows, gatherIndices, gatherValues, gatherLength = gather queue matrix vector
+
+            if gatherLength <= 0 then
+                gatherRows.Free queue
+                gatherValues.Free queue
+
+                { Context = clContext
+                  Indices = gatherIndices
+                  Values = clContext.CreateClArray 0
+                  Size = matrix.ColumnCount }
+            else
+                sort queue gatherIndices gatherRows gatherValues
+
+                let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
+
+                let multipliedValues =
+                    multiplyScalar queue sortedRows sortedValues vector
+
+                sortedValues.Dispose queue
+
+                let reducedKeys, reducedValues =
+                    segReduce queue DeviceOnly multipliedValues sortedIndices
+
+                multipliedValues.Free queue
+                sortedIndices.Free queue
+
+                let resultKeys, resultValuesOption =
+                    filterNone queue DeviceOnly reducedValues reducedKeys
+
+                reducedKeys.Free queue
+                reducedValues.Free queue
+
+                let resultValues =
+                    unwrapOption queue DeviceOnly resultValuesOption
+
+                resultValuesOption.Free queue
+
+                { Context = clContext
+                  Indices = resultKeys
+                  Values = resultValues
+                  Size = matrix.ColumnCount }
+
+    let runBool
         (clContext: ClContext)
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
@@ -187,8 +312,9 @@ module SpMSpV =
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 
-            let gatherIndices, gatherValues, gatherLength = gather queue matrix vector
+            let gatherRows, gatherIndices, gatherValues, gatherLength = gather queue matrix vector
 
+            gatherRows.Dispose queue
             gatherValues.Dispose queue
 
             if gatherLength <= 0 then
