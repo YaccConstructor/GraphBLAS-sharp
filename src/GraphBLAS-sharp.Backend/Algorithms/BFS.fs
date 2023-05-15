@@ -226,7 +226,6 @@ module BFS =
                             <= SPARSITY) then
                             frontier <- ClVector.Sparse newMaskedFrontier
                         else
-                            printfn "Sparse to dense, front size %i" (newMaskedFrontier.NNZ)
                             frontier <- ClVector.Dense(toDense queue DeviceOnly newMaskedFrontier)
                             newMaskedFrontier.Dispose queue
 
@@ -247,7 +246,6 @@ module BFS =
                     //Push/pull
                     if not stop then
                         if ((float32 NNZ) / (float32 front.Length) <= SPARSITY) then
-                            printfn "Dense to sparse,  front size %i" NNZ
                             frontier <- ClVector.Sparse(toSparse queue DeviceOnly front)
                             front.Dispose queue
 

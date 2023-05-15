@@ -37,9 +37,6 @@ module SSSP =
         let fillSubVectorTo =
             DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assignComplemented) workGroupSize
 
-        //let countNNZ =
-        //    ClArray.count clContext workGroupSize Predicates.isSome
-
         let containsNonZero =
             ClArray.exists clContext workGroupSize Predicates.isSome
 
