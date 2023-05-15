@@ -56,3 +56,78 @@ module internal Scatter =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let runInplaceKeys<'a> (clContext: ClContext) workGroupSize =
+
+        let run =
+            <@ fun (ndRange: Range1D) (resultLength: int) (positions: ClArray<int>) (positionsLength: int) (values: ClArray<'a>) (indices: ClArray<int>) (result: ClArray<'a>) (resultIndices: ClArray<int>) ->
+
+                let i = ndRange.GlobalID0
+
+                if i < positionsLength then
+                    let index = positions.[i]
+
+                    if 0 <= index && index < resultLength then
+                        if i < positionsLength - 1 then
+                            if index <> positions.[i + 1] then
+                                result.[index] <- values.[i]
+                                resultIndices.[index] <- indices.[i]
+                        else
+                            result.[index] <- values.[i]
+                            resultIndices.[index] <- indices.[i] @>
+
+        let program = clContext.Compile(run)
+
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (indices: ClArray<int>) (result: ClArray<'a>) (resultIndices: ClArray<int>) ->
+
+            let positionsLength = positions.Length
+
+            let ndRange =
+                Range1D.CreateValid(positionsLength, workGroupSize)
+
+            let kernel = program.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            result.Length
+                            positions
+                            positionsLength
+                            values
+                            indices
+                            result
+                            resultIndices)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let run<'a> (clContext: ClContext) workGroupSize =
+
+        let runInplace = runInplace clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (resultLength: int) ->
+
+            let result =
+                clContext.CreateClArray(resultLength, hostAccessMode = HostAccessMode.NotAccessible)
+
+            runInplace processor positions values result
+
+            result
+
+    let runWithKeys<'a> (clContext: ClContext) workGroupSize =
+
+        let runInplace = runInplaceKeys clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (positions: ClArray<int>) (values: ClArray<'a>) (keys: ClArray<int>) (resultLength: int) ->
+
+            let result =
+                clContext.CreateClArray(resultLength, hostAccessMode = HostAccessMode.NotAccessible)
+
+            let resultKeys =
+                clContext.CreateClArray(resultLength, hostAccessMode = HostAccessMode.NotAccessible)
+
+            runInplace processor positions values keys result resultKeys
+
+            result, resultKeys
