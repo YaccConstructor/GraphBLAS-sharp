@@ -340,7 +340,6 @@ module ClArray =
 
             result
 
-    //Same version of choose but with keys being attached to each value
     let filterOption<'a> (clContext: ClContext) workGroupSize (predicate: Expr<'a option -> bool>) =
         let getBitmap =
             map<'a option, int> clContext workGroupSize

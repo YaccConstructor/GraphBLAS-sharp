@@ -6,6 +6,7 @@ open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module Reduce =
     /// <summary>
@@ -427,7 +428,7 @@ module Reduce =
                         let itemKeyId = lid + 1
 
                         let startKeyIndex =
-                            (%Search.Bin.lowerPosition) length itemKeyId localBitmap
+                            (%Search.Bin.lowerPositionLocal) length itemKeyId localBitmap
 
                         match startKeyIndex with
                         | Some startPosition ->
@@ -470,3 +471,71 @@ module Reduce =
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 reducedKeys, reducedValues
+
+        let segmentSequentialOption opAdd (clContext: ClContext) workGroupSize =
+
+            let kernel =
+                <@ fun (ndRange: Range1D) length uniqueKeysCount (values: ClArray<'a option>) (keys: ClArray<int>) (offsets: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'a option>) ->
+
+                    //Thread per unique key
+                    //gid is a serial number of key
+                    let gid = ndRange.GlobalID0
+
+                    if gid < uniqueKeysCount then
+
+                        let startIndex =
+                            (%Search.Bin.lowerPosition) length gid offsets
+
+                        match startIndex with
+                        | Some startIndex ->
+                            let key = keys.[startIndex]
+                            let mutable sum = None
+                            let mutable currentIndex = startIndex
+
+                            while currentIndex < length && keys.[currentIndex] = key do
+                                let res = (%opAdd) sum values.[currentIndex]
+                                sum <- res
+                                currentIndex <- currentIndex + 1
+
+                            resultValues.[gid] <- sum
+                            resultKeys.[gid] <- key
+                        | None -> () @>
+
+            let computeOffsets =
+                ClArray.getPositions clContext workGroupSize
+
+            let kernel = clContext.Compile kernel
+
+            fun (processor: MailboxProcessor<_>) (allocationMode: AllocationFlag) (values: ClArray<'a option>) (keys: ClArray<int>) ->
+
+                let offsets, uniqueKeysCount = computeOffsets processor keys
+                let kernel = kernel.GetKernel()
+
+                let ndRange =
+                    Range1D.CreateValid(uniqueKeysCount, workGroupSize)
+
+                let resKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, uniqueKeysCount)
+
+                let resValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, uniqueKeysCount)
+
+                processor.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                values.Length
+                                uniqueKeysCount
+                                values
+                                keys
+                                offsets
+                                resKeys
+                                resValues)
+                )
+
+                processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+                offsets.Free processor
+
+                resKeys, resValues

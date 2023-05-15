@@ -21,3 +21,8 @@ module Map =
             match (%map) item with
             | Some _ -> 1
             | None -> 0 @>
+
+    let bitmapOption<'a> (map: Expr<'a option -> bool>) =
+        <@ fun (item: 'a option) ->
+            let cond = (%map) item
+            if cond then 1 else 0 @>
