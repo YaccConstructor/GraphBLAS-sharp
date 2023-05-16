@@ -53,6 +53,45 @@ module Matrix =
 
             rows
 
+    let item<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+
+        let kernel =
+            <@ fun (ndRange: Range1D) row column (rowPointers: ClArray<int>) (columns: ClArray<int>) (values: ClArray<'a>) (result: ClCell<'a option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid = 0 then
+                    let firstIndex = rowPointers.[row]
+                    let lastIndex = rowPointers.[row + 1] - 1
+
+                    result.Value <- (%Search.Bin.inRange) firstIndex lastIndex column columns values @>
+
+        let program = clContext.Compile kernel
+
+        fun (processor: MailboxProcessor<_>) (row: int) (column: int) (matrix: ClMatrix.CSR<'a>) ->
+
+            if row < 0 || row >= matrix.RowCount then
+                failwith "Row out of range"
+
+            if column < 0 || column >= matrix.ColumnCount then
+                failwith "Column out of range"
+
+            let result = clContext.CreateClCell None
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(1, workGroupSize)
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc ndRange row column matrix.RowPointers matrix.Columns matrix.Values result)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            result
+
     let subRows (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -295,3 +334,5 @@ module Matrix =
             pointerPairs.Free processor
 
             rowsLength
+
+    let kronecker = Kronecker.run

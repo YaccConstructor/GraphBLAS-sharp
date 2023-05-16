@@ -14,6 +14,7 @@ let matrixTests =
           Matrix.ByRows.tests
           Matrix.ExpandRows.tests
           Matrix.SubRows.tests
+          Matrix.Kronecker.tests
 
           Matrix.SpGeMM.Expand.generalTests
           Matrix.SpGeMM.Masked.tests ]

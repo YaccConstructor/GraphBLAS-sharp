@@ -160,6 +160,38 @@ module ClArray =
 
             result
 
+    let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
+
+        let map =
+            <@ fun (ndRange: Range1D) lenght (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < lenght then
+                    result.[gid] <- (%op) value.Value inputArray.[gid] @>
+
+        let kernel = clContext.Compile map
+
+        fun (processor: MailboxProcessor<_>) allocationMode (value: 'a) (inputArray: ClArray<'b>) ->
+
+            let result =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
+
+            let valueClCell = value |> clContext.CreateClCell
+
+            let ndRange =
+                Range1D.CreateValid(inputArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length valueClCell inputArray result)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            result
+
     let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
 
         let kernel =

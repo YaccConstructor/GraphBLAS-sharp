@@ -1,12 +1,13 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Vector.Sparse
 
 module Vector =
     let copy (clContext: ClContext) workGroupSize =
@@ -19,6 +20,8 @@ module Vector =
               Indices = copy processor allocationMode vector.Indices
               Values = copyData processor allocationMode vector.Values
               Size = vector.Size }
+
+    let mapWithValue = Map.WithValueOption.run
 
     let map2 = Map2.run
 
