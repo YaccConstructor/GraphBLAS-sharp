@@ -1,73 +1,115 @@
 open Expecto
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Tests
 
 let matrixTests =
     testList
-        "Matrix tests"
+        "Matrix"
         [ Matrix.Convert.tests
-          Matrix.Map2.addTests
-          Matrix.Map2.addAtLeastOneTests
-          Matrix.Map2.mulAtLeastOneTests
-          Matrix.Map2.addAtLeastOneToCOOTests
-          Matrix.Mxm.tests
-          Matrix.Transpose.tests ]
+          Matrix.Map2.allTests
+          Matrix.Map.allTests
+          Matrix.Merge.allTests
+          Matrix.Transpose.tests
+          Matrix.RowsLengths.tests
+          Matrix.ByRows.tests
+          Matrix.ExpandRows.tests
+          Matrix.SubRows.tests
+          Matrix.Kronecker.tests
+
+          Matrix.SpGeMM.Expand.generalTests
+          Matrix.SpGeMM.Masked.tests ]
     |> testSequenced
 
 let commonTests =
+    let scanTests =
+        testList
+            "Scan"
+            [ Common.Scan.ByKey.sequentialSegmentsTests
+              Common.Scan.PrefixSum.tests ]
+
+    let reduceTests =
+        testList
+            "Reduce"
+            [ Common.Reduce.ByKey.allTests
+              Common.Reduce.Reduce.tests
+              Common.Reduce.Sum.tests ]
+
     let clArrayTests =
         testList
             "ClArray"
-            [ Common.ClArray.PrefixSum.tests
-              Common.ClArray.RemoveDuplicates.tests
+            [ Common.ClArray.RemoveDuplicates.tests
               Common.ClArray.Copy.tests
               Common.ClArray.Replicate.tests
               Common.ClArray.Exists.tests
               Common.ClArray.Map.tests
               Common.ClArray.Map2.addTests
               Common.ClArray.Map2.mulTests
-              Common.ClArray.Choose.tests ]
+              Common.ClArray.Choose.allTests
+              Common.ClArray.ChunkBySize.allTests
+              Common.ClArray.Blit.tests
+              Common.ClArray.Concat.tests
+              Common.ClArray.Fill.tests
+              Common.ClArray.Pairwise.tests
+              Common.ClArray.UpperBound.tests
+              Common.ClArray.Set.tests
+              Common.ClArray.Item.tests ]
+
+    let sortTests =
+        testList
+            "Sort"
+            [ Common.Sort.Bitonic.tests
+              Common.Sort.Radix.allTests ]
 
     testList
-        "Common tests"
-        [ clArrayTests
-          Common.BitonicSort.tests
-          Common.Scatter.tests
-          Common.Reduce.tests
-          Common.Sum.tests ]
+        "Common"
+        [ Common.Scatter.allTests
+          Common.Gather.allTests
+          Common.Merge.tests
+          clArrayTests
+          sortTests
+          reduceTests
+          scanTests ]
     |> testSequenced
 
 let vectorTests =
     testList
-        "Vector tests"
+        "Vector"
         [ Vector.SpMV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
-          Vector.Map2.addTests
-          Vector.Map2.mulTests
-          Vector.Map2.addAtLeastOneTests
-          Vector.Map2.mulAtLeastOneTests
-          Vector.Map2.addGeneralTests
-          Vector.Map2.mulGeneralTests
-          Vector.Map2.complementedGeneralTests
+          Vector.Map2.allTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
-          Vector.Reduce.tests ]
+          Vector.Reduce.tests
+          Vector.Merge.tests ]
     |> testSequenced
 
 let algorithmsTests =
     testList "Algorithms tests" [ Algorithms.BFS.tests ]
     |> testSequenced
 
-[<Tests>]
-let allTests =
+let deviceTests =
     testList
-        "All tests"
-        [ commonTests
-          matrixTests
+        "Device"
+        [ matrixTests
+          commonTests
           vectorTests
           algorithmsTests ]
+    |> testSequenced
+
+let hostTests =
+    testList
+        "Host"
+        [ Host.Matrix.FromArray2D.tests
+          Host.Matrix.Convert.tests
+          Host.IO.MtxReader.test ]
+    |> testSequenced
+
+[<Tests>]
+let allTests =
+    testList "All" [ deviceTests; hostTests ]
     |> testSequenced
 
 [<EntryPoint>]

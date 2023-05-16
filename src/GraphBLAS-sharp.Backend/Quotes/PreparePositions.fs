@@ -27,3 +27,16 @@ module PreparePositions =
                     allValuesBuffer.[index] <- v
                     rawPositionsBuffer.[index] <- 1
                 | None -> rawPositionsBuffer.[index] <- 0 @>
+
+    let getUniqueBitmapLocal<'a when 'a: equality> =
+        <@ fun (array: 'a []) length lid (result: int []) ->
+            if lid < length then
+                let isFirst = lid = 0
+
+                let isNotEqualToPrev = array.[lid] <> array.[lid - 1]
+                let isUnique = lid > 0 && isNotEqualToPrev
+
+                if isFirst || isUnique then
+                    result.[lid] <- 1
+                else
+                    result.[lid] <- 0 @>

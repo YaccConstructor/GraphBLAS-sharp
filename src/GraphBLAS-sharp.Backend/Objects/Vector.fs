@@ -22,6 +22,8 @@ module ClVector =
 
         member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 
+        member this.NNZ = this.Values.Length
+
 [<RequireQualifiedAccess>]
 type ClVector<'a when 'a: struct> =
     | Sparse of ClVector.Sparse<'a>
@@ -34,4 +36,4 @@ type ClVector<'a when 'a: struct> =
     member this.Dispose(q) =
         match this with
         | Sparse vector -> vector.Dispose(q)
-        | Dense vector -> vector.Dispose(q)
+        | Dense vector -> vector.FreeAndWait(q)

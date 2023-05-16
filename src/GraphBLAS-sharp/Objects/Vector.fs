@@ -33,15 +33,14 @@ module Vector =
               Size = size }
 
         static member FromArray(array: 'a [], isZero: 'a -> bool) =
-            let (indices, vals) =
+            let indices, values =
                 array
-                |> Seq.cast<'a>
                 |> Seq.mapi (fun idx v -> (idx, v))
                 |> Seq.filter (fun (_, v) -> not (isZero v))
                 |> Array.ofSeq
                 |> Array.unzip
 
-            Sparse.FromTuples(indices, vals, array.Length)
+            Sparse.FromTuples(indices, values, array.Length)
 
         member this.NNZ = this.Values.Length
 

@@ -41,3 +41,11 @@ module ClContext =
                     hostAccessMode = HostAccessMode.ReadWrite,
                     allocationMode = AllocationMode.CopyHostPtr
                 )
+
+        member this.MaxMemAllocSize =
+            let error = ref Unchecked.defaultof<ClErrorCode>
+
+            Cl
+                .GetDeviceInfo(this.ClDevice.Device, OpenCL.Net.DeviceInfo.MaxMemAllocSize, error)
+                .CastTo<int>()
+            * 1<Byte>

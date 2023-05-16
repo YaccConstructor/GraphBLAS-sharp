@@ -16,25 +16,12 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Exceptions.fs" />
-    <Compile Include="AlgebraicStructures.fs" />
-    <Compile Include="GraphblasEvaluation.fs" />
+    <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/Matrix.fs" />
     <Compile Include="Objects/Scalar.fs" />
-    <Compile Include="Objects/Vector.fs" />
     <Compile Include="Objects/VectorExtensions.fs" />
     <Compile Include="Objects/MatrixExtensions.fs" />
-    <Compile Include="Operations/Scalar.fs" />
     <Compile Include="IO/MtxReader.fs" />
-    <Compile Include="Predefined/Monoids/Any.fs" />
-    <Compile Include="Predefined/Monoids/Add.fs" />
-    <Compile Include="Predefined/Monoids/Min.fs" />
-    <Compile Include="Predefined/Semirings/AnyAll.fs" />
-    <Compile Include="Predefined/Semirings/AddMult.fs" />
-    <Compile Include="Predefined/Semirings/MinAdd.fs" />
-    <!--Compile Include="Algorithms/BFS.fs" />
-    <Compile Include="Algorithms/ShortestPath.fs" />
-    <Compile Include="Algorithms/TriangleCounting.fs" />
-    <Compile Include="Algorithms/BetweennessCentrality.fs" /-->
     <Content Include="YC.OpenCL.NET.dll.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

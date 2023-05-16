@@ -14,14 +14,14 @@ open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 module BFS =
     let singleSource
-        (clContext: ClContext)
         (add: Expr<int option -> int option -> int option>)
         (mul: Expr<'a option -> int option -> int option>)
+        (clContext: ClContext)
         workGroupSize
         =
 
         let spMVTo =
-            SpMV.runTo clContext add mul workGroupSize
+            SpMV.runTo add mul clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
@@ -29,13 +29,13 @@ module BFS =
         let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplementedTo =
-            DenseVector.map2Inplace clContext Mask.complementedOp workGroupSize
+            Vector.map2InPlace Mask.complementedOp clContext workGroupSize
 
         let fillSubVectorTo =
-            DenseVector.assignByMaskInplace clContext (Convert.assignToOption Mask.assign) workGroupSize
+            Vector.assignByMaskInPlace (Convert.assignToOption Mask.assign) clContext workGroupSize
 
         let containsNonZero =
-            ClArray.exists clContext workGroupSize Predicates.isSome
+            ClArray.exists Predicates.isSome clContext workGroupSize
 
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
@@ -67,7 +67,7 @@ module BFS =
                         not
                         <| (containsNonZero queue front).ToHostAndFree queue
 
-                front.Dispose queue
+                front.Free queue
 
                 levels
             | _ -> failwith "Not implemented"
