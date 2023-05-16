@@ -101,7 +101,6 @@ module ArithmeticOperations =
         mkUnaryOp zero <@ fun x -> x + constant @>
 
     let intSumOption = mkNumericSum 0
-    // let byteSumOption = mkNumericSum 0uy
     let floatSumOption = mkNumericSum 0.0
     let float32SumOption = mkNumericSum 0f
 
