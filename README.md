@@ -231,6 +231,13 @@ build.cmd
 ```
 To find more options look at [MiniScaffold](https://github.com/TheAngryByrd/MiniScaffold). We use it in our project.
 
+### Release
+The release process is automated: NuGet packages publishing process is triggered by tag pushing to any branch.
+To release new version one should
+1. [Add release notes to CHANGELOG](https://github.com/TheAngryByrd/MiniScaffold/blob/master/Content/Library/README.md#releasing)
+2. Run ```./build.sh Release [version]``` (on local machine)
+
+
 ## License
 This project licensed under MIT License. License text can be found in the [license file](https://github.com/YaccConstructor/GraphBLAS-sharp/blob/master/LICENSE.md).
  
