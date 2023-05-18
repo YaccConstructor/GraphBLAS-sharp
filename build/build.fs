@@ -646,7 +646,9 @@ let watchDocs _ =
     DocsTool.watch ()
 
 let releaseDocs ctx =
-    isReleaseBranchCheck () // Docs changes don't need a full release to the library
+    if isCI.Value
+    then allPublishChecks () // Release docs on publishing on CI
+    else isReleaseBranchCheck () // Docs changes don't need a full release to the library
 
     Git.Staging.stageAll docsDir
     Git.Commit.exec "" (sprintf "Documentation release of version %s" latestEntry.NuGetVersion)
