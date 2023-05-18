@@ -8,7 +8,7 @@ on:
 
 jobs:
   win-build-release:
-    name: Windows Build (No Tests)
+    name: Windows Release Build (No Tests)
     runs-on: windows-latest
     defaults:
       run:
@@ -31,7 +31,7 @@ jobs:
           CONFIGURATION: Release
 
   win-build-debug:
-    name: Windows Build (No Tests)
+    name: Windows Debug Build (No Tests)
     runs-on: windows-latest
     defaults:
       run:
@@ -55,7 +55,7 @@ jobs:
 
 
   win-test:
-    name: Windows Build And Test
+    name: Windows Release Build And Test
     if: github.repository_owner != 'YaccConstructor'
     runs-on: windows-latest
     defaults:
@@ -96,7 +96,7 @@ jobs:
           CONFIGURATION: Release
 
   linux-build-debug:
-    name: Linux Build (No Tests)
+    name: Linux Debug Build (No Tests)
     runs-on: ubuntu-latest
     steps:
       - name: System Info
@@ -118,7 +118,7 @@ jobs:
           CONFIGURATION: Debug
 
   linux-build-release:
-    name: Linux Build (No Tests)
+    name: Linux Release Build (No Tests)
     runs-on: ubuntu-latest
     steps:
       - name: System Info
@@ -140,7 +140,7 @@ jobs:
           CONFIGURATION: Release
 
   linux-test:
-    name: Linux Build And Test
+    name: Linux Release Build And Test
     if: github.repository_owner != 'YaccConstructor'
     runs-on: ubuntu-latest
     steps:
