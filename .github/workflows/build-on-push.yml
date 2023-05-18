@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  win-build:
+  win-build-release:
     name: Windows Build (No Tests)
     runs-on: windows-latest
     defaults:
@@ -28,6 +28,31 @@ jobs:
           # Work around https://github.com/actions/setup-dotnet/issues/29
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
+          CONFIGURATION: Release
+
+  win-build-debug:
+    name: Windows Build (No Tests)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - name: System Info
+        run: systeminfo
+
+      - uses: actions/checkout@v2
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: ./build.cmd DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+          CONFIGURATION: Debug
+
 
   win-test:
     name: Windows Build And Test
@@ -68,8 +93,9 @@ jobs:
           # Work around https://github.com/actions/setup-dotnet/issues/29
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
+          CONFIGURATION: Release
 
-  linux-build:
+  linux-build-debug:
     name: Linux Build (No Tests)
     runs-on: ubuntu-latest
     steps:
@@ -89,6 +115,29 @@ jobs:
           # Work around https://github.com/actions/setup-dotnet/issues/29
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
+          CONFIGURATION: Debug
+
+linux-build-release:
+    name: Linux Build (No Tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: System Info
+        run: lscpu
+
+      - uses: actions/checkout@v1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+
+      - name: Build
+        run: |
+          chmod +x ./build.sh
+          ./build.sh DotnetBuild
+        env:
+          # Work around https://github.com/actions/setup-dotnet/issues/29
+          DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+          CI: true
+          CONFIGURATION: Release
 
   linux-test:
     name: Linux Build And Test
@@ -121,6 +170,7 @@ jobs:
           # Work around https://github.com/actions/setup-dotnet/issues/29
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
+          CONFIGURATION: Release
 
   linux-test-self-hosted:
     name: Linux Self-Hosted Test
@@ -143,3 +193,4 @@ jobs:
           # Work around https://github.com/actions/setup-dotnet/issues/29
           DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
           CI: true
+          CONFIGURATION: Release
