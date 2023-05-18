@@ -117,7 +117,7 @@ jobs:
           CI: true
           CONFIGURATION: Debug
 
-linux-build-release:
+  linux-build-release:
     name: Linux Build (No Tests)
     runs-on: ubuntu-latest
     steps:
