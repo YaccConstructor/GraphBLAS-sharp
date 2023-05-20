@@ -75,6 +75,7 @@ let vectorTests =
     testList
         "Vector"
         [ Vector.SpMV.tests
+          Vector.SpMSpV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests

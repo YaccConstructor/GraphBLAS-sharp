@@ -65,6 +65,7 @@
         <Compile Include="Backend/Vector/SpMV.fs" />
         <Compile Include="Backend/Vector/ZeroCreate.fs" />
         <Compile Include="Backend/Vector/Merge.fs" />
+        <Compile Include="Backend/Vector/SpMSpV.fs" />
         <Compile Include="Host/Matrix/FromArray2D.fs" />
         <Compile Include="Host/Matrix/Convert.fs" />
         <Compile Include="Host/IO/MtxReader.fs" />

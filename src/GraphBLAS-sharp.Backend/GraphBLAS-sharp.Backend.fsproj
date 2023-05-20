@@ -47,6 +47,7 @@
     <Compile Include="Vector/Sparse/Vector.fs" />
     <Compile Include="Vector/SpMV.fs" />
     <Compile Include="Vector/Vector.fs" />
+    <Compile Include="Vector/SpMSpV.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COO/Map.fs" />
     <Compile Include="Matrix/COO/Merge.fs" />
