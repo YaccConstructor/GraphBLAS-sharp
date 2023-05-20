@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -63,6 +63,7 @@
     <Compile Include="Matrix/Matrix.fs" />
       
     <Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/SSSP.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

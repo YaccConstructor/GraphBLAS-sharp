@@ -87,7 +87,10 @@ let vectorTests =
     |> testSequenced
 
 let algorithmsTests =
-    testList "Algorithms tests" [ Algorithms.BFS.tests ]
+    testList
+        "Algorithms tests"
+        [ Algorithms.BFS.tests
+          Algorithms.SSSP.tests ]
     |> testSequenced
 
 let deviceTests =
