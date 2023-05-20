@@ -437,6 +437,91 @@ module ClArray =
 
                 Some result
 
+    let assignWithKeysOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
+
+        let assign =
+            <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (positions: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'b>) resultLength ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let position = positions.[gid]
+                    let value = values.[gid]
+                    let key = keys.[gid]
+
+                    // seems like scatter (option scatter) ???
+                    if 0 <= position && position < resultLength then
+                        match (%op) value with
+                        | Some value ->
+                            resultValues.[position] <- value
+                            resultKeys.[position] <- key
+
+                        | None -> () @>
+
+        let kernel = clContext.Compile assign
+
+        fun (processor: MailboxProcessor<_>) (keys: ClArray<int>) (values: ClArray<'a>) (positions: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'b>) ->
+
+            if values.Length <> positions.Length then
+                failwith "lengths must be the same"
+
+            let ndRange =
+                Range1D.CreateValid(values.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            values.Length
+                            keys
+                            values
+                            positions
+                            resultKeys
+                            resultValues
+                            resultValues.Length)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    let chooseWithKeys<'a, 'b> (predicate: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
+        let getBitmap =
+            map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
+
+        let prefixSum =
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
+
+        let assignValues =
+            assignWithKeysOption predicate clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (sourceKeys: ClArray<int>) (sourceValues: ClArray<'a>) ->
+
+            let positions =
+                getBitmap processor DeviceOnly sourceValues
+
+            let resultLength =
+                (prefixSum processor positions)
+                    .ToHostAndFree(processor)
+
+            if resultLength = 0 then
+                positions.Free processor
+
+                None
+            else
+                let resultKeys =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                let resultValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+                assignValues processor sourceKeys sourceValues positions resultKeys resultValues
+
+                positions.Free processor
+
+                Some(resultKeys, resultValues)
+
     let assignOption2 (op: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
 
         let assign =
