@@ -181,21 +181,31 @@ module Expand =
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
             // sort by columns
-            let valuesSortedByColumns =
+            let keys, valuesSortedByColumns =
                 sortByKeyValues processor DeviceOnly columns values
 
-            let rowsSortedByColumns =
+            keys.Free processor
+
+            let keys, rowsSortedByColumns =
                 sortByKeyIndices processor DeviceOnly columns rows
 
+            keys.Free processor
+
+            //TODO: already sorted above?
             let sortedColumns = sortKeys processor columns
 
             // sort by rows
-            let valuesSortedByRows =
+            let keys, valuesSortedByRows =
                 sortByKeyValues processor DeviceOnly rowsSortedByColumns valuesSortedByColumns
 
-            let columnsSortedByRows =
+            keys.Free processor
+
+            let keys, columnsSortedByRows =
                 sortByKeyIndices processor DeviceOnly rowsSortedByColumns sortedColumns
 
+            keys.Free processor
+
+            //TODO: already sorted above?
             let sortedRows = sortKeys processor rowsSortedByColumns
 
             valuesSortedByColumns.Free processor
