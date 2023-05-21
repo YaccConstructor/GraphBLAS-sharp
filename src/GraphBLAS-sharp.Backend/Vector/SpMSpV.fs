@@ -224,6 +224,67 @@ module SpMSpV =
 
             result
 
+    let run
+        (add: Expr<'c option -> 'c option -> 'c option>)
+        (mul: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        //TODO: Common.Gather?
+        let gather = gather clContext workGroupSize
+
+        //TODO: Radix sort
+        let sort =
+            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
+
+        let multiplyScalar =
+            multiplyScalar clContext mul workGroupSize
+
+        let segReduce =
+            Reduce.ByKey.Option.segmentSequential add clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
+
+            let gatherRows, gatherIndices, gatherValues, gatherLength = gather queue matrix vector
+
+            if gatherLength <= 0 then
+                gatherRows.Free queue
+                gatherValues.Free queue
+
+                { Context = clContext
+                  Indices = gatherIndices
+                  Values = clContext.CreateClArray 0
+                  Size = matrix.ColumnCount }
+            else
+                sort queue gatherIndices gatherRows gatherValues
+
+                let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
+
+                let multipliedValues =
+                    multiplyScalar queue sortedRows sortedValues vector
+
+                sortedValues.Free queue
+                sortedRows.Free queue
+
+                match segReduce queue DeviceOnly sortedIndices multipliedValues with
+                | Some (reducedValues, reducedKeys) ->
+                    multipliedValues.Free queue
+                    sortedIndices.Free queue
+
+                    { Context = clContext
+                      Indices = reducedKeys
+                      Values = reducedValues
+                      Size = matrix.ColumnCount }
+                | None ->
+                    multipliedValues.Free queue
+                    sortedIndices.Free queue
+
+                    { Context = clContext
+                      Indices = clContext.CreateClArray 0
+                      Values = clContext.CreateClArray 0
+                      Size = matrix.ColumnCount }
+
     let runBoolStandard
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)

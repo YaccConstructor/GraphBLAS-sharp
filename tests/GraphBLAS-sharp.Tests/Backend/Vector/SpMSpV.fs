@@ -1,5 +1,6 @@
 ﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMSpV
 
+open System
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
 open Brahma.FSharp
@@ -131,9 +132,40 @@ let testFixturesSpMSpV (testContext: TestContext) =
           (&&)
           ArithmeticOperations.boolSumOption
           ArithmeticOperations.boolMulOption
-    //createTest testContext 0 1 (=) (+) (*) ArithmeticOperations.intSum ArithmeticOperations.intMul
-    //createTest testContext 0.0f 1f (=) (+) (*) ArithmeticOperations.float32Sum ArithmeticOperations.float32Mul
-     ]
+
+      createTest
+          SpMSpV.run
+          testContext
+          0
+          1
+          (=)
+          (+)
+          (*)
+          ArithmeticOperations.intSumOption
+          ArithmeticOperations.intMulOption
+
+      createTest
+          SpMSpV.run
+          testContext
+          0.0f
+          1f
+          (=)
+          (+)
+          (*)
+          ArithmeticOperations.float32SumOption
+          ArithmeticOperations.float32MulOption
+
+      if Utils.isFloat64Available context.ClDevice then
+          createTest
+              SpMSpV.run
+              testContext
+              0.0
+              1
+              (=)
+              (+)
+              (*)
+              ArithmeticOperations.floatSumOption
+              ArithmeticOperations.floatMulOption ]
 
 let tests =
     gpuTests "Backend.Vector.SpMSpV tests" testFixturesSpMSpV
