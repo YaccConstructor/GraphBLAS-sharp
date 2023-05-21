@@ -63,7 +63,7 @@ let correctnessGenericTest
     some
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClVector.Sparse<'a> -> ClVector.Sparse<'a>)
+    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClVector.Sparse<'a> -> ClVector.Sparse<'a> option)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -89,15 +89,16 @@ let correctnessGenericTest
                 | Vector.Sparse vtr, ClMatrix.CSR m ->
                     let v = vtr.ToDevice testContext.ClContext
 
-                    let res = spMV testContext.Queue m v
+                    match spMV testContext.Queue m v with
+                    | Some res ->
+                        (ClMatrix.CSR m).Dispose q
+                        v.Dispose q
+                        let hostResIndices = res.Indices.ToHost q
+                        let hostResValues = res.Values.ToHost q
+                        res.Dispose q
 
-                    (ClMatrix.CSR m).Dispose q
-                    v.Dispose q
-                    let hostResIndices = res.Indices.ToHost q
-                    let hostResValues = res.Values.ToHost q
-                    res.Dispose q
-
-                    checkResult sumOp mulOp zero matrix vector hostResIndices hostResValues
+                        checkResult sumOp mulOp zero matrix vector hostResIndices hostResValues
+                    | None -> failwith "Result should not be empty while standard operations are tested"
                 | _ -> failwith "Impossible"
             with
             | ex when ex.Message = "InvalidBufferSize" -> ()

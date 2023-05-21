@@ -127,16 +127,7 @@ module SpMSpV =
                 computeOffsetsInplace queue (vector.NNZ * 2 + 1) collectedRows
 
             if gatherArraySize = 0 then
-                let resultRows =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
-
-                let resultValues =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
-
-                let resultColumns =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, 1)
-
-                resultRows, resultColumns, resultValues, gatherArraySize
+                None
             else
                 let ndRange =
                     Range1D.CreateValid(vector.NNZ, workGroupSize)
@@ -173,7 +164,7 @@ module SpMSpV =
 
                 collectedRows.Free queue
 
-                resultRows, resultIndices, resultValues, gatherArraySize
+                Some(resultRows, resultIndices, resultValues)
 
 
     let private multiplyScalar (clContext: ClContext) (mul: Expr<'a option -> 'b option -> 'c option>) workGroupSize =
@@ -246,17 +237,9 @@ module SpMSpV =
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 
-            let gatherRows, gatherIndices, gatherValues, gatherLength = gather queue matrix vector
-
-            if gatherLength <= 0 then
-                gatherRows.Free queue
-                gatherValues.Free queue
-
-                { Context = clContext
-                  Indices = gatherIndices
-                  Values = clContext.CreateClArray 0
-                  Size = matrix.ColumnCount }
-            else
+            match gather queue matrix vector with
+            | None -> None
+            | Some (gatherRows, gatherIndices, gatherValues) ->
                 sort queue gatherIndices gatherRows gatherValues
 
                 let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
@@ -272,18 +255,17 @@ module SpMSpV =
                     multipliedValues.Free queue
                     sortedIndices.Free queue
 
-                    { Context = clContext
-                      Indices = reducedKeys
-                      Values = reducedValues
-                      Size = matrix.ColumnCount }
+                    Some(
+                        { Context = clContext
+                          Indices = reducedKeys
+                          Values = reducedValues
+                          Size = matrix.ColumnCount }
+                    )
                 | None ->
                     multipliedValues.Free queue
                     sortedIndices.Free queue
 
-                    { Context = clContext
-                      Indices = clContext.CreateClArray 0
-                      Values = clContext.CreateClArray 0
-                      Size = matrix.ColumnCount }
+                    None
 
     let runBoolStandard
         (add: Expr<'c option -> 'c option -> 'c option>)
@@ -304,17 +286,12 @@ module SpMSpV =
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 
-            let gatherRows, gatherIndices, gatherValues, gatherLength = gather queue matrix vector
+            match gather queue matrix vector with
+            | None -> None
+            | Some (gatherRows, gatherIndices, gatherValues) ->
+                gatherRows.Free queue
+                gatherValues.Free queue
 
-            gatherRows.Free queue
-            gatherValues.Free queue
-
-            if gatherLength <= 0 then
-                { Context = clContext
-                  Indices = gatherIndices
-                  Values = clContext.CreateClArray [| false |]
-                  Size = matrix.ColumnCount }
-            else
                 let sortedIndices = sort queue gatherIndices
 
                 let resultIndices = removeDuplicates queue sortedIndices
@@ -322,7 +299,9 @@ module SpMSpV =
                 gatherIndices.Free queue
                 sortedIndices.Free queue
 
-                { Context = clContext
-                  Indices = resultIndices
-                  Values = create queue DeviceOnly resultIndices.Length true
-                  Size = matrix.ColumnCount }
+                Some(
+                    { Context = clContext
+                      Indices = resultIndices
+                      Values = create queue DeviceOnly resultIndices.Length true
+                      Size = matrix.ColumnCount }
+                )
