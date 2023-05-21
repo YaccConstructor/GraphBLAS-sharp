@@ -904,3 +904,44 @@ module ClArray =
 
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange index array value))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+    let count (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
+
+        let sum =
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
+
+        let getBitmap =
+            <@ fun (ndRange: Range1D) length (vector: ClArray<'a>) (bitmap: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    let isTrue = (%predicate) vector.[gid]
+
+                    if isTrue then
+                        bitmap.[gid] <- 1
+                    else
+                        bitmap.[gid] <- 0 @>
+
+        let kernel = clContext.Compile getBitmap
+
+        fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) ->
+
+            let bitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, array.Length)
+
+            let ndRange =
+                Range1D.CreateValid(array.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange array.Length array bitmap))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            let result =
+                (sum processor bitmap).ToHostAndFree processor
+
+            processor.Post(Msg.CreateFreeMsg bitmap)
+
+            result

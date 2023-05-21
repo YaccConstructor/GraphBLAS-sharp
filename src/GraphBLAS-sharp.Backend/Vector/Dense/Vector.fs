@@ -87,6 +87,45 @@ module Vector =
 
             resultVector
 
+    let assignBySparseMaskInPlace<'a, 'b when 'a: struct and 'b: struct>
+        (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let fillSubVectorKernel =
+            <@ fun (ndRange: Range1D) resultLength (leftVector: ClArray<'a option>) (maskVectorIndices: ClArray<int>) (maskVectorValues: ClArray<'b>) (value: ClCell<'a>) (resultVector: ClArray<'a option>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < resultLength then
+                    let i = maskVectorIndices.[gid]
+                    resultVector.[i] <- (%maskOp) leftVector.[i] (Some maskVectorValues.[gid]) value.Value @>
+
+        let kernel = clContext.Compile(fillSubVectorKernel)
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: Sparse<'b>) (value: ClCell<'a>) (resultVector: ClArray<'a option>) ->
+
+            let ndRange =
+                Range1D.CreateValid(maskVector.NNZ, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            maskVector.NNZ
+                            leftVector
+                            maskVector.Indices
+                            maskVector.Values
+                            value
+                            resultVector)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let scatterValues =

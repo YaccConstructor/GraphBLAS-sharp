@@ -28,6 +28,20 @@ let testFixtures (testContext: TestContext) =
               context
               workGroupSize
 
+      let bfsSparse =
+          Algorithms.BFS.singleSourceSparse
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
+              context
+              workGroupSize
+
+      let bfsPushPull =
+          Algorithms.BFS.singleSourcePushPull
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
+              context
+              workGroupSize
+
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
 
@@ -46,22 +60,45 @@ let testFixtures (testContext: TestContext) =
               let matrixHost =
                   Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
-              let matrix = matrixHost.ToDevice context
+              let matrixHostBool =
+                  Utils.createMatrixFromArray2D CSR (Array2D.map (fun x -> x <> 0) matrix) ((=) false)
 
-              match matrix with
-              | ClMatrix.CSR mtx ->
+              let matrix = matrixHost.ToDevice context
+              let matrixBool = matrixHostBool.ToDevice context
+
+              match matrix, matrixBool with
+              | ClMatrix.CSR mtx, ClMatrix.CSR mtxBool ->
                   let res = bfs queue mtx source |> ClVector.Dense
 
+                  let resSparse =
+                      bfsSparse queue mtxBool source |> ClVector.Dense
+
+                  let resPushPull =
+                      bfsPushPull queue mtxBool source |> ClVector.Dense
+
                   let resHost = res.ToHost queue
+                  let resHostSparse = resSparse.ToHost queue
+                  let resHostPushPull = resPushPull.ToHost queue
 
                   (mtx :> IDeviceMemObject).Dispose queue
+                  (mtxBool :> IDeviceMemObject).Dispose queue
                   res.Dispose queue
+                  resSparse.Dispose queue
+                  resPushPull.Dispose queue
 
-                  match resHost with
-                  | Vector.Dense resHost ->
+                  match resHost, resHostSparse, resHostPushPull with
+                  | Vector.Dense resHost, Vector.Dense resHostSparse, Vector.Dense resHostPushPull ->
                       let actual = resHost |> Utils.unwrapOptionArray 0
 
-                      Expect.sequenceEqual actual expected "Sequences must be equal"
+                      let actualSparse =
+                          resHostSparse |> Utils.unwrapOptionArray 0
+
+                      let actualPushPull =
+                          resHostPushPull |> Utils.unwrapOptionArray 0
+
+                      Expect.sequenceEqual actual expected "Dense bfs is not as expected"
+                      Expect.sequenceEqual actualSparse expected "Sparse bfs is not as expected"
+                      Expect.sequenceEqual actualPushPull expected "Push-pull bfs is not as expected"
                   | _ -> failwith "Not implemented"
               | _ -> failwith "Not implemented" ]
 
