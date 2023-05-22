@@ -390,7 +390,7 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) ->
 
             if values.Length <> positions.Length then
-                failwith "lengths must be the same"
+                failwith "Lengths must be the same"
 
             let ndRange =
                 Range1D.CreateValid(values.Length, workGroupSize)
@@ -462,7 +462,7 @@ module ClArray =
 
             if firstValues.Length <> secondValues.Length
                || secondValues.Length <> positions.Length then
-                failwith "lengths must be the same"
+                failwith "Lengths must be the same"
 
             let ndRange =
                 Range1D.CreateValid(firstValues.Length, workGroupSize)
