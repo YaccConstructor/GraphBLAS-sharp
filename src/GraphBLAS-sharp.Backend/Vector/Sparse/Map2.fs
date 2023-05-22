@@ -6,6 +6,7 @@ open Microsoft.FSharp.Control
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Map2 =
@@ -180,24 +181,20 @@ module internal Map2 =
             let bitmap, allValues, allIndices =
                 prepare processor leftVector.NNZ leftVector.Values leftVector.Indices rightVector
 
-            match setPositions processor allocationMode allValues allIndices bitmap with
-            | Some (resultValues, resultIndices) ->
+            let result =
+                setPositions processor allocationMode allValues allIndices bitmap
+                |> Option.map
+                    (fun (resultValues, resultIndices) ->
+                        { Context = clContext
+                          Values = resultValues
+                          Indices = resultIndices
+                          Size = leftVector.Size })
 
-                processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-                processor.Post(Msg.CreateFreeMsg<_>(allValues))
-                processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+            allIndices.Free processor
+            allValues.Free processor
+            bitmap.Free processor
 
-                Some(
-                    { Context = clContext
-                      Values = resultValues
-                      Indices = resultIndices
-                      Size = leftVector.Size }
-                )
-            | None ->
-                processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-                processor.Post(Msg.CreateFreeMsg<_>(allValues))
-                processor.Post(Msg.CreateFreeMsg<_>(bitmap))
-                None
+            result
 
     let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
         op

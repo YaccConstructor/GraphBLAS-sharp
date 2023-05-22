@@ -39,11 +39,7 @@ let testFixtures (testContext: TestContext) =
 
               let expected =
                   SSSP.runUndirected matrix (directedFromArray2D matrix 0) source
-                  |> Array.map
-                      (fun x ->
-                          match x with
-                          | Some x -> Some(int x)
-                          | None -> None)
+                  |> Array.map (Option.map int)
 
               let matrixHost =
                   Utils.createMatrixFromArray2D CSR matrix ((=) 0)

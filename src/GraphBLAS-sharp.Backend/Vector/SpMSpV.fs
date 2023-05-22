@@ -236,36 +236,40 @@ module SpMSpV =
             Reduce.ByKey.Option.segmentSequential add clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
+            let result =
+                gather queue matrix vector
+                |> Option.map
+                    (fun (gatherRows, gatherIndices, gatherValues) ->
+                        sort queue gatherIndices gatherRows gatherValues
 
-            match gather queue matrix vector with
+                        let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
+
+                        let multipliedValues =
+                            multiplyScalar queue sortedRows sortedValues vector
+
+                        sortedValues.Free queue
+                        sortedRows.Free queue
+
+                        let result =
+                            segReduce queue DeviceOnly sortedIndices multipliedValues
+                            |> Option.map
+                                (fun (reducedValues, reducedKeys) ->
+
+                                    { Context = clContext
+                                      Indices = reducedKeys
+                                      Values = reducedValues
+                                      Size = matrix.ColumnCount })
+
+                        multipliedValues.Free queue
+                        sortedIndices.Free queue
+
+                        result)
+
+            //Unwrap 't option option to 't option
+            match result with
+            | Some result -> result
             | None -> None
-            | Some (gatherRows, gatherIndices, gatherValues) ->
-                sort queue gatherIndices gatherRows gatherValues
 
-                let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
-
-                let multipliedValues =
-                    multiplyScalar queue sortedRows sortedValues vector
-
-                sortedValues.Free queue
-                sortedRows.Free queue
-
-                match segReduce queue DeviceOnly sortedIndices multipliedValues with
-                | Some (reducedValues, reducedKeys) ->
-                    multipliedValues.Free queue
-                    sortedIndices.Free queue
-
-                    Some(
-                        { Context = clContext
-                          Indices = reducedKeys
-                          Values = reducedValues
-                          Size = matrix.ColumnCount }
-                    )
-                | None ->
-                    multipliedValues.Free queue
-                    sortedIndices.Free queue
-
-                    None
 
     let runBoolStandard
         (add: Expr<'c option -> 'c option -> 'c option>)
@@ -286,22 +290,20 @@ module SpMSpV =
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 
-            match gather queue matrix vector with
-            | None -> None
-            | Some (gatherRows, gatherIndices, gatherValues) ->
-                gatherRows.Free queue
-                gatherValues.Free queue
+            gather queue matrix vector
+            |> Option.map
+                (fun (gatherRows, gatherIndices, gatherValues) ->
+                    gatherRows.Free queue
+                    gatherValues.Free queue
 
-                let sortedIndices = sort queue gatherIndices
+                    let sortedIndices = sort queue gatherIndices
 
-                let resultIndices = removeDuplicates queue sortedIndices
+                    let resultIndices = removeDuplicates queue sortedIndices
 
-                gatherIndices.Free queue
-                sortedIndices.Free queue
+                    gatherIndices.Free queue
+                    sortedIndices.Free queue
 
-                Some(
                     { Context = clContext
                       Indices = resultIndices
                       Values = create queue DeviceOnly resultIndices.Length true
-                      Size = matrix.ColumnCount }
-                )
+                      Size = matrix.ColumnCount })
