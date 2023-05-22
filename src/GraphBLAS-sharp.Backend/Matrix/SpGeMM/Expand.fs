@@ -171,39 +171,31 @@ module Expand =
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
         let sortByKeyIndices =
-            Radix.runByKeysStandard clContext workGroupSize
+            Radix.runByKeysStandardValuesOnly clContext workGroupSize
 
         let sortByKeyValues =
-            Radix.runByKeysStandard clContext workGroupSize
+            Radix.runByKeysStandardValuesOnly clContext workGroupSize
 
         let sortKeys =
             Radix.standardRunKeysOnly clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
             // sort by columns
-            let keys, valuesSortedByColumns =
+            let valuesSortedByColumns =
                 sortByKeyValues processor DeviceOnly columns values
 
-            keys.Free processor
-
-            let keys, rowsSortedByColumns =
+            let rowsSortedByColumns =
                 sortByKeyIndices processor DeviceOnly columns rows
-
-            keys.Free processor
 
             //TODO: already sorted above?
             let sortedColumns = sortKeys processor columns
 
             // sort by rows
-            let keys, valuesSortedByRows =
+            let valuesSortedByRows =
                 sortByKeyValues processor DeviceOnly rowsSortedByColumns valuesSortedByColumns
 
-            keys.Free processor
-
-            let keys, columnsSortedByRows =
+            let columnsSortedByRows =
                 sortByKeyIndices processor DeviceOnly rowsSortedByColumns sortedColumns
-
-            keys.Free processor
 
             //TODO: already sorted above?
             let sortedRows = sortKeys processor rowsSortedByColumns

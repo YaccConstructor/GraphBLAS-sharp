@@ -326,5 +326,17 @@ module Radix =
 
                 (fst keysPair, fst valuesPair)
 
+    let runByKeysStandardValuesOnly clContext workGroupSize =
+        let runByKeys =
+            runByKeys clContext workGroupSize defaultBitCount
+
+        fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
+            let keys, values =
+                runByKeys processor allocationMode keys values
+
+            keys.Free processor
+
+            values
+
     let runByKeysStandard clContext workGroupSize =
         runByKeys clContext workGroupSize defaultBitCount
