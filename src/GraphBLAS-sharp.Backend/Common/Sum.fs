@@ -571,11 +571,16 @@ module Reduce =
 
                     processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+                    offsets.Free processor
+
                     let resultLength =
                         (prefixSum processor resultPositions)
                             .ToHostAndFree processor
 
                     if resultLength = 0 then
+                        reducedValues.Free processor
+                        reducedKeys.Free processor
+                        resultPositions.Free processor
                         None
                     else
                         // write values
@@ -696,6 +701,9 @@ module Reduce =
                             .ToHostAndFree processor
 
                     if resultLength = 0 then
+                        reducedValues.Free processor
+                        reducedKeys.Free processor
+                        resultPositions.Free processor
                         None
                     else
                         // write values
@@ -976,6 +984,10 @@ module Reduce =
                             .ToHostAndFree processor
 
                     if resultLength = 0 then
+                        reducedValues.Free processor
+                        firstReducedKeys.Free processor
+                        secondReducedKeys.Free processor
+                        resultPositions.Free processor
                         None
                     else
                         // write value

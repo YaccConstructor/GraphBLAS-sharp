@@ -61,7 +61,7 @@ module ClArray =
 
             processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange outputArray length value))
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
-            processor.Post(Msg.CreateFreeMsg(value))
+            value.Free processor
 
             outputArray
 
@@ -335,7 +335,7 @@ module ClArray =
 
             scatter processor bitmap inputArray outputArray
 
-            processor.Post <| Msg.CreateFreeMsg<_>(bitmap)
+            bitmap.Free processor
 
             outputArray
 
