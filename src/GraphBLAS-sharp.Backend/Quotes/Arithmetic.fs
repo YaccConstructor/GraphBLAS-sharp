@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Backend.Quotes
+namespace GraphBLAS.FSharp.Backend.Quotes
 
 open GraphBLAS.FSharp.Backend.Objects
 
@@ -229,7 +229,7 @@ module ArithmeticOperations =
 
     let float32Mul = createPair 0.0f (*) <@ (*) @>
 
-    // other
+    // other operations
     let less<'a when 'a: comparison> =
         <@ fun (x: 'a option) (y: 'a option) ->
             match x, y with
@@ -237,7 +237,6 @@ module ArithmeticOperations =
             | Some x, None -> Some 1
             | _ -> None @>
 
-    //TODO: noneValue
     let min<'a when 'a: comparison> =
         <@ fun (x: 'a option) (y: 'a option) ->
             match x, y with
