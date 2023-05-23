@@ -318,6 +318,7 @@ module Radix =
                     keysPair <- swap keysPair
                     valuesPair <- swap valuesPair
 
+                    globalOffset.Free processor
                     localOffset.Free processor
                     shift.Free processor
 
