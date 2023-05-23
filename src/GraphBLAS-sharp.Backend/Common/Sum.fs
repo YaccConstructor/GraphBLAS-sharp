@@ -704,6 +704,7 @@ module Reduce =
                         reducedValues.Free processor
                         reducedKeys.Free processor
                         resultPositions.Free processor
+
                         None
                     else
                         // write values
@@ -988,6 +989,7 @@ module Reduce =
                         firstReducedKeys.Free processor
                         secondReducedKeys.Free processor
                         resultPositions.Free processor
+
                         None
                     else
                         // write value

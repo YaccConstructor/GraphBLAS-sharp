@@ -401,6 +401,10 @@ module Expand =
 
                     // compute sub result
                     let length, result = runCOO subMatrix
+
+                    // release subMatrix (TODO(non blocking Free)
+                    subMatrix.Dispose processor
+
                     // increase workOffset according to previous expand
                     let workOffset = workOffset + length
 
@@ -447,7 +451,12 @@ module Expand =
             if generalLength < maxAllocSize then
                 segmentLengths.Free processor
 
-                runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
+                let result =
+                    runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
+
+                rightMatrixRowsNNZ.Free processor
+
+                result
             else
                 let result =
                     runManySteps
