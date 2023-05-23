@@ -46,7 +46,7 @@ type Benchmarks<'elem when 'elem : struct>(
     static member AvailableContexts = Utils.availableContexts
 
     static member InputMatrixProviderBuilder pathToConfig =
-        let datasetFolder = "BFS"
+        let datasetFolder = ""
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map

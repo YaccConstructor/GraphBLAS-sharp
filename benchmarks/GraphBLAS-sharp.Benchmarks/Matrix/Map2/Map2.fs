@@ -47,7 +47,7 @@ type Benchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : st
     static member AvailableContexts = Utils.availableContexts
 
     static member InputMatricesProviderBuilder pathToConfig =
-        let datasetFolder = "EWiseAdd"
+        let datasetFolder = ""
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map
