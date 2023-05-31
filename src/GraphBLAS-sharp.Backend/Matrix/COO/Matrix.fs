@@ -50,18 +50,7 @@ module Matrix =
 
     let private compressRows (clContext: ClContext) workGroupSize =
 
-        let compressRows =
-            <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
-
-                let i = ndRange.GlobalID0
-
-                if i < nnz then
-                    let row = rows.[i]
-
-                    if i = 0 || row <> rows.[i - 1] then
-                        rowPointers.[row] <- i @>
-
-        let program = clContext.Compile(compressRows)
+        let scatter = Scatter.initFirsOccurrence Map.id clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 
@@ -75,11 +64,7 @@ module Matrix =
             let rowPointers =
                 create processor allocationMode (rowCount + 1) nnz
 
-            let kernel = program.GetKernel()
-
-            let ndRange = Range1D.CreateValid(nnz, workGroupSize)
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rowIndices nnz rowPointers))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            scatter processor rowIndices rowPointers
 
             (scan processor rowPointers nnz).Free processor
 
