@@ -55,7 +55,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
+            PrefixSum.runBackwardsIncludeInPlace <@ min @> System.Int32.MaxValue clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
@@ -66,7 +66,7 @@ module Matrix =
 
             scatter processor rowIndices rowPointers
 
-            (scan processor rowPointers nnz).Free processor
+            (scan processor rowPointers).Free processor
 
             rowPointers
 

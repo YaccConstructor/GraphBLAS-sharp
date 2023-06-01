@@ -93,7 +93,7 @@ module Expand =
             ClArray.zeroCreate clContext workGroupSize
 
         let maxPrefixSum =
-            PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
+            PrefixSum.runIncludeInPlace <@ max @> 0 clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 
@@ -115,7 +115,7 @@ module Expand =
 
             idScatter processor segmentsPointers leftMatrixPositions
 
-            (maxPrefixSum processor leftMatrixPositions 0)
+            (maxPrefixSum processor leftMatrixPositions)
                 .Free processor
 
             // Compute right matrix positions

@@ -319,7 +319,7 @@ module ClArray =
             Bitmap.lastOccurrence clContext workGroupSize
 
         let prefixSumExclude =
-            PrefixSum.runExcludeInPlace <@ (+) @> clContext workGroupSize
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -327,7 +327,7 @@ module ClArray =
                 getUniqueBitmap processor DeviceOnly inputArray
 
             let resultLength =
-                (prefixSumExclude processor bitmap 0)
+                (prefixSumExclude processor bitmap)
                     .ToHostAndFree(processor)
 
             let outputArray =
