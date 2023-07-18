@@ -9,8 +9,7 @@ open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 
-
-module Vector =
+module Primitives =
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
     /// </summary>
@@ -168,66 +167,6 @@ module Vector =
             match matrix with
             | ClVector.Sparse v -> mapSparse processor allocationMode v |> ClVector.Sparse
             | ClVector.Dense v -> mapDense processor allocationMode v |> ClVector.Dense
-
-    /// <summary>
-    /// Builds a new vector whose values are the results of applying the given function
-    /// to the corresponding pairs of values from the two vectors.
-    /// </summary>
-    /// <param name="op">
-    /// A function to transform pairs of values from the input vectors.
-    /// Operands and result types should be optional to distinguish explicit and implicit zeroes.
-    /// </param>
-    /// <remarks>
-    /// Formats of the given vectors should match, otherwise an exception will be thrown.
-    /// </remarks>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2 (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
-        let map2Dense =
-            Dense.Vector.map2 op clContext workGroupSize
-
-        let map2Sparse =
-            Sparse.Vector.map2 op clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
-            match leftVector, rightVector with
-            | ClVector.Dense left, ClVector.Dense right ->
-                ClVector.Dense
-                <| map2Dense processor allocationMode left right
-            | ClVector.Sparse left, ClVector.Sparse right ->
-                ClVector.Sparse
-                <| map2Sparse processor allocationMode left right
-            | _ -> failwith "Vector formats are not matching."
-
-    /// <summary>
-    /// Builds a new vector whose values are the results of applying the given function
-    /// to the corresponding pairs of values from the two vectors.
-    /// </summary>
-    /// <param name="op">
-    /// A function to transform pairs of values from the input vectors.
-    /// Operation assumption: one of the operands should always be non-zero.
-    /// </param>
-    /// <remarks>
-    /// Formats of the given vectors should match, otherwise an exception will be thrown.
-    /// </remarks>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2AtLeastOne (op: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
-        let map2Sparse =
-            Sparse.Vector.map2AtLeastOne op clContext workGroupSize
-
-        let map2Dense =
-            Dense.Vector.map2AtLeastOne op clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
-            match leftVector, rightVector with
-            | ClVector.Sparse left, ClVector.Sparse right ->
-                ClVector.Sparse
-                <| map2Sparse processor allocationMode left right
-            | ClVector.Dense left, ClVector.Dense right ->
-                ClVector.Dense
-                <| map2Dense processor allocationMode left right
-            | _ -> failwith "Vector formats are not matching."
 
     let private assignByMaskGeneral<'a, 'b when 'a: struct and 'b: struct> op (clContext: ClContext) workGroupSize =
 

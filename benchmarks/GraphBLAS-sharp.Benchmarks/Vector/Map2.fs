@@ -122,26 +122,26 @@ module WithoutTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (Vector.map2 ArithmeticOperations.floatSumOption),
+            (Primitives.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (Vector.map2 ArithmeticOperations.intSumOption),
+            (Primitives.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
+                (Primitives.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
+                (Primitives.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)
 
 module WithTransfer =
@@ -178,24 +178,24 @@ module WithTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (Vector.map2 ArithmeticOperations.floatSumOption),
+            (Primitives.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (Vector.map2 ArithmeticOperations.intSumOption),
+            (Primitives.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
+                (Primitives.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
+                (Primitives.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)

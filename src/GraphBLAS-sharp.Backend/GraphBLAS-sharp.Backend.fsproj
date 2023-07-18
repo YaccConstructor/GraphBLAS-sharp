@@ -46,8 +46,7 @@
     <Compile Include="Vector/Sparse/Map2.fs" />
     <Compile Include="Vector/Sparse/Map.fs" />
     <Compile Include="Vector/Sparse/Vector.fs" />
-    <Compile Include="Vector/SpMV.fs" />
-    <Compile Include="Vector/Vector.fs" />
+    <Compile Include="Vector\Primitives.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COO/Map.fs" />
     <Compile Include="Matrix/COO/Merge.fs" />
@@ -61,9 +60,19 @@
     <Compile Include="Matrix/LIL/Matrix.fs" />
     <Compile Include="Matrix/SpGeMM/Expand.fs" />
     <Compile Include="Matrix/SpGeMM/Masked.fs" />
-    <Compile Include="Matrix/Matrix.fs" />
+    <Compile Include="Matrix\Primitives.fs" />
       
     <Compile Include="Algorithms/BFS.fs" />
+      
+    <Compile Include="Operations\SpGeMM\Expand.fs" />
+      
+    <Compile Include="Operations\SpGeMM\Masked.fs" />
+      
+    <Compile Include="Operations\SpMV.fs" />
+      
+    <Compile Include="Operations\Kronecker.fs" />
+      
+    <Compile Include="Operations\Operations.fs" />
       
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

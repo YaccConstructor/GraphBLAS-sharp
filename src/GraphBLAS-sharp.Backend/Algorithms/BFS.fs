@@ -26,7 +26,7 @@ module BFS =
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
-        let ofList = Vector.ofList clContext workGroupSize
+        let ofList = Primitives.ofList clContext workGroupSize
 
         let maskComplementedTo =
             Vector.map2InPlace Mask.complementedOp clContext workGroupSize

@@ -139,7 +139,7 @@ module WithoutTransfer =
     type Float32() =
 
         inherit Benchmark<float32>(
-            Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+            Primitives.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
             float32,
             (fun _ -> Utils.nextSingle (System.Random())),
             (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
