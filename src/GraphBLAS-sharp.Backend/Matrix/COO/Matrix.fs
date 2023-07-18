@@ -6,18 +6,15 @@ open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 module Matrix =
     let map = Map.run
 
     let map2 = Map2.run
 
-    ///<param name="clContext">.</param>
-    ///<param name="opAdd">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let rec map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)

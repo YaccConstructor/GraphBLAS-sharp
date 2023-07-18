@@ -8,7 +8,7 @@ open Context
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
 let logger =
     Log.create "ClArray.containsNonZero.Tests"

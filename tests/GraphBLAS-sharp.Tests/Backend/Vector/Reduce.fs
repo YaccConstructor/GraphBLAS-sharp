@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Tests
 open Brahma.FSharp
 open FSharp.Quotations
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Vector
 
 let logger = Log.create "Vector.reduce.Tests"

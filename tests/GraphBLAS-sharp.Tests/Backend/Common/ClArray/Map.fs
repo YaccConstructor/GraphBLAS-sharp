@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open Expecto
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 let context = defaultContext.Queue
 

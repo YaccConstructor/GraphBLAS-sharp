@@ -4,7 +4,7 @@ open Brahma.FSharp
 open System
 open GraphBLAS.FSharp.Backend.Objects
 
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 module Merge =
     let run<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =

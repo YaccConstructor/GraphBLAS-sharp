@@ -29,17 +29,6 @@ module internal Gather =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    /// <summary>
-    /// Creates a new array obtained from positions replaced with values from the given array at these positions (indices).
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let positions = [| 2; 0; 2; 1 |]
-    /// let array = [| 1.4; 2.5; 3.6 |]
-    /// ...
-    /// > val result = [| 3.6; 1.4; 3.6; 2.5 |]
-    /// </code>
-    /// </example>
     let run (clContext: ClContext) workGroupSize =
 
         let gather =

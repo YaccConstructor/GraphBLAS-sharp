@@ -5,8 +5,8 @@ open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
 module internal Masked =
     let private calculate

@@ -8,7 +8,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 module internal Map =
     let preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =
@@ -84,13 +84,13 @@ module internal Map =
             resultBitmap, resultValues, resultRows, resultColumns
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (opAdd: Expr<'a option -> 'b option>)
+        (op: Expr<'a option -> 'b option>)
         (clContext: ClContext)
         workGroupSize
         =
 
         let map =
-            preparePositions opAdd clContext workGroupSize
+            preparePositions op clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'b> clContext workGroupSize

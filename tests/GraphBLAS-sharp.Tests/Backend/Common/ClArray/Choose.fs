@@ -4,7 +4,7 @@ open GraphBLAS.FSharp.Backend.Common
 open Expecto
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions

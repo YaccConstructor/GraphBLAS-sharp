@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let context = Context.defaultContext.ClContext

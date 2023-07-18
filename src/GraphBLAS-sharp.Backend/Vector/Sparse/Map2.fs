@@ -5,7 +5,7 @@ open FSharp.Quotations
 open Microsoft.FSharp.Control
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 module internal Map2 =

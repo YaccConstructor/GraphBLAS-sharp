@@ -48,7 +48,7 @@ let makeTest testContext zero isEqual op kroneckerFun (leftMatrix: 'a [,], right
         let m2 = m2.ToDevice context
 
         let result =
-            kroneckerFun processor ClContext.HostInterop m1 m2
+            kroneckerFun processor ClContextExtensions.HostInterop m1 m2
 
         let actual =
             Option.map (fun (m: ClMatrix<'a>) -> m.ToHost processor) result

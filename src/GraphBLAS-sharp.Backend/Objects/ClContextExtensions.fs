@@ -2,7 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Objects
 
 open Brahma.FSharp
 
-module ClContext =
+module ClContextExtensions =
     type AllocationFlag =
         | DeviceOnly
         | HostInterop

@@ -5,10 +5,23 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
 module Vector =
+    let map<'a, 'b when 'a: struct and 'b: struct>
+        (op: Expr<'a option -> 'b option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let map =
+            ClArray.map op clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) ->
+
+            map processor allocationMode leftVector
+
     let map2InPlace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
@@ -22,7 +35,6 @@ module Vector =
 
             map2InPlace processor leftVector rightVector resultVector
 
-
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
@@ -35,7 +47,6 @@ module Vector =
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
             map2 processor allocationMode leftVector rightVector
-
 
     let map2AtLeastOne op clContext workGroupSize =
         map2 (Convert.atLeastOneToOption op) clContext workGroupSize

@@ -10,7 +10,7 @@ open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 let logger = Log.create "Transpose.Tests"
 

@@ -21,6 +21,8 @@ module Vector =
               Values = copyData processor allocationMode vector.Values
               Size = vector.Size }
 
+    let map = Map.run
+
     let mapWithValue = Map.WithValueOption.run
 
     let map2 = Map2.run

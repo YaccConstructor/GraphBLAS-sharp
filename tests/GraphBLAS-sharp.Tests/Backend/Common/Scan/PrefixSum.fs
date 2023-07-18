@@ -7,7 +7,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "ClArray.PrefixSum.Tests"

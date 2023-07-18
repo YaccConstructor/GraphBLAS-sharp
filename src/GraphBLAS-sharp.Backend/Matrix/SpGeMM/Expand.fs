@@ -5,10 +5,10 @@ open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Common.Sort
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 

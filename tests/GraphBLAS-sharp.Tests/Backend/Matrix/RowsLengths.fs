@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 let processor = Context.defaultContext.Queue
 

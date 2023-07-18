@@ -3,11 +3,11 @@ namespace GraphBLAS.FSharp.Backend.Common.Sort
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
-module Radix =
+module internal Radix =
     // the number of bits considered per iteration
     let defaultBitCount = 4
 

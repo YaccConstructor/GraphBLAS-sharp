@@ -1,7 +1,7 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Scan.ByKey
 
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open Expecto
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions

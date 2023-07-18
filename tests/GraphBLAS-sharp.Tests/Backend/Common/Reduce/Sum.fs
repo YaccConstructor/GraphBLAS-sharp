@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Tests
 open FSharp.Quotations
 open Context
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
 let logger = Log.create "Sum.Test"
 

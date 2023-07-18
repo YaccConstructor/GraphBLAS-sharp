@@ -7,9 +7,15 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Vector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 module Matrix =
+    /// <summary>
+    /// Creates new matrix with the values from the given one.
+    /// New matrix represented in the format of the given one.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let copy (clContext: ClContext) workGroupSize =
 
         let copy = ClArray.copy clContext workGroupSize
@@ -166,8 +172,8 @@ module Matrix =
     /// <summary>
     /// Creates a new matrix, represented in CSC format, that is equal to the given one.
     /// </summary>
-    ///<param name="clContext">OpenCL context.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSC (clContext: ClContext) workGroupSize =
         let COOtoCSR = COO.Matrix.toCSR clContext workGroupSize
 
@@ -228,6 +234,11 @@ module Matrix =
                 |> ClMatrix.CSC
             | _ -> failwith "Not yet implemented"
 
+    /// <summary>
+    /// Creates a new matrix, represented in LIL format, that is equal to the given one.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toLIL (clContext: ClContext) workGroupSize =
 
         let copy = copy clContext workGroupSize
@@ -255,12 +266,22 @@ module Matrix =
                 |> ClMatrix.LIL
             | ClMatrix.LIL _ -> copy processor allocationMode matrix
 
-    let map (opAdd: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
+    /// <summary>
+    /// Builds a new matrix whose elements are the results of applying the given function
+    /// to each of the elements of the matrix.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform values of the input matrix.
+    /// Operand and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map (op: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
         let mapCOO =
-            COO.Matrix.map opAdd clContext workGroupSize
+            COO.Matrix.map op clContext workGroupSize
 
         let mapCSR =
-            CSR.Matrix.map opAdd clContext workGroupSize
+            CSR.Matrix.map op clContext workGroupSize
 
         let transposeCOO =
             COO.Matrix.transposeInPlace clContext workGroupSize
@@ -275,12 +296,25 @@ module Matrix =
                 |> ClMatrix.COO
             | _ -> failwith "Not yet implemented"
 
-    let map2 (opAdd: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+    /// <summary>
+    /// Builds a new matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operands and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <remarks>
+    /// Formats of the given matrices should match, otherwise an exception will be thrown.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2 (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
         let map2COO =
-            COO.Matrix.map2 opAdd clContext workGroupSize
+            COO.Matrix.map2 op clContext workGroupSize
 
         let map2CSR =
-            CSR.Matrix.map2 opAdd clContext workGroupSize
+            CSR.Matrix.map2 op clContext workGroupSize
 
         let transposeCOO =
             COO.Matrix.transposeInPlace clContext workGroupSize
@@ -299,12 +333,25 @@ module Matrix =
                 |> ClMatrix.COO
             | _ -> failwith "Matrix formats are not matching"
 
-    let map2AtLeastOne (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
+    /// <summary>
+    /// Builds a new matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operation assumption: one of the operands should always be non-zero.
+    /// </param>
+    /// <remarks>
+    /// Formats of the given matrices should match, otherwise an exception will be thrown.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2AtLeastOne (op: Expr<AtLeastOne<'a, 'b> -> 'c option>) (clContext: ClContext) workGroupSize =
         let COOMap2 =
-            COO.Matrix.map2AtLeastOne clContext opAdd workGroupSize
+            COO.Matrix.map2AtLeastOne clContext op workGroupSize
 
         let CSRMap2 =
-            CSR.Matrix.map2AtLeastOne clContext opAdd workGroupSize
+            CSR.Matrix.map2AtLeastOne clContext op workGroupSize
 
         let COOTranspose =
             COO.Matrix.transposeInPlace clContext workGroupSize
@@ -390,6 +437,15 @@ module Matrix =
                 |> ClMatrix.CSR
             | ClMatrix.LIL _ -> failwith "Not yet implemented"
 
+    /// <summary>
+    /// Kronecker product for matrices.
+    /// </summary>
+    /// <param name="op">
+    /// Element-wise operation.
+    /// Operands and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
         let run =
             CSR.Matrix.kronecker clContext workGroupSize op
@@ -401,7 +457,17 @@ module Matrix =
                 Option.map ClMatrix.COO result
             | _ -> failwith "Both matrices should be in CSR format."
 
+    /// <summary>
+    /// Sparse general matrix-matrix multiplication.
+    /// </summary>
     module SpGeMM =
+        /// <summary>
+        /// Masked matrix-matrix multiplication.
+        /// </summary>
+        /// <param name="opAdd">Type of binary function to reduce entries.</param>
+        /// <param name="opMul">Type of binary function to combine entries.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         let masked
             (opAdd: Expr<'c -> 'c -> 'c option>)
             (opMul: Expr<'a -> 'b -> 'c option>)
@@ -417,6 +483,13 @@ module Matrix =
                 | ClMatrix.CSR m1, ClMatrix.CSC m2, ClMatrix.COO mask -> runCSRnCSC queue m1 m2 mask |> ClMatrix.COO
                 | _ -> failwith "Matrix formats are not matching"
 
+        /// <summary>
+        /// Generalized matrix-matrix multiplication.
+        /// </summary>
+        /// <param name="opAdd">Type of binary function to reduce entries.</param>
+        /// <param name="opMul">Type of binary function to combine entries.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         let expand
             (opAdd: Expr<'c -> 'c -> 'c option>)
             (opMul: Expr<'a -> 'b -> 'c option>)

@@ -4,8 +4,8 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open Microsoft.FSharp.Control
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
 module internal Common =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =

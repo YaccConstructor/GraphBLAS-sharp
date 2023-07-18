@@ -1,6 +1,7 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
+open GraphBLAS.FSharp.Backend.Objects
 open Microsoft.FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
@@ -8,13 +9,99 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Common.ClArray
-open GraphBLAS.FSharp.Backend.Objects.ClCell
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
-module Map =
+module internal Map =
+    let preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =
+
+        let preparePositions (op: Expr<'a option -> 'b option>) =
+            <@ fun (ndRange: Range1D) size valuesLength (values: ClArray<'a>) (indices: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultIndices: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < size then
+
+                    let value =
+                        (%Search.Bin.byKey) valuesLength gid indices values
+
+                    match (%op) value with
+                    | Some resultValue ->
+                        resultValues.[gid] <- resultValue
+                        resultIndices.[gid] <- gid
+
+                        resultBitmap.[gid] <- 1
+                    | None -> resultBitmap.[gid] <- 0 @>
+
+        let kernel =
+            clContext.Compile <| preparePositions opAdd
+
+        fun (processor: MailboxProcessor<_>) (size: int) (values: ClArray<'a>) (indices: ClArray<int>) ->
+
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, size)
+
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, size)
+
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, size)
+
+            let ndRange =
+                Range1D.CreateValid(size, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            size
+                            values.Length
+                            values
+                            indices
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            resultBitmap, resultValues, resultIndices
+
+    let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
+        (op: Expr<'a option -> 'b option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let map =
+            preparePositions op clContext workGroupSize
+
+        let setPositions =
+            Common.setPositions<'b> clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (vector: ClVector.Sparse<'a>) ->
+
+            let bitmap, values, indices =
+                map queue vector.Size vector.Values vector.Indices
+
+            let resultValues, resultIndices =
+                setPositions queue allocationMode values indices bitmap
+
+            queue.Post(Msg.CreateFreeMsg<_>(bitmap))
+            queue.Post(Msg.CreateFreeMsg<_>(values))
+            queue.Post(Msg.CreateFreeMsg<_>(indices))
+
+            { Context = clContext
+              Indices = indices
+              Values = resultValues
+              Size = vector.Size }
+
     module WithValueOption =
-        let preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
+        let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
 
             let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
                 <@ fun (ndRange: Range1D) (operand: ClCell<'a option>) size valuesLength (indices: ClArray<int>) (values: ClArray<'b>) (resultIndices: ClArray<int>) (resultValues: ClArray<'c>) (resultBitmap: ClArray<int>) ->

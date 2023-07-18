@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests.TestCases

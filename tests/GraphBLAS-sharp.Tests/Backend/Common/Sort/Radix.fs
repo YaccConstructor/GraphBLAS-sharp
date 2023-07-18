@@ -5,7 +5,7 @@ open GraphBLAS.FSharp.Backend.Common.Sort
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 let config =
     { Utils.defaultConfig with

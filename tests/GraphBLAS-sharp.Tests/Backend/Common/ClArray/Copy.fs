@@ -6,7 +6,7 @@ open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 
 let logger = Log.create "ClArray.Copy.Tests"

@@ -4,7 +4,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 
 module SpMV =
     let runTo

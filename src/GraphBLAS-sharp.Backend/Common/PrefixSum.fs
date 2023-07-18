@@ -4,9 +4,9 @@ open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
 
-module PrefixSum =
+module internal PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let update =
@@ -208,24 +208,6 @@ module PrefixSum =
 
     let runBackwardsIncludeInPlace plus = runInPlace plus true scanInclusive
 
-    /// <summary>
-    /// Exclude inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 0; 1; 2; 3 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="clContext">ClContext.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
     let standardExcludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
@@ -235,24 +217,6 @@ module PrefixSum =
 
             scan processor inputArray 0
 
-    /// <summary>
-    /// Include inplace prefix sum.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// let arr = [| 1; 1; 1; 1 |]
-    /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
-    /// |> ignore
-    /// ...
-    /// > val arr = [| 1; 2; 3; 4 |]
-    /// > val sum = [| 4 |]
-    /// </code>
-    /// </example>
-    ///<param name="clContext">ClContext.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
     let standardIncludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
@@ -304,28 +268,6 @@ module PrefixSum =
 
                 processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
-        /// <summary>
-        /// Exclude scan by key.
-        /// </summary>
-        /// <example>
-        /// <code>
-        /// let arr = [| 1; 1; 1; 1; 1; 1|]
-        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
-        /// ...
-        /// > val result = [| 0; 0; 1; 2; 0; 1 |]
-        /// </code>
-        /// </example>
         let sequentialExclude op = sequentialSegments (Map.fst ()) op
 
-        /// <summary>
-        /// Include scan by key.
-        /// </summary>
-        /// <example>
-        /// <code>
-        /// let arr = [| 1; 1; 1; 1; 1; 1|]
-        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
-        /// ...
-        /// > val result = [| 1; 1; 2; 3; 1; 2 |]
-        /// </code>
-        /// </example>
         let sequentialInclude op = sequentialSegments (Map.snd ()) op

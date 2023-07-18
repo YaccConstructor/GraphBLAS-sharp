@@ -5,7 +5,7 @@ open GraphBLAS.FSharp.Tests
 open Expecto
 open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 let context = Context.defaultContext.ClContext

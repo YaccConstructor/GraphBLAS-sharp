@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let context = Context.defaultContext.ClContext
