@@ -1,6 +1,7 @@
-namespace GraphBLAS.FSharp.Backend.Objects
+namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Objects
 
 type MatrixFormat =
     | CSR

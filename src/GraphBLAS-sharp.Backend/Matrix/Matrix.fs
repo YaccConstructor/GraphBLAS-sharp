@@ -1,14 +1,14 @@
-namespace GraphBLAS.FSharp.Backend.Matrix
+namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
 
-module Primitives =
+module Matrix =
     /// <summary>
     /// Creates new matrix with the values from the given one.
     /// New matrix represented in the format of the given one.

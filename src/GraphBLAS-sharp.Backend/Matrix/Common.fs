@@ -1,9 +1,9 @@
 namespace GraphBLAS.FSharp.Backend.Matrix
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal Common =
     ///<param name="clContext">.</param>

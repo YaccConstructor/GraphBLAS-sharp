@@ -64,7 +64,6 @@ let commonTests =
         "Common"
         [ Common.Scatter.allTests
           Common.Gather.allTests
-          Common.Merge.tests
           clArrayTests
           sortTests
           reduceTests

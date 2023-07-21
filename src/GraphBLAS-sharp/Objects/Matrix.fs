@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
 
 module Matrix =
     type CSR<'a when 'a: struct> =

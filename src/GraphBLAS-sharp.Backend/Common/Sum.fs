@@ -1,12 +1,12 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal Reduce =
     /// <summary>

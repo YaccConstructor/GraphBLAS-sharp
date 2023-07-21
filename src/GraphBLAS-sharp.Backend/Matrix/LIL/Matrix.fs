@@ -1,9 +1,9 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.LIL
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module Matrix =
     let toCSR (clContext: ClContext) workGroupSize =

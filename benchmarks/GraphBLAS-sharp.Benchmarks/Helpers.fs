@@ -5,14 +5,12 @@ namespace GraphBLAS.FSharp.Benchmarks
 open Brahma.FSharp
 open Brahma.FSharp.OpenCL.Translator
 open Brahma.FSharp.OpenCL.Translator.QuotationTransformers
-open GraphBLAS.FSharp.Backend.Objects
 open OpenCL.Net
 open System.IO
 open System.Text.RegularExpressions
 open GraphBLAS.FSharp.Tests
 open FsCheck
 open Expecto
-open GraphBLAS.FSharp.Test
 
 module Utils =
     type BenchmarkContext =

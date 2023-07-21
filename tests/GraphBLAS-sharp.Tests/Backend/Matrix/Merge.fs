@@ -4,11 +4,10 @@ open Brahma.FSharp
 open Expecto
 open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let context = Context.defaultContext.ClContext
 

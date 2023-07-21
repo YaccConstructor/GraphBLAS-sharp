@@ -1,10 +1,18 @@
-namespace GraphBLAS.FSharp.Backend.Common
+namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common
 
 module Common =
+    module Bitonic =
+        let sortKeyValuesInplace = Sort.Bitonic.sortKeyValuesInplace
+
+    module Radix =
+        let runByKeysStandard = Sort.Radix.runByKeysStandard
+
+        let standardRunKeysOnly = Sort.Radix.standardRunKeysOnly
+
     module Gather =
         /// <summary>
         /// Fills the given output array using the given value array and a function. The function maps old position
@@ -22,7 +30,8 @@ module Common =
         /// > val result = [| 2.8; 1.9; 3.7; 7.3; 5.5; 4.6; 6.4 |]
         /// </code>
         /// </example>
-        let runInit positionMap (clContext: ClContext) workGroupSize = Gather.runInit positionMap clContext workGroupSize
+        let runInit positionMap (clContext: ClContext) workGroupSize =
+            Gather.runInit positionMap clContext workGroupSize
 
         /// <summary>
         /// Fills the given output array using the given value and position arrays. Array of positions indicates
@@ -61,7 +70,7 @@ module Common =
         /// > val result = [| 1,9; 3.7; 6.4; 7.3; 9.1 |]
         /// </code>
         /// </example>
-        let firstOccurence clContext = Scatter.firstOccurrence clContext
+        let firstOccurrence clContext = Scatter.firstOccurrence clContext
 
         /// <summary>
         /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -81,7 +90,7 @@ module Common =
         /// > val result = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
         /// </code>
         /// </example>
-        let lastOccurence clContext = Scatter.lastOccurrence clContext
+        let lastOccurrence clContext = Scatter.lastOccurrence clContext
 
         /// <summary>
         /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -102,7 +111,7 @@ module Common =
         /// </code>
         /// </example>
         /// <param name="valueMap">Maps global id to a value</param>
-        let initFirstOccurence valueMap = Scatter.initFirsOccurrence valueMap
+        let initFirstOccurrence valueMap = Scatter.initFirsOccurrence valueMap
 
         /// <summary>
         /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -130,9 +139,11 @@ module Common =
 
         let runIncludeInPlace plus = PrefixSum.runIncludeInPlace plus
 
-        let runBackwardsExcludeInPlace plus = PrefixSum.runBackwardsExcludeInPlace plus
+        let runBackwardsExcludeInPlace plus =
+            PrefixSum.runBackwardsExcludeInPlace plus
 
-        let runBackwardsIncludeInPlace plus = PrefixSum.runBackwardsIncludeInPlace plus
+        let runBackwardsIncludeInPlace plus =
+            PrefixSum.runBackwardsIncludeInPlace plus
 
         /// <summary>
         /// Exclude inplace prefix sum.
@@ -223,7 +234,8 @@ module Common =
         /// <param name="workGroupSize">Work group size.</param>
         /// <param name="op">Summation operation.</param>
         /// <param name="zero">Neutral element for summation.</param>
-        let sum op zero (clContext: ClContext) workGroupSize = Reduce.sum op zero clContext workGroupSize
+        let sum op zero (clContext: ClContext) workGroupSize =
+            Reduce.sum op zero clContext workGroupSize
 
         /// <summary>
         /// Reduces an array of values.
@@ -231,7 +243,8 @@ module Common =
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Work group size.</param>
         /// <param name="op">Reduction operation.</param>
-        let reduce op (clContext: ClContext) workGroupSize = Reduce.reduce op clContext workGroupSize
+        let reduce op (clContext: ClContext) workGroupSize =
+            Reduce.reduce op clContext workGroupSize
 
         /// <summary>
         /// Reduction of an array of values by an array of keys.
@@ -287,32 +300,19 @@ module Common =
                 let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
                     Reduce.ByKey.Option.segmentSequential reduceOp clContext workGroupSize
 
-    module ByKey2D =
-        /// <summary>
-        /// Reduces an array of values by 2D keys using a single work item.
-        /// </summary>
-        /// <param name="clContext">ClContext.</param>
-        /// <param name="workGroupSize">Work group size.</param>
-        /// <param name="reduceOp">Operation for reducing values.</param>
-        /// <remarks>
-        /// The length of the result must be calculated in advance.
-        /// </remarks>
-        let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
-            Reduce.ByKey2D.sequential reduceOp clContext workGroupSize
+        module ByKey2D =
+            /// <summary>
+            /// Reduces an array of values by 2D keys using a single work item.
+            /// </summary>
+            /// <param name="clContext">ClContext.</param>
+            /// <param name="workGroupSize">Work group size.</param>
+            /// <param name="reduceOp">Operation for reducing values.</param>
+            /// <remarks>
+            /// The length of the result must be calculated in advance.
+            /// </remarks>
+            let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
+                Reduce.ByKey2D.sequential reduceOp clContext workGroupSize
 
-        /// <summary>
-        /// Reduces values by key. Each segment is reduced by one work item.
-        /// </summary>
-        /// <param name="clContext">ClContext.</param>
-        /// <param name="workGroupSize">Work group size.</param>
-        /// <param name="reduceOp">Operation for reducing values.</param>
-        /// <remarks>
-        /// The length of the result must be calculated in advance.
-        /// </remarks>
-        let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
-            Reduce.ByKey2D.segmentSequential reduceOp clContext workGroupSize
-
-        module Option =
             /// <summary>
             /// Reduces values by key. Each segment is reduced by one work item.
             /// </summary>
@@ -322,5 +322,18 @@ module Common =
             /// <remarks>
             /// The length of the result must be calculated in advance.
             /// </remarks>
-            let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
-                Reduce.ByKey2D.Option.segmentSequential reduceOp clContext workGroupSize
+            let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
+                Reduce.ByKey2D.segmentSequential reduceOp clContext workGroupSize
+
+            module Option =
+                /// <summary>
+                /// Reduces values by key. Each segment is reduced by one work item.
+                /// </summary>
+                /// <param name="clContext">ClContext.</param>
+                /// <param name="workGroupSize">Work group size.</param>
+                /// <param name="reduceOp">Operation for reducing values.</param>
+                /// <remarks>
+                /// The length of the result must be calculated in advance.
+                /// </remarks>
+                let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
+                    Reduce.ByKey2D.Option.segmentSequential reduceOp clContext workGroupSize

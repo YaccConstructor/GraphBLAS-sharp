@@ -1,17 +1,18 @@
-﻿namespace GraphBLAS.FSharp.Backend.Matrix.CSR
+﻿namespace GraphBLAS.FSharp.Backend.Operations
 
 open FSharpx.Collections
 open Microsoft.FSharp.Quotations
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module internal Kronecker =
     let private updateBitmap (clContext: ClContext) workGroupSize op =
@@ -430,7 +431,7 @@ module internal Kronecker =
         let mapAll = mapAll clContext workGroupSize op
 
         let bitonic =
-            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
+            Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 

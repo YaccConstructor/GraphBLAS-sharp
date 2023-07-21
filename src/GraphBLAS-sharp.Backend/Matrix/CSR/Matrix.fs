@@ -1,15 +1,15 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 
 module Matrix =
@@ -334,5 +334,3 @@ module Matrix =
             pointerPairs.Free processor
 
             rowsLength
-
-    let kronecker = Kronecker.run

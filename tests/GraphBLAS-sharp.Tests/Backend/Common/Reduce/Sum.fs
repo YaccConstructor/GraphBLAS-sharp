@@ -3,13 +3,13 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Reduce.Sum
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Tests
 open FSharp.Quotations
+open Brahma.FSharp
+open GraphBLAS.FSharp.Tests
 open Context
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 let logger = Log.create "Sum.Test"
 

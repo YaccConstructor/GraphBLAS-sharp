@@ -2,14 +2,14 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.RowsLengths
 
 open Expecto
 open Microsoft.FSharp.Collections
+open Brahma.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let processor = Context.defaultContext.Queue
 

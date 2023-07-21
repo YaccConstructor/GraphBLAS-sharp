@@ -2,13 +2,12 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.Reduce
 
 open Expecto
 open Expecto.Logging
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
-open Brahma.FSharp
-open FSharp.Quotations
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
-open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 let logger = Log.create "Vector.reduce.Tests"
 

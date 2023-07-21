@@ -5,12 +5,11 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Benchmarks
-open GraphBLAS.FSharp.Backend
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -77,7 +76,7 @@ type Masked<'elem when 'elem : struct>(
     member this.FunCSR2CSC =
         match funCSR2CSC with
         | None ->
-            let x = Primitives.toCSCInPlace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSCInPlace this.OclContext this.WorkGroupSize
             funCSR2CSC <- Some x
             x
         | Some x -> x
@@ -85,7 +84,7 @@ type Masked<'elem when 'elem : struct>(
     member this.FunCSC2CSR =
         match funCSC2CSR with
         | None ->
-            let x = Primitives.toCSRInPlace this.OclContext this.WorkGroupSize
+            let x = Matrix.toCSRInPlace this.OclContext this.WorkGroupSize
             funCSC2CSR <- Some x
             x
         | Some x -> x
@@ -110,7 +109,7 @@ type Masked<'elem when 'elem : struct>(
         this.ResultMatrix.Dispose this.Processor
 
     member this.ReadMask(maskReader) =
-        maskHost <- Primitives.COO <| this.ReadMatrix maskReader
+        maskHost <- Matrix.COO <| this.ReadMatrix maskReader
 
     member this.ReadMatrices() =
         let matrixReader, maskReader = this.InputMatrixReader
@@ -204,7 +203,7 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
 type Mxm4Float32MultiplicationOnlyBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        Primitives.SpGeMM.masked  (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+        SpGeMM.masked  (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
@@ -216,7 +215,7 @@ type Mxm4Float32MultiplicationOnlyBenchmark() =
 type Mxm4Float32WithTransposingBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        Primitives.SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+        SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
@@ -228,7 +227,7 @@ type Mxm4Float32WithTransposingBenchmark() =
 type Mxm4BoolMultiplicationOnlyBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<bool>(
-        (Primitives.SpGeMM.masked (fst ArithmeticOperations.boolAdd) (fst ArithmeticOperations.boolMul)),
+        (SpGeMM.masked (fst ArithmeticOperations.boolAdd) (fst ArithmeticOperations.boolMul)),
         (fun _ -> true),
         (fun _ -> true),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
@@ -240,7 +239,7 @@ type Mxm4BoolMultiplicationOnlyBenchmark() =
 type Mxm4BoolWithTransposingBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<bool>(
-        (Primitives.SpGeMM.masked (fst ArithmeticOperations.boolAdd) (fst ArithmeticOperations.boolMul)),
+        (SpGeMM.masked (fst ArithmeticOperations.boolAdd) (fst ArithmeticOperations.boolMul)),
         (fun _ -> true),
         (fun _ -> true),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
@@ -252,7 +251,7 @@ type Mxm4BoolWithTransposingBenchmark() =
 type Mxm4Float32MultiplicationOnlyWithZerosFilterBenchmark() =
 
     inherit MxmBenchmarksMultiplicationOnly<float32>(
-        (Primitives.SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul)),
+        (SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul)),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)
@@ -264,7 +263,7 @@ type Mxm4Float32MultiplicationOnlyWithZerosFilterBenchmark() =
 type Mxm4Float32WithTransposingWithZerosFilterBenchmark() =
 
     inherit MxmBenchmarksWithTransposing<float32>(
-        Primitives.SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+        SpGeMM.masked (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
         float32,
         (fun _ -> Utils.nextSingle (System.Random())),
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)

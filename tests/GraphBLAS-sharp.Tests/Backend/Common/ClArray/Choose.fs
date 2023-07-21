@@ -1,13 +1,13 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Choose
 
-open GraphBLAS.FSharp.Backend.Common
 open Expecto
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let workGroupSize = Utils.defaultWorkGroupSize
 

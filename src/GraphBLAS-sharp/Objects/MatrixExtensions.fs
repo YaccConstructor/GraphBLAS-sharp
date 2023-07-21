@@ -1,9 +1,9 @@
 namespace GraphBLAS.FSharp.Objects
 
-open GraphBLAS.FSharp.Backend.Objects
 open Brahma.FSharp
 open Matrix
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 module MatrixExtensions =

@@ -1,10 +1,8 @@
 namespace GraphBLAS.FSharp.Test
 
 open FsCheck
-open GraphBLAS.FSharp
 open Expecto.Logging
 open Expecto.Logging.Message
-open FSharp.Quotations.Evaluator
 
 module Generators =
     let logger = Log.create "Generators"

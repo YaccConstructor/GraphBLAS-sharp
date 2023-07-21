@@ -1,11 +1,12 @@
-namespace GraphBLAS.FSharp.Backend
+namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Vector
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Operations
 
 module Operations =
     module Vector =
@@ -146,25 +147,31 @@ module Operations =
 
     /// <summary>
     /// Matrix-vector multiplication.
+    /// Vector, that is going to be the result of the operation, should be passed as an argument.
     /// </summary>
     /// <param name="add">Type of binary function to reduce entries.</param>
     /// <param name="mul">Type of binary function to combine entries.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let SpMV
+    let SpMVInplace
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
         workGroupSize
         =
 
-        let run = SpMV.run add mul clContext workGroupSize
+        let runTo =
+            SpMV.runTo add mul clContext workGroupSize
 
-        fun (queue: MailboxProcessor<_>) allocationMode (matrix: ClMatrix<'a>) (vector: ClVector<'b>) ->
-            match matrix, vector with
-            | ClMatrix.CSR m, ClVector.Dense v -> run queue allocationMode m v |> ClVector.Dense
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix<'a>) (vector: ClVector<'b>) (result: ClVector<'c>) ->
+            match matrix, vector, result with
+            | ClMatrix.CSR m, ClVector.Dense v, ClVector.Dense r -> runTo queue m v r
             | _ -> failwith "Not implemented yet"
 
+    /// <summary>
+    /// Matrix-vector multiplication.
+    /// </summary>
+    let SpMV = SpMV.run
 
     /// <summary>
     /// Kronecker product for matrices.
@@ -176,8 +183,7 @@ module Operations =
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let kronecker (op: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
-        let run =
-            CSR.Matrix.kronecker clContext workGroupSize op
+        let run = Kronecker.run clContext workGroupSize op
 
         fun (queue: MailboxProcessor<_>) allocationFlag (matrix1: ClMatrix<'a>) (matrix2: ClMatrix<'b>) ->
             match matrix1, matrix2 with
@@ -243,4 +249,3 @@ module Operations =
 
                     run processor allocationMode resultCapacity leftMatrix rightMatrix
                 | _ -> failwith "Matrix formats are not matching"
-

@@ -1,17 +1,17 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
-open GraphBLAS.FSharp.Backend.Objects
 open Microsoft.FSharp.Quotations
 open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector.Sparse
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Common.ClArray
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module internal Map =
     let preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =
@@ -48,8 +48,7 @@ module internal Map =
             let resultValues =
                 clContext.CreateClArrayWithSpecificAllocationMode<'b>(DeviceOnly, size)
 
-            let ndRange =
-                Range1D.CreateValid(size, workGroupSize)
+            let ndRange = Range1D.CreateValid(size, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
@@ -172,9 +171,10 @@ module internal Map =
             let setPositions =
                 Common.setPositionsOption<'c> clContext workGroupSize
 
-            let create = create clContext workGroupSize
+            let create = ClArray.create clContext workGroupSize
 
-            let init = init <@ id @> clContext workGroupSize
+            let init =
+                ClArray.init <@ id @> clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (value: 'a option) size ->
                 function

@@ -1,15 +1,14 @@
 namespace GraphBLAS.FSharp.Benchmarks.Matrix.Map2
 
 open System.IO
-open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp.IO
+open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Matrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Benchmarks
 
 [<AbstractClass>]
@@ -20,7 +19,7 @@ type Benchmarks<'matrixT, 'elem when 'matrixT :> IDeviceMemObject and 'elem : st
         buildFunToBenchmark,
         converter: string -> 'elem,
         converterBool,
-        buildMatrix: Primitives.COO<_> -> Matrix<_>) =
+        buildMatrix: Matrix.COO<_> -> Matrix<_>) =
 
     let mutable funToBenchmark = None
     let mutable firstMatrix = Unchecked.defaultof<ClMatrix<'elem>>
@@ -138,10 +137,10 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (Primitives.map2 ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
-                Primitives.COO
+                Matrix.COO
                 )
 
             static member InputMatricesProvider =
@@ -150,10 +149,10 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                (Primitives.map2 ArithmeticOperations.boolSumOption),
+                (Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
-                Primitives.COO
+                Matrix.COO
                 )
 
             static member InputMatricesProvider =
@@ -163,10 +162,10 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                (Primitives.map2 ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
-                (fun matrix -> Primitives.CSR matrix.ToCSR)
+                (fun matrix -> Matrix.CSR matrix.ToCSR)
                 )
 
             static member InputMatricesProvider =
@@ -175,10 +174,10 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                (Primitives.map2 ArithmeticOperations.boolSumOption),
+                (Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
-                (fun matrix -> Primitives.CSR matrix.ToCSR)
+                (fun matrix -> Matrix.CSR matrix.ToCSR)
                 )
 
             static member InputMatricesProvider =
@@ -189,10 +188,10 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                    (Primitives.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
-                    Primitives.COO
+                    Matrix.COO
                     )
 
                 static member InputMatricesProvider =
@@ -201,10 +200,10 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                    (Primitives.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
-                    Primitives.COO
+                    Matrix.COO
                     )
 
                 static member InputMatricesProvider =
@@ -214,10 +213,10 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                    (Primitives.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
-                    (fun matrix -> Primitives.CSR matrix.ToCSR)
+                    (fun matrix -> Matrix.CSR matrix.ToCSR)
                     )
 
                 static member InputMatricesProvider =
@@ -226,10 +225,10 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                    (Primitives.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
+                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
-                    (fun matrix -> Primitives.CSR matrix.ToCSR)
+                    (fun matrix -> Matrix.CSR matrix.ToCSR)
                     )
 
                 static member InputMatricesProvider =
@@ -273,10 +272,10 @@ module WithTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (Primitives.map2 ArithmeticOperations.float32SumOption),
+                (Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
-                Primitives.COO,
+                Matrix.COO,
                 (fun matrix -> matrix.ToHost)
                 )
 

@@ -1,7 +1,7 @@
-namespace GraphBLAS.FSharp.Backend.Objects
+namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 type VectorFormat =
     | Sparse

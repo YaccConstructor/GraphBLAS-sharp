@@ -1,6 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Quotes
 
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 module ArithmeticOperations =
     let inline mkUnaryOp zero unaryOp =

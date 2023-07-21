@@ -1,20 +1,19 @@
 module GraphBLAS.FSharp.Tests.Matrix.SpGeMM.Expand
 
 open Expecto
-open GraphBLAS.FSharp.Backend.Matrix.SpGeMM
-open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Test
 open Microsoft.FSharp.Collections
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
+open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Operations
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Operations.SpGeMM
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
-open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let context = Context.defaultContext.ClContext
 
@@ -215,7 +214,7 @@ let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
-    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Matrix.SpGeMM.expand
+    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul SpGeMM.expand
 
       if Utils.isFloat64Available context.ClDevice then
           createGeneralTest
@@ -223,13 +222,13 @@ let generalTests =
               Utils.floatIsEqual
               ArithmeticOperations.floatAdd
               ArithmeticOperations.floatMul
-              Matrix.SpGeMM.expand
+              SpGeMM.expand
 
       createGeneralTest
           0.0f
           Utils.float32IsEqual
           ArithmeticOperations.float32Add
           ArithmeticOperations.float32Mul
-          Matrix.SpGeMM.expand
-      createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul Matrix.SpGeMM.expand ]
+          SpGeMM.expand
+      createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul SpGeMM.expand ]
     |> testList "general"

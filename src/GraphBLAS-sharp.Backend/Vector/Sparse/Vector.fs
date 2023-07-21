@@ -3,10 +3,11 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Vector.Sparse
 
 module Vector =

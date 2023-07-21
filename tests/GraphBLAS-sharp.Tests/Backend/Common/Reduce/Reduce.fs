@@ -4,10 +4,10 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let logger = Log.create "Reduce.Tests"
 

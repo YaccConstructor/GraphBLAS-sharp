@@ -1,13 +1,13 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Reduce.ByKey
 
 open Expecto
-open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let context = Context.defaultContext.ClContext
 

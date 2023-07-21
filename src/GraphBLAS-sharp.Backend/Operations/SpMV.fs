@@ -1,10 +1,10 @@
-namespace GraphBLAS.FSharp.Backend.Vector
+namespace GraphBLAS.FSharp.Backend.Operations
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module internal SpMV =
     let runTo

@@ -3,11 +3,12 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Scatter
 open Expecto
 open Expecto.Logging
 open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let logger = Log.create "Scatter.Tests"
 
@@ -100,8 +101,8 @@ let initTests =
     let inc = ((+) 1)
 
     let firstOccurrence =
-        [ createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "id" id Map.id
-          createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "inc" inc Map.inc ]
+        [ createInitTest Scatter.initFirstOccurrence HostPrimitives.scatterFirstOccurrence "id" id Map.id
+          createInitTest Scatter.initFirstOccurrence HostPrimitives.scatterFirstOccurrence "inc" inc Map.inc ]
         |> testList "first occurrence"
 
     let lastOccurrence =

@@ -3,17 +3,17 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.Map2
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
+open Microsoft.FSharp.Collections
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
-open Microsoft.FSharp.Collections
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Map2.Tests"
 
@@ -135,7 +135,13 @@ let testFixturesMap2AddAtLeastOne case =
       createTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumAtLeastOne Matrix.map2AtLeastOne
+          createTestMap2Add
+              case
+              0.0
+              (+)
+              Utils.floatIsEqual
+              ArithmeticOperations.floatSumAtLeastOne
+              Matrix.map2AtLeastOne
 
       createTestMap2Add
           case
@@ -160,7 +166,13 @@ let testFixturesMap2MulAtLeastOne case =
       createTestMap2Add case 0 (*) (=) ArithmeticOperations.intMulAtLeastOne Matrix.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap2Add case 0.0 (*) Utils.floatIsEqual ArithmeticOperations.floatMulAtLeastOne Matrix.map2AtLeastOne
+          createTestMap2Add
+              case
+              0.0
+              (*)
+              Utils.floatIsEqual
+              ArithmeticOperations.floatMulAtLeastOne
+              Matrix.map2AtLeastOne
 
       createTestMap2Add
           case

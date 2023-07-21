@@ -1,10 +1,10 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Scan.ByKey
 
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
 open Expecto
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let context = Context.defaultContext.ClContext
 

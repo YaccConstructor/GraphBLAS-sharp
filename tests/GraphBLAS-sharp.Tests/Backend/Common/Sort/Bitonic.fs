@@ -3,11 +3,11 @@ namespace GraphBLAS.FSharp.Tests.Backend.Common.Sort
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module Bitonic =
     let logger = Log.create "BitonicSort.Tests"
@@ -62,7 +62,7 @@ module Bitonic =
             |> Utils.compareArrays (=) actualValues expectedValues
 
     let testFixtures<'a when 'a: equality> =
-        Sort.Bitonic.sortKeyValuesInplace<int, 'a> context wgSize
+        Bitonic.sortKeyValuesInplace context wgSize
         |> makeTest
         |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 

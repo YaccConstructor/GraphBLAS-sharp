@@ -2,15 +2,14 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.ZeroCreate
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open Context
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Vector.zeroCreate.Tests"
 

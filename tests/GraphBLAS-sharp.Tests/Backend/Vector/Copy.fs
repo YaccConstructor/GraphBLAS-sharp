@@ -2,14 +2,15 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.Copy
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Vector.copy.Tests"
 

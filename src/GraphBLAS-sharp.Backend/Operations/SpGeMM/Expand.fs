@@ -1,16 +1,16 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.SpGeMM
+namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Common.Sort
+open FSharp.Quotations
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClCellExtensions
-open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
 module internal Expand =
     let getSegmentPointers (clContext: ClContext) workGroupSize =
@@ -216,7 +216,7 @@ module internal Expand =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let idScatter =
-            Scatter.initFirsOccurrence Map.id clContext workGroupSize
+            Scatter.initFirstOccurrence Map.id clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
 

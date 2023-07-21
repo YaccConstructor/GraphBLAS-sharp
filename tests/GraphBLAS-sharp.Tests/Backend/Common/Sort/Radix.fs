@@ -1,11 +1,11 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Sort.Radix
 
 open Expecto
-open GraphBLAS.FSharp.Backend.Common.Sort
-open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let config =
     { Utils.defaultConfig with

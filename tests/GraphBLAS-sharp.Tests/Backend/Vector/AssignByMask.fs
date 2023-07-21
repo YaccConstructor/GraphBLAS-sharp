@@ -2,16 +2,15 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.AssignByMask
 
 open Expecto
 open Expecto.Logging
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
-open Brahma.FSharp
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Vector.assignByMask.Tests"
 

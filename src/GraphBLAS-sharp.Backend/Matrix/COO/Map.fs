@@ -5,10 +5,10 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module internal Map =
     let preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =

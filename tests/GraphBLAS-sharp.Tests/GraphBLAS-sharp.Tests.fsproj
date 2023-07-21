@@ -41,7 +41,6 @@
         <Compile Include="Backend/Common/Scatter.fs" />
         <Compile Include="Backend/Common/Sort/Bitonic.fs" />
         <Compile Include="Backend/Common/Sort/Radix.fs" />
-        <Compile Include="Backend/Common/Merge.fs" />
         <Compile Include="Backend/Matrix/ByRows.fs" />
         <Compile Include="Backend/Matrix/Convert.fs" />
         <Compile Include="Backend/Matrix/Map.fs" />

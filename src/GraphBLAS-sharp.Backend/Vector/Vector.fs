@@ -1,15 +1,17 @@
-namespace GraphBLAS.FSharp.Backend.Vector
+namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClVector
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Backend.Vector
 
-module Primitives =
+module Vector =
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
     /// </summary>
@@ -165,8 +167,12 @@ module Primitives =
 
         fun (processor: MailboxProcessor<_>) allocationMode matrix ->
             match matrix with
-            | ClVector.Sparse v -> mapSparse processor allocationMode v |> ClVector.Sparse
-            | ClVector.Dense v -> mapDense processor allocationMode v |> ClVector.Dense
+            | ClVector.Sparse v ->
+                mapSparse processor allocationMode v
+                |> ClVector.Sparse
+            | ClVector.Dense v ->
+                mapDense processor allocationMode v
+                |> ClVector.Dense
 
     let private assignByMaskGeneral<'a, 'b when 'a: struct and 'b: struct> op (clContext: ClContext) workGroupSize =
 

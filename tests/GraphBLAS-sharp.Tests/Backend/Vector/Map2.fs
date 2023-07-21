@@ -2,15 +2,15 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.Map2
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Vector.ElementWise.Tests"
 

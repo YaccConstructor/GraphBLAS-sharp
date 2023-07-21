@@ -1,18 +1,17 @@
 ﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
+open Microsoft.FSharp.Collections
+open Microsoft.FSharp.Core
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
-open Microsoft.FSharp.Collections
-open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 
 let config = Utils.defaultConfig
 
@@ -92,7 +91,7 @@ let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, %A{testContext.ClContext}"
 
-    let spMV = SpMV.run addQ mulQ context wgSize
+    let spMV = SpMV addQ mulQ context wgSize
 
     testContext
     |> correctnessGenericTest zero add mul spMV isEqual q
