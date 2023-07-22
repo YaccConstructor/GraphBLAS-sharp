@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Matrix.SpGeMM.Expand
+module GraphBLAS.FSharp.Tests.Backend.Matrix.SpGeMM.Expand
 
 open Expecto
 open Microsoft.FSharp.Collections

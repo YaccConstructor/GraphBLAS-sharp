@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Matrix.ByRows
+module GraphBLAS.FSharp.Tests.Backend.Matrix.ByRows
 
 open Expecto
 open GraphBLAS.FSharp.Tests

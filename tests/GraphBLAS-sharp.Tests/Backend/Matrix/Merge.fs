@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Tests.Matrix.Merge
+module GraphBLAS.FSharp.Tests.Backend.Matrix.Merge
 
 open Brahma.FSharp
 open Expecto

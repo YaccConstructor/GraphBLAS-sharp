@@ -6,11 +6,52 @@ open GraphBLAS.FSharp.Backend.Common
 
 module Common =
     module Bitonic =
+        /// <summary>
+        /// Sorts in-place input array of values by their 2d indices,
+        /// which are stored in two given arrays of keys: rows and columns.
+        /// When comparing, it first looks at rows, then columns.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let rows = [| 0; 0; 3; 2; 1; 0; 5 |]
+        /// let columns = [| 0; 2; 1; 2; 0; 3; 5; |]
+        /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
+        /// sortKeyValuesInplace clContext 32 processor rows columns values
+        /// ...
+        /// > val rows = [| 0; 0; 0; 1; 2; 3; 5 |]
+        /// > let columns = [| 0; 2; 3; 0; 2; 1; 5; |]
+        /// > val values = [| 1.9; 2.8; 6.4; 5.5; 4.6; 3.7; 7.3 |]
+        /// </code>
+        /// </example>
         let sortKeyValuesInplace = Sort.Bitonic.sortKeyValuesInplace
 
     module Radix =
+        /// <summary>
+        /// Sorts stable input array of values by given integer keys.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
+        /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
+        /// runByKeysStandard clContext 32 processor keys values
+        /// ...
+        /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
+        /// > val values = [| 1.9; 4.6; 5.5; 3.7; 2.8; 7.3; 6.4 |]
+        /// </code>
+        /// </example>
         let runByKeysStandard = Sort.Radix.runByKeysStandard
 
+        /// <summary>
+        /// Sorts stable input array of integer keys.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
+        /// standardRunKeysOnly clContext 32 processor keys
+        /// ...
+        /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
+        /// </code>
+        /// </example>
         let standardRunKeysOnly = Sort.Radix.standardRunKeysOnly
 
     module Gather =
@@ -53,7 +94,8 @@ module Common =
 
     module Scatter =
         /// <summary>
-        /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+        /// Creates a new array from the given one where it is indicated
+        /// by the array of positions at which position in the new array
         /// should be a value from the given one.
         /// </summary>
         /// <remarks>
@@ -135,18 +177,8 @@ module Common =
         let initLastOccurrence valueMap = Scatter.initLastOccurrence valueMap
 
     module PrefixSum =
-        let runExcludeInPlace plus = PrefixSum.runExcludeInPlace plus
-
-        let runIncludeInPlace plus = PrefixSum.runIncludeInPlace plus
-
-        let runBackwardsExcludeInPlace plus =
-            PrefixSum.runBackwardsExcludeInPlace plus
-
-        let runBackwardsIncludeInPlace plus =
-            PrefixSum.runBackwardsIncludeInPlace plus
-
         /// <summary>
-        /// Exclude inplace prefix sum.
+        /// Exclude in-place prefix sum.
         /// </summary>
         /// <example>
         /// <code>
@@ -159,10 +191,68 @@ module Common =
         /// > val sum = [| 4 |]
         /// </code>
         /// </example>
-        ///<param name="clContext">ClContext.</param>
-        ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        ///<param name="plus">Associative binary operation.</param>
-        ///<param name="zero">Zero element for binary operation.</param>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        /// <param name="plus">Associative binary operation.</param>
+        /// <param name="zero">Zero element for binary operation.</param>
+        let runExcludeInPlace plus = PrefixSum.runExcludeInPlace plus
+
+        /// <summary>
+        /// Include in-place prefix sum.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1 |]
+        /// let sum = [| 0 |]
+        /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
+        /// |> ignore
+        /// ...
+        /// > val arr = [| 0; 1; 2; 3 |]
+        /// > val sum = [| 4 |]
+        /// </code>
+        /// </example>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        /// <param name="plus">Associative binary operation.</param>
+        /// <param name="zero">Zero element for binary operation.</param>
+        let runIncludeInPlace plus = PrefixSum.runIncludeInPlace plus
+
+        /// <summary>
+        /// Exclude in-place prefix sum. Array is scanned starting from the end.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        /// <param name="plus">Associative binary operation.</param>
+        /// <param name="zero">Zero element for binary operation.</param>
+        let runBackwardsExcludeInPlace plus =
+            PrefixSum.runBackwardsExcludeInPlace plus
+
+        /// <summary>
+        /// Include in-place prefix sum. Array is scanned starting from the end.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        /// <param name="plus">Associative binary operation.</param>
+        /// <param name="zero">Zero element for binary operation.</param>
+        let runBackwardsIncludeInPlace plus =
+            PrefixSum.runBackwardsIncludeInPlace plus
+
+        /// <summary>
+        /// Exclude in-place prefix sum of integer array with addition operation and start value that is equal to 0.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1 |]
+        /// let sum = [| 0 |]
+        /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
+        /// |> ignore
+        /// ...
+        /// > val arr = [| 0; 1; 2; 3 |]
+        /// > val sum = [| 4 |]
+        /// </code>
+        /// </example>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         let standardExcludeInPlace (clContext: ClContext) workGroupSize =
 
             let scan =
@@ -173,23 +263,21 @@ module Common =
                 scan processor inputArray 0
 
         /// <summary>
-        /// Include inplace prefix sum.
+        /// Include in-place prefix sum of integer array with addition operation and start value that is equal to 0.
         /// </summary>
         /// <example>
         /// <code>
         /// let arr = [| 1; 1; 1; 1 |]
         /// let sum = [| 0 |]
-        /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
+        /// runIncludeInplace clContext workGroupSize processor arr sum (+) 0
         /// |> ignore
         /// ...
         /// > val arr = [| 1; 2; 3; 4 |]
         /// > val sum = [| 4 |]
         /// </code>
         /// </example>
-        ///<param name="clContext">ClContext.</param>
-        ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        ///<param name="plus">Associative binary operation.</param>
-        ///<param name="zero">Zero element for binary operation.</param>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         let standardIncludeInPlace (clContext: ClContext) workGroupSize =
 
             let scan =

@@ -1,6 +1,6 @@
 open Expecto
-open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.Backend
 
 let matrixTests =
     testList

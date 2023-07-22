@@ -328,11 +328,19 @@ module ClArray =
 
                 bitmap
 
+        /// <summary>
+        /// Gets the bitmap that indicates the first elements of the sequences of consecutive identical elements
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let firstOccurrence clContext =
             getUniqueBitmapGeneral
             <| Predicates.firstOccurrence ()
             <| clContext
 
+        /// <summary>
+        /// Gets the bitmap that indicates the last elements of the sequences of consecutive identical elements
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let lastOccurrence clContext =
             getUniqueBitmapGeneral
             <| Predicates.lastOccurrence ()
@@ -360,9 +368,19 @@ module ClArray =
 
                 result
 
+        /// <summary>
+        /// Gets the bitmap that indicates the first elements of the sequences
+        /// of consecutive identical elements from either first array or second array.
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let firstOccurrence2 clContext =
             getUniqueBitmap2General firstOccurrence clContext
 
+        /// <summary>
+        /// Gets the bitmap that indicates the last elements of the sequences
+        /// of consecutive identical elements from either first array or second array.
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let lastOccurrence2 clContext =
             getUniqueBitmap2General lastOccurrence clContext
 
@@ -436,6 +454,14 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Maps every value from the given value array and, if the result of applying function is <c>Some</c>,
+    /// places the result to a specific position from the input array of positions.
+    /// If the result of mapping is <c>None</c>, it is just ignored.
+    /// </summary>
+    /// <param name="op">Function that maps elements from value array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private assignOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
 
         let assign =
@@ -474,7 +500,8 @@ module ClArray =
 
     /// <summary>
     /// Applies the given function to each element of the array.
-    /// Returns the array comprised of the results <c>x</c> for each element where the function returns <c>Some(x)</c>.
+    /// Returns the array comprised of the results <c>x</c>
+    /// for each element where the function returns <c>Some(x)</c>.
     /// </summary>
     /// <param name="predicate">The function to generate options from the elements.</param>
     /// <param name="clContext">OpenCL context.</param>
@@ -512,6 +539,14 @@ module ClArray =
 
                 Some result
 
+    /// <summary>
+    /// Maps pair of values from the given value arrays and, if the result of applying function is <c>Some</c>,
+    /// places the result to a specific position from the input array of positions.
+    /// If the result of mapping is <c>None</c>, it is just ignored.
+    /// </summary>
+    /// <param name="op">Function that maps pairs of elements from value arrays.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let assignOption2 (op: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
 
         let assign =
@@ -559,6 +594,14 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Applies the given function to each pair of elements of the two given arrays.
+    /// Returns the array comprised of the results <c>x</c>
+    /// for each pairs where the function returns <c>Some(x)</c>.
+    /// </summary>
+    /// <param name="predicate">The function to generate options from the pairs of elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let choose2 (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
             map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
@@ -830,7 +873,7 @@ module ClArray =
                 None
 
     let private bound<'a, 'b when 'a: equality and 'a: comparison>
-        (lowerBound: Expr<(int -> 'a -> ClArray<'a> -> 'b)>)
+        (lowerBound: Expr<int -> 'a -> ClArray<'a> -> 'b>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -860,9 +903,24 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Finds the position of the largest value and the value itself
+    /// that is less than the given one.
+    /// </summary>
+    /// <remarks>
+    /// Array of values should be sorted.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
     let upperBoundAndValue<'a when 'a: comparison> clContext =
         bound<'a, int * 'a> Search.Bin.lowerBoundAndValue clContext
 
+    /// <summary>
+    /// Finds the position of the largest value that is less than the given one.
+    /// </summary>
+    /// <remarks>
+    /// Array of values should be sorted.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
     let upperBound<'a when 'a: comparison> clContext =
         bound<'a, int> Search.Bin.lowerBound clContext
 

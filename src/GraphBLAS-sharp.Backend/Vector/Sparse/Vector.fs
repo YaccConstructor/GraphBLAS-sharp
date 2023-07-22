@@ -8,7 +8,6 @@ open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Vector.Sparse
 
 module Vector =
     let copy (clContext: ClContext) workGroupSize =
