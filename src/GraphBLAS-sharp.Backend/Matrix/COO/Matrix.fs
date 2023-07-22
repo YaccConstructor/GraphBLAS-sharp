@@ -2,7 +2,6 @@ namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Objects
@@ -63,7 +62,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
+            Common.PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
@@ -125,7 +124,7 @@ module Matrix =
     let transposeInPlace (clContext: ClContext) workGroupSize =
 
         let sort =
-            Bitonic.sortKeyValuesInplace clContext workGroupSize
+            Common.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values

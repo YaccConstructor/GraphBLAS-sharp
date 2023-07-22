@@ -5,7 +5,6 @@ open Microsoft.FSharp.Quotations
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Brahma.FSharp
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix.COO
 open GraphBLAS.FSharp.Backend.Matrix.CSR
@@ -68,7 +67,7 @@ module internal Kronecker =
         let updateBitmap = updateBitmap clContext workGroupSize op
 
         let sum =
-            Reduce.sum <@ fun x y -> x + y @> 0 clContext workGroupSize
+            Common.Reduce.sum <@ fun x y -> x + y @> 0 clContext workGroupSize
 
         let item = ClArray.item clContext workGroupSize
 
@@ -192,7 +191,7 @@ module internal Kronecker =
         let kernel = clContext.Compile <| setPositions
 
         let scan =
-            PrefixSum.standardIncludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardIncludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) rowCount columnCount (rowOffset: int) (columnOffset: int) (startIndex: int) (resultMatrix: COO<'c>) (values: ClArray<'c>) (bitmap: ClArray<int>) ->
 
@@ -431,7 +430,7 @@ module internal Kronecker =
         let mapAll = mapAll clContext workGroupSize op
 
         let bitonic =
-            Bitonic.sortKeyValuesInplace clContext workGroupSize
+            Common.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 

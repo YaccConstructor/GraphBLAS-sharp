@@ -4,7 +4,6 @@ open Expecto
 open Microsoft.FSharp.Collections
 open Brahma.FSharp
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Operations.SpGeMM
 open GraphBLAS.FSharp.Objects
@@ -214,7 +213,7 @@ let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let generalTests =
-    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul SpGeMM.expand
+    [ createGeneralTest 0 (=) ArithmeticOperations.intAdd ArithmeticOperations.intMul Operations.SpGeMM.expand
 
       if Utils.isFloat64Available context.ClDevice then
           createGeneralTest
@@ -222,13 +221,13 @@ let generalTests =
               Utils.floatIsEqual
               ArithmeticOperations.floatAdd
               ArithmeticOperations.floatMul
-              SpGeMM.expand
+              Operations.SpGeMM.expand
 
       createGeneralTest
           0.0f
           Utils.float32IsEqual
           ArithmeticOperations.float32Add
           ArithmeticOperations.float32Mul
-          SpGeMM.expand
-      createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul SpGeMM.expand ]
+          Operations.SpGeMM.expand
+      createGeneralTest false (=) ArithmeticOperations.boolAdd ArithmeticOperations.boolMul Operations.SpGeMM.expand ]
     |> testList "general"

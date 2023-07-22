@@ -3,7 +3,6 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.Map2
 open Expecto
 open Expecto.Logging
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests.TestCases
@@ -101,42 +100,54 @@ let createTest case isEqual (zero: 'a) plus plusQ map2 =
 let addTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (+) ArithmeticOperations.intSumOption Vector.map2
+    [ createTest case (=) 0 (+) ArithmeticOperations.intSumOption Operations.Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSumOption Vector.map2
+          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSumOption Operations.Vector.map2
 
-      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32SumOption Vector.map2
-      createTest case (=) false (||) ArithmeticOperations.boolSumOption Vector.map2
-      createTest case (=) 0uy (+) ArithmeticOperations.byteSumOption Vector.map2 ]
+      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32SumOption Operations.Vector.map2
+      createTest case (=) false (||) ArithmeticOperations.boolSumOption Operations.Vector.map2
+      createTest case (=) 0uy (+) ArithmeticOperations.byteSumOption Operations.Vector.map2 ]
 
 let addTests = operationGPUTests "add" addTestFixtures
 
 let mulTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (*) ArithmeticOperations.intMulOption Vector.map2
+    [ createTest case (=) 0 (*) ArithmeticOperations.intMulOption Operations.Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMulOption Vector.map2
+          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMulOption Operations.Vector.map2
 
-      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32MulOption Vector.map2
-      createTest case (=) false (&&) ArithmeticOperations.boolMulOption Vector.map2
-      createTest case (=) 0uy (*) ArithmeticOperations.byteMulOption Vector.map2 ]
+      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32MulOption Operations.Vector.map2
+      createTest case (=) false (&&) ArithmeticOperations.boolMulOption Operations.Vector.map2
+      createTest case (=) 0uy (*) ArithmeticOperations.byteMulOption Operations.Vector.map2 ]
 
 let mulTests = operationGPUTests "mul" addTestFixtures
 
 let addAtLeastOneTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (+) ArithmeticOperations.intSumAtLeastOne Vector.map2AtLeastOne
+    [ createTest case (=) 0 (+) ArithmeticOperations.intSumAtLeastOne Operations.Vector.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (+) ArithmeticOperations.floatSumAtLeastOne Vector.map2AtLeastOne
+          createTest
+              case
+              Utils.floatIsEqual
+              0.0
+              (+)
+              ArithmeticOperations.floatSumAtLeastOne
+              Operations.Vector.map2AtLeastOne
 
-      createTest case Utils.float32IsEqual 0.0f (+) ArithmeticOperations.float32SumAtLeastOne Vector.map2AtLeastOne
-      createTest case (=) false (||) ArithmeticOperations.boolSumAtLeastOne Vector.map2AtLeastOne
-      createTest case (=) 0uy (+) ArithmeticOperations.byteSumAtLeastOne Vector.map2AtLeastOne ]
+      createTest
+          case
+          Utils.float32IsEqual
+          0.0f
+          (+)
+          ArithmeticOperations.float32SumAtLeastOne
+          Operations.Vector.map2AtLeastOne
+      createTest case (=) false (||) ArithmeticOperations.boolSumAtLeastOne Operations.Vector.map2AtLeastOne
+      createTest case (=) 0uy (+) ArithmeticOperations.byteSumAtLeastOne Operations.Vector.map2AtLeastOne ]
 
 let addAtLeastOneTests =
     operationGPUTests "addAtLeastOne" addTestFixtures
@@ -144,14 +155,26 @@ let addAtLeastOneTests =
 let mulAtLeastOneTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (*) ArithmeticOperations.intMulAtLeastOne Vector.map2AtLeastOne
+    [ createTest case (=) 0 (*) ArithmeticOperations.intMulAtLeastOne Operations.Vector.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest case Utils.floatIsEqual 0.0 (*) ArithmeticOperations.floatMulAtLeastOne Vector.map2AtLeastOne
+          createTest
+              case
+              Utils.floatIsEqual
+              0.0
+              (*)
+              ArithmeticOperations.floatMulAtLeastOne
+              Operations.Vector.map2AtLeastOne
 
-      createTest case Utils.float32IsEqual 0.0f (*) ArithmeticOperations.float32MulAtLeastOne Vector.map2AtLeastOne
-      createTest case (=) false (&&) ArithmeticOperations.boolMulAtLeastOne Vector.map2AtLeastOne
-      createTest case (=) 0uy (*) ArithmeticOperations.byteMulAtLeastOne Vector.map2AtLeastOne ]
+      createTest
+          case
+          Utils.float32IsEqual
+          0.0f
+          (*)
+          ArithmeticOperations.float32MulAtLeastOne
+          Operations.Vector.map2AtLeastOne
+      createTest case (=) false (&&) ArithmeticOperations.boolMulAtLeastOne Operations.Vector.map2AtLeastOne
+      createTest case (=) 0uy (*) ArithmeticOperations.byteMulAtLeastOne Operations.Vector.map2AtLeastOne ]
 
 let mulAtLeastOneTests =
     operationGPUTests "mulAtLeastOne" mulTestFixtures
@@ -172,7 +195,7 @@ let fillSubVectorFun value zero isEqual =
 let complementedGeneralTestFixtures case =
     let context = case.TestContext.ClContext
 
-    [ createTest case (=) 0 (fillSubVectorFun 1 0 (=)) (fillSubVectorComplementedQ 1) Vector.map2
+    [ createTest case (=) 0 (fillSubVectorFun 1 0 (=)) (fillSubVectorComplementedQ 1) Operations.Vector.map2
 
       if Utils.isFloat64Available context.ClDevice then
           createTest
@@ -181,7 +204,7 @@ let complementedGeneralTestFixtures case =
               0.0
               (fillSubVectorFun 1.0 0.0 Utils.floatIsEqual)
               (fillSubVectorComplementedQ 1.0)
-              Vector.map2
+              Operations.Vector.map2
 
       createTest
           case
@@ -189,11 +212,17 @@ let complementedGeneralTestFixtures case =
           0.0f
           (fillSubVectorFun 1.0f 0.0f Utils.float32IsEqual)
           (fillSubVectorComplementedQ 1.0f)
-          Vector.map2
+          Operations.Vector.map2
 
-      createTest case (=) false (fillSubVectorFun true false (=)) (fillSubVectorComplementedQ true) Vector.map2
+      createTest
+          case
+          (=)
+          false
+          (fillSubVectorFun true false (=))
+          (fillSubVectorComplementedQ true)
+          Operations.Vector.map2
 
-      createTest case (=) 0uy (fillSubVectorFun 1uy 0uy (=)) (fillSubVectorComplementedQ 1uy) Vector.map2 ]
+      createTest case (=) 0uy (fillSubVectorFun 1uy 0uy (=)) (fillSubVectorComplementedQ 1uy) Operations.Vector.map2 ]
 
 
 let complementedGeneralTests =

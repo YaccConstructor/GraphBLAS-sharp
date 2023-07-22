@@ -2,8 +2,8 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.SpGeMM.Masked
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
@@ -77,7 +77,7 @@ let tests =
       let mult = <@ fun x y -> Some(x * y) @>
 
       let mxmFun =
-          SpGeMM.masked add mult context workGroupSize
+          Operations.SpGeMM.masked add mult context workGroupSize
 
       makeTest context q 0 (=) (+) (*) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "int")
@@ -103,7 +103,7 @@ let tests =
               res @>
 
       let mxmFun =
-          SpGeMM.masked logicalOr logicalAnd context workGroupSize
+          Operations.SpGeMM.masked logicalOr logicalAnd context workGroupSize
 
       makeTest context q false (=) (||) (&&) mxmFun
       |> testPropertyWithConfig config (getCorrectnessTestName "bool") ]

@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open Microsoft.FSharp.Control
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
@@ -12,13 +11,13 @@ module internal Common =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let valuesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let indicesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
@@ -40,13 +39,13 @@ module internal Common =
     let setPositionsOption<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let valuesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let indicesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 

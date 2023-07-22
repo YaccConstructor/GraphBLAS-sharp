@@ -3,8 +3,8 @@ namespace GraphBLAS.FSharp.Benchmarks.Matrix.Map2
 open System.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.IO
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -137,7 +137,7 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (Matrix.map2 ArithmeticOperations.float32SumOption),
+                (Operations.Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 Matrix.COO
@@ -149,7 +149,7 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                (Matrix.map2 ArithmeticOperations.boolSumOption),
+                (Operations.Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
                 Matrix.COO
@@ -162,7 +162,7 @@ module WithoutTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                (Matrix.map2 ArithmeticOperations.float32SumOption),
+                (Operations.Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -174,7 +174,7 @@ module WithoutTransfer =
         type Bool() =
 
             inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                (Matrix.map2 ArithmeticOperations.boolSumOption),
+                (Operations.Matrix.map2 ArithmeticOperations.boolSumOption),
                 (fun _ -> true),
                 (fun _ -> true),
                 (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -188,7 +188,7 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.COO<bool>,bool>(
-                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
+                    (Operations.Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
                     Matrix.COO
@@ -200,7 +200,7 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
+                    (Operations.Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
                     Matrix.COO
@@ -213,7 +213,7 @@ module WithoutTransfer =
             type Bool() =
 
                 inherit Benchmark<ClMatrix.CSR<bool>,bool>(
-                    (Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
+                    (Operations.Matrix.map2AtLeastOne ArithmeticOperations.boolSumAtLeastOne),
                     (fun _ -> true),
                     (fun _ -> true),
                     (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -225,7 +225,7 @@ module WithoutTransfer =
             type Float32() =
 
                 inherit Benchmark<ClMatrix.CSR<float32>,float32>(
-                    (Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
+                    (Operations.Matrix.map2AtLeastOne ArithmeticOperations.float32SumAtLeastOne),
                     float32,
                     (fun _ -> Utils.nextSingle (System.Random())),
                     (fun matrix -> Matrix.CSR matrix.ToCSR)
@@ -272,7 +272,7 @@ module WithTransfer =
         type Float32() =
 
             inherit Benchmark<ClMatrix.COO<float32>,float32>(
-                (Matrix.map2 ArithmeticOperations.float32SumOption),
+                (Operations.Matrix.map2 ArithmeticOperations.float32SumOption),
                 float32,
                 (fun _ -> Utils.nextSingle (System.Random())),
                 Matrix.COO,

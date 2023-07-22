@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp.Backend.Vector.Dense
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -101,16 +100,16 @@ module Vector =
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let scatterValues =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let scatterIndices =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let getBitmap =
             ClArray.map (Map.option 1 0) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let allIndices =
             ClArray.init Map.id clContext workGroupSize
@@ -160,7 +159,7 @@ module Vector =
             ClArray.choose Map.id clContext workGroupSize
 
         let reduce =
-            Reduce.reduce opAdd clContext workGroupSize
+            Common.Reduce.reduce opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
             choose processor DeviceOnly vector

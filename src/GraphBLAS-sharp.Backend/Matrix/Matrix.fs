@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 
+[<RequireQualifiedAccess>]
 module Matrix =
     /// <summary>
     /// Creates new matrix with the values from the given one.

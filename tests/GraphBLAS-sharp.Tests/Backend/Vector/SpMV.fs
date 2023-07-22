@@ -4,7 +4,7 @@ open Expecto
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 open Brahma.FSharp
-open GraphBLAS.FSharp.Operations
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
@@ -91,7 +91,7 @@ let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, %A{testContext.ClContext}"
 
-    let spMV = SpMV addQ mulQ context wgSize
+    let spMV = Operations.SpMV addQ mulQ context wgSize
 
     testContext
     |> correctnessGenericTest zero add mul spMV isEqual q

@@ -11,7 +11,6 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 
-
 module Matrix =
     let expandRowPointers (clContext: ClContext) workGroupSize =
 

@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp.Backend.Operations
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 

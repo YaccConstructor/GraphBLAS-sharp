@@ -5,7 +5,6 @@ open FSharp.Quotations
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Backend.Vector.Dense
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
@@ -20,7 +19,7 @@ module internal BFS =
         =
 
         let spMVTo =
-            SpMVInplace add mul clContext workGroupSize
+            Operations.SpMVInplace add mul clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize

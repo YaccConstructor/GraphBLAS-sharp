@@ -4,13 +4,13 @@ open Brahma.FSharp
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Vector
 
+[<RequireQualifiedAccess>]
 module Vector =
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
@@ -44,7 +44,7 @@ module Vector =
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let ofList (clContext: ClContext) workGroupSize =
         let scatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize

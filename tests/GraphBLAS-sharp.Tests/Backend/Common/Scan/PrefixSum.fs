@@ -5,7 +5,6 @@ open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
@@ -61,7 +60,7 @@ let makeTest plus zero isEqual scan (array: 'a []) =
         |> Tests.Utils.compareArrays isEqual actual expected
 
 let testFixtures plus plusQ zero isEqual name =
-    PrefixSum.runIncludeInPlace plusQ context wgSize
+    Common.PrefixSum.runIncludeInPlace plusQ context wgSize
     |> makeTest plus zero isEqual
     |> testPropertyWithConfig config $"Correctness on %s{name}"
 

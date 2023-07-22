@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
+[<RequireQualifiedAccess>]
 module ClArray =
     /// <summary>
     /// Creates an array given the dimension and a generator function to compute the elements.

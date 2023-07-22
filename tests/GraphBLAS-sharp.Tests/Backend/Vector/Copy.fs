@@ -7,8 +7,6 @@ open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open TestCases
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Vector
-open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 

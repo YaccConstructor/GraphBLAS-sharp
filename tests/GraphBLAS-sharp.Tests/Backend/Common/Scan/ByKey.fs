@@ -1,7 +1,7 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Scan.ByKey
 
 open Expecto
-open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -60,7 +60,7 @@ let createTest (zero: 'a) opAddQ opAdd isEqual deviceScan hostScan =
 
 let sequentialSegmentsTests =
     let excludeTests =
-        [ createTest 0 <@ (+) @> (+) (=) PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude
+        [ createTest 0 <@ (+) @> (+) (=) Common.PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude
 
           if Utils.isFloat64Available context.ClDevice then
               createTest
@@ -68,7 +68,7 @@ let sequentialSegmentsTests =
                   <@ (+) @>
                   (+)
                   Utils.floatIsEqual
-                  PrefixSum.ByKey.sequentialExclude
+                  Common.PrefixSum.ByKey.sequentialExclude
                   HostPrimitives.prefixSumExclude
 
           createTest
@@ -76,15 +76,15 @@ let sequentialSegmentsTests =
               <@ (+) @>
               (+)
               Utils.float32IsEqual
-              PrefixSum.ByKey.sequentialExclude
+              Common.PrefixSum.ByKey.sequentialExclude
               HostPrimitives.prefixSumExclude
 
-          createTest false <@ (||) @> (||) (=) PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude
-          createTest 0u <@ (+) @> (+) (=) PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude ]
+          createTest false <@ (||) @> (||) (=) Common.PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude
+          createTest 0u <@ (+) @> (+) (=) Common.PrefixSum.ByKey.sequentialExclude HostPrimitives.prefixSumExclude ]
         |> testList "exclude"
 
     let includeTests =
-        [ createTest 0 <@ (+) @> (+) (=) PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude
+        [ createTest 0 <@ (+) @> (+) (=) Common.PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude
 
           if Utils.isFloat64Available context.ClDevice then
               createTest
@@ -92,7 +92,7 @@ let sequentialSegmentsTests =
                   <@ (+) @>
                   (+)
                   Utils.floatIsEqual
-                  PrefixSum.ByKey.sequentialInclude
+                  Common.PrefixSum.ByKey.sequentialInclude
                   HostPrimitives.prefixSumInclude
 
           createTest
@@ -100,11 +100,11 @@ let sequentialSegmentsTests =
               <@ (+) @>
               (+)
               Utils.float32IsEqual
-              PrefixSum.ByKey.sequentialInclude
+              Common.PrefixSum.ByKey.sequentialInclude
               HostPrimitives.prefixSumInclude
 
-          createTest false <@ (||) @> (||) (=) PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude
-          createTest 0u <@ (+) @> (+) (=) PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude ]
+          createTest false <@ (||) @> (||) (=) Common.PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude
+          createTest 0u <@ (+) @> (+) (=) Common.PrefixSum.ByKey.sequentialInclude HostPrimitives.prefixSumInclude ]
 
         |> testList "include"
 

@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
 
-open GraphBLAS.FSharp.Common
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -152,13 +152,13 @@ module internal Masked =
             calculate opAdd opMul context workGroupSize
 
         let scatter =
-            Scatter.lastOccurrence context workGroupSize
+            Common.Scatter.lastOccurrence context workGroupSize
 
         let scatterData =
-            Scatter.lastOccurrence context workGroupSize
+            Common.Scatter.lastOccurrence context workGroupSize
 
         let scanInPlace =
-            PrefixSum.standardExcludeInPlace context workGroupSize
+            Common.PrefixSum.standardExcludeInPlace context workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 

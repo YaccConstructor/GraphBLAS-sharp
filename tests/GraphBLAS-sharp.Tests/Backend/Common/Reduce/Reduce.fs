@@ -4,7 +4,7 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
-open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
@@ -52,7 +52,8 @@ let makeTest (reduce: MailboxProcessor<_> -> ClArray<'a> -> ClCell<'a>) plus zer
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus plusQ zero name =
-    let reduce = Reduce.reduce plusQ context wgSize
+    let reduce =
+        Common.Reduce.reduce plusQ context wgSize
 
     makeTest reduce plus zero
     |> testPropertyWithConfig config $"Correctness on %s{name}"

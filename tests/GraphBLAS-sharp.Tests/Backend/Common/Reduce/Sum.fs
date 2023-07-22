@@ -7,7 +7,7 @@ open FSharp.Quotations
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open Context
-open GraphBLAS.FSharp.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
@@ -51,7 +51,7 @@ let makeTest plus zero sum (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus (plusQ: Expr<'a -> 'a -> 'a>) zero name =
-    Reduce.sum plusQ zero context wgSize
+    Common.Reduce.sum plusQ zero context wgSize
     |> makeTest plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 

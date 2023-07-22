@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Operations
 
+[<RequireQualifiedAccess>]
 module Operations =
     module Vector =
         /// <summary>

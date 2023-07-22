@@ -7,7 +7,6 @@ open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Operations
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Tests.Backend
@@ -114,14 +113,14 @@ let testFixturesMap2Add case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap2Add case false (||) (=) ArithmeticOperations.boolSumOption Matrix.map2
-      createTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumOption Matrix.map2
+      createTestMap2Add case false (||) (=) ArithmeticOperations.boolSumOption Operations.Matrix.map2
+      createTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumOption Operations.Matrix.map2
 
       if Utils.isFloat64Available context.ClDevice then
-          createTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumOption Matrix.map2
+          createTestMap2Add case 0.0 (+) Utils.floatIsEqual ArithmeticOperations.floatSumOption Operations.Matrix.map2
 
-      createTestMap2Add case 0.0f (+) Utils.float32IsEqual ArithmeticOperations.float32SumOption Matrix.map2
-      createTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumOption Matrix.map2 ]
+      createTestMap2Add case 0.0f (+) Utils.float32IsEqual ArithmeticOperations.float32SumOption Operations.Matrix.map2
+      createTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumOption Operations.Matrix.map2 ]
 
 let addTests =
     operationGPUTests "Backend.Matrix.map2 add tests" testFixturesMap2Add
@@ -131,8 +130,8 @@ let testFixturesMap2AddAtLeastOne case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap2Add case false (||) (=) ArithmeticOperations.boolSumAtLeastOne Matrix.map2AtLeastOne
-      createTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Matrix.map2AtLeastOne
+      createTestMap2Add case false (||) (=) ArithmeticOperations.boolSumAtLeastOne Operations.Matrix.map2AtLeastOne
+      createTestMap2Add case 0 (+) (=) ArithmeticOperations.intSumAtLeastOne Operations.Matrix.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap2Add
@@ -141,7 +140,7 @@ let testFixturesMap2AddAtLeastOne case =
               (+)
               Utils.floatIsEqual
               ArithmeticOperations.floatSumAtLeastOne
-              Matrix.map2AtLeastOne
+              Operations.Matrix.map2AtLeastOne
 
       createTestMap2Add
           case
@@ -149,9 +148,9 @@ let testFixturesMap2AddAtLeastOne case =
           (+)
           Utils.float32IsEqual
           ArithmeticOperations.float32SumAtLeastOne
-          Matrix.map2AtLeastOne
+          Operations.Matrix.map2AtLeastOne
 
-      createTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumAtLeastOne Matrix.map2AtLeastOne ]
+      createTestMap2Add case 0uy (+) (=) ArithmeticOperations.byteSumAtLeastOne Operations.Matrix.map2AtLeastOne ]
 
 
 let addAtLeastOneTests =
@@ -162,8 +161,8 @@ let testFixturesMap2MulAtLeastOne case =
       let q = case.TestContext.Queue
       q.Error.Add(fun e -> failwithf "%A" e)
 
-      createTestMap2Add case false (&&) (=) ArithmeticOperations.boolMulAtLeastOne Matrix.map2AtLeastOne
-      createTestMap2Add case 0 (*) (=) ArithmeticOperations.intMulAtLeastOne Matrix.map2AtLeastOne
+      createTestMap2Add case false (&&) (=) ArithmeticOperations.boolMulAtLeastOne Operations.Matrix.map2AtLeastOne
+      createTestMap2Add case 0 (*) (=) ArithmeticOperations.intMulAtLeastOne Operations.Matrix.map2AtLeastOne
 
       if Utils.isFloat64Available context.ClDevice then
           createTestMap2Add
@@ -172,7 +171,7 @@ let testFixturesMap2MulAtLeastOne case =
               (*)
               Utils.floatIsEqual
               ArithmeticOperations.floatMulAtLeastOne
-              Matrix.map2AtLeastOne
+              Operations.Matrix.map2AtLeastOne
 
       createTestMap2Add
           case
@@ -180,9 +179,9 @@ let testFixturesMap2MulAtLeastOne case =
           (*)
           Utils.float32IsEqual
           ArithmeticOperations.float32MulAtLeastOne
-          Matrix.map2AtLeastOne
+          Operations.Matrix.map2AtLeastOne
 
-      createTestMap2Add case 0uy (*) (=) ArithmeticOperations.byteMulAtLeastOne Matrix.map2AtLeastOne ]
+      createTestMap2Add case 0uy (*) (=) ArithmeticOperations.byteMulAtLeastOne Operations.Matrix.map2AtLeastOne ]
 
 let mulAtLeastOneTests =
     operationGPUTests "Backend.Matrix.map2AtLeastOne multiplication tests" testFixturesMap2MulAtLeastOne

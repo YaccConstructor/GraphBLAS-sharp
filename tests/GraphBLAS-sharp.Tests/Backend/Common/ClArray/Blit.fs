@@ -3,7 +3,6 @@ module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Blit
 open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects.ArraysExtensions

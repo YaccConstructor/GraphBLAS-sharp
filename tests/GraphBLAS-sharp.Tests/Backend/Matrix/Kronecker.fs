@@ -2,7 +2,7 @@
 
 open Expecto
 open Expecto.Logging
-open GraphBLAS.FSharp.Operations
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
@@ -63,7 +63,7 @@ let makeTest testContext zero isEqual op kroneckerFun (leftMatrix: 'a [,], right
         |> Expect.equal actual expectedOption
 
 let createGeneralTest testContext (zero: 'a) isEqual op opQ testName =
-    kronecker opQ testContext.ClContext workGroupSize
+    Operations.kronecker opQ testContext.ClContext workGroupSize
     |> makeTest testContext zero isEqual op
     |> testPropertyWithConfig config $"test on %A{typeof<'a>} %s{testName}"
 

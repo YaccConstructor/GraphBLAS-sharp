@@ -4,8 +4,8 @@ open System.IO
 open BenchmarkDotNet.Attributes
 open Microsoft.FSharp.Core
 open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.IO
-open GraphBLAS.FSharp.Algorithms
 open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ArraysExtensions
@@ -127,7 +127,7 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
 type BFSWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
-        (singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
@@ -173,7 +173,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
 type BFSWithTransferBenchmarkInt32() =
 
     inherit WithTransferBenchmark<int>(
-        (singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
