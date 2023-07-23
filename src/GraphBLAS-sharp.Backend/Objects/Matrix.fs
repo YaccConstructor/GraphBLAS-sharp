@@ -113,6 +113,9 @@ module ClMatrix =
 
         member this.NNZ = this.Values.Length
 
+/// <summary>
+/// Represents an abstraction over matrix, whose values and indices are in OpenCL device memory.
+/// </summary>
 [<RequireQualifiedAccess>]
 type ClMatrix<'a when 'a: struct> =
     | CSR of ClMatrix.CSR<'a>
@@ -120,6 +123,9 @@ type ClMatrix<'a when 'a: struct> =
     | CSC of ClMatrix.CSC<'a>
     | LIL of ClMatrix.LIL<'a>
 
+    /// <summary>
+    /// Row count.
+    /// </summary>
     member this.RowCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.RowCount
@@ -127,6 +133,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> matrix.RowCount
         | ClMatrix.LIL matrix -> matrix.RowCount
 
+    /// <summary>
+    /// Column count.
+    /// </summary>
     member this.ColumnCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.ColumnCount
@@ -134,6 +143,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> matrix.ColumnCount
         | ClMatrix.LIL matrix -> matrix.ColumnCount
 
+    /// <summary>
+    /// Release resources allocated for the matrix.
+    /// </summary>
     member this.Dispose q =
         match this with
         | ClMatrix.CSR matrix -> (matrix :> IDeviceMemObject).Dispose q
@@ -141,6 +153,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.LIL matrix -> (matrix :> IDeviceMemObject).Dispose q
 
+    /// <summary>
+    /// Number of non-zero elements in matrix.
+    /// </summary>
     member this.NNZ =
         match this with
         | ClMatrix.CSR matrix -> matrix.NNZ

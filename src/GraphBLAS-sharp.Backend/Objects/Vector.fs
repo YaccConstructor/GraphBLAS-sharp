@@ -24,15 +24,25 @@ module ClVector =
 
         member this.NNZ = this.Values.Length
 
+/// <summary>
+/// Represents an abstraction over vector, whose values and indices are in OpenCL device memory.
+/// </summary>
 [<RequireQualifiedAccess>]
 type ClVector<'a when 'a: struct> =
     | Sparse of ClVector.Sparse<'a>
     | Dense of ClArray<'a option>
+
+    /// <summary>
+    /// Gets the number of elements in vector.
+    /// </summary>
     member this.Size =
         match this with
         | Sparse vector -> vector.Size
         | Dense vector -> vector.Size
 
+    /// <summary>
+    /// Release resources allocated for the matrix.
+    /// </summary>
     member this.Dispose(q) =
         match this with
         | Sparse vector -> vector.Dispose(q)
