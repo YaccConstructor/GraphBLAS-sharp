@@ -4,7 +4,6 @@ open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
-[<RequireQualifiedAccess>]
 module Common =
     module Bitonic =
         /// <summary>
