@@ -267,36 +267,6 @@ module Matrix =
             | ClMatrix.LIL _ -> copy processor allocationMode matrix
 
     /// <summary>
-    /// Builds a new matrix whose elements are the results of applying the given function
-    /// to each of the elements of the matrix.
-    /// </summary>
-    /// <param name="op">
-    /// A function to transform values of the input matrix.
-    /// Operand and result types should be optional to distinguish explicit and implicit zeroes
-    /// </param>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map (op: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
-        let mapCOO =
-            COO.Matrix.map op clContext workGroupSize
-
-        let mapCSR =
-            CSR.Matrix.map op clContext workGroupSize
-
-        let transposeCOO =
-            COO.Matrix.transposeInPlace clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode matrix ->
-            match matrix with
-            | ClMatrix.COO m -> mapCOO processor allocationMode m |> ClMatrix.COO
-            | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.COO
-            | ClMatrix.CSC m ->
-                (mapCSR processor allocationMode m.ToCSR)
-                |> transposeCOO processor
-                |> ClMatrix.COO
-            | _ -> failwith "Not yet implemented"
-
-    /// <summary>
     /// Transposes the given matrix and returns result.
     /// The given matrix should neither be used afterwards nor be disposed.
     /// The storage format is not guaranteed to be preserved.

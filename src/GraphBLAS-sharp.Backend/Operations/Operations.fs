@@ -12,6 +12,32 @@ open GraphBLAS.FSharp.Backend.Operations
 module Operations =
     module Vector =
         /// <summary>
+        /// Builds a new vector whose elements are the results of applying the given function
+        /// to each of the elements of the vector.
+        /// </summary>
+        /// <param name="op">
+        /// A function to transform values of the input vector.
+        /// Operand and result types should be optional to distinguish explicit and implicit zeroes.
+        /// </param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map (op: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
+            let mapSparse =
+                Sparse.Vector.map op clContext workGroupSize
+
+            let mapDense =
+                Dense.Vector.map op clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode matrix ->
+                match matrix with
+                | ClVector.Sparse v ->
+                    mapSparse processor allocationMode v
+                    |> ClVector.Sparse
+                | ClVector.Dense v ->
+                    mapDense processor allocationMode v
+                    |> ClVector.Dense
+
+        /// <summary>
         /// Builds a new vector whose values are the results of applying the given function
         /// to the corresponding pairs of values from the two vectors.
         /// </summary>
@@ -72,6 +98,36 @@ module Operations =
                 | _ -> failwith "Vector formats are not matching."
 
     module Matrix =
+        /// <summary>
+        /// Builds a new matrix whose elements are the results of applying the given function
+        /// to each of the elements of the matrix.
+        /// </summary>
+        /// <param name="op">
+        /// A function to transform values of the input matrix.
+        /// Operand and result types should be optional to distinguish explicit and implicit zeroes
+        /// </param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map (op: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
+            let mapCOO =
+                COO.Matrix.map op clContext workGroupSize
+
+            let mapCSR =
+                CSR.Matrix.map op clContext workGroupSize
+
+            let transposeCOO =
+                COO.Matrix.transposeInPlace clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationMode matrix ->
+                match matrix with
+                | ClMatrix.COO m -> mapCOO processor allocationMode m |> ClMatrix.COO
+                | ClMatrix.CSR m -> mapCSR processor allocationMode m |> ClMatrix.COO
+                | ClMatrix.CSC m ->
+                    (mapCSR processor allocationMode m.ToCSR)
+                    |> transposeCOO processor
+                    |> ClMatrix.COO
+                | _ -> failwith "Not yet implemented"
+
         /// <summary>
         /// Builds a new matrix whose values are the results of applying the given function
         /// to the corresponding pairs of values from the two matrices.

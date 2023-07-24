@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module internal Map =
-    let preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
+    let private preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -115,7 +115,7 @@ module internal Map =
               Values = resultValues }
 
     module WithValue =
-        let preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
+        let private preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
 
             let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
                 <@ fun (ndRange: Range1D) (operand: ClCell<'a option>) rowCount columnCount (values: ClArray<'b>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->

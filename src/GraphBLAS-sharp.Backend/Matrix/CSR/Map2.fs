@@ -10,7 +10,7 @@ open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module internal Map2 =
-    let preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
+    let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (leftValues: ClArray<'a>) (leftRowPointers: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRowPointers: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -135,7 +135,7 @@ module internal Map2 =
               Values = resultValues }
 
     module AtLeastOne =
-        let preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        let private preparePositions<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
             (opAdd: Expr<'a option -> 'b option -> 'c option>)
             (clContext: ClContext)
             workGroupSize

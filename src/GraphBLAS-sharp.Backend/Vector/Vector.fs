@@ -148,32 +148,6 @@ module Vector =
                 ClVector.Dense
                 <| toDense processor allocationMode vector
 
-    /// <summary>
-    /// Builds a new vector whose elements are the results of applying the given function
-    /// to each of the elements of the vector.
-    /// </summary>
-    /// <param name="op">
-    /// A function to transform values of the input vector.
-    /// Operand and result types should be optional to distinguish explicit and implicit zeroes.
-    /// </param>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map (op: Expr<'a option -> 'b option>) (clContext: ClContext) workGroupSize =
-        let mapSparse =
-            Sparse.Vector.map op clContext workGroupSize
-
-        let mapDense =
-            Dense.Vector.map op clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode matrix ->
-            match matrix with
-            | ClVector.Sparse v ->
-                mapSparse processor allocationMode v
-                |> ClVector.Sparse
-            | ClVector.Dense v ->
-                mapDense processor allocationMode v
-                |> ClVector.Dense
-
     let private assignByMaskGeneral<'a, 'b when 'a: struct and 'b: struct> op (clContext: ClContext) workGroupSize =
 
         let sparseFillVector =
