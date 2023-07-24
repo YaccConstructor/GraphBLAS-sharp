@@ -23,7 +23,8 @@ module Common =
         /// > val values = [| 1.9; 2.8; 6.4; 5.5; 4.6; 3.7; 7.3 |]
         /// </code>
         /// </example>
-        let sortKeyValuesInplace = Sort.Bitonic.sortKeyValuesInplace
+        let sortKeyValuesInplace<'n, 'a when 'n: comparison> =
+            Sort.Bitonic.sortKeyValuesInplace<'n, 'a>
 
     module Radix =
         /// <summary>
