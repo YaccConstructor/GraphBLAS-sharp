@@ -27,8 +27,7 @@ let checkResult isEqual op zero (baseVector: 'a []) (actual: Vector<'b>) =
 
     let expectedArrayLength = baseVector.Length
 
-    let expectedArray =
-        Array.create expectedArrayLength zero
+    let expectedArray = Array.create expectedArrayLength zero
 
     for i in 0 .. expectedArrayLength - 1 do
         expectedArray.[i] <- op baseVector.[i]
@@ -66,8 +65,7 @@ let correctnessGenericTest
         let vector = vectorHost.ToDevice context
 
         try
-            let res =
-                addFun q HostInterop vector
+            let res = addFun q HostInterop vector
 
             vector.Dispose q
 

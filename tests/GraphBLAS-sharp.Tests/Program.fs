@@ -78,6 +78,7 @@ let vectorTests =
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
+          Vector.Map.allTests
           Vector.Map2.allTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
