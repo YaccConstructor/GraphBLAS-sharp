@@ -45,11 +45,48 @@ module internal Scatter =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Creates a new array from the given one where it is indicated
+    /// by the array of positions at which position in the new array
+    /// should be a value from the given one.
+    /// </summary>
+    /// <remarks>
+    /// Every element of the positions array must not be less than the previous one.
+    /// If there are several elements with the same indices, the FIRST one of them will be at the common index.
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
+    /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
+    /// run clContext 32 processor positions values result
+    /// ...
+    /// > val result = [| 1,9; 3.7; 6.4; 7.3; 9.1 |]
+    /// </code>
+    /// </example>
     let firstOccurrence clContext =
         general
         <| Predicates.firstOccurrence ()
         <| clContext
 
+    /// <summary>
+    /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+    /// should be a value from the given one.
+    /// </summary>
+    /// <remarks>
+    /// Every element of the positions array must not be less than the previous one.
+    /// If there are several elements with the same indices, the LAST one of them will be at the common index.
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
+    /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; 8.2; 9.1 |]
+    /// run clContext 32 processor positions values result
+    /// ...
+    /// > val result = [| 2.8; 5.5; 6.4; 8.2; 9.1 |]
+    /// </code>
+    /// </example>
     let lastOccurrence clContext =
         general
         <| Predicates.lastOccurrence ()
@@ -92,11 +129,49 @@ module internal Scatter =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let initFirsOccurrence<'a> valueMap =
+    /// <summary>
+    /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+    /// should be a values obtained by applying the mapping to the global id.
+    /// </summary>
+    /// <remarks>
+    /// Every element of the positions array must not be less than the previous one.
+    /// If there are several elements with the same indices, the FIRST one of them will be at the common index.
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
+    /// let valueMap = id
+    /// run clContext 32 processor positions values result
+    /// ...
+    /// > val result = [| 0; 2; 5; 6; 8 |]
+    /// </code>
+    /// </example>
+    /// <param name="valueMap">Maps global id to a value</param>
+    let initFirstOccurrence<'a> valueMap =
         generalInit<'a>
         <| Predicates.firstOccurrence ()
         <| valueMap
 
+    /// <summary>
+    /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+    /// should be a values obtained by applying the mapping to the global id.
+    /// </summary>
+    /// <remarks>
+    /// Every element of the positions array must not be less than the previous one.
+    /// If there are several elements with the same indices, the LAST one of them will be at the common index.
+    /// If index is out of bounds, the value will be ignored.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// let positions = [| 0; 0; 1; 1; 1; 2; 3; 3; 4 |]
+    /// let valueMap = id
+    /// run clContext 32 processor positions values result
+    /// ...
+    /// > val result = [| 1; 4; 5; 7; 8 |]
+    /// </code>
+    /// </example>
+    /// <param name="valueMap">Maps global id to a value</param>
     let initLastOccurrence<'a> valueMap =
         generalInit<'a>
         <| Predicates.lastOccurrence ()

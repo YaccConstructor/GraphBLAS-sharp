@@ -132,6 +132,13 @@ module internal Reduce =
 
             resultCell
 
+    /// <summary>
+    /// Summarizes array elements.
+    /// </summary>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="op">Summation operation.</param>
+    /// <param name="zero">Neutral element for summation.</param>
     let sum op zero (clContext: ClContext) workGroupSize =
 
         let scan = scanSum op clContext workGroupSize zero
@@ -229,6 +236,12 @@ module internal Reduce =
 
             resultCell
 
+    /// <summary>
+    /// Reduces an array of values.
+    /// </summary>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="op">Reduction operation.</param>
     let reduce op (clContext: ClContext) workGroupSize =
 
         let scan = scanReduce op clContext workGroupSize
@@ -245,6 +258,15 @@ module internal Reduce =
     /// Reduction of an array of values by an array of keys.
     /// </summary>
     module ByKey =
+        /// <summary>
+        /// Reduces an array of values by key using a single work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
@@ -295,6 +317,15 @@ module internal Reduce =
 
                 reducedValues, reducedKeys
 
+        /// <summary>
+        /// Reduces values by key. Each segment is reduced by one work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let segmentSequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
@@ -352,6 +383,16 @@ module internal Reduce =
 
                 reducedValues, reducedKeys
 
+        /// <summary>
+        /// Reduces values by key. One work group participates in the reduction.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// Reduces an array of values that does not exceed the size of the workgroup.
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let oneWorkGroupSegments (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
@@ -432,6 +473,15 @@ module internal Reduce =
                 reducedValues, reducedKeys
 
         module Option =
+            /// <summary>
+            /// Reduces values by key. Each segment is reduced by one work item.
+            /// </summary>
+            /// <param name="clContext">ClContext.</param>
+            /// <param name="workGroupSize">Work group size.</param>
+            /// <param name="reduceOp">Operation for reducing values.</param>
+            /// <remarks>
+            /// The length of the result must be calculated in advance.
+            /// </remarks>
             let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
 
                 let kernel =
@@ -540,6 +590,15 @@ module internal Reduce =
                         Some(resultValues, resultKeys)
 
     module ByKey2D =
+        /// <summary>
+        /// Reduces an array of values by 2D keys using a single work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let sequential (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
@@ -610,6 +669,15 @@ module internal Reduce =
 
                 reducedValues, firstReducedKeys, secondReducedKeys
 
+        /// <summary>
+        /// Reduces values by key. Each segment is reduced by one work item.
+        /// </summary>
+        /// <param name="clContext">ClContext.</param>
+        /// <param name="workGroupSize">Work group size.</param>
+        /// <param name="reduceOp">Operation for reducing values.</param>
+        /// <remarks>
+        /// The length of the result must be calculated in advance.
+        /// </remarks>
         let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
             let kernel =
@@ -677,6 +745,15 @@ module internal Reduce =
                 reducedValues, firstReducedKeys, secondReducedKeys
 
         module Option =
+            /// <summary>
+            /// Reduces values by key. Each segment is reduced by one work item.
+            /// </summary>
+            /// <param name="clContext">ClContext.</param>
+            /// <param name="workGroupSize">Work group size.</param>
+            /// <param name="reduceOp">Operation for reducing values.</param>
+            /// <remarks>
+            /// The length of the result must be calculated in advance.
+            /// </remarks>
             let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
 
                 let kernel =

@@ -154,7 +154,7 @@ module Common =
         /// </code>
         /// </example>
         /// <param name="valueMap">Maps global id to a value</param>
-        let initFirstOccurrence valueMap = Scatter.initFirsOccurrence valueMap
+        let initFirstOccurrence valueMap = Scatter.initFirstOccurrence valueMap
 
         /// <summary>
         /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
@@ -252,16 +252,7 @@ module Common =
         /// > val sum = [| 4 |]
         /// </code>
         /// </example>
-        /// <param name="clContext">ClContext.</param>
-        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        let standardExcludeInPlace (clContext: ClContext) workGroupSize =
-
-            let scan =
-                runExcludeInPlace <@ (+) @> clContext workGroupSize
-
-            fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
-
-                scan processor inputArray 0
+        let standardExcludeInPlace = PrefixSum.standardExcludeInPlace
 
         /// <summary>
         /// Include in-place prefix sum of integer array with addition operation and start value that is equal to 0.
@@ -279,14 +270,7 @@ module Common =
         /// </example>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        let standardIncludeInPlace (clContext: ClContext) workGroupSize =
-
-            let scan =
-                runIncludeInPlace <@ (+) @> clContext workGroupSize
-
-            fun (processor: MailboxProcessor<_>) (inputArray: ClArray<int>) ->
-
-                scan processor inputArray 0
+        let standardIncludeInPlace = PrefixSum.runIncludeInPlace
 
         module ByKey =
             /// <summary>

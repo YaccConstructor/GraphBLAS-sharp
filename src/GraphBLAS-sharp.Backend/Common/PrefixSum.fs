@@ -208,6 +208,22 @@ module internal PrefixSum =
 
     let runBackwardsIncludeInPlace plus = runInPlace plus true scanInclusive
 
+    /// <summary>
+    /// Exclude in-place prefix sum of integer array with addition operation and start value that is equal to 0.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 0; 1; 2; 3 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let standardExcludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
@@ -217,6 +233,22 @@ module internal PrefixSum =
 
             scan processor inputArray 0
 
+    /// <summary>
+    /// Include in-place prefix sum of integer array with addition operation and start value that is equal to 0.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// let arr = [| 1; 1; 1; 1 |]
+    /// let sum = [| 0 |]
+    /// runIncludeInplace clContext workGroupSize processor arr sum (+) 0
+    /// |> ignore
+    /// ...
+    /// > val arr = [| 1; 2; 3; 4 |]
+    /// > val sum = [| 4 |]
+    /// </code>
+    /// </example>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let standardIncludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
@@ -268,6 +300,28 @@ module internal PrefixSum =
 
                 processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
+        /// <summary>
+        /// Exclude scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 0; 0; 1; 2; 0; 1 |]
+        /// </code>
+        /// </example>
         let sequentialExclude op = sequentialSegments (Map.fst ()) op
 
+        /// <summary>
+        /// Include scan by key.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// let arr = [| 1; 1; 1; 1; 1; 1|]
+        /// let keys = [| 1; 2; 2; 2; 3; 3 |]
+        /// ...
+        /// > val result = [| 1; 1; 2; 3; 1; 2 |]
+        /// </code>
+        /// </example>
         let sequentialInclude op = sequentialSegments (Map.snd ()) op
