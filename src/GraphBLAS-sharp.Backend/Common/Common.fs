@@ -270,7 +270,7 @@ module Common =
         /// </example>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        let standardIncludeInPlace = PrefixSum.runIncludeInPlace
+        let standardIncludeInPlace = PrefixSum.standardIncludeInPlace
 
         module ByKey =
             /// <summary>
