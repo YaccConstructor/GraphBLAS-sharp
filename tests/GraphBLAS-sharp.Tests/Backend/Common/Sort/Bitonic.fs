@@ -4,7 +4,6 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Brahma.FSharp
-open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Objects.ArraysExtensions
@@ -62,7 +61,7 @@ module Bitonic =
             |> Utils.compareArrays (=) actualValues expectedValues
 
     let testFixtures<'a when 'a: equality> =
-        Common.Bitonic.sortKeyValuesInplace<int, 'a> context wgSize
+        Sort.Bitonic.sortKeyValuesInplace<int, 'a> context wgSize
         |> makeTest
         |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 

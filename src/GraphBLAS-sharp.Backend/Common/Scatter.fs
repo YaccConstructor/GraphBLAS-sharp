@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 
-module internal Scatter =
+module Scatter =
     let private general<'a> predicate (clContext: ClContext) workGroupSize =
 
         let run =

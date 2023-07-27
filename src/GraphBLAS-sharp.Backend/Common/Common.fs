@@ -5,55 +5,56 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Common
 
 module Common =
-    module Bitonic =
-        /// <summary>
-        /// Sorts in-place input array of values by their 2d indices,
-        /// which are stored in two given arrays of keys: rows and columns.
-        /// When comparing, it first looks at rows, then columns.
-        /// </summary>
-        /// <example>
-        /// <code>
-        /// let rows = [| 0; 0; 3; 2; 1; 0; 5 |]
-        /// let columns = [| 0; 2; 1; 2; 0; 3; 5; |]
-        /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
-        /// sortKeyValuesInplace clContext 32 processor rows columns values
-        /// ...
-        /// > val rows = [| 0; 0; 0; 1; 2; 3; 5 |]
-        /// > let columns = [| 0; 2; 3; 0; 2; 1; 5; |]
-        /// > val values = [| 1.9; 2.8; 6.4; 5.5; 4.6; 3.7; 7.3 |]
-        /// </code>
-        /// </example>
-        let sortKeyValuesInplace<'n, 'a when 'n: comparison> =
-            Sort.Bitonic.sortKeyValuesInplace<'n, 'a>
+    module Sort =
+        module Bitonic =
+            /// <summary>
+            /// Sorts in-place input array of values by their 2d indices,
+            /// which are stored in two given arrays of keys: rows and columns.
+            /// When comparing, it first looks at rows, then columns.
+            /// </summary>
+            /// <example>
+            /// <code>
+            /// let rows = [| 0; 0; 3; 2; 1; 0; 5 |]
+            /// let columns = [| 0; 2; 1; 2; 0; 3; 5; |]
+            /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
+            /// sortKeyValuesInplace clContext 32 processor rows columns values
+            /// ...
+            /// > val rows = [| 0; 0; 0; 1; 2; 3; 5 |]
+            /// > let columns = [| 0; 2; 3; 0; 2; 1; 5; |]
+            /// > val values = [| 1.9; 2.8; 6.4; 5.5; 4.6; 3.7; 7.3 |]
+            /// </code>
+            /// </example>
+            let sortKeyValuesInplace<'n, 'a when 'n: comparison> =
+                Sort.Bitonic.sortKeyValuesInplace<'n, 'a>
 
-    module Radix =
-        /// <summary>
-        /// Sorts stable input array of values by given integer keys.
-        /// </summary>
-        /// <example>
-        /// <code>
-        /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
-        /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
-        /// runByKeysStandard clContext 32 processor keys values
-        /// ...
-        /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
-        /// > val values = [| 1.9; 4.6; 5.5; 3.7; 2.8; 7.3; 6.4 |]
-        /// </code>
-        /// </example>
-        let runByKeysStandard = Sort.Radix.runByKeysStandard
+        module Radix =
+            /// <summary>
+            /// Sorts stable input array of values by given integer keys.
+            /// </summary>
+            /// <example>
+            /// <code>
+            /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
+            /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
+            /// runByKeysStandard clContext 32 processor keys values
+            /// ...
+            /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
+            /// > val values = [| 1.9; 4.6; 5.5; 3.7; 2.8; 7.3; 6.4 |]
+            /// </code>
+            /// </example>
+            let runByKeysStandard = Sort.Radix.runByKeysStandard
 
-        /// <summary>
-        /// Sorts stable input array of integer keys.
-        /// </summary>
-        /// <example>
-        /// <code>
-        /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
-        /// standardRunKeysOnly clContext 32 processor keys
-        /// ...
-        /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
-        /// </code>
-        /// </example>
-        let standardRunKeysOnly = Sort.Radix.standardRunKeysOnly
+            /// <summary>
+            /// Sorts stable input array of integer keys.
+            /// </summary>
+            /// <example>
+            /// <code>
+            /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
+            /// standardRunKeysOnly clContext 32 processor keys
+            /// ...
+            /// > val keys = [| 0; 1; 2; 3; 4; 5; 6 |]
+            /// </code>
+            /// </example>
+            let standardRunKeysOnly = Sort.Radix.standardRunKeysOnly
 
     module Gather =
         /// <summary>
@@ -212,18 +213,18 @@ module Common =
         /// > val sum = [| 4 |]
         /// </code>
         /// </example>
+        /// <param name="plus">Associative binary operation.</param>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        /// <param name="plus">Associative binary operation.</param>
         /// <param name="zero">Zero element for binary operation.</param>
         let runIncludeInPlace plus = PrefixSum.runIncludeInPlace plus
 
         /// <summary>
         /// Exclude in-place prefix sum. Array is scanned starting from the end.
         /// </summary>
+        /// <param name="plus">Associative binary operation.</param>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        /// <param name="plus">Associative binary operation.</param>
         /// <param name="zero">Zero element for binary operation.</param>
         let runBackwardsExcludeInPlace plus =
             PrefixSum.runBackwardsExcludeInPlace plus
@@ -231,9 +232,9 @@ module Common =
         /// <summary>
         /// Include in-place prefix sum. Array is scanned starting from the end.
         /// </summary>
+        /// <param name="plus">Associative binary operation.</param>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        /// <param name="plus">Associative binary operation.</param>
         /// <param name="zero">Zero element for binary operation.</param>
         let runBackwardsIncludeInPlace plus =
             PrefixSum.runBackwardsIncludeInPlace plus

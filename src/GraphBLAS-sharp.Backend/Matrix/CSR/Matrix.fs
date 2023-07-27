@@ -12,6 +12,11 @@ open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module Matrix =
+    /// <summary>
+    /// Converts rows of given CSR matrix to rows in COO format of the same matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let expandRowPointers (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -52,6 +57,11 @@ module Matrix =
 
             rows
 
+    /// <summary>
+    /// Gets an element from the given matrix on the input position.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let item<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -91,6 +101,11 @@ module Matrix =
 
             result
 
+    /// <summary>
+    /// Returns matrix composed of all elements from the given row range of the input matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let subRows (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -173,6 +188,12 @@ module Matrix =
               Columns = columns
               Values = values }
 
+    /// <summary>
+    /// Converts the given CSR matrix to COO format.
+    /// Values and columns are copied and do not depend on input CSR matrix anymore.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOO (clContext: ClContext) workGroupSize =
         let prepare =
             expandRowPointers clContext workGroupSize
@@ -197,6 +218,12 @@ module Matrix =
               Columns = cols
               Values = values }
 
+    /// <summary>
+    /// Converts the given CSR matrix to COO format.
+    /// Values and columns are NOT copied and still depend on input CSR matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCOOInPlace (clContext: ClContext) workGroupSize =
         let prepare =
             expandRowPointers clContext workGroupSize
@@ -213,10 +240,40 @@ module Matrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
+    /// <summary>
+    /// Builds a new COO matrix whose elements are the results of applying the given function
+    /// to each of the elements of the matrix.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform values of the input matrix.
+    /// Operand and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map = CSR.Map.run
 
+    /// <summary>
+    /// Builds a new COO matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operands and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2 = Map2.run
 
+    /// <summary>
+    /// Builds a new COO matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operation assumption: one of the operands should always be non-zero.
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
@@ -225,6 +282,12 @@ module Matrix =
 
         Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize
 
+    /// <summary>
+    /// Transposes the given matrix and returns result.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transposeInPlace (clContext: ClContext) workGroupSize =
 
         let toCOOInPlace = toCOOInPlace clContext workGroupSize
@@ -240,6 +303,11 @@ module Matrix =
             |> transposeInPlace queue
             |> toCSRInPlace queue allocationMode
 
+    /// <summary>
+    /// Transposes the given matrix and returns result as a new matrix.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
 
         let toCOO = toCOO clContext workGroupSize
@@ -255,6 +323,11 @@ module Matrix =
             |> transposeInPlace queue
             |> toCSRInPlace queue allocationMode
 
+    /// <summary>
+    /// Represents the given matrix as <c>Seq</c> of optional sparse vectors, that are computed lazily.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let byRowsLazy (clContext: ClContext) workGroupSize =
 
         let getChunkValues = ClArray.sub clContext workGroupSize
@@ -290,6 +363,11 @@ module Matrix =
                          else
                              None))
 
+    /// <summary>
+    /// Represents the given matrix as <c>Seq</c> of optional sparse vectors.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let byRows (clContext: ClContext) workGroupSize =
 
         let runLazy = byRowsLazy clContext workGroupSize
@@ -298,6 +376,11 @@ module Matrix =
             runLazy processor allocationMode matrix
             |> Seq.map (fun lazyValue -> lazyValue.Value)
 
+    /// <summary>
+    /// Converts the given CSR matrix to LIL format.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toLIL (clContext: ClContext) workGroupSize =
 
         let byRows = byRows clContext workGroupSize
@@ -313,6 +396,11 @@ module Matrix =
               Rows = rows
               NNZ = matrix.NNZ }
 
+    /// <summary>
+    /// Gets the number of non-zero elements in each row.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let NNZInRows (clContext: ClContext) workGroupSize =
 
         let pairwise = ClArray.pairwise clContext workGroupSize

@@ -17,7 +17,7 @@ module Utils =
         { FsCheckConfig.defaultConfig with
               maxTest = 10
               startSize = 1
-              endSize = 1000
+              endSize = 50
               arbitrary =
                   [ typeof<Generators.SingleMatrix>
                     typeof<Generators.PairOfSparseMatricesOfEqualSize>

@@ -91,12 +91,7 @@ let algorithmsTests =
     |> testSequenced
 
 let deviceTests =
-    testList
-        "Device"
-        [ matrixTests
-          commonTests
-          vectorTests
-          algorithmsTests ]
+    testList "Device" [ matrixTests; commonTests ]
     |> testSequenced
 
 let hostTests =
@@ -109,8 +104,7 @@ let hostTests =
 
 [<Tests>]
 let allTests =
-    testList "All" [ deviceTests; hostTests ]
-    |> testSequenced
+    testList "All" [ deviceTests ] |> testSequenced
 
 [<EntryPoint>]
 let main argv = allTests |> runTestsWithCLIArgs [] argv

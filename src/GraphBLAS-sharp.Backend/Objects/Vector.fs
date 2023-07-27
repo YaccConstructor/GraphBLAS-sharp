@@ -41,7 +41,7 @@ type ClVector<'a when 'a: struct> =
         | Dense vector -> vector.Size
 
     /// <summary>
-    /// Release resources allocated for the matrix.
+    /// Release device resources allocated for the vector.
     /// </summary>
     member this.Dispose(q) =
         match this with

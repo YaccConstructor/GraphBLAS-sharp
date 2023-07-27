@@ -430,7 +430,7 @@ module internal Kronecker =
         let mapAll = mapAll clContext workGroupSize op
 
         let bitonic =
-            Common.Bitonic.sortKeyValuesInplace clContext workGroupSize
+            Common.Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (matrixLeft: CSR<'a>) (matrixRight: CSR<'b>) ->
 

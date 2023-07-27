@@ -8,7 +8,7 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module internal Reduce =
+module Reduce =
     /// <summary>
     /// Generalized reduction pattern.
     /// </summary>

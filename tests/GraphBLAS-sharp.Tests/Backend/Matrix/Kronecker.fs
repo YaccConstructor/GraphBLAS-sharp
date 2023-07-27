@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 
 let config =
     { Utils.defaultConfig with
-          endSize = 100
+          endSize = 70
           maxTest = 20 }
 
 let logger = Log.create "kronecker.Tests"

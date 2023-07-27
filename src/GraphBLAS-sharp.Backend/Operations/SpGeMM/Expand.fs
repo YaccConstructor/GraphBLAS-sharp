@@ -175,13 +175,13 @@ module internal Expand =
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
         let sortByKeyIndices =
-            Common.Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
 
         let sortByKeyValues =
-            Common.Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
 
         let sortKeys =
-            Common.Radix.standardRunKeysOnly clContext workGroupSize
+            Common.Sort.Radix.standardRunKeysOnly clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
             // sort by columns

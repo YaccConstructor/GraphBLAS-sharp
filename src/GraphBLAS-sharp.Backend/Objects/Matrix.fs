@@ -124,7 +124,7 @@ type ClMatrix<'a when 'a: struct> =
     | LIL of ClMatrix.LIL<'a>
 
     /// <summary>
-    /// Row count.
+    /// Gets the number of rows in matrix.
     /// </summary>
     member this.RowCount =
         match this with
@@ -134,7 +134,7 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.LIL matrix -> matrix.RowCount
 
     /// <summary>
-    /// Column count.
+    /// Gets the number of columns in matrix.
     /// </summary>
     member this.ColumnCount =
         match this with
@@ -144,7 +144,7 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.LIL matrix -> matrix.ColumnCount
 
     /// <summary>
-    /// Release resources allocated for the matrix.
+    /// Release device resources allocated for the matrix.
     /// </summary>
     member this.Dispose q =
         match this with
@@ -154,7 +154,7 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.LIL matrix -> (matrix :> IDeviceMemObject).Dispose q
 
     /// <summary>
-    /// Number of non-zero elements in matrix.
+    /// Gets the number of non-zero elements in matrix.
     /// </summary>
     member this.NNZ =
         match this with

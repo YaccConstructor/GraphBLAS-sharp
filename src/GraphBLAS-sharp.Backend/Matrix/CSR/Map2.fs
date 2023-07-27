@@ -205,7 +205,7 @@ module internal Map2 =
             =
 
             let merge =
-                GraphBLAS.FSharp.Backend.Matrix.CSR.Merge.run clContext workGroupSize
+                Merge.run clContext workGroupSize
 
             let preparePositions =
                 preparePositions opAdd clContext workGroupSize

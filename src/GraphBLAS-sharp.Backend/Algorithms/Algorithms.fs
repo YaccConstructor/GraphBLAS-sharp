@@ -5,4 +5,5 @@ open GraphBLAS.FSharp.Backend.Algorithms
 
 [<RequireQualifiedAccess>]
 module Algorithms =
-    let singleSourceBFS = BFS.singleSource
+    module BFS =
+        let singleSource = BFS.singleSource
