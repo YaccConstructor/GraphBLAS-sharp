@@ -204,8 +204,7 @@ module internal Map2 =
             workGroupSize
             =
 
-            let merge =
-                Merge.run clContext workGroupSize
+            let merge = Merge.run clContext workGroupSize
 
             let preparePositions =
                 preparePositions opAdd clContext workGroupSize

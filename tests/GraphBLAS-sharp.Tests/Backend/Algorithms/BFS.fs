@@ -20,7 +20,7 @@ let testFixtures (testContext: TestContext) =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
-          Algorithms.singleSourceBFS
+          Algorithms.BFS.singleSource
               ArithmeticOperations.intSumOption
               ArithmeticOperations.intMulOption
               context

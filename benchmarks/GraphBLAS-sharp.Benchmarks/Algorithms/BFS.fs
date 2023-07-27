@@ -127,7 +127,7 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
 type BFSWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
-        (Algorithms.singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
@@ -173,7 +173,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
 type BFSWithTransferBenchmarkInt32() =
 
     inherit WithTransferBenchmark<int>(
-        (Algorithms.singleSourceBFS ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
