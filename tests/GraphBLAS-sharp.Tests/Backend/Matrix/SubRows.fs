@@ -25,13 +25,6 @@ let makeTest isEqual zero testFun (array: 'a [,], sourceRow, count) =
 
     if matrix.NNZ > 0 then
 
-        let clMatrix = matrix.ToDevice context
-
-        let clActual: ClMatrix.COO<'a> =
-            testFun processor HostInterop sourceRow count clMatrix
-
-        let actual = clActual.ToHostAndFree processor
-
         let expected =
             array
             |> Array2D.mapi (fun rowIndex columnIndex value -> (value, rowIndex, columnIndex))
@@ -47,7 +40,15 @@ let makeTest isEqual zero testFun (array: 'a [,], sourceRow, count) =
                   Columns = columns
                   Values = values }
 
-        Utils.compareCOOMatrix isEqual actual expected
+        if expected.NNZ > 0 then
+            let clMatrix = matrix.ToDevice context
+
+            let clActual: ClMatrix.COO<'a> =
+                testFun processor HostInterop sourceRow count clMatrix
+
+            let actual = clActual.ToHostAndFree processor
+
+            Utils.compareCOOMatrix isEqual actual expected
 
 let createTest isEqual (zero: 'a) =
     CSR.Matrix.subRows context Utils.defaultWorkGroupSize
