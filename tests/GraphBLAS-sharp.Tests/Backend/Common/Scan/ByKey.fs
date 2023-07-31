@@ -109,3 +109,6 @@ let sequentialSegmentsTests =
         |> testList "include"
 
     testList "Sequential segments" [ excludeTests; includeTests ]
+
+let tests =
+    testList "ByKey" [ sequentialSegmentsTests ]

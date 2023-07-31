@@ -102,8 +102,7 @@ module Expand =
         let segmentPrefixSum =
             PrefixSum.ByKey.sequentialInclude <@ (+) @> 0 clContext workGroupSize
 
-        let removeDuplicates =
-            ClArray.distinct clContext workGroupSize
+        let removeDuplicates = ClArray.distinct clContext workGroupSize
 
         let leftMatrixGather = Gather.run clContext workGroupSize
 

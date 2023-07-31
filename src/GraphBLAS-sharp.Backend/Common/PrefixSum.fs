@@ -95,14 +95,7 @@ module PrefixSum =
 
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            inputArrayLength
-                            verticesLength
-                            inputArray
-                            vertices
-                            totalSum)
+                    (fun () -> kernel.KernelFunc ndRange inputArrayLength verticesLength inputArray vertices totalSum)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
@@ -129,16 +122,19 @@ module PrefixSum =
 
     let private runInPlace scan (mirror: bool) (opAdd: Expr<'a -> 'a -> 'a>) zero (clContext: ClContext) workGroupSize =
 
-        let scan = scan mirror opAdd zero clContext workGroupSize
+        let scan =
+            scan mirror opAdd zero clContext workGroupSize
 
         let scanExclusive =
             scanExclusive mirror opAdd zero clContext workGroupSize
 
-        let update = update mirror opAdd clContext workGroupSize
+        let update =
+            update mirror opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
-            let sourceLength = (inputArray.Length - 1) / workGroupSize + 1
+            let sourceLength =
+                (inputArray.Length - 1) / workGroupSize + 1
 
             let firstVertices =
                 clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, sourceLength)

@@ -50,7 +50,8 @@ module Matrix =
 
     let private compressRows (clContext: ClContext) workGroupSize =
 
-        let scatter = Scatter.initFirsOccurrence Map.id clContext workGroupSize
+        let scatter =
+            Scatter.initFirsOccurrence Map.id clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 

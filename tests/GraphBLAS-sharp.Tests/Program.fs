@@ -16,7 +16,7 @@ let matrixTests =
           Matrix.SubRows.tests
           Matrix.Kronecker.tests
 
-          Matrix.SpGeMM.Expand.generalTests
+          Matrix.SpGeMM.Expand.tests
           Matrix.SpGeMM.Masked.tests ]
     |> testSequenced
 
@@ -24,7 +24,7 @@ let commonTests =
     let scanTests =
         testList
             "Scan"
-            [ Common.Scan.ByKey.sequentialSegmentsTests
+            [ Common.Scan.ByKey.tests
               Common.Scan.PrefixSum.tests ]
 
     let reduceTests =
