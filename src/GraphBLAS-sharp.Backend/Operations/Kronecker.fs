@@ -224,6 +224,9 @@ module internal Kronecker =
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
+            rowOffset.Free processor
+            columnOffset.Free processor
+
             (sum.ToHostAndFree processor) + startIndex
 
     let private copyToResult (clContext: ClContext) workGroupSize =
@@ -270,6 +273,9 @@ module internal Kronecker =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            rowOffset.Free processor
+            columnOffset.Free processor
 
     let private insertZero (clContext: ClContext) workGroupSize =
 
