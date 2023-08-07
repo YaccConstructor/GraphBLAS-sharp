@@ -299,10 +299,17 @@ module Operations =
                         List.max [ sizeof<'a>
                                    sizeof<'c>
                                    sizeof<'b> ]
-                        * 1<Byte>
+                        |> uint64
+                        |> (*) 1UL<Byte>
 
                     let resultCapacity =
-                        (clContext.MaxMemAllocSize / allocCapacity) / 3
+                        (clContext.MaxMemAllocSize / allocCapacity) / 3UL
+
+                    let resultCapacity =
+                        (max
+                         <| uint64 System.Int32.MaxValue
+                         <| resultCapacity)
+                        |> int
 
                     run processor allocationMode resultCapacity leftMatrix rightMatrix
                 | _ -> failwith "Matrix formats are not matching"
