@@ -127,6 +127,7 @@ module SpMSpV =
                 computeOffsetsInplace queue (vector.NNZ * 2 + 1) collectedRows
 
             if gatherArraySize = 0 then
+                collectedRows.Free queue
                 None
             else
                 let ndRange =
@@ -236,39 +237,34 @@ module SpMSpV =
             Reduce.ByKey.Option.segmentSequential add clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
-            let result =
-                gather queue matrix vector
-                |> Option.map
-                    (fun (gatherRows, gatherIndices, gatherValues) ->
-                        sort queue gatherIndices gatherRows gatherValues
+            gather queue matrix vector
+            |> Option.map
+                (fun (gatherRows, gatherIndices, gatherValues) ->
+                    sort queue gatherIndices gatherRows gatherValues
 
-                        let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
+                    let sortedRows, sortedIndices, sortedValues = gatherRows, gatherIndices, gatherValues
 
-                        let multipliedValues =
-                            multiplyScalar queue sortedRows sortedValues vector
+                    let multipliedValues =
+                        multiplyScalar queue sortedRows sortedValues vector
 
-                        sortedValues.Free queue
-                        sortedRows.Free queue
+                    sortedValues.Free queue
+                    sortedRows.Free queue
 
-                        let result =
-                            segReduce queue DeviceOnly sortedIndices multipliedValues
-                            |> Option.map
-                                (fun (reducedValues, reducedKeys) ->
+                    let result =
+                        segReduce queue DeviceOnly sortedIndices multipliedValues
+                        |> Option.map
+                            (fun (reducedValues, reducedKeys) ->
 
-                                    { Context = clContext
-                                      Indices = reducedKeys
-                                      Values = reducedValues
-                                      Size = matrix.ColumnCount })
+                                { Context = clContext
+                                  Indices = reducedKeys
+                                  Values = reducedValues
+                                  Size = matrix.ColumnCount })
 
-                        multipliedValues.Free queue
-                        sortedIndices.Free queue
+                    multipliedValues.Free queue
+                    sortedIndices.Free queue
 
-                        result)
-
-            //Unwrap 't option option to 't option
-            match result with
-            | Some result -> result
-            | None -> None
+                    result)
+            |> Option.bind id
 
 
     let runBoolStandard
