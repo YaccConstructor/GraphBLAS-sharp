@@ -647,7 +647,7 @@ module ClArray =
     let count<'a> (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Reduce.reduce <@ (+) @> clContext workGroupSize
 
         let getBitmap =
             Map.map<'a, int> (Map.predicateBitmap predicate) clContext workGroupSize
