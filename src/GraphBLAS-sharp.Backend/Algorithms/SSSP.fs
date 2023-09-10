@@ -24,18 +24,16 @@ module SSSP =
 
         let create = ClArray.create clContext workGroupSize
 
-        let createMask = ClArray.create clContext workGroupSize
-
         let ofList = Vector.ofList clContext workGroupSize
 
         let eWiseMulLess =
-            ClArray.map2InPlace less clContext workGroupSize
+            Map.map2InPlace less clContext workGroupSize
 
         let eWiseAddMin =
-            ClArray.map2InPlace min clContext workGroupSize
+            Map.map2InPlace min clContext workGroupSize
 
-        let fillSubVectorTo =
-            Vector.assignByMaskInPlace (Convert.assignToOption Mask.assignComplemented) clContext workGroupSize
+        let filter =
+            Map.map2InPlace Mask.op clContext workGroupSize
 
         let containsNonZero =
             ClArray.exists Predicates.isSome clContext workGroupSize
@@ -54,25 +52,22 @@ module SSSP =
                 create queue DeviceOnly vertexCount None
                 |> ClVector.Dense
 
-            let m =
-                createMask queue DeviceOnly vertexCount None
-                |> ClVector.Dense
-
             let mutable stop = false
 
             while not stop do
-                match f1, f2, distance, m with
-                | ClVector.Dense front1, ClVector.Dense front2, ClVector.Dense dist, ClVector.Dense mask ->
+                match f1, f2, distance with
+                | ClVector.Dense front1, ClVector.Dense front2, ClVector.Dense dist ->
                     //Getting new frontier
                     spMVTo queue matrix front1 front2
 
                     //Checking which distances were updated
-                    eWiseMulLess queue front2 dist mask
+                    eWiseMulLess queue front2 dist front1
                     //Updating
                     eWiseAddMin queue dist front2 dist
 
                     //Filtering unproductive vertices
-                    fillSubVectorTo queue front2 mask (clContext.CreateClCell 0) front2
+                    //Front1 is a mask
+                    filter queue front2 front1 front2
 
                     //Swap fronts
                     let temp = f1
@@ -82,13 +77,13 @@ module SSSP =
                     //Checking if no distances were updated
                     stop <-
                         not
-                        <| (containsNonZero queue mask).ToHostAndFree(queue)
+                        <| (containsNonZero queue front1)
+                            .ToHostAndFree(queue)
 
                 | _ -> failwith "not implemented"
 
             f1.Dispose queue
             f2.Dispose queue
-            m.Dispose queue
 
             match distance with
             | ClVector.Dense dist -> dist
