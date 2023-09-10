@@ -1,13 +1,11 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
-open System.Collections.Generic
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Backend.Objects.ClCell
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Quotes
 
 module ClArray =
     let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
@@ -132,180 +130,6 @@ module ClArray =
 
             outputArray
 
-    let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
-
-        let map =
-            <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < lenght then
-                    result.[gid] <- (%op) inputArray.[gid] @>
-
-        let kernel = clContext.Compile map
-
-        fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
-
-            let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
-
-            let ndRange =
-                Range1D.CreateValid(inputArray.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length inputArray result))
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            result
-
-    let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
-
-        let map =
-            <@ fun (ndRange: Range1D) lenght (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < lenght then
-                    result.[gid] <- (%op) value.Value inputArray.[gid] @>
-
-        let kernel = clContext.Compile map
-
-        fun (processor: MailboxProcessor<_>) allocationMode (value: 'a) (inputArray: ClArray<'b>) ->
-
-            let result =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputArray.Length)
-
-            let valueClCell = value |> clContext.CreateClCell
-
-            let ndRange =
-                Range1D.CreateValid(inputArray.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length valueClCell inputArray result)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-            result
-
-    let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
-
-        let kernel =
-            <@ fun (ndRange: Range1D) length (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
-
-                let gid = ndRange.GlobalID0
-
-                if gid < length then
-
-                    resultArray.[gid] <- (%map) leftArray.[gid] rightArray.[gid] @>
-
-        let kernel = clContext.Compile kernel
-
-        fun (processor: MailboxProcessor<_>) (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) (resultArray: ClArray<'c>) ->
-
-            let ndRange =
-                Range1D.CreateValid(resultArray.Length, workGroupSize)
-
-            let kernel = kernel.GetKernel()
-
-            processor.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange resultArray.Length leftArray rightArray resultArray)
-            )
-
-            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-    let map2<'a, 'b, 'c> map (clContext: ClContext) workGroupSize =
-        let map2 =
-            map2InPlace<'a, 'b, 'c> map clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode (leftArray: ClArray<'a>) (rightArray: ClArray<'b>) ->
-
-            let resultArray =
-                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftArray.Length)
-
-            map2 processor leftArray rightArray resultArray
-
-            resultArray
-
-    module Bitmap =
-        let private getUniqueBitmapGeneral predicate (clContext: ClContext) workGroupSize =
-
-            let getUniqueBitmap =
-                <@ fun (ndRange: Range1D) (inputArray: ClArray<'a>) inputLength (isUniqueBitmap: ClArray<int>) ->
-
-                    let gid = ndRange.GlobalID0
-
-                    if gid < inputLength then
-                        let isUnique = (%predicate) gid inputLength inputArray // brahma error
-
-                        if isUnique then
-                            isUniqueBitmap.[gid] <- 1
-                        else
-                            isUniqueBitmap.[gid] <- 0 @>
-
-            let kernel = clContext.Compile(getUniqueBitmap)
-
-            fun (processor: MailboxProcessor<_>) allocationMode (inputArray: ClArray<'a>) ->
-
-                let inputLength = inputArray.Length
-
-                let ndRange =
-                    Range1D.CreateValid(inputLength, workGroupSize)
-
-                let bitmap =
-                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, inputLength)
-
-                let kernel = kernel.GetKernel()
-
-                processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray inputLength bitmap))
-
-                processor.Post(Msg.CreateRunMsg<_, _> kernel)
-
-                bitmap
-
-        let firstOccurrence clContext =
-            getUniqueBitmapGeneral
-            <| Predicates.firstOccurrence ()
-            <| clContext
-
-        let lastOccurrence clContext =
-            getUniqueBitmapGeneral
-            <| Predicates.lastOccurrence ()
-            <| clContext
-
-        let private getUniqueBitmap2General<'a when 'a: equality> getUniqueBitmap (clContext: ClContext) workGroupSize =
-
-            let map =
-                map2 <@ fun x y -> x ||| y @> clContext workGroupSize
-
-            let firstGetBitmap = getUniqueBitmap clContext workGroupSize
-
-            fun (processor: MailboxProcessor<_>) allocationMode (firstArray: ClArray<'a>) (secondArray: ClArray<'a>) ->
-                let firstBitmap =
-                    firstGetBitmap processor DeviceOnly firstArray
-
-                let secondBitmap =
-                    firstGetBitmap processor DeviceOnly secondArray
-
-                let result =
-                    map processor allocationMode firstBitmap secondBitmap
-
-                firstBitmap.Free processor
-                secondBitmap.Free processor
-
-                result
-
-        let firstOccurrence2 clContext =
-            getUniqueBitmap2General firstOccurrence clContext
-
-        let lastOccurrence2 clContext =
-            getUniqueBitmap2General lastOccurrence clContext
-
     ///<description>Remove duplicates form the given array.</description>
     ///<param name="clContext">Computational context</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
@@ -406,7 +230,7 @@ module ClArray =
 
     let choose<'a, 'b> (predicate: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
+            Map.map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
@@ -486,7 +310,7 @@ module ClArray =
 
     let choose2 (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
+            Map.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
@@ -702,7 +526,7 @@ module ClArray =
             Gather.runInit Map.inc clContext workGroupSize
 
         let map =
-            map2 <@ fun first second -> (first, second) @> clContext workGroupSize
+            Map.map2 <@ fun first second -> (first, second) @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) ->
             if values.Length > 1 then
@@ -826,7 +650,7 @@ module ClArray =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let getBitmap =
-            map<'a, int> (Map.predicateBitmap predicate) clContext workGroupSize
+            Map.map<'a, int> (Map.predicateBitmap predicate) clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (array: ClArray<'a>) ->
 

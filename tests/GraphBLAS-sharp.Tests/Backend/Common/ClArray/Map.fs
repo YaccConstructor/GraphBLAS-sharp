@@ -44,7 +44,7 @@ let createTest<'a when 'a: equality> (testContext: TestContext) (zero: 'a) isEqu
     let context = testContext.ClContext
 
     let map =
-        ClArray.map (Map.optionToValueOrZero zero) context wgSize
+        Map.map (Map.optionToValueOrZero zero) context wgSize
 
     makeTest testContext map zero isEqual
     |> testPropertyWithConfig config $"Correctness on {typeof<'a>}"

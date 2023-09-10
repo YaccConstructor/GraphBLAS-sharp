@@ -74,7 +74,7 @@ module internal Common =
         let concatIndices = ClArray.concat clContext workGroupSize
 
         let mapIndices =
-            ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
+            Map.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
 
         fun (processor: MailboxProcessor<_>) allocationMode (vectors: Sparse<'a> seq) ->
 

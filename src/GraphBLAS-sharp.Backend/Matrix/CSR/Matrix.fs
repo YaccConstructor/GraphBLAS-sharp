@@ -319,7 +319,7 @@ module Matrix =
         let pairwise = ClArray.pairwise clContext workGroupSize
 
         let subtract =
-            ClArray.map <@ fun (fst, snd) -> snd - fst @> clContext workGroupSize
+            Map.map <@ fun (fst, snd) -> snd - fst @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (matrix: ClMatrix.CSR<'b>) ->
             let pointerPairs =

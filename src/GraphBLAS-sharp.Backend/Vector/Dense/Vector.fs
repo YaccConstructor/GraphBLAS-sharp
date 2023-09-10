@@ -16,7 +16,7 @@ module Vector =
         =
 
         let map2InPlace =
-            ClArray.map2InPlace opAdd clContext workGroupSize
+            Map.map2InPlace opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) (resultVector: ClArray<'c option>) ->
 
@@ -29,8 +29,7 @@ module Vector =
         workGroupSize
         =
 
-        let map2 =
-            ClArray.map2 opAdd clContext workGroupSize
+        let map2 = Map.map2 opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
@@ -135,7 +134,7 @@ module Vector =
             Scatter.lastOccurrence clContext workGroupSize
 
         let getBitmap =
-            ClArray.map (Map.option 1 0) clContext workGroupSize
+            Map.map (Map.option 1 0) clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
@@ -144,7 +143,7 @@ module Vector =
             ClArray.init Map.id clContext workGroupSize
 
         let allValues =
-            ClArray.map (Map.optionToValueOrZero Unchecked.defaultof<'a>) clContext workGroupSize
+            Map.map (Map.optionToValueOrZero Unchecked.defaultof<'a>) clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (vector: ClArray<'a option>) ->
 

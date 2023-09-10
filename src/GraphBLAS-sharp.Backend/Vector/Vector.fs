@@ -39,7 +39,7 @@ module Vector =
             ClArray.zeroCreate clContext workGroupSize
 
         let map =
-            ClArray.map <@ Some @> clContext workGroupSize
+            Map.map <@ Some @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode format size (elements: (int * 'a) list) ->
             match format with

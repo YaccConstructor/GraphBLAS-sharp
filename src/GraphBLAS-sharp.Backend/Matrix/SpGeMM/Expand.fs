@@ -37,7 +37,7 @@ module Expand =
 
     let multiply (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            ClArray.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
+            Map.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize
@@ -212,7 +212,7 @@ module Expand =
             Reduce.ByKey2D.Option.segmentSequential opAdd clContext workGroupSize
 
         let getUniqueBitmap =
-            ClArray.Bitmap.lastOccurrence2 clContext workGroupSize
+            Bitmap.lastOccurrence2 clContext workGroupSize
 
         let prefixSum =
             PrefixSum.standardExcludeInPlace clContext workGroupSize

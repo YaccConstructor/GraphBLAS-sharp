@@ -520,7 +520,7 @@ module Reduce =
                 let kernel = clContext.Compile kernel
 
                 let getUniqueBitmap =
-                    ClArray.Bitmap.lastOccurrence clContext workGroupSize
+                    Bitmap.lastOccurrence clContext workGroupSize
 
                 let scatterData =
                     Scatter.lastOccurrence clContext workGroupSize
