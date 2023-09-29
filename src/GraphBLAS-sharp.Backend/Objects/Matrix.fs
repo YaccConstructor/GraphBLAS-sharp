@@ -118,9 +118,21 @@ module ClMatrix =
 /// </summary>
 [<RequireQualifiedAccess>]
 type ClMatrix<'a when 'a: struct> =
+    /// <summary>
+    /// Represents an abstraction over matrix in CSR format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | CSR of ClMatrix.CSR<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in COO format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | COO of ClMatrix.COO<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in CSC format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | CSC of ClMatrix.CSC<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in LIL format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | LIL of ClMatrix.LIL<'a>
 
     /// <summary>

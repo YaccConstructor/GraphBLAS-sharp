@@ -29,7 +29,13 @@ module ClVector =
 /// </summary>
 [<RequireQualifiedAccess>]
 type ClVector<'a when 'a: struct> =
+    /// <summary>
+    /// Represents an abstraction over sparse vector, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | Sparse of ClVector.Sparse<'a>
+    /// <summary>
+    /// Represents an abstraction over dense vector, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | Dense of ClArray<'a option>
 
     /// <summary>
