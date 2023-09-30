@@ -447,7 +447,9 @@ module internal Expand =
             let generalLength, segmentLengths =
                 getSegmentPointers processor leftMatrix.Columns rightMatrixRowsNNZ
 
-            if generalLength < maxAllocSize then
+            if generalLength = 0 then
+                None
+            elif generalLength < maxAllocSize then
                 segmentLengths.Free processor
 
                 runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix

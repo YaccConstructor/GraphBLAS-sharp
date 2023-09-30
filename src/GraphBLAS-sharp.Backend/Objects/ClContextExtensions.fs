@@ -47,6 +47,6 @@ module ClContextExtensions =
 
             Cl
                 .GetDeviceInfo(this.ClDevice.Device, OpenCL.Net.DeviceInfo.MaxMemAllocSize, error)
-                .CastTo<int>()
+                .CastTo<uint64>()
             |> uint64
             |> ((*) 1UL<Byte>)
