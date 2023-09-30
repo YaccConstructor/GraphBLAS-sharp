@@ -306,7 +306,7 @@ module Operations =
                         (clContext.MaxMemAllocSize / allocCapacity) / 3UL
 
                     let resultCapacity =
-                        (max
+                        (min
                          <| uint64 System.Int32.MaxValue
                          <| resultCapacity)
                         |> int
