@@ -3,8 +3,8 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module PrefixSum =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
@@ -209,7 +209,7 @@ module PrefixSum =
     let runBackwardsIncludeInPlace plus = runInPlace plus true scanInclusive
 
     /// <summary>
-    /// Exclude inplace prefix sum.
+    /// Exclude in-place prefix sum of integer array with addition operation and start value that is equal to 0.
     /// </summary>
     /// <example>
     /// <code>
@@ -222,10 +222,8 @@ module PrefixSum =
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">ClContext.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let standardExcludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =
@@ -236,23 +234,21 @@ module PrefixSum =
             scan processor inputArray 0
 
     /// <summary>
-    /// Include inplace prefix sum.
+    /// Include in-place prefix sum of integer array with addition operation and start value that is equal to 0.
     /// </summary>
     /// <example>
     /// <code>
     /// let arr = [| 1; 1; 1; 1 |]
     /// let sum = [| 0 |]
-    /// runExcludeInplace clContext workGroupSize processor arr sum (+) 0
+    /// runIncludeInplace clContext workGroupSize processor arr sum (+) 0
     /// |> ignore
     /// ...
     /// > val arr = [| 1; 2; 3; 4 |]
     /// > val sum = [| 4 |]
     /// </code>
     /// </example>
-    ///<param name="clContext">ClContext.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="plus">Associative binary operation.</param>
-    ///<param name="zero">Zero element for binary operation.</param>
+    /// <param name="clContext">ClContext.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let standardIncludeInPlace (clContext: ClContext) workGroupSize =
 
         let scan =

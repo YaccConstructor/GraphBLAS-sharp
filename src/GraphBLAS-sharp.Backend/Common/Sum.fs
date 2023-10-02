@@ -1,12 +1,12 @@
 namespace GraphBLAS.FSharp.Backend.Common
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module Reduce =
     /// <summary>
@@ -133,7 +133,7 @@ module Reduce =
             resultCell
 
     /// <summary>
-    /// Summarize array elements.
+    /// Summarizes array elements.
     /// </summary>
     /// <param name="clContext">ClContext.</param>
     /// <param name="workGroupSize">Work group size.</param>
@@ -237,7 +237,7 @@ module Reduce =
             resultCell
 
     /// <summary>
-    /// Reduce an array of values.
+    /// Reduces an array of values.
     /// </summary>
     /// <param name="clContext">ClContext.</param>
     /// <param name="workGroupSize">Work group size.</param>
@@ -259,7 +259,7 @@ module Reduce =
     /// </summary>
     module ByKey =
         /// <summary>
-        /// Reduce an array of values by key using a single work item.
+        /// Reduces an array of values by key using a single work item.
         /// </summary>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Work group size.</param>
@@ -591,7 +591,7 @@ module Reduce =
 
     module ByKey2D =
         /// <summary>
-        /// Reduce an array of values by 2D keys using a single work item.
+        /// Reduces an array of values by 2D keys using a single work item.
         /// </summary>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Work group size.</param>

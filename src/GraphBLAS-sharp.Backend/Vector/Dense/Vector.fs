@@ -1,14 +1,26 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Dense
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module Vector =
+    let map<'a, 'b when 'a: struct and 'b: struct>
+        (op: Expr<'a option -> 'b option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let map = ClArray.map op clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) ->
+
+            map processor allocationMode leftVector
+
     let map2InPlace<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
@@ -22,7 +34,6 @@ module Vector =
 
             map2InPlace processor leftVector rightVector resultVector
 
-
     let map2<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         (opAdd: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
@@ -35,7 +46,6 @@ module Vector =
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (rightVector: ClArray<'b option>) ->
 
             map2 processor allocationMode leftVector rightVector
-
 
     let map2AtLeastOne op clContext workGroupSize =
         map2 (Convert.atLeastOneToOption op) clContext workGroupSize
@@ -90,16 +100,16 @@ module Vector =
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let scatterValues =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let scatterIndices =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let getBitmap =
             ClArray.map (Map.option 1 0) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let allIndices =
             ClArray.init Map.id clContext workGroupSize
@@ -149,7 +159,7 @@ module Vector =
             ClArray.choose Map.id clContext workGroupSize
 
         let reduce =
-            Reduce.reduce opAdd clContext workGroupSize
+            Common.Reduce.reduce opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClArray<'a option>) ->
             choose processor DeviceOnly vector

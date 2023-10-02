@@ -1,15 +1,21 @@
-namespace GraphBLAS.FSharp.Backend.Common
+namespace GraphBLAS.FSharp
 
-open System.Collections.Generic
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
+[<RequireQualifiedAccess>]
 module ClArray =
+    /// <summary>
+    /// Creates an array given the dimension and a generator function to compute the elements.
+    /// </summary>
+    /// <param name="initializer">The function to generate the initial values for each index.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let init (initializer: Expr<int -> 'a>) (clContext: ClContext) workGroupSize =
 
         let init =
@@ -36,6 +42,11 @@ module ClArray =
 
             outputArray
 
+    /// <summary>
+    /// Creates an array whose elements are all initially the given value.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let create (clContext: ClContext) workGroupSize =
 
         let create =
@@ -65,6 +76,11 @@ module ClArray =
 
             outputArray
 
+    /// <summary>
+    /// Creates an array where the entries are initially the default value of desired type.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let zeroCreate<'a> (clContext: ClContext) workGroupSize =
 
         let create = create clContext workGroupSize
@@ -72,6 +88,11 @@ module ClArray =
         fun (processor: MailboxProcessor<_>) allocationMode length ->
             create processor allocationMode length Unchecked.defaultof<'a>
 
+    /// <summary>
+    /// Builds a new array that contains the elements of the given array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let copy (clContext: ClContext) workGroupSize =
         let copy =
             <@ fun (ndRange: Range1D) (inputArrayBuffer: ClArray<'a>) (outputArrayBuffer: ClArray<'a>) inputArrayLength ->
@@ -100,6 +121,11 @@ module ClArray =
 
             outputArray
 
+    /// <summary>
+    /// Creates an array of the given size by replicating the values of the given initial array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let replicate (clContext: ClContext) workGroupSize =
 
         let replicate =
@@ -132,6 +158,13 @@ module ClArray =
 
             outputArray
 
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to each of the elements of the array.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
@@ -160,6 +193,14 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding pairs of values, where the first element of pair is from the given array
+    /// and the second element is the given value.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
 
         let map =
@@ -192,6 +233,16 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Fills the third given array with the results of applying the given function
+    /// to the corresponding elements of the first two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The first two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -219,6 +270,16 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding elements of the two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2<'a, 'b, 'c> map (clContext: ClContext) workGroupSize =
         let map2 =
             map2InPlace<'a, 'b, 'c> map clContext workGroupSize
@@ -268,11 +329,19 @@ module ClArray =
 
                 bitmap
 
+        /// <summary>
+        /// Gets the bitmap that indicates the first elements of the sequences of consecutive identical elements
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let firstOccurrence clContext =
             getUniqueBitmapGeneral
             <| Predicates.firstOccurrence ()
             <| clContext
 
+        /// <summary>
+        /// Gets the bitmap that indicates the last elements of the sequences of consecutive identical elements
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let lastOccurrence clContext =
             getUniqueBitmapGeneral
             <| Predicates.lastOccurrence ()
@@ -300,16 +369,28 @@ module ClArray =
 
                 result
 
+        /// <summary>
+        /// Gets the bitmap that indicates the first elements of the sequences
+        /// of consecutive identical elements from either first array or second array.
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let firstOccurrence2 clContext =
             getUniqueBitmap2General firstOccurrence clContext
 
+        /// <summary>
+        /// Gets the bitmap that indicates the last elements of the sequences
+        /// of consecutive identical elements from either first array or second array.
+        /// </summary>
+        /// <param name="clContext">OpenCL context.</param>
         let lastOccurrence2 clContext =
             getUniqueBitmap2General lastOccurrence clContext
 
-    ///<description>Remove duplicates form the given array.</description>
-    ///<param name="clContext">Computational context</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    ///<param name="inputArray">Should be sorted.</param>
+    /// <summary>
+    /// Removes duplicates form the given array.
+    /// </summary>
+    /// <param name="clContext">Computational context</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <param name="inputArray">Should be sorted.</param>
     let removeDuplications (clContext: ClContext) workGroupSize =
 
         let scatter =
@@ -339,6 +420,12 @@ module ClArray =
 
             outputArray
 
+    /// <summary>
+    /// Tests if any element of the array satisfies the given predicate.
+    /// </summary>
+    /// <param name="predicate">The function to test the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let exists (predicate: Expr<'a -> bool>) (clContext: ClContext) workGroupSize =
 
         let exists =
@@ -368,7 +455,15 @@ module ClArray =
 
             result
 
-    let assignOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
+    /// <summary>
+    /// Maps every value from the given value array and, if the result of applying function is <c>Some</c>,
+    /// places the result to a specific position from the input array of positions.
+    /// If the result of mapping is <c>None</c>, it is just ignored.
+    /// </summary>
+    /// <param name="op">Function that maps elements from value array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let private assignOption (op: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
 
         let assign =
             <@ fun (ndRange: Range1D) length (values: ClArray<'a>) (positions: ClArray<int>) (result: ClArray<'b>) resultLength ->
@@ -404,6 +499,14 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Applies the given function to each element of the array.
+    /// Returns the array comprised of the results <c>x</c>
+    /// for each element where the function returns <c>Some(x)</c>.
+    /// </summary>
+    /// <param name="predicate">The function to generate options from the elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let choose<'a, 'b> (predicate: Expr<'a -> 'b option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
             map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
@@ -437,6 +540,14 @@ module ClArray =
 
                 Some result
 
+    /// <summary>
+    /// Maps pair of values from the given value arrays and, if the result of applying function is <c>Some</c>,
+    /// places the result to a specific position from the input array of positions.
+    /// If the result of mapping is <c>None</c>, it is just ignored.
+    /// </summary>
+    /// <param name="op">Function that maps pairs of elements from value arrays.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let assignOption2 (op: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
 
         let assign =
@@ -484,6 +595,14 @@ module ClArray =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Applies the given function to each pair of elements of the two given arrays.
+    /// Returns the array comprised of the results <c>x</c>
+    /// for each pairs where the function returns <c>Some(x)</c>.
+    /// </summary>
+    /// <param name="predicate">The function to generate options from the pairs of elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let choose2 (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
             map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
@@ -510,6 +629,11 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Builds a new array that contains the given subrange specified by starting index and length.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let sub (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -549,10 +673,10 @@ module ClArray =
             result
 
     /// <summary>
-    /// Lazy divides the input array into chunks of size at most chunkSize.
+    /// Divides lazily the input array into chunks of size at most chunkSize.
     /// </summary>
-    /// <param name="clContext">Cl context.</param>
-    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     /// <remarks>
     /// Since calculations are performed lazily, the array should not change.
     /// </remarks>
@@ -581,8 +705,8 @@ module ClArray =
     /// <summary>
     /// Divides the input array into chunks of size at most chunkSize.
     /// </summary>
-    /// <param name="clContext">Cl context.</param>
-    /// <param name="workGroupSize">Work group size.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let chunkBySize (clContext: ClContext) workGroupSize =
 
         let chunkBySizeLazy = lazyChunkBySize clContext workGroupSize
@@ -592,6 +716,11 @@ module ClArray =
             |> Seq.map (fun lazyValue -> lazyValue.Value)
             |> Seq.toArray
 
+    /// <summary>
+    /// Reads a range of elements from the first array and write them into the second.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let blit<'a> (clContext: ClContext) workGroupSize =
 
         let assign =
@@ -635,6 +764,11 @@ module ClArray =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Builds a new array that contains the elements of each of the given sequence of arrays.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let concat (clContext: ClContext) workGroupSize =
 
         let blit = blit clContext workGroupSize
@@ -659,6 +793,11 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Fills a range of elements of the array with the given value.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let fill (clContext: ClContext) workGroupSize =
 
         let fill =
@@ -693,6 +832,12 @@ module ClArray =
 
                 processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Returns an array of each element in the input array and its predecessor,
+    /// with the exception of the first element which is only returned as the predecessor of the second element.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let pairwise (clContext: ClContext) workGroupSize =
 
         let idGather =
@@ -729,7 +874,7 @@ module ClArray =
                 None
 
     let private bound<'a, 'b when 'a: equality and 'a: comparison>
-        (lowerBound: Expr<(int -> 'a -> ClArray<'a> -> 'b)>)
+        (lowerBound: Expr<int -> 'a -> ClArray<'a> -> 'b>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -759,12 +904,32 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Finds the position of the largest value and the value itself
+    /// that is less than the given one.
+    /// </summary>
+    /// <remarks>
+    /// Array of values should be sorted.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
     let upperBoundAndValue<'a when 'a: comparison> clContext =
         bound<'a, int * 'a> Search.Bin.lowerBoundAndValue clContext
 
+    /// <summary>
+    /// Finds the position of the largest value that is less than the given one.
+    /// </summary>
+    /// <remarks>
+    /// Array of values should be sorted.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
     let upperBound<'a when 'a: comparison> clContext =
         bound<'a, int> Search.Bin.lowerBound clContext
 
+    /// <summary>
+    /// Gets the value at the specified position from the input array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let item<'a> (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -794,6 +959,11 @@ module ClArray =
 
             result
 
+    /// <summary>
+    /// Sets an element of an array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let set<'a> (clContext: ClContext) workGroupSize =
 
         let kernel =

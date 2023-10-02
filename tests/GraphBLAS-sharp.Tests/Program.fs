@@ -1,6 +1,7 @@
 open Expecto
-open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Tests.Backend
+open GraphBLAS.FSharp.Tests.Backend.Matrix
 
 let matrixTests =
     testList
@@ -16,7 +17,7 @@ let matrixTests =
           Matrix.SubRows.tests
           Matrix.Kronecker.tests
 
-          Matrix.SpGeMM.Expand.generalTests
+          Matrix.SpGeMM.Expand.tests
           Matrix.SpGeMM.Masked.tests ]
     |> testSequenced
 
@@ -24,7 +25,7 @@ let commonTests =
     let scanTests =
         testList
             "Scan"
-            [ Common.Scan.ByKey.sequentialSegmentsTests
+            [ Common.Scan.ByKey.tests
               Common.Scan.PrefixSum.tests ]
 
     let reduceTests =
@@ -64,7 +65,6 @@ let commonTests =
         "Common"
         [ Common.Scatter.allTests
           Common.Gather.allTests
-          Common.Merge.tests
           clArrayTests
           sortTests
           reduceTests
@@ -79,6 +79,7 @@ let vectorTests =
           Vector.OfList.tests
           Vector.Copy.tests
           Vector.Convert.tests
+          Vector.Map.allTests
           Vector.Map2.allTests
           Vector.AssignByMask.tests
           Vector.AssignByMask.complementedTests
@@ -91,12 +92,7 @@ let algorithmsTests =
     |> testSequenced
 
 let deviceTests =
-    testList
-        "Device"
-        [ matrixTests
-          commonTests
-          vectorTests
-          algorithmsTests ]
+    testList "Device" [ matrixTests; commonTests ]
     |> testSequenced
 
 let hostTests =

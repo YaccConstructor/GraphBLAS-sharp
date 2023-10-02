@@ -5,8 +5,10 @@ open Brahma.FSharp
 module Search =
     module Bin =
         /// <summary>
-        /// Searches a section of the array of indices, bounded by the given left and right edges, for an index, using a binary search algorithm.
-        /// In case searched section contains source index, the value at the same position in the array of values is returned.
+        /// Searches a section of the array of indices, bounded by the given left and right edges,
+        /// for an index, using a binary search algorithm.
+        /// In case searched section contains source index,
+        /// the value at the same position in the array of values is returned.
         /// </summary>
         /// <remarks>
         /// Searched section of index array should be sorted in ascending order.
@@ -42,10 +44,10 @@ module Search =
         /// In case there is a value at the given key position, it is returned.
         /// </summary>
         let byKey<'a> =
-            <@ fun lenght sourceIndex (keys: ClArray<int>) (values: ClArray<'a>) ->
+            <@ fun length sourceIndex (keys: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable result = None
 
@@ -69,10 +71,10 @@ module Search =
         /// In case there is a value at the given keys position, it is returned.
         /// </summary>
         let byKey2D<'a> =
-            <@ fun lenght sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
+            <@ fun length sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) (values: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable result = None
 
@@ -98,10 +100,10 @@ module Search =
         /// Find lower position of item in array.
         /// </summary>
         let lowerPosition<'a when 'a: equality and 'a: comparison> =
-            <@ fun lenght sourceItem (keys: 'a []) ->
+            <@ fun length sourceItem (keys: 'a []) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable resultPosition = None
 
@@ -138,15 +140,15 @@ module Search =
         /// </code>
         /// </example>
         let lowerBound<'a when 'a: comparison> =
-            <@ fun lenght sourceItem (keys: ClArray<'a>) ->
+            <@ fun length sourceItem (keys: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable resultPosition = 0
 
-                if sourceItem >= keys.[lenght - 1] then
-                    lenght - 1
+                if sourceItem >= keys.[length - 1] then
+                    length - 1
                 else
                     while leftEdge <= rightEdge do
                         let currentPosition = (leftEdge + rightEdge) / 2
@@ -164,15 +166,15 @@ module Search =
         let lowerBoundAndValue<'a when 'a: comparison> =
             let defaultValue = Unchecked.defaultof<'a>
 
-            <@ fun lenght sourceItem (keys: ClArray<'a>) ->
+            <@ fun length sourceItem (keys: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
 
                 let mutable resultPosition = 0, defaultValue
 
-                if sourceItem >= keys.[lenght - 1] then
-                    (lenght - 1), keys.[lenght - 1]
+                if sourceItem >= keys.[length - 1] then
+                    (length - 1), keys.[length - 1]
                 else
                     while leftEdge <= rightEdge do
                         let currentPosition = (leftEdge + rightEdge) / 2

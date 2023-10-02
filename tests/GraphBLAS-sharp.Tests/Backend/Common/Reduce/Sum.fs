@@ -3,13 +3,13 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Reduce.Sum
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Tests
 open FSharp.Quotations
+open Brahma.FSharp
+open GraphBLAS.FSharp.Tests
 open Context
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 let logger = Log.create "Sum.Test"
 
@@ -51,7 +51,7 @@ let makeTest plus zero sum (array: 'a []) =
         |> Expect.equal actualSum expectedSum
 
 let testFixtures plus (plusQ: Expr<'a -> 'a -> 'a>) zero name =
-    Reduce.sum plusQ zero context wgSize
+    Common.Reduce.sum plusQ zero context wgSize
     |> makeTest plus zero
     |> testPropertyWithConfig config (sprintf "Correctness on %s" name)
 

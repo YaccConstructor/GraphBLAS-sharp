@@ -1,4 +1,4 @@
-﻿module GraphBLAS.FSharp.Tests.Backend.Matrix.Map
+module GraphBLAS.FSharp.Tests.Backend.Vector.Map
 
 open Expecto
 open Expecto.Logging
@@ -12,9 +12,10 @@ open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
-open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
+open Mono.CompilerServices.SymbolWriter
 
-let logger = Log.create "Map.Tests"
+let logger = Log.create "Vector.Map.Tests"
 
 let config = Utils.defaultConfig
 let wgSize = Utils.defaultWorkGroupSize
@@ -22,71 +23,63 @@ let wgSize = Utils.defaultWorkGroupSize
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, %A{case}"
 
-let checkResult isEqual op zero (baseMtx: 'a [,]) (actual: Matrix<'a>) =
-    let rows = Array2D.length1 baseMtx
-    let columns = Array2D.length2 baseMtx
-    Expect.equal columns actual.ColumnCount "The number of columns should be the same."
-    Expect.equal rows actual.RowCount "The number of rows should be the same."
+let checkResult isEqual op zero (baseVector: 'a []) (actual: Vector<'b>) =
 
-    let expected2D = Array2D.create rows columns zero
+    let expectedArrayLength = baseVector.Length
 
-    for i in 0 .. rows - 1 do
-        for j in 0 .. columns - 1 do
-            expected2D.[i, j] <- op baseMtx.[i, j]
+    let expectedArray = Array.create expectedArrayLength zero
 
-    let actual2D = Array2D.create rows columns zero
+    for i in 0 .. expectedArrayLength - 1 do
+        expectedArray.[i] <- op baseVector.[i]
+
+    let expected =
+        Utils.createVectorFromArray Dense expectedArray (isEqual zero)
+        |> Utils.vectorToDenseVector
 
     match actual with
-    | Matrix.COO actual ->
-        for i in 0 .. actual.Columns.Length - 1 do
-            if isEqual zero actual.Values.[i] then
-                failwith "Resulting zeroes should be filtered."
-
-            actual2D.[actual.Rows.[i], actual.Columns.[i]] <- actual.Values.[i]
-    | _ -> failwith "Resulting matrix should be converted to COO format."
-
-    "Arrays must be the same"
-    |> Utils.compare2DArrays isEqual actual2D expected2D
+    | Vector.Dense actual ->
+        "arrays must have the same values"
+        |> Expect.equal actual expected
+    | _ -> failwith "Vector format must be Sparse."
 
 let correctnessGenericTest
     zero
     op
-    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClMatrix<'b>)
-    toCOOFun
+    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
+    (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     (isEqual: 'a -> 'a -> bool)
-    q
-    (case: OperationCase<MatrixFormat>)
-    (matrix: 'a [,])
+    (case: OperationCase<VectorFormat>)
+    (array: 'a [])
     =
-    match case.Format with
-    | LIL -> ()
-    | _ ->
-        let mtx =
-            Utils.createMatrixFromArray2D case.Format matrix (isEqual zero)
 
-        if mtx.NNZ > 0 then
-            try
-                let m = mtx.ToDevice case.TestContext.ClContext
+    let isZero = (isEqual zero)
 
-                let res = addFun q HostInterop m
+    let vectorHost =
+        Utils.createVectorFromArray case.Format array isZero
 
-                m.Dispose q
+    if vectorHost.NNZ > 0 then
 
-                let (cooRes: ClMatrix<'a>) = toCOOFun q HostInterop res
-                let actual = cooRes.ToHost q
+        let context = case.TestContext.ClContext
+        let q = case.TestContext.Queue
 
-                cooRes.Dispose q
-                res.Dispose q
+        let vector = vectorHost.ToDevice context
 
-                logger.debug (
-                    eventX "Actual is {actual}"
-                    >> setField "actual" (sprintf "%A" actual)
-                )
+        try
+            let res = addFun q HostInterop vector
 
-                checkResult isEqual op zero matrix actual
-            with
-            | ex when ex.Message = "InvalidBufferSize" -> ()
-            | ex -> raise ex
+            vector.Dispose q
+
+            let denseActual = toDense q HostInterop res
+
+            let actual = denseActual.ToHost q
+
+            res.Dispose q
+            denseActual.Dispose q
+
+            checkResult isEqual op zero array actual
+        with
+        | ex when ex.Message = "InvalidBufferSize" -> ()
+        | ex -> raise ex
 
 let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let getCorrectnessTestName = getCorrectnessTestName case
@@ -98,12 +91,12 @@ let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let unaryOpQ = opQ zero constant
 
     let map =
-        Operations.Matrix.map unaryOpQ context wgSize
+        Operations.Vector.map unaryOpQ context wgSize
 
-    let toCOO = Matrix.toCOO context wgSize
+    let toDense = Vector.toDense context wgSize
 
     case
-    |> correctnessGenericTest zero unaryOp map toCOO isEqual q
+    |> correctnessGenericTest zero unaryOp map toDense isEqual
     |> testPropertyWithConfig config (getCorrectnessTestName $"{typeof<'a>}")
 
 let testFixturesMapNot case =

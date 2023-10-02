@@ -1,11 +1,11 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Gather
 
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Tests
 open Expecto
 open Microsoft.FSharp.Collections
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 let context = Context.defaultContext.ClContext
@@ -55,14 +55,14 @@ let createTest<'a> (isEqual: 'a -> 'a -> bool) testFun =
     |> testPropertyWithConfig Utils.defaultConfig $"test on %A{typeof<'a>}"
 
 let tests =
-    [ createTest<int> (=) Gather.run
+    [ createTest<int> (=) Common.Gather.run
 
       if Utils.isFloat64Available context.ClDevice then
-          createTest<float> Utils.floatIsEqual Gather.run
+          createTest<float> Utils.floatIsEqual Common.Gather.run
 
-      createTest<float32> Utils.float32IsEqual Gather.run
-      createTest<bool> (=) Gather.run
-      createTest<uint> (=) Gather.run ]
+      createTest<float32> Utils.float32IsEqual Common.Gather.run
+      createTest<bool> (=) Common.Gather.run
+      createTest<uint> (=) Common.Gather.run ]
     |> testList "Gather"
 
 
@@ -98,27 +98,27 @@ let createTestInit<'a> (isEqual: 'a -> 'a -> bool) testFun indexMapQ indexMap =
 let initTests =
 
     let idTests =
-        [ createTestInit<int> (=) Gather.runInit Map.id id
+        [ createTestInit<int> (=) Common.Gather.runInit Map.id id
 
           if Utils.isFloat64Available context.ClDevice then
-              createTestInit<float> Utils.floatIsEqual Gather.runInit Map.id id
+              createTestInit<float> Utils.floatIsEqual Common.Gather.runInit Map.id id
 
-          createTestInit<float32> Utils.float32IsEqual Gather.runInit Map.id id
-          createTestInit<bool> (=) Gather.runInit Map.id id
-          createTestInit<uint> (=) Gather.runInit Map.id id ]
+          createTestInit<float32> Utils.float32IsEqual Common.Gather.runInit Map.id id
+          createTestInit<bool> (=) Common.Gather.runInit Map.id id
+          createTestInit<uint> (=) Common.Gather.runInit Map.id id ]
         |> testList "id"
 
     let inc = ((+) 1)
 
     let incTests =
-        [ createTestInit<int> (=) Gather.runInit Map.inc inc
+        [ createTestInit<int> (=) Common.Gather.runInit Map.inc inc
 
           if Utils.isFloat64Available context.ClDevice then
-              createTestInit<float> Utils.floatIsEqual Gather.runInit Map.inc inc
+              createTestInit<float> Utils.floatIsEqual Common.Gather.runInit Map.inc inc
 
-          createTestInit<float32> Utils.float32IsEqual Gather.runInit Map.inc inc
-          createTestInit<bool> (=) Gather.runInit Map.inc inc
-          createTestInit<uint> (=) Gather.runInit Map.inc inc ]
+          createTestInit<float32> Utils.float32IsEqual Common.Gather.runInit Map.inc inc
+          createTestInit<bool> (=) Common.Gather.runInit Map.inc inc
+          createTestInit<uint> (=) Common.Gather.runInit Map.inc inc ]
         |> testList "inc"
 
     testList "init" [ idTests; incTests ]

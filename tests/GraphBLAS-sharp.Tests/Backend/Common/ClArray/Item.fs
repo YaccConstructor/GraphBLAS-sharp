@@ -2,11 +2,11 @@ module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Item
 
 open Expecto
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 let context = Context.defaultContext.ClContext
 

@@ -3,14 +3,12 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.Transpose
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
-open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.TestCases
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Transpose.Tests"
 

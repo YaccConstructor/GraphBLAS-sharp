@@ -1,15 +1,13 @@
 namespace GraphBLAS.FSharp.Tests
 
-open Brahma.FSharp.OpenCL.Translator
-open Microsoft.FSharp.Reflection
-open Brahma.FSharp
-open OpenCL.Net
-open GraphBLAS.FSharp.Test
-open System.Text.RegularExpressions
 open Expecto
+open Microsoft.FSharp.Reflection
+open System.Text.RegularExpressions
+open Brahma.FSharp
+open Brahma.FSharp.OpenCL.Translator
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects
-
+open GraphBLAS.FSharp.Test
+open OpenCL.Net
 
 [<RequireQualifiedAccess>]
 module Utils =

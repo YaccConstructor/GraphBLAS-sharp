@@ -3,14 +3,13 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.Convert
 open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger =
     Log.create "Backend.Vector.Convert.Tests"

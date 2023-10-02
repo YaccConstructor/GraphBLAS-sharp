@@ -30,6 +30,7 @@ GraphBLAS# is a GPGPU-based [GraphBLAS](https://graphblas.org/)-like API impleme
   - [x] COO-COO `map2`
   - [x] COO-COO `map2AtLeastOne`
   - [x] CSR-CSR multiplication
+  - [x] CSR-CSR Kronecker product
 - **Vector-Matrix**
   - [x] Dense-CSR multiplication
   - [ ] Sparse-CSR multiplication

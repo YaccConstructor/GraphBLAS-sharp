@@ -2,15 +2,13 @@
 
 open Expecto
 open Expecto.Logging
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 
 let config =
     { Utils.defaultConfig with
@@ -48,7 +46,7 @@ let makeTest testContext zero isEqual op kroneckerFun (leftMatrix: 'a [,], right
         let m2 = m2.ToDevice context
 
         let result =
-            kroneckerFun processor ClContext.HostInterop m1 m2
+            kroneckerFun processor ClContextExtensions.HostInterop m1 m2
 
         let actual =
             Option.map (fun (m: ClMatrix<'a>) -> m.ToHost processor) result
@@ -65,7 +63,7 @@ let makeTest testContext zero isEqual op kroneckerFun (leftMatrix: 'a [,], right
         |> Expect.equal actual expectedOption
 
 let createGeneralTest testContext (zero: 'a) isEqual op opQ testName =
-    Matrix.kronecker opQ testContext.ClContext workGroupSize
+    Operations.kronecker opQ testContext.ClContext workGroupSize
     |> makeTest testContext zero isEqual op
     |> testPropertyWithConfig config $"test on %A{typeof<'a>} %s{testName}"
 

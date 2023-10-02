@@ -1,8 +1,8 @@
 namespace GraphBLAS.FSharp.Objects
 
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.Vector
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module ClVectorExtensions =
     type ClVector.Sparse<'a> with

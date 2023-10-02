@@ -1,14 +1,12 @@
 module GraphBLAS.FSharp.Tests.Backend.Algorithms.BFS
 
 open Expecto
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.Algorithms
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.CreateGraph
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
 
@@ -50,7 +48,8 @@ let testFixtures (testContext: TestContext) =
 
               match matrix with
               | ClMatrix.CSR mtx ->
-                  let res = bfs queue mtx source |> ClVector.Dense
+                  let res =
+                      bfs queue matrix source |> ClVector.Dense
 
                   let resHost = res.ToHost queue
 

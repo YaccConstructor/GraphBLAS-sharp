@@ -1,17 +1,17 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Matrix
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Matrix
 
 module internal Map2 =
 
-    let preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
+    let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount leftValuesLength rightValuesLength (leftValues: ClArray<'a>) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightValues: ClArray<'b>) (rightRows: ClArray<int>) (rightColumn: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -135,7 +135,7 @@ module internal Map2 =
               Values = resultValues }
 
     module AtLeastOne =
-        let preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
+        let private preparePositionsAtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
             (clContext: ClContext)
             (opAdd: Expr<'a option -> 'b option -> 'c option>)
             workGroupSize

@@ -1,9 +1,9 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Quotes
 
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 module ArithmeticOperations =
-    let inline mkUnaryOp zero unaryOp =
+    let inline private mkUnaryOp zero unaryOp =
         <@ fun x ->
             let mutable res = zero
 
@@ -13,7 +13,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericSum zero =
+    let inline private mkNumericSum zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
 
@@ -25,7 +25,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericSumAtLeastOne zero =
+    let inline private mkNumericSumAtLeastOne zero =
         <@ fun (values: AtLeastOne<'t, 't>) ->
             let mutable res = zero
 
@@ -36,7 +36,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericMul zero =
+    let inline private mkNumericMul zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
 
@@ -46,7 +46,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericMulAtLeastOne zero =
+    let inline private mkNumericMulAtLeastOne zero =
         <@ fun (values: AtLeastOne<'t, 't>) ->
             let mutable res = zero
 
@@ -197,7 +197,7 @@ module ArithmeticOperations =
             else
                 Some result
 
-    let inline createPair zero op opQ = binOpQ zero opQ, binOp zero op
+    let inline private createPair zero op opQ = binOpQ zero opQ, binOp zero op
 
     // addition
     let intAdd = createPair 0 (+) <@ (+) @>

@@ -1,11 +1,10 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Sort.Radix
 
 open Expecto
-open GraphBLAS.FSharp.Backend.Common.Sort
-open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let config =
     { Utils.defaultConfig with
@@ -41,7 +40,7 @@ let makeTestByKeys<'a when 'a: equality> sortFun (array: (int * 'a) []) =
 
 let createTestByKeys<'a when 'a: equality and 'a: struct> =
     let sort =
-        Radix.runByKeysStandard context workGroupSize
+        Sort.Radix.runByKeysStandard context workGroupSize
 
     makeTestByKeys<'a> sort
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
@@ -74,7 +73,7 @@ let makeTestKeysOnly sort (keys: uint []) =
 
 let testKeysOnly =
     let sort =
-        Radix.standardRunKeysOnly context workGroupSize
+        Sort.Radix.standardRunKeysOnly context workGroupSize
 
     makeTestKeysOnly sort
     |> testPropertyWithConfig config $"keys only"

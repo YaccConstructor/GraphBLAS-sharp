@@ -1,24 +1,25 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.SpGeMM
+namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Common.Sort
+open FSharp.Quotations
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClCell
-open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
 
-module Expand =
+module internal Expand =
     let getSegmentPointers (clContext: ClContext) workGroupSize =
 
-        let gather = Gather.run clContext workGroupSize
+        let gather =
+            Common.Gather.run clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (leftMatrixColumns: ClArray<int>) (rightMatrixRowsLengths: ClArray<int>) ->
 
@@ -40,13 +41,13 @@ module Expand =
             ClArray.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
             ClArray.assignOption2 predicate clContext workGroupSize
 
         let scatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (firstValues: ClArray<'a>) (secondValues: ClArray<'b>) (columns: ClArray<int>) (rows: ClArray<int>) ->
 
@@ -84,30 +85,33 @@ module Expand =
     let expand (clContext: ClContext) workGroupSize =
 
         let idScatter =
-            Scatter.initLastOccurrence Map.id clContext workGroupSize
+            Common.Scatter.initLastOccurrence Map.id clContext workGroupSize
 
         let scatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
 
         let maxPrefixSum =
-            PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
+            Common.PrefixSum.runIncludeInPlace <@ max @> clContext workGroupSize
 
         let create = ClArray.create clContext workGroupSize
 
-        let gather = Gather.run clContext workGroupSize
+        let gather =
+            Common.Gather.run clContext workGroupSize
 
         let segmentPrefixSum =
-            PrefixSum.ByKey.sequentialInclude <@ (+) @> 0 clContext workGroupSize
+            Common.PrefixSum.ByKey.sequentialInclude <@ (+) @> 0 clContext workGroupSize
 
         let removeDuplicates =
             ClArray.removeDuplications clContext workGroupSize
 
-        let leftMatrixGather = Gather.run clContext workGroupSize
+        let leftMatrixGather =
+            Common.Gather.run clContext workGroupSize
 
-        let rightMatrixGather = Gather.run clContext workGroupSize
+        let rightMatrixGather =
+            Common.Gather.run clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (lengths: int) (segmentsPointers: ClArray<int>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.CSR<'b>) ->
             // Compute left matrix positions
@@ -171,13 +175,13 @@ module Expand =
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
         let sortByKeyIndices =
-            Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
 
         let sortByKeyValues =
-            Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
 
         let sortKeys =
-            Radix.standardRunKeysOnly clContext workGroupSize
+            Common.Sort.Radix.standardRunKeysOnly clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
             // sort by columns
@@ -207,16 +211,16 @@ module Expand =
     let reduce opAdd (clContext: ClContext) workGroupSize =
 
         let reduce =
-            Reduce.ByKey2D.Option.segmentSequential opAdd clContext workGroupSize
+            Common.Reduce.ByKey2D.Option.segmentSequential opAdd clContext workGroupSize
 
         let getUniqueBitmap =
             ClArray.Bitmap.lastOccurrence2 clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let idScatter =
-            Scatter.initFirsOccurrence Map.id clContext workGroupSize
+            Common.Scatter.initFirstOccurrence Map.id clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (values: ClArray<'a>) (columns: ClArray<int>) (rows: ClArray<int>) ->
 
@@ -343,7 +347,8 @@ module Expand =
 
     let runManySteps opAdd opMul (clContext: ClContext) workGroupSize =
 
-        let gather = Gather.run clContext workGroupSize
+        let gather =
+            Common.Gather.run clContext workGroupSize
 
         let upperBound =
             ClArray.upperBound clContext workGroupSize
@@ -442,7 +447,9 @@ module Expand =
             let generalLength, segmentLengths =
                 getSegmentPointers processor leftMatrix.Columns rightMatrixRowsNNZ
 
-            if generalLength < maxAllocSize then
+            if generalLength = 0 then
+                None
+            elif generalLength < maxAllocSize then
                 segmentLengths.Free processor
 
                 runOneStep processor allocationMode leftMatrix rightMatrixRowsNNZ rightMatrix
