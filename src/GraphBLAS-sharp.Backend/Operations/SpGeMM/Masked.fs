@@ -1,12 +1,12 @@
-namespace GraphBLAS.FSharp.Backend.Matrix.SpGeMM
+namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
 
-open GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal Masked =
     let private calculate
@@ -152,13 +152,13 @@ module internal Masked =
             calculate opAdd opMul context workGroupSize
 
         let scatter =
-            Scatter.lastOccurrence context workGroupSize
+            Common.Scatter.lastOccurrence context workGroupSize
 
         let scatterData =
-            Scatter.lastOccurrence context workGroupSize
+            Common.Scatter.lastOccurrence context workGroupSize
 
         let scanInPlace =
-            PrefixSum.standardExcludeInPlace context workGroupSize
+            Common.PrefixSum.standardExcludeInPlace context workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrixLeft: ClMatrix.CSR<'a>) (matrixRight: ClMatrix.CSC<'b>) (mask: ClMatrix.COO<_>) ->
 

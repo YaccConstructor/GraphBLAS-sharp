@@ -1,13 +1,12 @@
-module GraphBLAS.FSharp.Tests.Vector.Merge
+module GraphBLAS.FSharp.Tests.Backend.Vector.Merge
 
-open GraphBLAS.FSharp.Backend.Vector
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Brahma.FSharp
 open Expecto
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let processor = Context.defaultContext.Queue
 

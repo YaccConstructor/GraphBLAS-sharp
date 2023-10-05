@@ -1,11 +1,12 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Map2
 
+open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Backend.Common
-open Expecto
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+
 
 let context = defaultContext.Queue
 

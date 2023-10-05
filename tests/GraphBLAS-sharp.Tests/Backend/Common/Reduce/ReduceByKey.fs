@@ -1,13 +1,13 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.Reduce.ByKey
 
 open Expecto
-open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Test
 open GraphBLAS.FSharp.Tests
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let context = Context.defaultContext.ClContext
 
@@ -63,7 +63,7 @@ let makeTest isEqual reduce reduceOp (arrayAndKeys: (int * 'a) []) =
 let createTestSequential<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
 
     let reduce =
-        Reduce.ByKey.sequential reduceOpQ context Utils.defaultWorkGroupSize
+        Common.Reduce.ByKey.sequential reduceOpQ context Utils.defaultWorkGroupSize
 
     makeTest isEqual reduce reduceOp
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
@@ -97,7 +97,7 @@ let sequentialTest =
 
 let createTestOneWorkGroup<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
     let reduce =
-        Reduce.ByKey.oneWorkGroupSegments reduceOpQ context Utils.defaultWorkGroupSize
+        Common.Reduce.ByKey.oneWorkGroupSegments reduceOpQ context Utils.defaultWorkGroupSize
 
     makeTest isEqual reduce reduceOp
     |> testPropertyWithConfig
@@ -166,7 +166,7 @@ let makeTestSequentialSegments isEqual reduce reduceOp (valuesAndKeys: (int * 'a
 
 let createTestSequentialSegments<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
     let reduce =
-        Reduce.ByKey.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
+        Common.Reduce.ByKey.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
 
     makeTestSequentialSegments isEqual reduce reduceOp
     |> testPropertyWithConfig { config with startSize = 1000 } $"test on {typeof<'a>}"
@@ -252,7 +252,7 @@ let makeTest2D isEqual reduce reduceOp (array: (int * int * 'a) []) =
 let createTestSequential2D<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
 
     let reduce =
-        Reduce.ByKey2D.sequential reduceOpQ context Utils.defaultWorkGroupSize
+        Common.Reduce.ByKey2D.sequential reduceOpQ context Utils.defaultWorkGroupSize
 
     makeTest2D isEqual reduce reduceOp
     |> testPropertyWithConfig
@@ -331,7 +331,7 @@ let makeTestSequentialSegments2D isEqual reduce reduceOp (array: (int * int * 'a
 
 let createTestSequentialSegments2D<'a> (isEqual: 'a -> 'a -> bool) reduceOp reduceOpQ =
     let reduce =
-        Reduce.ByKey2D.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
+        Common.Reduce.ByKey2D.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
 
     makeTestSequentialSegments2D isEqual reduce reduceOp
     |> testPropertyWithConfig
@@ -430,7 +430,7 @@ let testOption<'a> isEqual reduceOp testFun (array: (int * 'a) []) =
         |> checkResultOption isEqual keys values reduceOp
 
 let createTestOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
-    Reduce.ByKey.Option.segmentSequentialByOffsets reduceOpQ context Utils.defaultWorkGroupSize
+    Common.Reduce.ByKey.Option.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
     |> testOption<'a> isEqual reduceOp
     |> testPropertyWithConfig
         { config with
@@ -518,7 +518,7 @@ let test2DOption<'a> isEqual reduceOp reduce (array: (int * int * 'a) []) =
         |> checkResult2DOption isEqual firstKeys secondKeys values reduceOp
 
 let createTest2DOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
-    Reduce.ByKey2D.Option.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
+    Common.Reduce.ByKey2D.Option.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
     |> test2DOption<'a> isEqual reduceOp
     |> testPropertyWithConfig
         { config with

@@ -4,6 +4,8 @@ namespace System
 open System.Reflection
 open System.Runtime.CompilerServices
 
+[<assembly: AutoOpen("GraphBLAS.FSharp.Common")>]
+[<assembly: AutoOpen("GraphBLAS.FSharp.Objects")>]
 [<assembly: InternalsVisibleTo("GraphBLAS-sharp.Tests")>]
 [<assembly: AssemblyTitleAttribute("GraphBLAS-sharp")>]
 [<assembly: AssemblyProductAttribute("GraphBLAS-sharp")>]

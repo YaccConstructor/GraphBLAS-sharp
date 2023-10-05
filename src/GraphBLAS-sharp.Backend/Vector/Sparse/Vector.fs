@@ -3,11 +3,10 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open Microsoft.FSharp.Control
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Vector.Sparse
 
 module Vector =
     let copy (clContext: ClContext) workGroupSize =
@@ -20,6 +19,8 @@ module Vector =
               Indices = copy processor allocationMode vector.Indices
               Values = copyData processor allocationMode vector.Values
               Size = vector.Size }
+
+    let map = Map.run
 
     let mapWithValue = Map.WithValueOption.run
 
@@ -70,6 +71,6 @@ module Vector =
     let reduce<'a when 'a: struct> (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let reduce =
-            Reduce.reduce opAdd clContext workGroupSize
+            Common.Reduce.reduce opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values

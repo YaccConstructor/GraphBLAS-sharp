@@ -1,18 +1,16 @@
 namespace GraphBLAS.FSharp.Backend.Algorithms
 
-open GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Backend.Vector.Dense
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module BFS =
+module internal BFS =
     let singleSource
         (add: Expr<int option -> int option -> int option>)
         (mul: Expr<'a option -> int option -> int option>)
@@ -21,7 +19,7 @@ module BFS =
         =
 
         let spMVTo =
-            SpMV.runTo add mul clContext workGroupSize
+            Operations.SpMVInplace add mul clContext workGroupSize
 
         let zeroCreate =
             ClArray.zeroCreate clContext workGroupSize
@@ -37,7 +35,7 @@ module BFS =
         let containsNonZero =
             ClArray.exists Predicates.isSome clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels = zeroCreate queue HostInterop vertexCount
@@ -58,7 +56,7 @@ module BFS =
                     fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
 
                     //Getting new frontier
-                    spMVTo queue matrix front front
+                    spMVTo queue matrix frontier frontier
 
                     maskComplementedTo queue front levels front
 

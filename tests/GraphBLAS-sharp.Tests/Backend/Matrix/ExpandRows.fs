@@ -1,13 +1,13 @@
 module GraphBLAS.FSharp.Tests.Backend.Matrix.ExpandRows
 
 open Expecto
+open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let context = Context.defaultContext.ClContext
 

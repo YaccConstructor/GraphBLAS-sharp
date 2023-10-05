@@ -5,14 +5,14 @@ open FSharp.Quotations
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClCell
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module internal Map =
-    let preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
+    let private preparePositions<'a, 'b> op (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount (values: ClArray<'a>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -83,13 +83,13 @@ module internal Map =
             resultBitmap, resultValues, resultRows, resultColumns
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (opAdd: Expr<'a option -> 'b option>)
+        (op: Expr<'a option -> 'b option>)
         (clContext: ClContext)
         workGroupSize
         =
 
         let map =
-            preparePositions opAdd clContext workGroupSize
+            preparePositions op clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'b> clContext workGroupSize
@@ -115,7 +115,7 @@ module internal Map =
               Values = resultValues }
 
     module WithValue =
-        let preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
+        let private preparePositions<'a, 'b, 'c when 'b: struct> (clContext: ClContext) workGroupSize op =
 
             let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
                 <@ fun (ndRange: Range1D) (operand: ClCell<'a option>) rowCount columnCount (values: ClArray<'b>) (rowPointers: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->

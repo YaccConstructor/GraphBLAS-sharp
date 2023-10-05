@@ -43,7 +43,6 @@
         <Compile Include="Backend/Common/Scatter.fs" />
         <Compile Include="Backend/Common/Sort/Bitonic.fs" />
         <Compile Include="Backend/Common/Sort/Radix.fs" />
-        <Compile Include="Backend/Common/Merge.fs" />
         <Compile Include="Backend/Matrix/ByRows.fs" />
         <Compile Include="Backend/Matrix/Convert.fs" />
         <Compile Include="Backend/Matrix/Map.fs" />
@@ -66,6 +65,7 @@
         <Compile Include="Backend/Vector/ZeroCreate.fs" />
         <Compile Include="Backend/Vector/Merge.fs" />
         <Compile Include="Backend/Vector/SpMSpV.fs" />
+        <Compile Include="Backend/Vector/Map.fs" />
         <Compile Include="Host/Matrix/FromArray2D.fs" />
         <Compile Include="Host/Matrix/Convert.fs" />
         <Compile Include="Host/IO/MtxReader.fs" />

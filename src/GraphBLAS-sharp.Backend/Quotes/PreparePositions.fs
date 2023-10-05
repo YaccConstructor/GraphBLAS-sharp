@@ -2,7 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Quotes
 
 open Brahma.FSharp
 
-module PreparePositions =
+module internal PreparePositions =
     let both<'c> =
         <@ fun index (result: 'c option) (rawPositionsBuffer: ClArray<int>) (allValuesBuffer: ClArray<'c>) ->
             rawPositionsBuffer.[index] <- 0

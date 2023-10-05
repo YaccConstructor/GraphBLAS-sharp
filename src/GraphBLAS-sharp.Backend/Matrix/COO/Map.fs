@@ -5,13 +5,13 @@ open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module internal Map =
-    let preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =
+    let private preparePositions<'a, 'b> opAdd (clContext: ClContext) workGroupSize =
 
         let preparePositions (op: Expr<'a option -> 'b option>) =
             <@ fun (ndRange: Range1D) rowCount columnCount valuesLength (values: ClArray<'a>) (rows: ClArray<int>) (columns: ClArray<int>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'b>) (resultRows: ClArray<int>) (resultColumns: ClArray<int>) ->
@@ -84,13 +84,13 @@ module internal Map =
             resultBitmap, resultValues, resultRows, resultColumns
 
     let run<'a, 'b when 'a: struct and 'b: struct and 'b: equality>
-        (opAdd: Expr<'a option -> 'b option>)
+        (op: Expr<'a option -> 'b option>)
         (clContext: ClContext)
         workGroupSize
         =
 
         let map =
-            preparePositions opAdd clContext workGroupSize
+            preparePositions op clContext workGroupSize
 
         let setPositions =
             Common.setPositions<'b> clContext workGroupSize

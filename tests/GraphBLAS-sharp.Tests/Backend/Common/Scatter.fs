@@ -3,11 +3,11 @@ module GraphBLAS.FSharp.Tests.Backend.Common.Scatter
 open Expecto
 open Expecto.Logging
 open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let logger = Log.create "Scatter.Tests"
 
@@ -41,12 +41,12 @@ let makeTest<'a when 'a: equality> hostScatter scatter (array: (int * 'a) []) (r
         |> Utils.compareArrays (=) actual expected
 
 let testFixturesLast<'a when 'a: equality> =
-    Scatter.lastOccurrence context wgSize
+    Common.Scatter.lastOccurrence context wgSize
     |> makeTest<'a> HostPrimitives.scatterLastOccurrence
     |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
 let testFixturesFirst<'a when 'a: equality> =
-    Scatter.firstOccurrence context wgSize
+    Common.Scatter.firstOccurrence context wgSize
     |> makeTest<'a> HostPrimitives.scatterFirstOccurrence
     |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 
@@ -100,13 +100,13 @@ let initTests =
     let inc = ((+) 1)
 
     let firstOccurrence =
-        [ createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "id" id Map.id
-          createInitTest Scatter.initFirsOccurrence HostPrimitives.scatterFirstOccurrence "inc" inc Map.inc ]
+        [ createInitTest Common.Scatter.initFirstOccurrence HostPrimitives.scatterFirstOccurrence "id" id Map.id
+          createInitTest Common.Scatter.initFirstOccurrence HostPrimitives.scatterFirstOccurrence "inc" inc Map.inc ]
         |> testList "first occurrence"
 
     let lastOccurrence =
-        [ createInitTest Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "id" id Map.id
-          createInitTest Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "inc" inc Map.inc ]
+        [ createInitTest Common.Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "id" id Map.id
+          createInitTest Common.Scatter.initLastOccurrence HostPrimitives.scatterLastOccurrence "inc" inc Map.inc ]
         |> testList "last occurrence"
 
     testList "init" [ firstOccurrence; lastOccurrence ]

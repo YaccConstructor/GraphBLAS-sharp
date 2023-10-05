@@ -1,12 +1,12 @@
-namespace GraphBLAS.FSharp.Backend.Vector
+namespace GraphBLAS.FSharp.Backend.Operations
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
-module SpMV =
+module internal SpMV =
     let runTo
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)

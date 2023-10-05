@@ -4,15 +4,14 @@ open Expecto
 open Expecto.Logging
 open Expecto.Logging.Message
 open Microsoft.FSharp.Collections
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Tests.TestCases
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let logger = Log.create "Map.Tests"
@@ -98,7 +97,8 @@ let createTestMap case (zero: 'a) (constant: 'a) binOp isEqual opQ =
     let unaryOp = binOp constant
     let unaryOpQ = opQ zero constant
 
-    let map = Matrix.map unaryOpQ context wgSize
+    let map =
+        Operations.Matrix.map unaryOpQ context wgSize
 
     let toCOO = Matrix.toCOO context wgSize
 

@@ -1,16 +1,14 @@
 module GraphBLAS.FSharp.Benchmarks.Matrix.SpGeMM.Expand
 
 open System.IO
-open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.IO
 open BenchmarkDotNet.Attributes
 open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.IO
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Benchmarks
-open GraphBLAS.FSharp.Backend
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -134,7 +132,7 @@ module WithoutTransfer =
     type Float32() =
 
         inherit Benchmark<float32>(
-            Matrix.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
+            Operations.SpGeMM.expand (fst ArithmeticOperations.float32Add) (fst ArithmeticOperations.float32Mul),
             float32,
             (fun _ -> Utils.nextSingle (System.Random())),
             (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context)

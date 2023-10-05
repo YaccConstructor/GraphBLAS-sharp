@@ -1,7 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Quotes
 
 open FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 module Convert =
     let atLeastOneToOption op =
