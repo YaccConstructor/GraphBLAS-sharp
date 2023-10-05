@@ -96,7 +96,7 @@ let algorithmsTests =
     |> testSequenced
 
 let deviceTests =
-    testList "Device" [ matrixTests; commonTests ]
+    testList "Device" [ matrixTests; commonTests; vectorTests; algorithmsTests ]
     |> testSequenced
 
 let hostTests =
