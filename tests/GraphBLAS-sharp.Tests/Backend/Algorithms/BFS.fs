@@ -64,40 +64,35 @@ let testFixtures (testContext: TestContext) =
               let matrix = matrixHost.ToDevice context
               let matrixBool = matrixHostBool.ToDevice context
 
-              match matrix, matrixBool with
-              | ClMatrix.CSR mtx, ClMatrix.CSR mtxBool ->
-                  let res = bfs queue mtx source |> ClVector.Dense
+              let res = bfs queue matrix source
 
-                  let resSparse =
-                      bfsSparse queue mtxBool source |> ClVector.Dense
+              let resSparse = bfsSparse queue matrixBool source
 
-                  let resPushPull =
-                      bfsPushPull queue mtxBool source |> ClVector.Dense
+              let resPushPull = bfsPushPull queue matrixBool source
 
-                  let resHost = res.ToHost queue
-                  let resHostSparse = resSparse.ToHost queue
-                  let resHostPushPull = resPushPull.ToHost queue
+              let resHost = res.ToHost queue
+              let resHostSparse = resSparse.ToHost queue
+              let resHostPushPull = resPushPull.ToHost queue
 
-                  (mtx :> IDeviceMemObject).Dispose queue
-                  (mtxBool :> IDeviceMemObject).Dispose queue
-                  res.Dispose queue
-                  resSparse.Dispose queue
-                  resPushPull.Dispose queue
+              matrix.Dispose queue
+              matrixBool.Dispose queue
+              res.Dispose queue
+              resSparse.Dispose queue
+              resPushPull.Dispose queue
 
-                  match resHost, resHostSparse, resHostPushPull with
-                  | Vector.Dense resHost, Vector.Dense resHostSparse, Vector.Dense resHostPushPull ->
-                      let actual = resHost |> Utils.unwrapOptionArray 0
+              match resHost, resHostSparse, resHostPushPull with
+              | Vector.Dense resHost, Vector.Dense resHostSparse, Vector.Dense resHostPushPull ->
+                  let actual = resHost |> Utils.unwrapOptionArray 0
 
-                      let actualSparse =
-                          resHostSparse |> Utils.unwrapOptionArray 0
+                  let actualSparse =
+                      resHostSparse |> Utils.unwrapOptionArray 0
 
-                      let actualPushPull =
-                          resHostPushPull |> Utils.unwrapOptionArray 0
+                  let actualPushPull =
+                      resHostPushPull |> Utils.unwrapOptionArray 0
 
-                      Expect.sequenceEqual actual expected "Dense bfs is not as expected"
-                      Expect.sequenceEqual actualSparse expected "Sparse bfs is not as expected"
-                      Expect.sequenceEqual actualPushPull expected "Push-pull bfs is not as expected"
-                  | _ -> failwith "Not implemented"
+                  Expect.sequenceEqual actual expected "Dense bfs is not as expected"
+                  Expect.sequenceEqual actualSparse expected "Sparse bfs is not as expected"
+                  Expect.sequenceEqual actualPushPull expected "Push-pull bfs is not as expected"
               | _ -> failwith "Not implemented" ]
 
 let tests =

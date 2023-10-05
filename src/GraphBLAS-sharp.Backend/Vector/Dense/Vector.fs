@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Vector.Dense
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -15,7 +16,7 @@ module Vector =
         workGroupSize
         =
 
-        let map = ClArray.map op clContext workGroupSize
+        let map = Map.map op clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) ->
 

@@ -44,6 +44,20 @@ module Common =
             let runByKeysStandard = Sort.Radix.runByKeysStandard
 
             /// <summary>
+            /// Sorts stable input array of values by given integer keys and return only values.
+            /// </summary>
+            /// <example>
+            /// <code>
+            /// let keys = [| 0; 4; 3; 1; 2; 6; 5 |]
+            /// let values = [| 1.9; 2.8; 3.7; 4.6; 5.5; 6.4; 7.3; |]
+            /// runByKeysStandard clContext 32 processor keys values
+            /// ...
+            /// > val values = [| 1.9; 4.6; 5.5; 3.7; 2.8; 7.3; 6.4 |]
+            /// </code>
+            /// </example>
+            let runByKeysStandardValuesOnly = Sort.Radix.runByKeysStandardValuesOnly
+
+            /// <summary>
             /// Sorts stable input array of integer keys.
             /// </summary>
             /// <example>
@@ -371,8 +385,27 @@ module Common =
                 /// <remarks>
                 /// The length of the result must be calculated in advance.
                 /// </remarks>
-                let segmentSequential<'a> (reduceOp: Expr<'a -> 'a -> 'a option>) (clContext: ClContext) workGroupSize =
+                let segmentSequential<'a>
+                    (reduceOp: Expr<'a option -> 'a option -> 'a option>)
+                    (clContext: ClContext)
+                    workGroupSize
+                    =
                     Reduce.ByKey.Option.segmentSequential reduceOp clContext workGroupSize
+                /// <summary>
+                /// Reduces values by key. Each segment is reduced by one work item.
+                /// </summary>
+                /// <param name="clContext">ClContext.</param>
+                /// <param name="workGroupSize">Work group size.</param>
+                /// <param name="reduceOp">Operation for reducing values.</param>
+                /// <remarks>
+                /// The length of the result and offsets for each segment must be calculated in advance.
+                /// </remarks>
+                let segmentSequentialByOffsets<'a>
+                    (reduceOp: Expr<'a -> 'a -> 'a option>)
+                    (clContext: ClContext)
+                    workGroupSize
+                    =
+                    Reduce.ByKey.Option.segmentSequentialByOffsets reduceOp clContext workGroupSize
 
         module ByKey2D =
             /// <summary>

@@ -4,9 +4,11 @@ open Brahma.FSharp
 open FSharp.Quotations
 open Microsoft.FSharp.Control
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
+open Microsoft.FSharp.Core
 
 module internal Map2 =
     let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
@@ -78,7 +80,7 @@ module internal Map2 =
             preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
         let setPositions =
-            Common.setPositions clContext workGroupSize
+            Common.setPositionsOption clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -91,17 +93,20 @@ module internal Map2 =
                     rightVector.Values
                     rightVector.Indices
 
-            let resultValues, resultIndices =
+            let result =
                 setPositions processor allocationMode allValues allIndices bitmap
+                |> Option.map
+                    (fun (resultValues, resultIndices) ->
+                        { Context = clContext
+                          Values = resultValues
+                          Indices = resultIndices
+                          Size = leftVector.Size })
 
-            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-            processor.Post(Msg.CreateFreeMsg<_>(allValues))
-            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+            allIndices.Free processor
+            allValues.Free processor
+            bitmap.Free processor
 
-            { Context = clContext
-              Values = resultValues
-              Indices = resultIndices
-              Size = max leftVector.Size rightVector.Size }
+            result
 
     let private preparePositionsSparseDense<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
 
@@ -163,6 +168,7 @@ module internal Map2 =
 
             resultBitmap, resultValues, resultIndices
 
+    //TODO: unify with sparseXsparse
     let runSparseDense<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
         op
         (clContext: ClContext)
@@ -372,7 +378,7 @@ module internal Map2 =
                 preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
             let setPositions =
-                Common.setPositions clContext workGroupSize
+                Common.setPositionsOption clContext workGroupSize
 
             fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -385,14 +391,17 @@ module internal Map2 =
                 processor.Post(Msg.CreateFreeMsg<_>(rightValues))
                 processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
-                let resultValues, resultIndices =
+                let result =
                     setPositions processor allocationMode allValues allIndices positions
+                    |> Option.map
+                        (fun (resultValues, resultIndices) ->
+                            { Context = clContext
+                              Values = resultValues
+                              Indices = resultIndices
+                              Size = max leftVector.Size rightVector.Size })
 
                 processor.Post(Msg.CreateFreeMsg<_>(allIndices))
                 processor.Post(Msg.CreateFreeMsg<_>(allValues))
                 processor.Post(Msg.CreateFreeMsg<_>(positions))
 
-                { Context = clContext
-                  Values = resultValues
-                  Indices = resultIndices
-                  Size = max leftVector.Size rightVector.Size }
+                result

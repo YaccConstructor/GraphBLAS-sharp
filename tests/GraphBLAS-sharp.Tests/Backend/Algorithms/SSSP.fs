@@ -8,9 +8,8 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.Algorithms
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.CreateGraph
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
@@ -46,22 +45,19 @@ let testFixtures (testContext: TestContext) =
 
               let matrix = matrixHost.ToDevice context
 
-              match matrix with
-              | ClMatrix.CSR mtx ->
-                  let resDense =
-                      ssspDense queue mtx source |> ClVector.Dense
+              let resDense =
+                  ssspDense queue matrix source |> ClVector.Dense
 
-                  let resHost = resDense.ToHost queue
+              let resHost = resDense.ToHost queue
 
-                  (mtx :> IDeviceMemObject).Dispose queue
-                  resDense.Dispose queue
+              matrix.Dispose queue
+              resDense.Dispose queue
 
-                  match resHost with
-                  | Vector.Dense resHost ->
-                      let actual = resHost
+              match resHost with
+              | Vector.Dense resHost ->
+                  let actual = resHost
 
-                      Expect.sequenceEqual actual expected "Sequences must be equal"
-                  | _ -> failwith "Not implemented"
+                  Expect.sequenceEqual actual expected "Sequences must be equal"
               | _ -> failwith "Not implemented" ]
 
 let tests =

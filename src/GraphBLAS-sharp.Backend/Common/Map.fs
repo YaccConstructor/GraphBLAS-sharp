@@ -2,11 +2,16 @@
 
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module Map =
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to each of the elements of the array.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
@@ -35,6 +40,14 @@ module Map =
 
             result
 
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding pairs of values, where the first element of pair is from the given array
+    /// and the second element is the given value.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
 
         let map =
@@ -67,6 +80,16 @@ module Map =
 
             result
 
+    /// <summary>
+    /// Fills the third given array with the results of applying the given function
+    /// to the corresponding elements of the first two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The first two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
 
         let kernel =
@@ -94,6 +117,16 @@ module Map =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding elements of the two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2<'a, 'b, 'c> map (clContext: ClContext) workGroupSize =
         let map2 =
             map2InPlace<'a, 'b, 'c> map clContext workGroupSize

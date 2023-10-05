@@ -5,9 +5,8 @@ open FSharp.Quotations
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Vector.Dense
-open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal BFS =
@@ -18,57 +17,54 @@ module internal BFS =
         workGroupSize
         =
 
-        let spMVTo =
-            Operations.SpMVInplace add mul clContext workGroupSize
+        let spMVInPlace =
+            Operations.SpMVInPlace add mul clContext workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            Vector.zeroCreate clContext workGroupSize
 
         let ofList = Vector.ofList clContext workGroupSize
 
-        let maskComplementedTo =
+        let maskComplementedInPlace =
             Vector.map2InPlace Mask.complementedOp clContext workGroupSize
 
         let fillSubVectorTo =
-            Vector.assignByMaskInPlace (Convert.assignToOption Mask.assign) clContext workGroupSize
+            Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
 
         let containsNonZero =
-            ClArray.exists Predicates.isSome clContext workGroupSize
+            Vector.exists Predicates.isSome clContext workGroupSize
 
         fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue HostInterop vertexCount
+            let levels =
+                zeroCreate queue DeviceOnly vertexCount Dense
 
-            let frontier =
+            let front =
                 ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
 
-            match frontier with
-            | ClVector.Dense front ->
+            let mutable level = 0
+            let mutable stop = false
 
-                let mutable level = 0
-                let mutable stop = false
+            while not stop do
+                level <- level + 1
 
-                while not stop do
-                    level <- level + 1
+                //Assigning new level values
+                fillSubVectorTo queue levels front (clContext.CreateClCell level)
 
-                    //Assigning new level values
-                    fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
+                //Getting new frontier
+                spMVInPlace queue matrix front front
 
-                    //Getting new frontier
-                    spMVTo queue matrix frontier frontier
+                maskComplementedInPlace queue front levels
 
-                    maskComplementedTo queue front levels front
+                //Checking if front is empty
+                stop <-
+                    not
+                    <| (containsNonZero queue front).ToHostAndFree queue
 
-                    //Checking if front is empty
-                    stop <-
-                        not
-                        <| (containsNonZero queue front).ToHostAndFree queue
+            front.Dispose queue
 
-                front.Free queue
-
-                levels
-            | _ -> failwith "Not implemented"
+            levels
 
     let singleSourceSparse
         (add: Expr<bool option -> bool option -> bool option>)
@@ -78,55 +74,52 @@ module internal BFS =
         =
 
         let spMSpV =
-            SpMSpV.run add mul clContext workGroupSize
+            Operations.SpMSpVBool add mul clContext workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            Vector.zeroCreate clContext workGroupSize
 
         let ofList = Vector.ofList clContext workGroupSize
 
         let maskComplemented =
-            Vector.Sparse.Vector.map2SparseDense Mask.complementedOp clContext workGroupSize
+            Vector.map2Sparse Mask.complementedOp clContext workGroupSize
 
         let fillSubVectorTo =
-            Vector.assignBySparseMaskInPlace (Convert.assignToOption Mask.assign) clContext workGroupSize
+            Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<bool>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue HostInterop vertexCount
+            let levels =
+                zeroCreate queue DeviceOnly vertexCount Dense
 
-            let mutable frontier =
+            let mutable front =
                 ofList queue DeviceOnly Sparse vertexCount [ source, true ]
 
             let mutable level = 0
             let mutable stop = false
 
             while not stop do
-                match frontier with
-                | ClVector.Sparse front ->
-                    level <- level + 1
+                level <- level + 1
 
-                    //Assigning new level values
-                    fillSubVectorTo queue levels front (clContext.CreateClCell level) levels
+                //Assigning new level values
+                fillSubVectorTo queue levels front (clContext.CreateClCell level)
 
-                    //Getting new frontier
-                    match spMSpV queue matrix front with
+                //Getting new frontier
+                match spMSpV queue matrix front with
+                | None ->
+                    front.Dispose queue
+                    stop <- true
+                | Some newFrontier ->
+                    front.Dispose queue
+                    //Filtering visited vertices
+                    match maskComplemented queue DeviceOnly newFrontier levels with
                     | None ->
-                        frontier.Dispose queue
                         stop <- true
-                    | Some newFrontier ->
-                        frontier.Dispose queue
-                        //Filtering visited vertices
-                        match maskComplemented queue DeviceOnly newFrontier levels with
-                        | None ->
-                            stop <- true
-                            newFrontier.Dispose queue
-                        | Some f ->
-                            frontier <- ClVector.Sparse f
-                            newFrontier.Dispose queue
-
-                | _ -> failwith "Not implemented"
+                        newFrontier.Dispose queue
+                    | Some f ->
+                        front <- f
+                        newFrontier.Dispose queue
 
             levels
 
@@ -138,33 +131,25 @@ module internal BFS =
         workGroupSize
         =
 
-        let SPARSITY = 0.001f
-
-        let push nnz size =
-            (float32 nnz) / (float32 size) <= SPARSITY
-
-        let spMVTo =
-            SpMV.runTo add mul clContext workGroupSize
+        let spMVInPlace =
+            Operations.SpMVInPlace add mul clContext workGroupSize
 
         let spMSpV =
-            SpMSpV.runBoolStandard add mul clContext workGroupSize
+            Operations.SpMSpVBool add mul clContext workGroupSize
 
         let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+            Vector.zeroCreate clContext workGroupSize
 
         let ofList = Vector.ofList clContext workGroupSize
 
-        let maskComplementedTo =
+        let maskComplementedInPlace =
             Vector.map2InPlace Mask.complementedOp clContext workGroupSize
 
         let maskComplemented =
-            Vector.Sparse.Vector.map2SparseDense Mask.complementedOp clContext workGroupSize
+            Vector.map2Sparse Mask.complementedOp clContext workGroupSize
 
-        let fillSubVectorDenseTo =
-            Vector.assignByMaskInPlace (Convert.assignToOption Mask.assign) clContext workGroupSize
-
-        let fillSubVectorSparseTo =
-            Vector.assignBySparseMaskInPlace (Convert.assignToOption Mask.assign) clContext workGroupSize
+        let fillSubVectorInPlace =
+            Vector.assignByMaskInPlace (Mask.assign) clContext workGroupSize
 
         let toSparse = Vector.toSparse clContext workGroupSize
 
@@ -173,10 +158,22 @@ module internal BFS =
         let countNNZ =
             ClArray.count Predicates.isSome clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<bool>) (source: int) ->
+        //Push or pull functions
+        let getNNZ (queue: MailboxProcessor<Msg>) (v: ClVector<bool>) =
+            match v with
+            | ClVector.Sparse v -> v.NNZ
+            | ClVector.Dense v -> countNNZ queue v
+
+        let SPARSITY = 0.001f
+
+        let push nnz size =
+            (float32 nnz) / (float32 size) <= SPARSITY
+
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
-            let levels = zeroCreate queue HostInterop vertexCount
+            let levels =
+                zeroCreate queue DeviceOnly vertexCount Dense
 
             let mutable frontier =
                 ofList queue DeviceOnly Sparse vertexCount [ source, true ]
@@ -187,13 +184,13 @@ module internal BFS =
             while not stop do
                 level <- level + 1
 
-                match frontier with
-                | ClVector.Sparse front ->
-                    //Assigning new level values
-                    fillSubVectorSparseTo queue levels front (clContext.CreateClCell level) levels
+                //Assigning new level values
+                fillSubVectorInPlace queue levels frontier (clContext.CreateClCell level)
 
+                match frontier with
+                | ClVector.Sparse _ ->
                     //Getting new frontier
-                    match spMSpV queue matrix front with
+                    match spMSpV queue matrix frontier with
                     | None ->
                         frontier.Dispose queue
                         stop <- true
@@ -204,34 +201,33 @@ module internal BFS =
                         | None ->
                             stop <- true
                             newFrontier.Dispose queue
-                        | Some f ->
+                        | Some newMaskedFrontier ->
                             newFrontier.Dispose queue
 
                             //Push/pull
-                            if (push f.NNZ f.Size) then
-                                frontier <- ClVector.Sparse f
+                            let NNZ = getNNZ queue newMaskedFrontier
+
+                            if (push NNZ newMaskedFrontier.Size) then
+                                frontier <- newMaskedFrontier
                             else
-                                frontier <- toDense queue DeviceOnly (ClVector.Sparse f)
-                                f.Dispose queue
-                | ClVector.Dense front ->
-                    //Assigning new level values
-                    fillSubVectorDenseTo queue levels front (clContext.CreateClCell level) levels
-
+                                frontier <- toDense queue DeviceOnly newMaskedFrontier
+                                newMaskedFrontier.Dispose queue
+                | ClVector.Dense oldFrontier ->
                     //Getting new frontier
-                    spMVTo queue matrix front front
+                    spMVInPlace queue matrix frontier frontier
 
-                    maskComplementedTo queue front levels front
+                    maskComplementedInPlace queue frontier levels
 
                     //Emptiness check
-                    let NNZ = countNNZ queue front
+                    let NNZ = getNNZ queue frontier
 
                     stop <- NNZ = 0
 
                     //Push/pull
                     if not stop then
-                        if (push NNZ front.Length) then
-                            frontier <- ClVector.Sparse(toSparse queue DeviceOnly front)
-                            front.Free queue
+                        if (push NNZ frontier.Size) then
+                            frontier <- toSparse queue DeviceOnly frontier
+                            oldFrontier.Free queue
                     else
                         frontier.Dispose queue
 

@@ -27,7 +27,7 @@ type Benchmarks<'elem when 'elem : struct>(
     let mutable matrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
-    member val ResultLevels = Unchecked.defaultof<ClArray<'elem option>> with get,set
+    member val ResultLevels = Unchecked.defaultof<ClVector<'elem>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -71,7 +71,10 @@ type Benchmarks<'elem when 'elem : struct>(
     member this.ClearInputMatrix() =
         matrix.Dispose this.Processor
 
-    member this.ClearResult() = this.ResultLevels.FreeAndWait this.Processor
+    member this.ClearResult() =
+        match this.ResultLevels with
+        | ClVector.Dense result -> result.FreeAndWait this.Processor
+        | _ -> failwith "Impossible"
 
     member this.ReadMatrix() =
         let converter =
@@ -167,8 +170,11 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     override this.Benchmark() =
         this.LoadMatrixToGPU()
         this.BFS()
-        this.ResultLevels.ToHost this.Processor |> ignore
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        match this.ResultLevels with
+        | ClVector.Dense result ->
+            result.ToHost this.Processor |> ignore
+            this.Processor.PostAndReply Msg.MsgNotifyMe
+        | _ -> failwith "Impossible"
 
 type BFSWithTransferBenchmarkInt32() =
 

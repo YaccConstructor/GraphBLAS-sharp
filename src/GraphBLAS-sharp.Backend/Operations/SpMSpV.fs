@@ -1,15 +1,14 @@
-﻿namespace GraphBLAS.FSharp.Backend.Vector
+﻿namespace GraphBLAS.FSharp.Backend.Operations
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Common
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Vector.Sparse
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module SpMSpV =
 
@@ -280,9 +279,10 @@ module SpMSpV =
             Sort.Radix.standardRunKeysOnly clContext workGroupSize
 
         let removeDuplicates =
-            ClArray.removeDuplications clContext workGroupSize
+            GraphBLAS.FSharp.ClArray.removeDuplications clContext workGroupSize
 
-        let create = ClArray.create clContext workGroupSize
+        let create =
+            GraphBLAS.FSharp.ClArray.create clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.CSR<'a>) (vector: ClVector.Sparse<'b>) ->
 

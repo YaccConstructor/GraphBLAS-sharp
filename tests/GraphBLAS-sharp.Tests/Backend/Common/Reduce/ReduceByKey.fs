@@ -430,7 +430,7 @@ let testOption<'a> isEqual reduceOp testFun (array: (int * 'a) []) =
         |> checkResultOption isEqual keys values reduceOp
 
 let createTestOption (isEqual: 'a -> 'a -> bool) (reduceOpQ, reduceOp) =
-    Common.Reduce.ByKey.Option.segmentSequential reduceOpQ context Utils.defaultWorkGroupSize
+    Common.Reduce.ByKey.Option.segmentSequentialByOffsets reduceOpQ context Utils.defaultWorkGroupSize
     |> testOption<'a> isEqual reduceOp
     |> testPropertyWithConfig
         { config with

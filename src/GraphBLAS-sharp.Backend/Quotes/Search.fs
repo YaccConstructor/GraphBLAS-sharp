@@ -100,10 +100,10 @@ module Search =
         /// Find lower position of item in array.
         /// </summary>
         let lowerPosition<'a when 'a: equality and 'a: comparison> =
-            <@ fun lenght sourceItem (keys: ClArray<'a>) ->
+            <@ fun length sourceItem (keys: ClArray<'a>) ->
 
                 let mutable leftEdge = 0
-                let mutable rightEdge = lenght - 1
+                let mutable rightEdge = length - 1
                 let mutable resultPosition = None
 
                 while leftEdge <= rightEdge do
@@ -126,7 +126,7 @@ module Search =
         /// Find lower position of item in array.
         /// </summary>
         let lowerPositionLocal<'a when 'a: equality and 'a: comparison> =
-            <@ fun lenght sourceItem (keys: 'a []) ->
+            <@ fun length sourceItem (keys: 'a []) ->
 
                 let mutable leftEdge = 0
                 let mutable rightEdge = length - 1

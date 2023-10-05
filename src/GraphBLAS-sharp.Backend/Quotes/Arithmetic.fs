@@ -36,9 +36,9 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericSumAsMul zero =
-            let mutable res = zero
+    let inline private mkNumericSumAsMul zero =
         <@ fun (x: 't option) (y: 't option) ->
+            let mutable res = zero
 
             match x, y with
             | Some f, Some s -> res <- f + s
@@ -46,6 +46,7 @@ module ArithmeticOperations =
 
 
             if res = zero then None else Some res @>
+
     let inline private mkNumericMul zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero

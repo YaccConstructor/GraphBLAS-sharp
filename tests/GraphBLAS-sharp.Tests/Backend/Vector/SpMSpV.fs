@@ -1,19 +1,15 @@
 ﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMSpV
 
-open System
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 open Expecto
-open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
 
 let config = Utils.defaultConfig
 
@@ -63,7 +59,7 @@ let correctnessGenericTest
     some
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> ClMatrix.CSR<'a> -> ClVector.Sparse<'a> -> ClVector.Sparse<'a> option)
+    (spMV: MailboxProcessor<_> -> ClMatrix<'a> -> ClVector<'a> -> ClVector<'a> option)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -85,21 +81,18 @@ let correctnessGenericTest
             try
                 let m = mtx.ToDevice testContext.ClContext
 
-                match vtr, m with
-                | Vector.Sparse vtr, ClMatrix.CSR m ->
-                    let v = vtr.ToDevice testContext.ClContext
+                let v = vtr.ToDevice testContext.ClContext
 
-                    match spMV testContext.Queue m v with
-                    | Some res ->
-                        (ClMatrix.CSR m).Dispose q
-                        v.Dispose q
-                        let hostResIndices = res.Indices.ToHost q
-                        let hostResValues = res.Values.ToHost q
-                        res.Dispose q
+                match spMV testContext.Queue m v with
+                | Some (ClVector.Sparse res) ->
+                    m.Dispose q
+                    v.Dispose q
+                    let hostResIndices = res.Indices.ToHost q
+                    let hostResValues = res.Values.ToHost q
+                    res.Dispose q
 
-                        checkResult sumOp mulOp zero matrix vector hostResIndices hostResValues
-                    | None -> failwith "Result should not be empty while standard operations are tested"
-                | _ -> failwith "Impossible"
+                    checkResult sumOp mulOp zero matrix vector hostResIndices hostResValues
+                | _ -> failwith "Result should not be empty while standard operations are tested"
             with
             | ex when ex.Message = "InvalidBufferSize" -> ()
             | ex -> raise ex
@@ -124,7 +117,7 @@ let testFixturesSpMSpV (testContext: TestContext) =
       q.Error.Add(fun e -> failwithf "%A" e)
 
       createTest
-          SpMSpV.runBoolStandard
+          Operations.SpMSpVBool
           testContext
           false
           true
@@ -135,7 +128,7 @@ let testFixturesSpMSpV (testContext: TestContext) =
           ArithmeticOperations.boolMulOption
 
       createTest
-          SpMSpV.run
+          Operations.SpMSpV
           testContext
           0
           1
@@ -146,7 +139,7 @@ let testFixturesSpMSpV (testContext: TestContext) =
           ArithmeticOperations.intMulOption
 
       createTest
-          SpMSpV.run
+          Operations.SpMSpV
           testContext
           0.0f
           1f
@@ -158,7 +151,7 @@ let testFixturesSpMSpV (testContext: TestContext) =
 
       if Utils.isFloat64Available context.ClDevice then
           createTest
-              SpMSpV.run
+              Operations.SpMSpV
               testContext
               0.0
               1

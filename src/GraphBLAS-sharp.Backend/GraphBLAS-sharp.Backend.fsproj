@@ -37,7 +37,6 @@
     <Compile Include="Common/Bitmap.fs" />
     <Compile Include="Common/Sum.fs" />
     <Compile Include="Common/ClArray.fs" />
-    <Compile Include="Common/Merge.fs" />
     <Compile Include="Common/Sort/Radix.fs" />
     <Compile Include="Common/Sort/Bitonic.fs" />
       
@@ -50,7 +49,6 @@
     <Compile Include="Vector/Sparse/Map.fs" />
     <Compile Include="Vector/Sparse/Vector.fs" />
     <Compile Include="Vector/Vector.fs" />
-    <Compile Include="Vector/SpMSpV.fs" />
     <Compile Include="Matrix/Common.fs" />
     <Compile Include="Matrix/COO/Map.fs" />
     <Compile Include="Matrix/COO/Merge.fs" />
@@ -62,10 +60,10 @@
     <Compile Include="Matrix/CSR/Matrix.fs" />
     <Compile Include="Matrix/LIL/Matrix.fs" />
     <Compile Include="Matrix/Matrix.fs" />
-
-    <Compile Include="Operations/SpGeMM/Expand.fs" />
+    <Compile Include="Operations/SpGeMM/Expand.fs" />  
     <Compile Include="Operations/SpGeMM/Masked.fs" />
     <Compile Include="Operations/SpMV.fs" />
+    <Compile Include="Operations/SpMSpV.fs" />  
     <Compile Include="Operations/Kronecker.fs" />
     <Compile Include="Operations/Operations.fs" />
 
