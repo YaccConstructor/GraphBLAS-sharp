@@ -281,7 +281,9 @@ module internal Map2 =
         let setPositions =
             Common.setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: 'a) ->
+
+            let valueCell = clContext.CreateClCell(value)
 
             let bitmap, values, indices =
                 prepare
@@ -291,11 +293,12 @@ module internal Map2 =
                     leftVector.Indices
                     rightVector.Values
                     rightVector.Indices
-                    value
+                    valueCell
 
             let resultValues, resultIndices =
                 setPositions processor allocationMode values indices bitmap
 
+            processor.Post(Msg.CreateFreeMsg<_>(valueCell))
             processor.Post(Msg.CreateFreeMsg<_>(indices))
             processor.Post(Msg.CreateFreeMsg<_>(values))
             processor.Post(Msg.CreateFreeMsg<_>(bitmap))

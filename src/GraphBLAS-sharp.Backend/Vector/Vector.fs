@@ -158,7 +158,7 @@ module Vector =
         let denseFillVector =
             Dense.Vector.assignByMask op clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: 'a) ->
             match vector, mask with
             | ClVector.Sparse vector, ClVector.Sparse mask ->
                 ClVector.Sparse
@@ -198,7 +198,7 @@ module Vector =
         let assignBySparse =
             Dense.Vector.assignBySparseMaskInPlace op clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (mask: ClVector<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (mask: ClVector<'b>) (value: 'a) ->
             match vector, mask with
             | ClVector.Dense vector, ClVector.Dense mask -> assignByDense processor vector mask value vector
             | ClVector.Dense vector, ClVector.Sparse mask -> assignBySparse processor vector mask value vector

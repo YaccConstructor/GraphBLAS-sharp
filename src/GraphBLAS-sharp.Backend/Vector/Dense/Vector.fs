@@ -66,19 +66,23 @@ module Vector =
 
         let kernel = clContext.Compile(fillSubVectorKernel)
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) (resultVector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: 'a) (resultVector: ClArray<'a option>) ->
 
             let ndRange =
                 Range1D.CreateValid(leftVector.Length, workGroupSize)
 
             let kernel = kernel.GetKernel()
 
+            let valueCell = clContext.CreateClCell(value)
+
             processor.Post(
                 Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector maskVector value resultVector)
+                    (fun () -> kernel.KernelFunc ndRange leftVector.Length leftVector maskVector valueCell resultVector)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            valueCell.Free processor
 
     let assignByMask<'a, 'b when 'a: struct and 'b: struct>
         (maskOp: Expr<'a option -> 'b option -> 'a -> 'a option>)
@@ -89,7 +93,7 @@ module Vector =
         let assignByMask =
             assignByMaskInPlace maskOp clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClArray<'a option>) (maskVector: ClArray<'b option>) (value: 'a) ->
             let resultVector =
                 clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, leftVector.Length)
 
@@ -114,12 +118,14 @@ module Vector =
 
         let kernel = clContext.Compile(fillSubVectorKernel)
 
-        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: Sparse<'b>) (value: ClCell<'a>) (resultVector: ClArray<'a option>) ->
+        fun (processor: MailboxProcessor<_>) (leftVector: ClArray<'a option>) (maskVector: Sparse<'b>) (value: 'a) (resultVector: ClArray<'a option>) ->
 
             let ndRange =
                 Range1D.CreateValid(maskVector.NNZ, workGroupSize)
 
             let kernel = kernel.GetKernel()
+
+            let valueCell = clContext.CreateClCell(value)
 
             processor.Post(
                 Msg.MsgSetArguments
@@ -130,11 +136,13 @@ module Vector =
                             leftVector
                             maskVector.Indices
                             maskVector.Values
-                            value
+                            valueCell
                             resultVector)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            valueCell.Free processor
 
     let toSparse<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 

@@ -50,7 +50,7 @@ module internal BFS =
                 level <- level + 1
 
                 //Assigning new level values
-                fillSubVectorTo queue levels front (clContext.CreateClCell level)
+                fillSubVectorTo queue levels front level
 
                 //Getting new frontier
                 spMVInPlace queue matrix front front
@@ -103,7 +103,7 @@ module internal BFS =
                 level <- level + 1
 
                 //Assigning new level values
-                fillSubVectorTo queue levels front (clContext.CreateClCell level)
+                fillSubVectorTo queue levels front level
 
                 //Getting new frontier
                 match spMSpV queue matrix front with
@@ -185,7 +185,7 @@ module internal BFS =
                 level <- level + 1
 
                 //Assigning new level values
-                fillSubVectorInPlace queue levels frontier (clContext.CreateClCell level)
+                fillSubVectorInPlace queue levels frontier level
 
                 match frontier with
                 | ClVector.Sparse _ ->
