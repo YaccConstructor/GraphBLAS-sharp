@@ -38,14 +38,13 @@ module ArithmeticOperations =
 
     let inline private mkNumericSumAsMul zero =
         <@ fun (x: 't option) (y: 't option) ->
-            let mutable res = zero
+            let mutable res = None
 
             match x, y with
-            | Some f, Some s -> res <- f + s
+            | Some f, Some s -> res <- Some(f + s)
             | _ -> ()
 
-
-            if res = zero then None else Some res @>
+            res @>
 
     let inline private mkNumericMul zero =
         <@ fun (x: 't option) (y: 't option) ->
