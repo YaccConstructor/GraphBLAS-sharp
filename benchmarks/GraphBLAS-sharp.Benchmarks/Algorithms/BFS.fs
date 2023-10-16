@@ -12,8 +12,8 @@ open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
-[<IterationCount(100)>]
-[<WarmupCount(10)>]
+[<IterationCount(10)>]
+[<WarmupCount(3)>]
 [<Config(typeof<Configs.Matrix>)>]
 type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
@@ -131,6 +131,30 @@ type BFSWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
         (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        int32,
+        (fun _ -> Utils.nextInt (System.Random())),
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
+
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+
+type BFSPushPullWithoutTransferBenchmarkInt32() =
+
+    inherit WithoutTransferBenchmark<int>(
+        (Algorithms.BFS.singleSourcePushPull ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        int32,
+        (fun _ -> Utils.nextInt (System.Random())),
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
+
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+
+type SSSPWithoutTransferBenchmarkInt32() =
+
+    inherit WithoutTransferBenchmark<int>(
+        Algorithms.SSSP.singleSource,
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
