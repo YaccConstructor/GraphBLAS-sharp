@@ -131,7 +131,8 @@ module internal PageRank =
                       Columns = copy queue DeviceOnly matrix.Columns
                       Values = resultValues }
 
-                transposeInPlace queue DeviceOnly newMatrix |> ClMatrix.CSR
+                transposeInPlace queue DeviceOnly newMatrix
+                |> ClMatrix.CSR
             | _ -> failwith "Not implemented"
 
     let run (clContext: ClContext) workGroupSize =
@@ -163,12 +164,14 @@ module internal PageRank =
             let vertexCount = matrix.RowCount
 
             //None is 0
-            let mutable rank = create queue DeviceOnly vertexCount Dense None
+            let mutable rank =
+                create queue DeviceOnly vertexCount Dense None
 
             let mutable prevRank =
                 create queue DeviceOnly vertexCount Dense (Some(1.0f / (float32 vertexCount)))
 
-            let mutable errors = create queue DeviceOnly vertexCount Dense None
+            let mutable errors =
+                create queue DeviceOnly vertexCount Dense None
 
             let addition =
                 create queue DeviceOnly vertexCount Dense (Some((1.0f - alpha) / (float32 vertexCount)))
