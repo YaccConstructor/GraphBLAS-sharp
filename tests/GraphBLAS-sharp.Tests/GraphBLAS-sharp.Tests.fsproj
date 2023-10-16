@@ -19,6 +19,7 @@
         <Compile Include="Backend/QuickGraph/CreateGraph.fs" />
         <Compile Include="Backend/Algorithms/BFS.fs" />
         <Compile Include="Backend/Algorithms/SSSP.fs" />
+        <Compile Include="Backend/Algorithms/PageRank.fs" />
         <Compile Include="Backend/Common/ClArray/Blit.fs" />
         <Compile Include="Backend/Common/ClArray/Choose.fs" />
         <Compile Include="Backend/Common/ClArray/ChunkBySize.fs" />
