@@ -67,14 +67,14 @@ module internal BFS =
             levels
 
     let singleSourceSparse
-        (add: Expr<bool option -> bool option -> bool option>)
-        (mul: Expr<bool option -> bool option -> bool option>)
+        (add: Expr<int option -> int option -> int option>)
+        (mul: Expr<'a option -> int option -> int option>)
         (clContext: ClContext)
         workGroupSize
         =
 
         let spMSpV =
-            Operations.SpMSpVBool add mul clContext workGroupSize
+            Operations.SpMSpV add mul clContext workGroupSize
 
         let zeroCreate =
             Vector.zeroCreate clContext workGroupSize
@@ -87,14 +87,14 @@ module internal BFS =
         let fillSubVectorTo =
             Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let mutable front =
-                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
+                ofList queue DeviceOnly Sparse vertexCount [ source, 1 ]
 
             let mutable level = 0
             let mutable stop = false
@@ -125,8 +125,8 @@ module internal BFS =
 
 
     let singleSourcePushPull
-        (add: Expr<bool option -> bool option -> bool option>)
-        (mul: Expr<bool option -> bool option -> bool option>)
+        (add: Expr<int option -> int option -> int option>)
+        (mul: Expr<'a option -> int option -> int option>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -135,7 +135,7 @@ module internal BFS =
             Operations.SpMVInPlace add mul clContext workGroupSize
 
         let spMSpV =
-            Operations.SpMSpVBool add mul clContext workGroupSize
+            Operations.SpMSpV add mul clContext workGroupSize
 
         let zeroCreate =
             Vector.zeroCreate clContext workGroupSize
@@ -149,7 +149,7 @@ module internal BFS =
             Vector.map2Sparse Mask.complementedOp clContext workGroupSize
 
         let fillSubVectorInPlace =
-            Vector.assignByMaskInPlace (Mask.assign) clContext workGroupSize
+            Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
 
         let toSparse = Vector.toSparse clContext workGroupSize
 
@@ -159,7 +159,7 @@ module internal BFS =
             ClArray.count Predicates.isSome clContext workGroupSize
 
         //Push or pull functions
-        let getNNZ (queue: MailboxProcessor<Msg>) (v: ClVector<bool>) =
+        let getNNZ (queue: MailboxProcessor<Msg>) (v: ClVector<int>) =
             match v with
             | ClVector.Sparse v -> v.NNZ
             | ClVector.Dense v -> countNNZ queue v
@@ -169,14 +169,14 @@ module internal BFS =
         let push nnz size =
             (float32 nnz) / (float32 size) <= SPARSITY
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let mutable frontier =
-                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
+                ofList queue DeviceOnly Sparse vertexCount [ source, 1 ]
 
             let mutable level = 0
             let mutable stop = false

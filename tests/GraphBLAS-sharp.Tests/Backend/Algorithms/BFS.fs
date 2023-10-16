@@ -28,15 +28,15 @@ let testFixtures (testContext: TestContext) =
 
       let bfsSparse =
           Algorithms.BFS.singleSourceSparse
-              ArithmeticOperations.boolSumOption
-              ArithmeticOperations.boolMulOption
+              ArithmeticOperations.intSumOption
+              ArithmeticOperations.intMulOption
               context
               workGroupSize
 
       let bfsPushPull =
           Algorithms.BFS.singleSourcePushPull
-              ArithmeticOperations.boolSumOption
-              ArithmeticOperations.boolMulOption
+              ArithmeticOperations.intSumOption
+              ArithmeticOperations.intMulOption
               context
               workGroupSize
 
@@ -58,24 +58,19 @@ let testFixtures (testContext: TestContext) =
               let matrixHost =
                   Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
-              let matrixHostBool =
-                  Utils.createMatrixFromArray2D CSR (Array2D.map (fun x -> x <> 0) matrix) ((=) false)
-
               let matrix = matrixHost.ToDevice context
-              let matrixBool = matrixHostBool.ToDevice context
 
               let res = bfs queue matrix source
 
-              let resSparse = bfsSparse queue matrixBool source
+              let resSparse = bfsSparse queue matrix source
 
-              let resPushPull = bfsPushPull queue matrixBool source
+              let resPushPull = bfsPushPull queue matrix source
 
               let resHost = res.ToHost queue
               let resHostSparse = resSparse.ToHost queue
               let resHostPushPull = resPushPull.ToHost queue
 
               matrix.Dispose queue
-              matrixBool.Dispose queue
               res.Dispose queue
               resSparse.Dispose queue
               resPushPull.Dispose queue
