@@ -1,8 +1,8 @@
-namespace GraphBLAS.FSharp.Backend.Objects
+namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
 
-module ClContext =
+module ClContextExtensions =
     type AllocationFlag =
         | DeviceOnly
         | HostInterop
@@ -47,5 +47,6 @@ module ClContext =
 
             Cl
                 .GetDeviceInfo(this.ClDevice.Device, OpenCL.Net.DeviceInfo.MaxMemAllocSize, error)
-                .CastTo<int>()
-            * 1<Byte>
+                .CastTo<uint64>()
+            |> uint64
+            |> ((*) 1UL<Byte>)

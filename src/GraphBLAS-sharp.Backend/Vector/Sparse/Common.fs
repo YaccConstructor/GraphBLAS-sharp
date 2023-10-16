@@ -1,23 +1,24 @@
 namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClVector
 open Microsoft.FSharp.Control
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal Common =
     let setPositions<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let valuesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let indicesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
@@ -39,13 +40,13 @@ module internal Common =
     let setPositionsOption<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
 
         let valuesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         let indicesScatter =
-            Scatter.lastOccurrence clContext workGroupSize
+            Common.Scatter.lastOccurrence clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (allValues: ClArray<'a>) (allIndices: ClArray<int>) (positions: ClArray<int>) ->
 
@@ -74,7 +75,7 @@ module internal Common =
         let concatIndices = ClArray.concat clContext workGroupSize
 
         let mapIndices =
-            ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
+            Common.Map.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
 
         fun (processor: MailboxProcessor<_>) allocationMode (vectors: Sparse<'a> seq) ->
 

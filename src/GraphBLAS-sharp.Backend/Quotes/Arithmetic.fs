@@ -1,9 +1,9 @@
-﻿namespace GraphBLAS.FSharp.Backend.Quotes
+namespace GraphBLAS.FSharp.Backend.Quotes
 
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
 
 module ArithmeticOperations =
-    let inline mkUnaryOp zero unaryOp =
+    let inline private mkUnaryOp zero unaryOp =
         <@ fun x ->
             let mutable res = zero
 
@@ -13,7 +13,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericSum zero =
+    let inline private mkNumericSum zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
 
@@ -25,7 +25,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericSumAtLeastOne zero =
+    let inline private mkNumericSumAtLeastOne zero =
         <@ fun (values: AtLeastOne<'t, 't>) ->
             let mutable res = zero
 
@@ -36,7 +36,17 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericMul zero =
+    let inline private mkNumericSumAsMul zero =
+        <@ fun (x: 't option) (y: 't option) ->
+            let mutable res = None
+
+            match x, y with
+            | Some f, Some s -> res <- Some(f + s)
+            | _ -> ()
+
+            res @>
+
+    let inline private mkNumericMul zero =
         <@ fun (x: 't option) (y: 't option) ->
             let mutable res = zero
 
@@ -46,7 +56,7 @@ module ArithmeticOperations =
 
             if res = zero then None else Some res @>
 
-    let inline mkNumericMulAtLeastOne zero =
+    let inline private mkNumericMulAtLeastOne zero =
         <@ fun (values: AtLeastOne<'t, 't>) ->
             let mutable res = zero
 
@@ -173,6 +183,8 @@ module ArithmeticOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
+    let intSumAsMul = mkNumericSumAsMul System.Int32.MaxValue
+
     let notOption =
         <@ fun x ->
             match x with
@@ -197,7 +209,7 @@ module ArithmeticOperations =
             else
                 Some result
 
-    let inline createPair zero op opQ = binOpQ zero opQ, binOp zero op
+    let inline private createPair zero op opQ = binOpQ zero opQ, binOp zero op
 
     // addition
     let intAdd = createPair 0 (+) <@ (+) @>
@@ -216,3 +228,19 @@ module ArithmeticOperations =
     let floatMul = createPair 0.0 (*) <@ (*) @>
 
     let float32Mul = createPair 0.0f (*) <@ (*) @>
+
+    // other operations
+    let less<'a when 'a: comparison> =
+        <@ fun (x: 'a option) (y: 'a option) ->
+            match x, y with
+            | Some x, Some y -> if (x < y) then Some 1 else None
+            | Some x, None -> Some 1
+            | _ -> None @>
+
+    let min<'a when 'a: comparison> =
+        <@ fun (x: 'a option) (y: 'a option) ->
+            match x, y with
+            | Some x, Some y -> Some(min x y)
+            | Some x, None -> Some x
+            | None, Some y -> Some y
+            | _ -> None @>

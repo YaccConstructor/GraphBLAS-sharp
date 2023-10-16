@@ -2,18 +2,19 @@ namespace GraphBLAS.FSharp.Backend.Common.Sort
 
 
 open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Common
-open GraphBLAS.FSharp.Backend.Objects.ClContext
-open GraphBLAS.FSharp.Backend.Objects.ClCell
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
-module Radix =
+module internal Radix =
     // the number of bits considered per iteration
-    let defaultBitCount = 4
+    let private defaultBitCount = 4
 
-    let keyBitCount = 32
+    let private keyBitCount = 32
 
-    let localPrefixSum =
+    let private localPrefixSum =
         <@ fun (lid: int) (workGroupSize: int) (array: int []) ->
             let mutable offset = 1
 
@@ -29,7 +30,7 @@ module Radix =
                 barrierLocal ()
                 array.[lid] <- value @>
 
-    let count (clContext: ClContext) workGroupSize mask =
+    let private count (clContext: ClContext) workGroupSize mask =
 
         let bitCount = mask + 1
 
@@ -108,7 +109,7 @@ module Radix =
 
             globalOffsets, localOffsets
 
-    let scatter (clContext: ClContext) workGroupSize mask =
+    let private scatter (clContext: ClContext) workGroupSize mask =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: ClArray<int>) (localOffsets: ClArray<int>) (result: ClArray<int>) ->
@@ -147,7 +148,7 @@ module Radix =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let runKeysOnly (clContext: ClContext) workGroupSize bitCount =
+    let private runKeysOnly (clContext: ClContext) workGroupSize bitCount =
         let copy = ClArray.copy clContext workGroupSize
 
         let mask = (pown 2 bitCount) - 1
@@ -198,7 +199,7 @@ module Radix =
     let standardRunKeysOnly clContext workGroupSize =
         runKeysOnly clContext workGroupSize defaultBitCount
 
-    let scatterByKey (clContext: ClContext) workGroupSize mask =
+    let private scatterByKey (clContext: ClContext) workGroupSize mask =
 
         let kernel =
             <@ fun (ndRange: Range1D) length (keys: ClArray<int>) (values: ClArray<'a>) (shift: ClCell<int>) (workGroupCount: ClCell<int>) (globalOffsets: ClArray<int>) (localOffsets: ClArray<int>) (resultKeys: ClArray<int>) (resultValues: ClArray<'a>) ->
@@ -248,7 +249,7 @@ module Radix =
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
-    let runByKeys (clContext: ClContext) workGroupSize bitCount =
+    let private runByKeys (clContext: ClContext) workGroupSize bitCount =
         let copy = ClArray.copy clContext workGroupSize
 
         let dataCopy = ClArray.copy clContext workGroupSize
@@ -268,7 +269,7 @@ module Radix =
                 failwith "Mismatch of key lengths and value. Lengths must be the same"
 
             if values.Length <= 1 then
-                dataCopy processor allocationMode values
+                copy processor DeviceOnly keys, dataCopy processor DeviceOnly values
             else
                 let firstKeys = copy processor DeviceOnly keys
 
@@ -322,11 +323,22 @@ module Radix =
                     localOffset.Free processor
                     shift.Free processor
 
-                (fst keysPair).Free processor
                 (snd keysPair).Free processor
                 (snd valuesPair).Free processor
 
-                (fst valuesPair)
+                (fst keysPair, fst valuesPair)
+
+    let runByKeysStandardValuesOnly clContext workGroupSize =
+        let runByKeys =
+            runByKeys clContext workGroupSize defaultBitCount
+
+        fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
+            let keys, values =
+                runByKeys processor allocationMode keys values
+
+            keys.Free processor
+
+            values
 
     let runByKeysStandard clContext workGroupSize =
         runByKeys clContext workGroupSize defaultBitCount

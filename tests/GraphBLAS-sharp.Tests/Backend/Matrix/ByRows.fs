@@ -1,12 +1,12 @@
-module GraphBLAS.FSharp.Tests.Matrix.ByRows
+module GraphBLAS.FSharp.Tests.Backend.Matrix.ByRows
 
 open Expecto
 open GraphBLAS.FSharp.Tests
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Backend.Matrix
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 
 let context = Context.defaultContext.ClContext

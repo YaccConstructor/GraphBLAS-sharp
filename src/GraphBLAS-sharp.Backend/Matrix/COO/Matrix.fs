@@ -1,23 +1,49 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open Microsoft.FSharp.Quotations
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClMatrix
-open GraphBLAS.FSharp.Backend.Objects.ClCell
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module Matrix =
+    /// <summary>
+    /// Builds a new COO matrix whose elements are the results of applying the given function
+    /// to each of the elements of the matrix.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform values of the input matrix.
+    /// Operand and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map = Map.run
 
+    /// <summary>
+    /// Builds a new COO matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operands and result types should be optional to distinguish explicit and implicit zeroes
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let map2 = Map2.run
 
-    ///<param name="clContext">.</param>
-    ///<param name="opAdd">.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <summary>
+    /// Builds a new COO matrix whose values are the results of applying the given function
+    /// to the corresponding pairs of values from the two matrices.
+    /// </summary>
+    /// <param name="op">
+    /// A function to transform pairs of values from the input matrices.
+    /// Operation assumption: one of the operands should always be non-zero.
+    /// </param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let rec map2AtLeastOne<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct and 'c: equality>
         (clContext: ClContext)
         (opAdd: Expr<AtLeastOne<'a, 'b> -> 'c option>)
@@ -26,6 +52,11 @@ module Matrix =
 
         Map2.AtLeastOne.run clContext (Convert.atLeastOneToOption opAdd) workGroupSize
 
+    /// <summary>
+    /// Converts <c>COO</c> matrix format to <c>Tuple</c>.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let getTuples (clContext: ClContext) workGroupSize =
 
         let copy = ClArray.copy clContext workGroupSize
@@ -48,6 +79,11 @@ module Matrix =
               ColumnIndices = resultColumns
               Values = resultValues }
 
+    /// <summary>
+    /// Converts rows of given COO matrix to rows in CSR format of the same matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let private compressRows (clContext: ClContext) workGroupSize =
 
         let compressRows =
@@ -66,7 +102,7 @@ module Matrix =
         let create = ClArray.create clContext workGroupSize
 
         let scan =
-            PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
+            Common.PrefixSum.runBackwardsIncludeInPlace <@ min @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (rowIndices: ClArray<int>) rowCount ->
 
@@ -85,6 +121,12 @@ module Matrix =
 
             rowPointers
 
+    /// <summary>
+    /// Converts the given COO matrix to CSR format.
+    /// Values and columns are copied and do not depend on input COO matrix anymore.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSR (clContext: ClContext) workGroupSize =
         let prepare = compressRows clContext workGroupSize
 
@@ -109,6 +151,12 @@ module Matrix =
               Columns = cols
               Values = values }
 
+    /// <summary>
+    /// Converts the given COO matrix to CSR format.
+    /// Values and columns are NOT copied and still depend on the input COO matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let toCSRInPlace (clContext: ClContext) workGroupSize =
         let prepare = compressRows clContext workGroupSize
 
@@ -125,10 +173,16 @@ module Matrix =
               Columns = matrix.Columns
               Values = matrix.Values }
 
+    /// <summary>
+    /// Transposes the given matrix and returns result.
+    /// The given matrix should neither be used afterwards nor be disposed.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transposeInPlace (clContext: ClContext) workGroupSize =
 
         let sort =
-            Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
+            Common.Sort.Bitonic.sortKeyValuesInplace clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) (matrix: ClMatrix.COO<'a>) ->
             sort queue matrix.Columns matrix.Rows matrix.Values
@@ -140,6 +194,11 @@ module Matrix =
               Columns = matrix.Rows
               Values = matrix.Values }
 
+    /// <summary>
+    /// Transposes the given matrix and returns result as a new matrix.
+    /// </summary>
+    ///<param name="clContext">OpenCL context.</param>
+    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
 
         let transposeInPlace = transposeInPlace clContext workGroupSize

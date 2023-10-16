@@ -2,9 +2,8 @@ namespace GraphBLAS.FSharp.Backend.Matrix.CSR
 
 open Brahma.FSharp
 open System
-open GraphBLAS.FSharp.Backend.Objects
-
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module Merge =
     let run<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =

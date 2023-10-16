@@ -1,6 +1,7 @@
-namespace GraphBLAS.FSharp.Backend.Objects
+namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
+open GraphBLAS.FSharp.Objects
 
 type MatrixFormat =
     | CSR
@@ -22,7 +23,6 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Columns))
                 q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
-                q.PostAndReply(Msg.MsgNotifyMe)
 
         member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 
@@ -112,13 +112,31 @@ module ClMatrix =
 
         member this.NNZ = this.Values.Length
 
+/// <summary>
+/// Represents an abstraction over matrix, whose values and indices are in OpenCL device memory.
+/// </summary>
 [<RequireQualifiedAccess>]
 type ClMatrix<'a when 'a: struct> =
+    /// <summary>
+    /// Represents an abstraction over matrix in CSR format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | CSR of ClMatrix.CSR<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in COO format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | COO of ClMatrix.COO<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in CSC format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | CSC of ClMatrix.CSC<'a>
+    /// <summary>
+    /// Represents an abstraction over matrix in LIL format, whose values and indices are in OpenCL device memory.
+    /// </summary>
     | LIL of ClMatrix.LIL<'a>
 
+    /// <summary>
+    /// Gets the number of rows in matrix.
+    /// </summary>
     member this.RowCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.RowCount
@@ -126,6 +144,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> matrix.RowCount
         | ClMatrix.LIL matrix -> matrix.RowCount
 
+    /// <summary>
+    /// Gets the number of columns in matrix.
+    /// </summary>
     member this.ColumnCount =
         match this with
         | ClMatrix.CSR matrix -> matrix.ColumnCount
@@ -133,6 +154,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> matrix.ColumnCount
         | ClMatrix.LIL matrix -> matrix.ColumnCount
 
+    /// <summary>
+    /// Release device resources allocated for the matrix.
+    /// </summary>
     member this.Dispose q =
         match this with
         | ClMatrix.CSR matrix -> (matrix :> IDeviceMemObject).Dispose q
@@ -140,6 +164,9 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.CSC matrix -> (matrix :> IDeviceMemObject).Dispose q
         | ClMatrix.LIL matrix -> (matrix :> IDeviceMemObject).Dispose q
 
+    /// <summary>
+    /// Gets the number of non-zero elements in matrix.
+    /// </summary>
     member this.NNZ =
         match this with
         | ClMatrix.CSR matrix -> matrix.NNZ

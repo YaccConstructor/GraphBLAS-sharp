@@ -1,18 +1,17 @@
 ﻿module GraphBLAS.FSharp.Tests.Backend.Vector.SpMV
 
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
 open Expecto
+open Microsoft.FSharp.Collections
+open Microsoft.FSharp.Core
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.TestCases
-open Microsoft.FSharp.Collections
-open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 
 let config = Utils.defaultConfig
 
@@ -52,7 +51,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'a option> -> ClArray<'a option>)
+    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClVector<'a> -> ClVector<'a>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -69,14 +68,15 @@ let correctnessGenericTest
         try
             let m = mtx.ToDevice testContext.ClContext
 
-            match vtr, m with
-            | Vector.Dense vtr, ClMatrix.CSR m ->
-                let v = vtr.ToDevice testContext.ClContext
+            let v = vtr.ToDevice testContext.ClContext
 
-                let res = spMV testContext.Queue HostInterop m v
+            let res = spMV testContext.Queue HostInterop m v
 
-                (ClMatrix.CSR m).Dispose q
-                v.Free q
+            m.Dispose q
+            v.Dispose q
+
+            match res with
+            | ClVector.Dense res ->
                 let hostRes = res.ToHostAndFree q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes
@@ -92,7 +92,7 @@ let createTest testContext (zero: 'a) isEqual add mul addQ mulQ =
     let getCorrectnessTestName datatype =
         $"Correctness on %s{datatype}, %A{testContext.ClContext}"
 
-    let spMV = SpMV.run addQ mulQ context wgSize
+    let spMV = Operations.SpMV addQ mulQ context wgSize
 
     testContext
     |> correctnessGenericTest zero add mul spMV isEqual q

@@ -3,10 +3,12 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open FSharp.Quotations
 open Microsoft.FSharp.Control
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Objects.ClVector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
+open Microsoft.FSharp.Core
 
 module internal Map2 =
     let private preparePositions<'a, 'b, 'c> opAdd (clContext: ClContext) workGroupSize =
@@ -78,7 +80,7 @@ module internal Map2 =
             preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
         let setPositions =
-            Common.setPositions clContext workGroupSize
+            Common.setPositionsOption clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -91,17 +93,113 @@ module internal Map2 =
                     rightVector.Values
                     rightVector.Indices
 
-            let resultValues, resultIndices =
+            let result =
                 setPositions processor allocationMode allValues allIndices bitmap
+                |> Option.map
+                    (fun (resultValues, resultIndices) ->
+                        { Context = clContext
+                          Values = resultValues
+                          Indices = resultIndices
+                          Size = leftVector.Size })
 
-            processor.Post(Msg.CreateFreeMsg<_>(allIndices))
-            processor.Post(Msg.CreateFreeMsg<_>(allValues))
-            processor.Post(Msg.CreateFreeMsg<_>(bitmap))
+            allIndices.Free processor
+            allValues.Free processor
+            bitmap.Free processor
 
-            { Context = clContext
-              Values = resultValues
-              Indices = resultIndices
-              Size = max leftVector.Size rightVector.Size }
+            result
+
+    let private preparePositionsSparseDense<'a, 'b, 'c> (clContext: ClContext) workGroupSize opAdd =
+
+        let preparePositions (op: Expr<'a option -> 'b option -> 'c option>) =
+            <@ fun (ndRange: Range1D) length (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b option>) (resultBitmap: ClArray<int>) (resultValues: ClArray<'c>) (resultIndices: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+
+                    let i = leftIndices.[gid]
+
+                    let (leftValue: 'a option) = Some leftValues.[gid]
+
+                    let (rightValue: 'b option) = rightValues.[i]
+
+                    match (%op) leftValue rightValue with
+                    | Some value ->
+                        resultValues.[gid] <- value
+                        resultIndices.[gid] <- i
+
+                        resultBitmap.[gid] <- 1
+                    | None -> resultBitmap.[gid] <- 0 @>
+
+        let kernel =
+            clContext.Compile <| preparePositions opAdd
+
+        fun (processor: MailboxProcessor<_>) (vectorLenght: int) (leftValues: ClArray<'a>) (leftIndices: ClArray<int>) (rightValues: ClArray<'b option>) ->
+
+            let resultBitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+
+            let resultIndices =
+                clContext.CreateClArrayWithSpecificAllocationMode<int>(DeviceOnly, vectorLenght)
+
+            let resultValues =
+                clContext.CreateClArrayWithSpecificAllocationMode<'c>(DeviceOnly, vectorLenght)
+
+            let ndRange =
+                Range1D.CreateValid(vectorLenght, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments
+                    (fun () ->
+                        kernel.KernelFunc
+                            ndRange
+                            vectorLenght
+                            leftValues
+                            leftIndices
+                            rightValues
+                            resultBitmap
+                            resultValues
+                            resultIndices)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+            resultBitmap, resultValues, resultIndices
+
+    //TODO: unify with sparseXsparse
+    let runSparseDense<'a, 'b, 'c when 'a: struct and 'b: struct and 'c: struct>
+        op
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let prepare =
+            preparePositionsSparseDense<'a, 'b, 'c> clContext workGroupSize op
+
+        let setPositions =
+            Common.setPositionsOption clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClArray<'b option>) ->
+
+            let bitmap, allValues, allIndices =
+                prepare processor leftVector.NNZ leftVector.Values leftVector.Indices rightVector
+
+            let result =
+                setPositions processor allocationMode allValues allIndices bitmap
+                |> Option.map
+                    (fun (resultValues, resultIndices) ->
+                        { Context = clContext
+                          Values = resultValues
+                          Indices = resultIndices
+                          Size = leftVector.Size })
+
+            allIndices.Free processor
+            allValues.Free processor
+            bitmap.Free processor
+
+            result
 
     let private preparePositionsAssignByMask<'a, 'b when 'a: struct and 'b: struct>
         op
@@ -183,7 +281,9 @@ module internal Map2 =
         let setPositions =
             Common.setPositions clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) (value: 'a) ->
+
+            let valueCell = clContext.CreateClCell(value)
 
             let bitmap, values, indices =
                 prepare
@@ -193,11 +293,12 @@ module internal Map2 =
                     leftVector.Indices
                     rightVector.Values
                     rightVector.Indices
-                    value
+                    valueCell
 
             let resultValues, resultIndices =
                 setPositions processor allocationMode values indices bitmap
 
+            processor.Post(Msg.CreateFreeMsg<_>(valueCell))
             processor.Post(Msg.CreateFreeMsg<_>(indices))
             processor.Post(Msg.CreateFreeMsg<_>(values))
             processor.Post(Msg.CreateFreeMsg<_>(bitmap))
@@ -280,7 +381,7 @@ module internal Map2 =
                 preparePositions<'a, 'b, 'c> op clContext workGroupSize
 
             let setPositions =
-                Common.setPositions clContext workGroupSize
+                Common.setPositionsOption clContext workGroupSize
 
             fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector.Sparse<'a>) (rightVector: ClVector.Sparse<'b>) ->
 
@@ -293,14 +394,17 @@ module internal Map2 =
                 processor.Post(Msg.CreateFreeMsg<_>(rightValues))
                 processor.Post(Msg.CreateFreeMsg<_>(isLeft))
 
-                let resultValues, resultIndices =
+                let result =
                     setPositions processor allocationMode allValues allIndices positions
+                    |> Option.map
+                        (fun (resultValues, resultIndices) ->
+                            { Context = clContext
+                              Values = resultValues
+                              Indices = resultIndices
+                              Size = max leftVector.Size rightVector.Size })
 
                 processor.Post(Msg.CreateFreeMsg<_>(allIndices))
                 processor.Post(Msg.CreateFreeMsg<_>(allValues))
                 processor.Post(Msg.CreateFreeMsg<_>(positions))
 
-                { Context = clContext
-                  Values = resultValues
-                  Indices = resultIndices
-                  Size = max leftVector.Size rightVector.Size }
+                result

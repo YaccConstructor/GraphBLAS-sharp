@@ -1,11 +1,12 @@
 module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Map2
 
+open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Backend.Common
-open Expecto
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+
 
 let context = defaultContext.Queue
 
@@ -42,7 +43,7 @@ let createTest<'a when 'a: equality> (testContext: TestContext) isEqual hostMapF
 
     let context = testContext.ClContext
 
-    let map = ClArray.map2 mapFunQ context wgSize
+    let map = Map.map2 mapFunQ context wgSize
 
     makeTest<'a> testContext map hostMapFun isEqual
     |> testPropertyWithConfig config $"Correctness on {typeof<'a>}"

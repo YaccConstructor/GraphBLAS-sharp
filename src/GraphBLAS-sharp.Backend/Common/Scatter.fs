@@ -3,7 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Common
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 
-module internal Scatter =
+module Scatter =
     let private general<'a> predicate (clContext: ClContext) workGroupSize =
 
         let run =
@@ -46,7 +46,8 @@ module internal Scatter =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
     /// <summary>
-    /// Creates a new array from the given one where it is indicated by the array of positions at which position in the new array
+    /// Creates a new array from the given one where it is indicated
+    /// by the array of positions at which position in the new array
     /// should be a value from the given one.
     /// </summary>
     /// <remarks>
@@ -147,7 +148,7 @@ module internal Scatter =
     /// </code>
     /// </example>
     /// <param name="valueMap">Maps global id to a value</param>
-    let initFirsOccurrence<'a> valueMap =
+    let initFirstOccurrence<'a> valueMap =
         generalInit<'a>
         <| Predicates.firstOccurrence ()
         <| valueMap

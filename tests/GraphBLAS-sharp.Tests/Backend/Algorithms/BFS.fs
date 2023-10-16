@@ -1,14 +1,12 @@
 module GraphBLAS.FSharp.Tests.Backend.Algorithms.BFS
 
 open Expecto
-open GraphBLAS.FSharp.Backend
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.Algorithms
 open GraphBLAS.FSharp.Tests.Backend.QuickGraph.CreateGraph
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
 
@@ -25,6 +23,20 @@ let testFixtures (testContext: TestContext) =
           Algorithms.BFS.singleSource
               ArithmeticOperations.intSumOption
               ArithmeticOperations.intMulOption
+              context
+              workGroupSize
+
+      let bfsSparse =
+          Algorithms.BFS.singleSourceSparse
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
+              context
+              workGroupSize
+
+      let bfsPushPull =
+          Algorithms.BFS.singleSourcePushPull
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
               context
               workGroupSize
 
@@ -46,23 +58,41 @@ let testFixtures (testContext: TestContext) =
               let matrixHost =
                   Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
+              let matrixHostBool =
+                  Utils.createMatrixFromArray2D CSR (Array2D.map (fun x -> x <> 0) matrix) ((=) false)
+
               let matrix = matrixHost.ToDevice context
+              let matrixBool = matrixHostBool.ToDevice context
 
-              match matrix with
-              | ClMatrix.CSR mtx ->
-                  let res = bfs queue mtx source |> ClVector.Dense
+              let res = bfs queue matrix source
 
-                  let resHost = res.ToHost queue
+              let resSparse = bfsSparse queue matrixBool source
 
-                  (mtx :> IDeviceMemObject).Dispose queue
-                  res.Dispose queue
+              let resPushPull = bfsPushPull queue matrixBool source
 
-                  match resHost with
-                  | Vector.Dense resHost ->
-                      let actual = resHost |> Utils.unwrapOptionArray 0
+              let resHost = res.ToHost queue
+              let resHostSparse = resSparse.ToHost queue
+              let resHostPushPull = resPushPull.ToHost queue
 
-                      Expect.sequenceEqual actual expected "Sequences must be equal"
-                  | _ -> failwith "Not implemented"
+              matrix.Dispose queue
+              matrixBool.Dispose queue
+              res.Dispose queue
+              resSparse.Dispose queue
+              resPushPull.Dispose queue
+
+              match resHost, resHostSparse, resHostPushPull with
+              | Vector.Dense resHost, Vector.Dense resHostSparse, Vector.Dense resHostPushPull ->
+                  let actual = resHost |> Utils.unwrapOptionArray 0
+
+                  let actualSparse =
+                      resHostSparse |> Utils.unwrapOptionArray 0
+
+                  let actualPushPull =
+                      resHostPushPull |> Utils.unwrapOptionArray 0
+
+                  Expect.sequenceEqual actual expected "Dense bfs is not as expected"
+                  Expect.sequenceEqual actualSparse expected "Sparse bfs is not as expected"
+                  Expect.sequenceEqual actualPushPull expected "Push-pull bfs is not as expected"
               | _ -> failwith "Not implemented" ]
 
 let tests =

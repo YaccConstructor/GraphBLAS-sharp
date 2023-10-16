@@ -2,16 +2,14 @@ module GraphBLAS.FSharp.Benchmarks.Vector.Map2
 
 open FsCheck
 open BenchmarkDotNet.Attributes
-
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects
 open GraphBLAS.FSharp.Backend.Quotes
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Vector
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -29,7 +27,7 @@ type Benchmarks<'elem when 'elem : struct>(
 
     member val HostVectorPair = Unchecked.defaultof<Vector<'elem> * Vector<'elem>> with get, set
 
-    member val ResultVector = Unchecked.defaultof<ClVector<'elem>> with get,set
+    member val ResultVector = Unchecked.defaultof<ClVector<'elem> option> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -69,7 +67,9 @@ type Benchmarks<'elem when 'elem : struct>(
         secondVector.Dispose this.Processor
 
     member this.ClearResult() =
-        this.ResultVector.Dispose this.Processor
+        match this.ResultVector with
+        | Some v -> v.Dispose this.Processor
+        | None -> ()
 
     member this.CreateVectors()  =
         this.HostVectorPair <- List.last (Gen.sample this.Size 1 generator)
@@ -122,26 +122,26 @@ module WithoutTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (Vector.map2 ArithmeticOperations.floatSumOption),
+            (Operations.Vector.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (Vector.map2 ArithmeticOperations.intSumOption),
+            (Operations.Vector.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
+                (Operations.Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
+                (Operations.Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)
 
 module WithTransfer =
@@ -164,8 +164,12 @@ module WithTransfer =
         override this.Benchmark () =
             this.LoadVectorsToGPU()
             this.Map2()
-            this.ResultVector.ToHost this.Processor |> ignore
-            this.Processor.PostAndReply Msg.MsgNotifyMe
+            match this.ResultVector with
+            | Some v ->
+                v.ToHost this.Processor |> ignore
+                this.Processor.PostAndReply Msg.MsgNotifyMe
+            | None -> ()
+
 
         [<IterationCleanup>]
         override this.IterationCleanup () =
@@ -178,24 +182,24 @@ module WithTransfer =
     type Float() =
 
         inherit Benchmark<float>(
-            (Vector.map2 ArithmeticOperations.floatSumOption),
+            (Operations.Vector.map2 ArithmeticOperations.floatSumOption),
             VectorGenerator.floatPair Sparse)
 
     type Int32() =
 
         inherit Benchmark<int32>(
-            (Vector.map2 ArithmeticOperations.intSumOption),
+            (Operations.Vector.map2 ArithmeticOperations.intSumOption),
             VectorGenerator.intPair Sparse)
 
     module AtLeastOne =
         type Float() =
 
             inherit Benchmark<float>(
-                (Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
+                (Operations.Vector.map2AtLeastOne ArithmeticOperations.floatSumAtLeastOne),
                 VectorGenerator.floatPair Sparse)
 
         type Int32() =
 
             inherit Benchmark<int32>(
-                (Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
+                (Operations.Vector.map2AtLeastOne ArithmeticOperations.intSumAtLeastOne),
                 VectorGenerator.intPair Sparse)

@@ -2,13 +2,13 @@ module GraphBLAS.FSharp.Tests.Backend.Common.ClArray.Exists
 
 open Expecto
 open Expecto.Logging
-open GraphBLAS.FSharp.Backend.Common
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Tests
 open Context
-open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.Backend.Objects.ClCell
 
 let logger =
     Log.create "ClArray.containsNonZero.Tests"

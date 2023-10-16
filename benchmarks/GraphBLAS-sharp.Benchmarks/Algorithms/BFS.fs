@@ -2,15 +2,14 @@
 
 open System.IO
 open BenchmarkDotNet.Attributes
-open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
-open GraphBLAS.FSharp.IO
-open Brahma.FSharp
-open Backend.Algorithms.BFS
 open Microsoft.FSharp.Core
-open GraphBLAS.FSharp.Backend.Objects.ArraysExtensions
+open Brahma.FSharp
+open GraphBLAS.FSharp
+open GraphBLAS.FSharp.IO
 open GraphBLAS.FSharp.Benchmarks
-open GraphBLAS.FSharp.Backend.Objects
+open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -20,14 +19,15 @@ type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
     converter: string -> 'elem,
     binaryConverter,
-    vertex: int)
+    vertex: int,
+    buildMatrix)
     =
 
     let mutable funToBenchmark = None
-    let mutable matrix = Unchecked.defaultof<ClMatrix.CSR<'elem>>
+    let mutable matrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
-    member val ResultLevels = Unchecked.defaultof<ClArray<'elem option>> with get,set
+    member val ResultLevels = Unchecked.defaultof<ClVector<'elem>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -46,7 +46,7 @@ type Benchmarks<'elem when 'elem : struct>(
     static member AvailableContexts = Utils.availableContexts
 
     static member InputMatrixProviderBuilder pathToConfig =
-        let datasetFolder = "BFS"
+        let datasetFolder = ""
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map
@@ -69,9 +69,12 @@ type Benchmarks<'elem when 'elem : struct>(
         this.ResultLevels <- this.FunToBenchmark this.Processor matrix vertex
 
     member this.ClearInputMatrix() =
-        (matrix :> IDeviceMemObject).Dispose this.Processor
+        matrix.Dispose this.Processor
 
-    member this.ClearResult() = this.ResultLevels.FreeAndWait this.Processor
+    member this.ClearResult() =
+        match this.ResultLevels with
+        | ClVector.Dense result -> result.FreeAndWait this.Processor
+        | _ -> failwith "Impossible"
 
     member this.ReadMatrix() =
         let converter =
@@ -82,7 +85,7 @@ type Benchmarks<'elem when 'elem : struct>(
         matrixHost <- this.InputMatrixReader.ReadMatrix converter
 
     member this.LoadMatrixToGPU() =
-        matrix <- matrixHost.ToCSR.ToDevice this.OclContext
+        matrix <- buildMatrix this.OclContext matrixHost
 
     abstract member GlobalSetup : unit -> unit
 
@@ -96,13 +99,15 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
     buildFunToBenchmark,
     converter: string -> 'elem,
     boolConverter,
-    vertex) =
+    vertex,
+    buildMatrix) =
 
     inherit Benchmarks<'elem>(
         buildFunToBenchmark,
         converter,
         boolConverter,
-        vertex)
+        vertex,
+        buildMatrix)
 
     [<GlobalSetup>]
     override this.GlobalSetup() =
@@ -125,10 +130,11 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
 type BFSWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
-        (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
-        0)
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 
     static member InputMatrixProvider =
         Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
@@ -137,13 +143,15 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     buildFunToBenchmark,
     converter: string -> 'elem,
     boolConverter,
-    vertex) =
+    vertex,
+    buildMatrix) =
 
     inherit Benchmarks<'elem>(
         buildFunToBenchmark,
         converter,
         boolConverter,
-        vertex)
+        vertex,
+        buildMatrix)
 
     [<GlobalSetup>]
     override this.GlobalSetup() =
@@ -162,16 +170,20 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     override this.Benchmark() =
         this.LoadMatrixToGPU()
         this.BFS()
-        this.ResultLevels.ToHost this.Processor |> ignore
-        this.Processor.PostAndReply Msg.MsgNotifyMe
+        match this.ResultLevels with
+        | ClVector.Dense result ->
+            result.ToHost this.Processor |> ignore
+            this.Processor.PostAndReply Msg.MsgNotifyMe
+        | _ -> failwith "Impossible"
 
 type BFSWithTransferBenchmarkInt32() =
 
     inherit WithTransferBenchmark<int>(
-        (singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
-        0)
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 
     static member InputMatrixProvider =
         Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"

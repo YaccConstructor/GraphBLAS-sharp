@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Objects
+namespace GraphBLAS.FSharp.Objects
 
 type AtLeastOne<'a, 'b when 'a: struct and 'b: struct> =
     | Both of 'a * 'b

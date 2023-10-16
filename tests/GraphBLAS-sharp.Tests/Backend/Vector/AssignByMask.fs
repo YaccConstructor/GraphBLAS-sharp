@@ -2,16 +2,15 @@ module GraphBLAS.FSharp.Tests.Backend.Vector.AssignByMask
 
 open Expecto
 open Expecto.Logging
+open Brahma.FSharp
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
-open Brahma.FSharp
 open TestCases
-open GraphBLAS.FSharp.Backend.Objects
-open GraphBLAS.FSharp.Backend.Vector
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
-open GraphBLAS.FSharp.Backend.Objects.ClContext
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let logger = Log.create "Vector.assignByMask.Tests"
 
@@ -52,7 +51,7 @@ let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask
 let makeTest<'a when 'a: struct and 'a: equality>
     (isZero: 'a -> bool)
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
+    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> 'a -> ClVector<'a>)
     isComplemented
     case
     (vector: 'a [], mask: 'a [], value: 'a)
@@ -73,10 +72,9 @@ let makeTest<'a when 'a: struct and 'a: equality>
         let clMaskVector = maskVector.ToDevice context
 
         try
-            let clValue = context.CreateClCell<'a> value
 
             let clActual =
-                fillVector q HostInterop clLeftVector clMaskVector clValue
+                fillVector q HostInterop clLeftVector clMaskVector value
 
             let cooClActual = toDense q HostInterop clActual
 
