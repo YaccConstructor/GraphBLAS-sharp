@@ -1,5 +1,6 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Algorithms
 
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
 open Brahma.FSharp
 open GraphBLAS.FSharp.Objects
@@ -86,49 +87,52 @@ module internal PageRank =
         let copy =
             GraphBLAS.FSharp.ClArray.copy clContext workGroupSize
 
-        let transpose =
+        let transposeInPlace =
             Matrix.CSR.Matrix.transposeInPlace clContext workGroupSize
 
         let multiply = clContext.Compile multiply
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<float32>) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<float32>) ->
 
-            let outDegree = countOutDegree queue matrix
+            match matrix with
+            | ClMatrix.CSR matrix ->
 
-            let resultValues =
-                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, matrix.Values.Length)
+                let outDegree = countOutDegree queue matrix
 
-            let kernel = multiply.GetKernel()
+                let resultValues =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, matrix.Values.Length)
 
-            let ndRange =
-                Range1D.CreateValid(matrix.RowCount * workGroupSize, workGroupSize)
+                let kernel = multiply.GetKernel()
 
-            queue.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        kernel.KernelFunc
-                            ndRange
-                            matrix.RowCount
-                            matrix.RowPointers
-                            matrix.Values
-                            outDegree
-                            resultValues)
-            )
+                let ndRange =
+                    Range1D.CreateValid(matrix.RowCount * workGroupSize, workGroupSize)
 
-            queue.Post(Msg.CreateRunMsg<_, _> kernel)
+                queue.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc
+                                ndRange
+                                matrix.RowCount
+                                matrix.RowPointers
+                                matrix.Values
+                                outDegree
+                                resultValues)
+                )
 
-            outDegree.Free queue
+                queue.Post(Msg.CreateRunMsg<_, _> kernel)
 
-            let newMatrix =
-                { Context = clContext
-                  RowCount = matrix.RowCount
-                  ColumnCount = matrix.ColumnCount
-                  RowPointers = copy queue DeviceOnly matrix.RowPointers
-                  Columns = copy queue DeviceOnly matrix.Columns
-                  Values = resultValues }
+                outDegree.Free queue
 
-            let transposed = transpose queue DeviceOnly newMatrix
-            transposed
+                let newMatrix =
+                    { Context = clContext
+                      RowCount = matrix.RowCount
+                      ColumnCount = matrix.ColumnCount
+                      RowPointers = copy queue DeviceOnly matrix.RowPointers
+                      Columns = copy queue DeviceOnly matrix.Columns
+                      Values = resultValues }
+
+                transposeInPlace queue DeviceOnly newMatrix |> ClMatrix.CSR
+            | _ -> failwith "Not implemented"
 
     let run (clContext: ClContext) workGroupSize =
 
@@ -140,34 +144,34 @@ module internal PageRank =
         let mul = ArithmeticOperations.float32MulOption
 
         let spMVTo =
-            Operations.SpMV.runTo plus mul clContext workGroupSize
+            Operations.SpMVInPlace plus mul clContext workGroupSize
 
         let addToResult =
-            Vector.map2InPlace plus clContext workGroupSize
+            GraphBLAS.FSharp.Vector.map2InPlace plus clContext workGroupSize
 
         let subtractAndSquare =
-            Vector.map2InPlace minusAndSquare clContext workGroupSize
+            GraphBLAS.FSharp.Vector.map2To minusAndSquare clContext workGroupSize
 
         let reduce =
-            Vector.reduce <@ (+) @> clContext workGroupSize
+            GraphBLAS.FSharp.Vector.reduce <@ (+) @> clContext workGroupSize
 
         let create =
-            GraphBLAS.FSharp.ClArray.create clContext workGroupSize
+            GraphBLAS.FSharp.Vector.create clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix.CSR<float32>) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<float32>) ->
 
             let vertexCount = matrix.RowCount
 
             //None is 0
-            let mutable rank = create queue DeviceOnly vertexCount None
+            let mutable rank = create queue DeviceOnly vertexCount Dense None
 
             let mutable prevRank =
-                create queue DeviceOnly vertexCount (Some(1.0f / (float32 vertexCount)))
+                create queue DeviceOnly vertexCount Dense (Some(1.0f / (float32 vertexCount)))
 
-            let mutable errors = create queue DeviceOnly vertexCount None
+            let mutable errors = create queue DeviceOnly vertexCount Dense None
 
             let addition =
-                create queue DeviceOnly vertexCount (Some((1.0f - alpha) / (float32 vertexCount)))
+                create queue DeviceOnly vertexCount Dense (Some((1.0f - alpha) / (float32 vertexCount)))
 
             let mutable error = accuracy + 0.1f
 
@@ -178,7 +182,7 @@ module internal PageRank =
 
                 // rank = matrix*rank + (1 - alpha)/N
                 spMVTo queue matrix prevRank rank
-                addToResult queue rank addition rank
+                addToResult queue rank addition
 
                 // error
                 subtractAndSquare queue rank prevRank errors
@@ -189,8 +193,8 @@ module internal PageRank =
                 rank <- prevRank
                 prevRank <- temp
 
-            prevRank.Free queue
-            errors.Free queue
-            addition.Free queue
+            prevRank.Dispose queue
+            errors.Dispose queue
+            addition.Dispose queue
 
             rank

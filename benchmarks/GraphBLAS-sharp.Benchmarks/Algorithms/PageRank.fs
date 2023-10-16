@@ -17,15 +17,16 @@ open GraphBLAS.FSharp.Objects
 type Benchmarks(
     buildFunToBenchmark,
     converter: string -> float32,
-    binaryConverter)
+    binaryConverter,
+    buildMatrix)
     =
 
     let mutable funToBenchmark = None
-    let mutable matrix = Unchecked.defaultof<ClMatrix.CSR<float32>>
-    let mutable matrixPrepared = Unchecked.defaultof<ClMatrix.CSR<float32>>
+    let mutable matrix = Unchecked.defaultof<ClMatrix<float32>>
+    let mutable matrixPrepared = Unchecked.defaultof<ClMatrix<float32>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
-    member val Result = Unchecked.defaultof<ClArray<float32 option>> with get,set
+    member val Result = Unchecked.defaultof<ClVector<float32>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -67,12 +68,12 @@ type Benchmarks(
         this.Result <- this.FunToBenchmark this.Processor matrixPrepared
 
     member this.ClearInputMatrix() =
-        (matrix :> IDeviceMemObject).Dispose this.Processor
+        matrix.Dispose this.Processor
 
     member this.ClearPreparedMatrix() =
-        (matrixPrepared :> IDeviceMemObject).Dispose this.Processor
+        matrixPrepared.Dispose this.Processor
 
-    member this.ClearResult() = this.Result.FreeAndWait this.Processor
+    member this.ClearResult() = this.Result.Dispose this.Processor
 
     member this.ReadMatrix() =
         let converter =
@@ -83,7 +84,7 @@ type Benchmarks(
         matrixHost <- this.InputMatrixReader.ReadMatrix converter
 
     member this.LoadMatrixToGPU() =
-        matrix <- matrixHost.ToCSR.ToDevice this.OclContext
+        matrix <- buildMatrix this.OclContext matrixHost
 
     member this.PrepareMatrix() =
         matrixPrepared <- Algorithms.PageRank.prepareMatrix this.OclContext this.WorkGroupSize this.Processor matrix
@@ -101,8 +102,8 @@ type PageRankWithoutTransferBenchmarkFloat32() =
     inherit Benchmarks(
         Algorithms.PageRank.run,
         float32,
-        (fun _ -> float32 <| Utils.nextInt (System.Random()))
-    )
+        (fun _ -> float32 <| Utils.nextInt (System.Random())),
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 
     static member InputMatrixProvider =
         Benchmarks.InputMatrixProviderBuilder "BFSBenchmarks.txt"
