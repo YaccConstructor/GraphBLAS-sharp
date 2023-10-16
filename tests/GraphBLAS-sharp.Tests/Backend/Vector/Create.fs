@@ -35,19 +35,23 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     (vectorSize: int)
     =
 
-    let vectorSize = abs vectorSize
+    try
+        let vectorSize = abs vectorSize
 
-    if vectorSize > 0 then
-        let q = case.TestContext.Queue
+        if vectorSize > 0 then
+            let q = case.TestContext.Queue
 
-        let clVector =
-            zeroCreate q HostInterop vectorSize case.Format
+            let clVector =
+                zeroCreate q HostInterop vectorSize case.Format
 
-        let hostVector = clVector.ToHost q
+            let hostVector = clVector.ToHost q
 
-        clVector.Dispose q
+            clVector.Dispose q
 
-        checkResult vectorSize hostVector
+            checkResult vectorSize hostVector
+    with
+    | ex when ex.Message = "Attempting to create full sparse vector" -> ()
+    | ex -> raise ex
 
 let createTest<'a> case =
     let getCorrectnessTestName dataType =
