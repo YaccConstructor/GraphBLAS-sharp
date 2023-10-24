@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Algorithms
+﻿namespace GraphBLAS.FSharp.Backend.Algorithms
 
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
@@ -14,7 +14,7 @@ open GraphBLAS.FSharp.Objects.ClCellExtensions
 module internal PageRank =
     let alpha = 0.85f
 
-    let countOutDegree (clContext: ClContext) workGroupSize =
+    let private countOutDegree (clContext: ClContext) workGroupSize =
 
         let one =
             <@ fun (x: float32 option) (_: int option) ->
@@ -42,19 +42,18 @@ module internal PageRank =
 
     let prepareMatrix (clContext: ClContext) workGroupSize =
 
-        let alpha = 0.85f
+        //Passing global variable to kernel in Brahma is not possible
+        let alpha = alpha
 
         let op =
             <@ fun (x: float32 option) y ->
-                let mutable res = 0.0f
+                let mutable res = None
 
                 match x, y with
-                | Some _, Some y -> res <- alpha / (float32 y)
-                | Some _, None -> ()
-                | None, Some _ -> ()
-                | None, None -> ()
+                | Some _, Some y -> res <- Some(alpha / (float32 y))
+                | _ -> ()
 
-                if res = 0.0f then None else Some res @>
+                res @>
 
         //TODO: generalize to map2 Matrix x Vector
         let multiply =
@@ -136,10 +135,7 @@ module internal PageRank =
 
     let run (clContext: ClContext) workGroupSize =
 
-        let alpha = 0.85f
-        let accuracy = 0.00000001f
-
-        let minusAndSquare = ArithmeticOperations.minusAndSquare
+        let squareOfDifference = ArithmeticOperations.squareOfDifference
         let plus = ArithmeticOperations.float32SumOption
         let mul = ArithmeticOperations.float32MulOption
 
@@ -150,7 +146,7 @@ module internal PageRank =
             GraphBLAS.FSharp.Vector.map2InPlace plus clContext workGroupSize
 
         let subtractAndSquare =
-            GraphBLAS.FSharp.Vector.map2To minusAndSquare clContext workGroupSize
+            GraphBLAS.FSharp.Vector.map2To squareOfDifference clContext workGroupSize
 
         let reduce =
             GraphBLAS.FSharp.Vector.reduce <@ (+) @> clContext workGroupSize
