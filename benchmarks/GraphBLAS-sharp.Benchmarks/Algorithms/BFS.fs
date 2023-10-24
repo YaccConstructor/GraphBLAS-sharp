@@ -154,7 +154,7 @@ type BFSPushPullWithoutTransferBenchmarkInt32() =
 type SSSPWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
-        Algorithms.SSSP.singleSource,
+        Algorithms.SSSP.run,
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
