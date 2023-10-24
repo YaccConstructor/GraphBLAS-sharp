@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Backend.Algorithms
+namespace GraphBLAS.FSharp.Backend.Algorithms
 
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend
@@ -13,7 +13,6 @@ open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal PageRank =
     let alpha = 0.85f
-    let accuracy = 0.00000001f
 
     let countOutDegree (clContext: ClContext) workGroupSize =
 
@@ -159,7 +158,7 @@ module internal PageRank =
         let create =
             GraphBLAS.FSharp.Vector.create clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<float32>) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<float32>) accuracy ->
 
             let vertexCount = matrix.RowCount
 

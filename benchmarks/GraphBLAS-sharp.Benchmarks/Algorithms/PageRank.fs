@@ -26,6 +26,8 @@ type Benchmarks(
     let mutable matrixPrepared = Unchecked.defaultof<ClMatrix<float32>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
+    let accuracy = 0.00000001f
+
     member val Result = Unchecked.defaultof<ClVector<float32>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
@@ -65,7 +67,7 @@ type Benchmarks(
         | Some x -> x
 
     member this.PageRank() =
-        this.Result <- this.FunToBenchmark this.Processor matrixPrepared
+        this.Result <- this.FunToBenchmark this.Processor matrixPrepared accuracy
 
     member this.ClearInputMatrix() =
         matrix.Dispose this.Processor
