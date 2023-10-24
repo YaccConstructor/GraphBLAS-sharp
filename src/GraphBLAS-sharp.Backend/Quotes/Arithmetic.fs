@@ -246,7 +246,7 @@ module ArithmeticOperations =
             | _ -> None @>
 
     //PageRank specific
-    let minusAndSquare =
+    let squareOfDifference =
         <@ fun (x: float32 option) (y: float32 option) ->
             let mutable res = 0.0f
 

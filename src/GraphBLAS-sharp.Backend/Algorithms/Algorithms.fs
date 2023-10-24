@@ -13,7 +13,7 @@ module Algorithms =
         let singleSourcePushPull = BFS.singleSourcePushPull
 
     module SSSP =
-        let singleSource = SSSP.run
+        let run = SSSP.run
 
     module PageRank =
         let run = PageRank.run
