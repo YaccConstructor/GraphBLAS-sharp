@@ -2,15 +2,75 @@
 
 open Expecto
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
-open GraphBLAS.FSharp.Objects.MatrixExtensions
+
+let private alpha = 0.85f
+let private accuracy = 0.00001f
+
+let prepareNaive (matrix: float32 [,]) =
+    let result = Array2D.copy matrix
+    let rowCount = Array2D.length1 matrix
+    let outDegrees = Array.zeroCreate rowCount
+
+    //Count degree
+    Array2D.iteri (fun r c v -> outDegrees.[r] <- outDegrees.[r] + (if v <> 0f then 1f else 0f)) matrix
+
+    //Set value
+    Array2D.iteri
+        (fun r c v ->
+            result.[r, c] <-
+                if v <> 0f then
+                    alpha / outDegrees.[r]
+                else
+                    0f)
+        matrix
+
+    //Transpose
+    Array2D.iteri
+        (fun r c _ ->
+            if r > c then
+                let temp = result.[r, c]
+                result.[r, c] <- result.[c, r]
+                result.[c, r] <- temp)
+        matrix
+
+    result
+
+let pageRankNaive (matrix: float32 [,]) =
+    let rowCount = Array2D.length1 matrix
+    let mutable result = Array.zeroCreate rowCount
+
+    let mutable prev =
+        Array.create rowCount (1f / (float32 rowCount))
+
+    let mutable error = accuracy + 1f
+    let addConst = (1f - alpha) / (float32 rowCount)
+
+    while (error > accuracy) do
+        for r in 0 .. rowCount - 1 do
+            result [ r ] <- 0f
+
+            for c in 0 .. rowCount - 1 do
+                result.[r] <- result.[r] + matrix.[r, c] * prev.[c]
+
+            result.[r] <- result.[r] + addConst
+
+        error <-
+            sqrt
+            <| Array.fold2 (fun e x1 x2 -> e + (x1 - x2) * (x1 - x2)) 0f result prev
+
+        let temp = result
+        result <- prev
+        prev <- temp
+
+    prev
 
 let testFixtures (testContext: TestContext) =
-    [ let context = testContext.ClContext
+    [ let config = Utils.undirectedAlgoConfig
+      let context = testContext.ClContext
       let queue = testContext.Queue
       let workGroupSize = Utils.defaultWorkGroupSize
 
@@ -20,50 +80,39 @@ let testFixtures (testContext: TestContext) =
       let pageRank =
           Algorithms.PageRank.run context workGroupSize
 
-      testCase testName
-      <| fun () ->
-
-          let matrix = Array2D.zeroCreate 4 4
-
-          matrix.[0, 1] <- 1f
-          matrix.[0, 2] <- 1f
-          matrix.[0, 3] <- 1f
-          matrix.[1, 2] <- 1f
-          matrix.[1, 3] <- 1f
-          matrix.[2, 0] <- 1f
-          matrix.[3, 2] <- 1f
-          matrix.[3, 0] <- 1f
-
+      testPropertyWithConfig config testName
+      <| fun (matrix: float32 [,]) ->
           let matrixHost =
               Utils.createMatrixFromArray2D CSR matrix ((=) 0f)
 
-          let matrix = matrixHost.ToDevice context
+          if matrixHost.NNZ > 0 then
+              let preparedMatrixExpected = prepareNaive matrix
 
-          let preparedMatrix =
-              Algorithms.PageRank.prepareMatrix context workGroupSize queue matrix
+              let expected = pageRankNaive preparedMatrixExpected
 
-          let res = pageRank queue preparedMatrix
+              let matrix = matrixHost.ToDevice context
 
-          let resHost = res.ToHost queue
+              let preparedMatrix =
+                  Algorithms.PageRank.prepareMatrix context workGroupSize queue matrix
 
-          preparedMatrix.Dispose queue
-          matrix.Dispose queue
-          res.Dispose queue
+              let res = pageRank queue preparedMatrix accuracy
 
-          let expected =
-              [| 0.3681506515f
-                 0.1418093443f
-                 0.2879616022f
-                 0.2020783126f |]
+              let resHost = res.ToHost queue
 
-          match resHost with
-          | Vector.Dense resHost ->
-              let actual = resHost |> Utils.unwrapOptionArray 0f
+              preparedMatrix.Dispose queue
+              matrix.Dispose queue
+              res.Dispose queue
 
-              for i in 0 .. actual.Length - 1 do
-                  Expect.isTrue (Utils.float32IsEqual actual.[i] expected.[i]) "Values should be equal"
+              match resHost with
+              | Vector.Dense resHost ->
+                  let actual = resHost |> Utils.unwrapOptionArray 0f
 
-          | _ -> failwith "Not implemented" ]
+                  for i in 0 .. actual.Length - 1 do
+                      Expect.isTrue
+                          ((abs (actual.[i] - expected.[i])) < accuracy)
+                          (sprintf "Values should be equal. Expected %A, actual %A" expected.[i] actual.[i])
+
+              | _ -> failwith "Not implemented" ]
 
 let tests =
-    TestCases.gpuTests "Bfs tests" testFixtures
+    TestCases.gpuTests "PageRank tests" testFixtures
