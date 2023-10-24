@@ -51,7 +51,7 @@ let pageRankNaive (matrix: float32 [,]) =
 
     while (error > accuracy) do
         for r in 0 .. rowCount - 1 do
-            result [ r ] <- 0f
+            result.[r] <- 0f
 
             for c in 0 .. rowCount - 1 do
                 result.[r] <- result.[r] + matrix.[r, c] * prev.[c]
