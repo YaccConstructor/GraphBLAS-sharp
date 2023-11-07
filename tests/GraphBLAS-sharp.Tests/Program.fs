@@ -75,6 +75,7 @@ let vectorTests =
     testList
         "Vector"
         [ Vector.SpMV.tests
+          Vector.SpMSpV.tests
           Vector.ZeroCreate.tests
           Vector.OfList.tests
           Vector.Copy.tests
@@ -88,11 +89,19 @@ let vectorTests =
     |> testSequenced
 
 let algorithmsTests =
-    testList "Algorithms tests" [ Algorithms.BFS.tests ]
+    testList
+        "Algorithms tests"
+        [ Algorithms.BFS.tests
+          Algorithms.SSSP.tests ]
     |> testSequenced
 
 let deviceTests =
-    testList "Device" [ matrixTests; commonTests ]
+    testList
+        "Device"
+        [ matrixTests
+          commonTests
+          vectorTests
+          algorithmsTests ]
     |> testSequenced
 
 let hostTests =

@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Benchmarks
 [<AbstractClass>]
 [<IterationCount(100)>]
 [<WarmupCount(10)>]
-[<Config(typeof<Configs.Matrix2>)>]
+[<Config(typeof<Configs.Matrix>)>]
 type Benchmarks<'elem when 'elem : struct>(
         buildFunToBenchmark,
         converter: string -> 'elem,
@@ -22,11 +22,9 @@ type Benchmarks<'elem when 'elem : struct>(
 
     let mutable funToBenchmark = None
 
-    let mutable firstMatrix = Unchecked.defaultof<ClMatrix<'elem>>
-    let mutable secondMatrix = Unchecked.defaultof<ClMatrix<'elem>>
+    let mutable matrix = Unchecked.defaultof<ClMatrix<'elem>>
 
-    let mutable firstMatrixHost = Unchecked.defaultof<_>
-    let mutable secondMatrixHost = Unchecked.defaultof<_>
+    let mutable matrixHost = Unchecked.defaultof<_>
 
     member val ResultMatrix = Unchecked.defaultof<ClMatrix.COO<'elem> option> with get, set
 
@@ -36,7 +34,7 @@ type Benchmarks<'elem when 'elem : struct>(
     [<ParamsSource("InputMatrixProvider")>]
     member val InputMatrixReader = Unchecked.defaultof<MtxReader> with get, set
 
-    member this.OclContext:ClContext = (fst this.OclContextInfo).ClContext
+    member this.OclContext: ClContext = (fst this.OclContextInfo).ClContext
     member this.WorkGroupSize = snd this.OclContextInfo
 
     member this.Processor =
@@ -76,11 +74,10 @@ type Benchmarks<'elem when 'elem : struct>(
         reader.ReadMatrix converter
 
     member this.Mxm() =
-        this.ResultMatrix <- this.FunToBenchmark this.Processor DeviceOnly firstMatrix secondMatrix
+        this.ResultMatrix <- this.FunToBenchmark this.Processor DeviceOnly matrix matrix
 
     member this.ClearInputMatrices() =
-        firstMatrix.Dispose this.Processor
-        secondMatrix.Dispose this.Processor
+        matrix.Dispose this.Processor
 
     member this.ClearResult() =
         match this.ResultMatrix with
@@ -88,12 +85,10 @@ type Benchmarks<'elem when 'elem : struct>(
         | None -> ()
 
     member this.ReadMatrices() =
-        firstMatrixHost <- this.ReadMatrix this.InputMatrixReader
-        secondMatrixHost <- this.ReadMatrix this.InputMatrixReader
+        matrixHost <- this.ReadMatrix this.InputMatrixReader
 
     member this.LoadMatricesToGPU () =
-        firstMatrix <- buildMatrix this.OclContext firstMatrixHost
-        secondMatrix <- buildMatrix this.OclContext secondMatrixHost
+        matrix <- buildMatrix this.OclContext matrixHost
 
     abstract member GlobalSetup : unit -> unit
 

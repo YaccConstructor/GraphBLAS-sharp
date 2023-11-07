@@ -44,7 +44,7 @@ let correctnessGenericTest
     isEqual
     zero
     op
-    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClVector<'a>)
+    (addFun: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClVector<'a> option)
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
     case
     (leftArray: 'a [], rightArray: 'a [])
@@ -71,17 +71,20 @@ let correctnessGenericTest
             let res =
                 addFun q HostInterop firstVector secondVector
 
+            match res with
+            | Some res ->
+                let denseActual = toDense q HostInterop res
+
+                let actual = denseActual.ToHost q
+
+                res.Dispose q
+                denseActual.Dispose q
+
+                checkResult isEqual zero op actual leftArray rightArray
+            | _ -> ()
+
             firstVector.Dispose q
             secondVector.Dispose q
-
-            let denseActual = toDense q HostInterop res
-
-            let actual = denseActual.ToHost q
-
-            res.Dispose q
-            denseActual.Dispose q
-
-            checkResult isEqual zero op actual leftArray rightArray
         with
         | ex when ex.Message = "InvalidBufferSize" -> ()
         | ex -> raise ex

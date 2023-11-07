@@ -26,6 +26,8 @@ module Vector =
 
     let map2 = Map2.run
 
+    let map2SparseDense = Map2.runSparseDense
+
     let map2AtLeastOne opAdd (clContext: ClContext) workGroupSize allocationMode =
         Map2.AtLeastOne.run (Convert.atLeastOneToOption opAdd) clContext workGroupSize allocationMode
 

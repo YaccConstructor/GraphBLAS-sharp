@@ -95,7 +95,7 @@ module internal Map =
             queue.Post(Msg.CreateFreeMsg<_>(indices))
 
             { Context = clContext
-              Indices = indices
+              Indices = resultIndices
               Values = resultValues
               Size = vector.Size }
 

@@ -26,6 +26,20 @@ let testFixtures (testContext: TestContext) =
               context
               workGroupSize
 
+      let bfsSparse =
+          Algorithms.BFS.singleSourceSparse
+              ArithmeticOperations.intSumOption
+              ArithmeticOperations.intMulOption
+              context
+              workGroupSize
+
+      let bfsPushPull =
+          Algorithms.BFS.singleSourcePushPull
+              ArithmeticOperations.intSumOption
+              ArithmeticOperations.intMulOption
+              context
+              workGroupSize
+
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
 
@@ -46,22 +60,34 @@ let testFixtures (testContext: TestContext) =
 
               let matrix = matrixHost.ToDevice context
 
-              match matrix with
-              | ClMatrix.CSR mtx ->
-                  let res =
-                      bfs queue matrix source |> ClVector.Dense
+              let res = bfs queue matrix source
 
-                  let resHost = res.ToHost queue
+              let resSparse = bfsSparse queue matrix source
 
-                  (mtx :> IDeviceMemObject).Dispose queue
-                  res.Dispose queue
+              let resPushPull = bfsPushPull queue matrix source
 
-                  match resHost with
-                  | Vector.Dense resHost ->
-                      let actual = resHost |> Utils.unwrapOptionArray 0
+              let resHost = res.ToHost queue
+              let resHostSparse = resSparse.ToHost queue
+              let resHostPushPull = resPushPull.ToHost queue
 
-                      Expect.sequenceEqual actual expected "Sequences must be equal"
-                  | _ -> failwith "Not implemented"
+              matrix.Dispose queue
+              res.Dispose queue
+              resSparse.Dispose queue
+              resPushPull.Dispose queue
+
+              match resHost, resHostSparse, resHostPushPull with
+              | Vector.Dense resHost, Vector.Dense resHostSparse, Vector.Dense resHostPushPull ->
+                  let actual = resHost |> Utils.unwrapOptionArray 0
+
+                  let actualSparse =
+                      resHostSparse |> Utils.unwrapOptionArray 0
+
+                  let actualPushPull =
+                      resHostPushPull |> Utils.unwrapOptionArray 0
+
+                  Expect.sequenceEqual actual expected "Dense bfs is not as expected"
+                  Expect.sequenceEqual actualSparse expected "Sparse bfs is not as expected"
+                  Expect.sequenceEqual actualPushPull expected "Push-pull bfs is not as expected"
               | _ -> failwith "Not implemented" ]
 
 let tests =

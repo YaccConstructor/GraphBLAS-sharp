@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -15,8 +15,11 @@
         <Compile Include="Helpers.fs" />
         <Compile Include="Backend/QuickGraph/Algorithms/BFS.fs" />
         <Compile Include="Backend/QuickGraph/Algorithms/ConnectedComponents.fs" />
+        <Compile Include="Backend/QuickGraph/Algorithms/SSSP.fs" />
         <Compile Include="Backend/QuickGraph/CreateGraph.fs" />
         <Compile Include="Backend/Algorithms/BFS.fs" />
+        <Compile Include="Backend/Algorithms/SSSP.fs" />
+        <Compile Include="Backend/Algorithms/PageRank.fs" />
         <Compile Include="Backend/Common/ClArray/Blit.fs" />
         <Compile Include="Backend/Common/ClArray/Choose.fs" />
         <Compile Include="Backend/Common/ClArray/ChunkBySize.fs" />
@@ -60,8 +63,9 @@
         <Compile Include="Backend/Vector/OfList.fs" />
         <Compile Include="Backend/Vector/Reduce.fs" />
         <Compile Include="Backend/Vector/SpMV.fs" />
-        <Compile Include="Backend/Vector/ZeroCreate.fs" />
+        <Compile Include="Backend/Vector/Create.fs" />
         <Compile Include="Backend/Vector/Merge.fs" />
+        <Compile Include="Backend/Vector/SpMSpV.fs" />
         <Compile Include="Backend/Vector/Map.fs" />
         <Compile Include="Host/Matrix/FromArray2D.fs" />
         <Compile Include="Host/Matrix/Convert.fs" />

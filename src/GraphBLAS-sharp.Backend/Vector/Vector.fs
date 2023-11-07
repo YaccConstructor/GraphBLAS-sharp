@@ -2,8 +2,10 @@ namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
 open Microsoft.FSharp.Control
+open Microsoft.FSharp.Core
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClVector
@@ -13,29 +15,30 @@ open GraphBLAS.FSharp.Backend.Vector
 [<RequireQualifiedAccess>]
 module Vector =
     /// <summary>
+    /// Builds vector of given format with fixed size and fills it with the given value.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let create (clContext: ClContext) workGroupSize =
+        let create = ClArray.create clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode size format value ->
+            match format with
+            | Sparse -> failwith "Attempting to create full sparse vector"
+            | Dense ->
+                ClVector.Dense
+                <| create processor allocationMode size value
+
+    /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let zeroCreate (clContext: ClContext) workGroupSize =
-        let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
+        let create = create clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode size format ->
-            match format with
-            | Sparse ->
-                ClVector.Sparse
-                    { Context = clContext
-                      Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| 0 |])
-                      Values =
-                          clContext.CreateClArrayWithSpecificAllocationMode(
-                              allocationMode,
-                              [| Unchecked.defaultof<'a> |]
-                          ) // TODO empty vector
-                      Size = size }
-            | Dense ->
-                ClVector.Dense
-                <| zeroCreate processor allocationMode size
+            create processor allocationMode size format None
 
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the values from the given list.
@@ -50,7 +53,7 @@ module Vector =
             ClArray.zeroCreate clContext workGroupSize
 
         let map =
-            ClArray.map <@ Some @> clContext workGroupSize
+            Common.Map.map <@ Some @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode format size (elements: (int * 'a) list) ->
             match format with
@@ -156,7 +159,7 @@ module Vector =
         let denseFillVector =
             Dense.Vector.assignByMask op clContext workGroupSize
 
-        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: ClCell<'a>) ->
+        fun (processor: MailboxProcessor<_>) allocationMode (vector: ClVector<'a>) (mask: ClVector<'b>) (value: 'a) ->
             match vector, mask with
             | ClVector.Sparse vector, ClVector.Sparse mask ->
                 ClVector.Sparse
@@ -166,11 +169,149 @@ module Vector =
                 <| denseFillVector processor allocationMode vector mask value
             | _ -> failwith "Vector formats are not matching."
 
+    /// <summary>
+    /// Assign given value to all entries covered by mask.
+    /// </summary>
+    /// <param name="op"></param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let assignByMask<'a, 'b when 'a: struct and 'b: struct> op clContext workGroupSize =
         assignByMaskGeneral<'a, 'b> (Convert.assignToOption op) clContext workGroupSize
 
+    /// <summary>
+    /// Assign given value to all entries NOT covered by mask.
+    /// </summary>
+    /// <param name="op"></param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let assignByMaskComplemented<'a, 'b when 'a: struct and 'b: struct> op clContext workGroupSize =
         assignByMaskGeneral<'a, 'b> (Convert.assignComplementedToOption op) clContext workGroupSize
+
+    let private assignByMaskInPlaceGeneral<'a, 'b when 'a: struct and 'b: struct>
+        op
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let assignByDense =
+            Dense.Vector.assignByMaskInPlace op clContext workGroupSize
+
+        let assignBySparse =
+            Dense.Vector.assignBySparseMaskInPlace op clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) (mask: ClVector<'b>) (value: 'a) ->
+            match vector, mask with
+            | ClVector.Dense vector, ClVector.Dense mask -> assignByDense processor vector mask value vector
+            | ClVector.Dense vector, ClVector.Sparse mask -> assignBySparse processor vector mask value vector
+            | _ -> failwith "Unsupported format"
+
+    /// <summary>
+    /// Assign given value to all entries covered by mask.
+    /// Does it in-place.
+    /// </summary>
+    /// <param name="op"></param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let assignByMaskInPlace<'a, 'b when 'a: struct and 'b: struct> op clContext workGroupSize =
+        assignByMaskInPlaceGeneral<'a, 'b> (Convert.assignToOption op) clContext workGroupSize
+
+    /// <summary>
+    /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+    /// Stores the result in the left vector.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2InPlace (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+        let map2Dense =
+            Dense.Vector.map2InPlace map clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVector.Dense left, ClVector.Dense right -> map2Dense processor left right left
+            | _ -> failwith "Unsupported vector format"
+
+    /// <summary>
+    /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+    /// Stores the result in the given vector.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2To (map: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+        let map2Dense =
+            Dense.Vector.map2InPlace map clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) (resultVector: ClVector<'c>) ->
+            match leftVector, rightVector, resultVector with
+            | ClVector.Dense left, ClVector.Dense right, ClVector.Dense result -> map2Dense processor left right result
+            | _ -> failwith "Unsupported vector format"
+
+    /// <summary>
+    /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+    /// Returns new vector.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2Dense (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+        let map2Dense =
+            Dense.Vector.map2 map clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationFlag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVector.Dense left, ClVector.Dense right -> map2Dense processor allocationFlag left right
+            | _ -> failwith "Unsupported vector format"
+
+    /// <summary>
+    /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+    /// Returns new vector as option.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2Sparse (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+        let map2Sparse =
+            Sparse.Map2.run map clContext workGroupSize
+
+        let map2SparseDense =
+            Sparse.Map2.runSparseDense map clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationFlag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+            match leftVector, rightVector with
+            | ClVector.Sparse left, ClVector.Sparse right ->
+                Option.map ClVector.Sparse (map2Sparse processor allocationFlag left right)
+            | ClVector.Sparse left, ClVector.Dense right ->
+                Option.map ClVector.Sparse (map2SparseDense processor allocationFlag left right)
+            | _ -> failwith "Unsupported vector format"
+
+    /// <summary>
+    /// Check if vector contains such element that satisfies the predicate.
+    /// </summary>
+    /// <param name="predicate"></param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let exists (predicate: Expr<'a option -> bool>) (clContext: ClContext) workGroupSize =
+
+        let existsDense =
+            ClArray.exists predicate clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (vector: ClVector<'a>) ->
+            match vector with
+            | ClVector.Dense vector -> existsDense processor vector
+            | _ -> failwith "Unsupported format"
 
     /// <summary>
     /// Applies a function to each value of the vector, threading an accumulator argument through the computation.

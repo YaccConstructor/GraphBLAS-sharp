@@ -28,6 +28,11 @@ module Map =
             | Some _ -> 1
             | None -> 0 @>
 
+    let predicateBitmap<'a> (predicate: Expr<'a -> bool>) =
+        <@ fun (x: 'a) ->
+            let res = (%predicate) x
+            if res then 1 else 0 @>
+
     let inc = <@ fun item -> item + 1 @>
 
     let subtraction = <@ fun first second -> first - second @>
