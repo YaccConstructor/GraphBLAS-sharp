@@ -197,8 +197,8 @@ module Matrix =
     /// <summary>
     /// Transposes the given matrix and returns result as a new matrix.
     /// </summary>
-    ///<param name="clContext">OpenCL context.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
 
         let transposeInPlace = transposeInPlace clContext workGroupSize
@@ -216,3 +216,12 @@ module Matrix =
               Columns = copy queue allocationMode matrix.Columns
               Values = copyData queue allocationMode matrix.Values }
             |> transposeInPlace queue
+
+    /// <summary>
+    /// Build a bitmap. Maps non-zero elements of the matrix with minimum nnz to 1
+    /// if the second matrix has non zero element under the same row and column pair, otherwise 0.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let findIntersectionByKeys (clContext: ClContext) workGroupSize =
+        Intersect.findIntersectionByKeys clContext workGroupSize
