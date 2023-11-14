@@ -191,6 +191,9 @@ module ArithmeticOperations =
             | Some true -> None
             | _ -> Some true @>
 
+    let intNotQ =
+        <@ fun x -> if x = 0 then 1 else 0 @>
+
     let inline private binOpQ zero op =
         <@ fun (left: 'a) (right: 'a) ->
             let result = (%op) left right

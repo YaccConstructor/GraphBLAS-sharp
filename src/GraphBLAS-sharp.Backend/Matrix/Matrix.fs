@@ -1,7 +1,6 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
-open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Vector
@@ -58,9 +57,47 @@ module Matrix =
                     { Context = clContext
                       RowCount = matrix.RowCount
                       ColumnCount = matrix.ColumnCount
-                      Rows = rows
-                      NNZ = matrix.NNZ }
+                      Rows = rows }
                     |> ClMatrix.LIL
+
+    /// <summary>
+    /// Creates new matrix with the values from the given one.
+    /// New matrix represented in the format of the given one.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let copyTo (clContext: ClContext) workGroupSize =
+
+        let copyTo = ClArray.copyTo clContext workGroupSize
+
+        let copyDataTo = ClArray.copyTo clContext workGroupSize
+
+        let vectorCopyTo =
+            Sparse.Vector.copyTo clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (source: ClMatrix<'a>) (destination: ClMatrix<'a>) ->
+            if source.NNZ <> destination.NNZ || source.RowCount <> destination.RowCount || source.ColumnCount <> destination.ColumnCount then
+                failwith "Two matrices are not of the same size or they have different number of non-zero elements"
+
+            match source, destination with
+            | ClMatrix.COO s, ClMatrix.COO d ->
+                copyTo processor s.Rows d.Rows
+                copyTo processor s.Columns d.Columns
+                copyDataTo processor s.Values d.Values
+            | ClMatrix.CSR s, ClMatrix.CSR d ->
+                copyTo processor s.RowPointers d.RowPointers
+                copyTo processor s.Columns d.Columns
+                copyDataTo processor s.Values d.Values
+            | ClMatrix.CSC s, ClMatrix.CSC d ->
+                copyTo processor s.Rows d.Rows
+                copyTo processor s.ColumnPointers d.ColumnPointers
+                copyDataTo processor s.Values d.Values
+            | ClMatrix.LIL s, ClMatrix.LIL d ->
+                List.iter2 (fun sourceVector destinationVector ->
+                    match sourceVector, destinationVector with
+                    | Some sv, Some dv -> vectorCopyTo processor sv dv
+                    | _ -> failwith "Vectors of LIL matrix are not of the same size") s.Rows d.Rows
+            | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>
     /// Creates a new matrix, represented in CSR format, that is equal to the given one.
@@ -273,9 +310,9 @@ module Matrix =
     /// </summary>
     /// <remarks>
     /// The format changes according to the following:
-    /// * COO -> COO
-    /// * CSR -> CSC
-    /// * CSC -> CSR
+    /// * COO -> COO <br/>
+    /// * CSR -> CSC <br/>
+    /// * CSC -> CSR <br/>
     /// </remarks>
     ///<param name="clContext">OpenCL context.</param>
     ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
@@ -296,12 +333,12 @@ module Matrix =
     /// </summary>
     /// <remarks>
     /// The format changes according to the following:
-    /// * COO -> COO
-    /// * CSR -> CSC
-    /// * CSC -> CSR
+    /// * COO -> COO <br/>
+    /// * CSR -> CSC <br/>
+    /// * CSC -> CSR <br/>
     /// </remarks>
-    ///<param name="clContext">OpenCL context.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
         let COOTranspose =
             COO.Matrix.transpose clContext workGroupSize
@@ -332,3 +369,10 @@ module Matrix =
                   Values = copyData processor allocationMode m.Values }
                 |> ClMatrix.CSR
             | ClMatrix.LIL _ -> failwith "Not yet implemented"
+
+    let ofList (clContext: ClContext) allocationMode format rowCount columnCount (elements: (int * int * 'a) list) =
+        match format with
+        | COO ->
+            COO.Matrix.ofList clContext allocationMode rowCount columnCount elements
+            |> ClMatrix.COO
+        | _ -> failwith "Not implemented"

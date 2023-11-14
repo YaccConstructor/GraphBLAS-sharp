@@ -86,14 +86,15 @@ module ClMatrix =
         { Context: ClContext
           RowCount: int
           ColumnCount: int
-          Rows: ClVector.Sparse<'elem> option list
-          NNZ: int }
+          Rows: ClVector.Sparse<'elem> option list }
 
         interface IDeviceMemObject with
             member this.Dispose q =
                 this.Rows
                 |> Seq.choose id
                 |> Seq.iter (fun vector -> vector.Dispose q)
+
+        member this.NNZ = this.Rows |> List.fold (fun acc row -> match row with | Some r -> acc + r.NNZ | None -> acc) 0
 
     type Tuple<'elem when 'elem: struct> =
         { Context: ClContext

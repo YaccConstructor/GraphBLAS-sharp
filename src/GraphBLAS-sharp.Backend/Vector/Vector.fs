@@ -46,49 +46,12 @@ module Vector =
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let ofList (clContext: ClContext) workGroupSize =
-        let scatter =
-            Common.Scatter.lastOccurrence clContext workGroupSize
-
-        let zeroCreate =
-            ClArray.zeroCreate clContext workGroupSize
-
-        let map =
-            Common.Map.map <@ Some @> clContext workGroupSize
+        let denseOfList = Dense.Vector.ofList clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode format size (elements: (int * 'a) list) ->
             match format with
-            | Sparse ->
-                let indices, values =
-                    elements
-                    |> Array.ofList
-                    |> Array.sortBy fst
-                    |> Array.unzip
-
-                { Context = clContext
-                  Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, indices)
-                  Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
-                  Size = size }
-                |> ClVector.Sparse
-            | Dense ->
-                let indices, values = elements |> Array.ofList |> Array.unzip
-
-                let values =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
-
-                let indices =
-                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, indices)
-
-                let mappedValues = map processor DeviceOnly values
-
-                let result = zeroCreate processor allocationMode size
-
-                scatter processor indices mappedValues result
-
-                processor.Post(Msg.CreateFreeMsg(mappedValues))
-                processor.Post(Msg.CreateFreeMsg(indices))
-                processor.Post(Msg.CreateFreeMsg(values))
-
-                ClVector.Dense result
+            | Sparse -> Sparse.Vector.ofList clContext allocationMode size elements |> ClVector.Sparse
+            | Dense -> denseOfList processor allocationMode size elements |> ClVector.Dense
 
     /// <summary>
     /// Creates new vector with the values from the given one.

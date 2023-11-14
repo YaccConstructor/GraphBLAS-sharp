@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module Matrix =
     /// <summary>
@@ -218,10 +219,35 @@ module Matrix =
             |> transposeInPlace queue
 
     /// <summary>
-    /// Build a bitmap. Maps non-zero elements of the matrix with minimum nnz to 1
-    /// if the second matrix has non zero element under the same row and column pair, otherwise 0.
+    /// Builds a bitmap. Maps non-zero elements of the left matrix
+    /// to 1 if the right matrix has non zero element under the same row and column pair, otherwise 0.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let findIntersectionByKeys (clContext: ClContext) workGroupSize =
-        Intersect.findIntersectionByKeys clContext workGroupSize
+        Intersect.findKeysIntersection clContext workGroupSize
+
+    /// <summary>
+    /// Merges two disjoint matrices of the same size.
+    /// </summary>
+    /// <remarks>
+    /// Matrices should have the same number of rows and columns. <br/>
+    /// Matrices should not have non zero values with the same index.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let mergeDisjoint (clContext: ClContext) workGroupSize = Merge.runDisjoint clContext workGroupSize
+
+    let ofList (clContext: ClContext) allocationMode rowCount columnCount (elements: (int * int * 'a) list) =
+        let rows, columns, values =
+            elements
+            |> Array.ofList
+            |> Array.sortBy (fun (x, _, _) -> x)
+            |> Array.unzip3
+
+        { Context = clContext
+          Rows = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, rows)
+          Columns = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, columns)
+          Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
+          RowCount = rowCount
+          ColumnCount = columnCount }
