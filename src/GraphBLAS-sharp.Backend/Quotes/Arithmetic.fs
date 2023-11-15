@@ -240,13 +240,22 @@ module ArithmeticOperations =
             | Some x, None -> Some 1
             | _ -> None @>
 
-    let min<'a when 'a: comparison> =
+    let minOption<'a when 'a: comparison> =
         <@ fun (x: 'a option) (y: 'a option) ->
             match x, y with
             | Some x, Some y -> Some(min x y)
             | Some x, None -> Some x
             | None, Some y -> Some y
             | _ -> None @>
+
+    let min zero =
+        <@ fun x y ->
+            let result = min x y
+            if result = zero then None else Some result @>
+
+    let fst zero =
+        <@ fun x _ ->
+            if x = zero then None else Some x @>
 
     //PageRank specific
     let squareOfDifference =

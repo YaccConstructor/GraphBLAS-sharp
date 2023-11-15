@@ -11,7 +11,7 @@ module internal SSSP =
     let run (clContext: ClContext) workGroupSize =
 
         let less = ArithmeticOperations.less<int>
-        let min = ArithmeticOperations.min<int>
+        let min = ArithmeticOperations.minOption<int>
         let plus = ArithmeticOperations.intSumAsMul
 
         let spMVInPlace =
