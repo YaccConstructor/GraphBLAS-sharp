@@ -169,9 +169,21 @@ module internal MSBFS =
 
             let updateFrontAndLevels = updateFrontAndParents clContext workGroupSize
 
-            fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int list) ->
-                let vertexCount = matrix.RowCount
+            fun (queue: MailboxProcessor<Msg>) (inputMatrix: ClMatrix<'a>) (source: int list) ->
+                let vertexCount = inputMatrix.RowCount
                 let sourceVertexCount = source.Length
+
+                let matrix =
+                    match inputMatrix with
+                    | ClMatrix.CSR m ->
+                        { Context = clContext
+                          RowPointers = m.RowPointers
+                          Columns = m.Columns
+                          Values = m.Columns
+                          RowCount = m.RowCount
+                          ColumnCount = m.ColumnCount }
+                        |> ClMatrix.CSR
+                    | _ -> failwith "Incorrect format"
 
                 let mutable parents =
                     source
@@ -186,7 +198,6 @@ module internal MSBFS =
                 let mutable stop = false
 
                 while not stop do
-
                     //Getting new frontier
                     match spGeMM queue DeviceOnly (ClMatrix.COO front) matrix with
                     | None ->
