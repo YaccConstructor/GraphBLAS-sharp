@@ -45,7 +45,7 @@ module internal MSBFS =
 
             let findIntersection = Intersect.findKeysIntersection clContext workGroupSize
 
-            fun (queue: MailboxProcessor<_>) allocationMode (levels: ClMatrix.COO<_>) (front: ClMatrix.COO<_>) ->
+            fun (queue: MailboxProcessor<_>) allocationMode (front: ClMatrix.COO<_>) (levels: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
                 let intersection = findIntersection queue DeviceOnly front levels
@@ -64,15 +64,15 @@ module internal MSBFS =
 
         let run<'a when 'a: struct>
             (add: Expr<int -> int -> int option>)
-            (mul: Expr<'a -> int -> int option>)
+            (mul: Expr<int -> 'a -> int option>)
             (clContext: ClContext)
             workGroupSize
             =
 
             let spGeMM =
-                Operations.SpGeMM.expand add mul clContext workGroupSize
+                Operations.SpGeMM.COO.expand add mul clContext workGroupSize
 
-            let toCSRInPlace = Matrix.toCSRInPlace clContext workGroupSize
+            let copy = Matrix.copy clContext workGroupSize
 
             let updateFrontAndLevels = updateFrontAndLevels clContext workGroupSize
 
@@ -88,10 +88,7 @@ module internal MSBFS =
                     startMatrix
                     |> Matrix.ofList clContext DeviceOnly sourceVertexCount vertexCount
 
-                let mutable front =
-                    startMatrix
-                    |> Matrix.ofList clContext DeviceOnly sourceVertexCount vertexCount
-                    |> toCSRInPlace queue DeviceOnly
+                let mutable front = copy queue DeviceOnly levels
 
                 let mutable level = 0
                 let mutable stop = false
@@ -100,16 +97,16 @@ module internal MSBFS =
                     level <- level + 1
 
                     //Getting new frontier
-                    match spGeMM queue DeviceOnly matrix (ClMatrix.CSR front) with
+                    match spGeMM queue DeviceOnly (ClMatrix.COO front) matrix with
                     | None ->
                         front.Dispose queue
                         stop <- true
                     | Some newFrontier ->
                         front.Dispose queue
                         //Filtering visited vertices
-                        match updateFrontAndLevels queue DeviceOnly levels newFrontier with
+                        match updateFrontAndLevels queue DeviceOnly newFrontier levels with
                         | l, Some f ->
-                            front <- toCSRInPlace queue DeviceOnly f
+                            front <- f
                             levels.Dispose queue
                             levels <- l
                             newFrontier.Dispose queue
