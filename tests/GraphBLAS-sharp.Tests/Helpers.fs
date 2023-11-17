@@ -337,6 +337,48 @@ module HostPrimitives =
 
             op leftElement rightElement
 
+    let MSBFSParents matrix source =
+        let opAdd a b =
+            let result = min a b
+            if result = -1 then None else Some result
+
+        let opMul (a: int) _ = if a = -1 then None else Some a
+
+        let array2DMultiplication = array2DMultiplication -1 opMul opAdd
+
+        let front =
+            Array2D.create
+            <| Seq.length source
+            <| Array2D.length1 matrix
+            <| -1
+
+        source
+        |> Seq.iteri (fun row vertex ->
+            front.[row, vertex] <- vertex)
+
+        let parents =
+            Array2D.create
+            <| Seq.length source
+            <| Array2D.length1 matrix
+            <| -1
+
+        let mutable stop = false
+
+        while not stop do
+            let newFront = array2DMultiplication front matrix
+            stop <- true
+
+            newFront
+            |> Array2D.iteri (fun i j value ->
+                if value <> -1 then
+                    if parents.[i, j] <> -1 then
+                        newFront.[i, j] <- -1
+                    else
+                        stop <- false
+                        parents.[i, j] <- value)
+
+        front
+
 module Context =
     type TestContext =
         { ClContext: ClContext

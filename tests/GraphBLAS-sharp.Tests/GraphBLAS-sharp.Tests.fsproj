@@ -20,6 +20,7 @@
         <Compile Include="Backend/Algorithms/BFS.fs" />
         <Compile Include="Backend/Algorithms/SSSP.fs" />
         <Compile Include="Backend/Algorithms/PageRank.fs" />
+        <Compile Include="Backend/Algorithms/MSBFS.fs" />
         <Compile Include="Backend/Common/ClArray/Blit.fs" />
         <Compile Include="Backend/Common/ClArray/Choose.fs" />
         <Compile Include="Backend/Common/ClArray/ChunkBySize.fs" />
@@ -51,6 +52,7 @@
         <Compile Include="Backend/Matrix/RowsLengths.fs" />
         <Compile Include="Backend/Matrix/SpGeMM/Expand.fs" />
         <Compile Include="Backend/Matrix/SpGeMM/Masked.fs" />
+        <Compile Include="Backend/Matrix/SpGeMM/ExpandCOO.fs" />
         <Compile Include="Backend/Matrix/Transpose.fs" />
         <Compile Include="Backend/Matrix/Merge.fs" />
         <Compile Include="Backend/Matrix/ExpandRows.fs" />

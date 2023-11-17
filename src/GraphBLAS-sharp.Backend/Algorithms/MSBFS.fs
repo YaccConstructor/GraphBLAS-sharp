@@ -115,7 +115,7 @@ module internal MSBFS =
                             stop <- true
                             newFrontier.Dispose queue
 
-                levels
+                ClMatrix.COO levels
 
         let runSingleSourceMultipleTimes<'a when 'a: struct>
             (add: Expr<int option -> int option -> int option>)
@@ -131,7 +131,7 @@ module internal MSBFS =
                 |> List.map (SSBFS queue matrix)
 
     module Parents =
-        let updateFrontAndParents (clContext: ClContext) workGroupSize =
+        let private updateFrontAndParents (clContext: ClContext) workGroupSize =
             // update parents same as levels
             // every front value should be equal to its column number
             let frontExclude = frontExclude clContext workGroupSize
@@ -165,7 +165,7 @@ module internal MSBFS =
             =
 
             let spGeMM =
-                Operations.SpGeMM.COO.expand (ArithmeticOperations.min 0) (ArithmeticOperations.fst 0) clContext workGroupSize
+                Operations.SpGeMM.COO.expand (ArithmeticOperations.min -1) (ArithmeticOperations.fst -1) clContext workGroupSize
 
             let updateFrontAndLevels = updateFrontAndParents clContext workGroupSize
 
@@ -187,7 +187,7 @@ module internal MSBFS =
 
                 let mutable parents =
                     source
-                    |> List.mapi (fun i vertex -> i, vertex, 0)
+                    |> List.mapi (fun i vertex -> i, vertex, -1)
                     |> Matrix.ofList clContext DeviceOnly sourceVertexCount vertexCount
 
                 let mutable front =
@@ -216,4 +216,4 @@ module internal MSBFS =
                             stop <- true
                             newFrontier.Dispose queue
 
-                parents
+                ClMatrix.COO parents
