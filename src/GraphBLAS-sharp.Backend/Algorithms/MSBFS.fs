@@ -14,17 +14,22 @@ open GraphBLAS.FSharp.Backend.Matrix.COO
 module internal MSBFS =
     let private frontExclude (clContext: ClContext) workGroupSize =
 
-        let excludeValues = ClArray.excludeElements clContext workGroupSize
+        let excludeValues =
+            ClArray.excludeElements clContext workGroupSize
 
-        let excludeIndices = ClArray.excludeElements clContext workGroupSize
+        let excludeIndices =
+            ClArray.excludeElements clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (front: ClMatrix.COO<_>) (intersection: ClArray<int>) ->
 
-            let newRows = excludeIndices queue allocationMode intersection front.Rows
+            let newRows =
+                excludeIndices queue allocationMode intersection front.Rows
 
-            let newColumns = excludeIndices queue allocationMode intersection front.Columns
+            let newColumns =
+                excludeIndices queue allocationMode intersection front.Columns
 
-            let newValues = excludeValues queue allocationMode intersection front.Values
+            let newValues =
+                excludeValues queue allocationMode intersection front.Values
 
             match newRows, newColumns, newValues with
             | Some rows, Some columns, Some values ->
@@ -42,17 +47,21 @@ module internal MSBFS =
 
             let updateFront = frontExclude clContext workGroupSize
 
-            let mergeDisjoint = Matrix.mergeDisjoint clContext workGroupSize
+            let mergeDisjoint =
+                Matrix.mergeDisjoint clContext workGroupSize
 
-            let findIntersection = Intersect.findKeysIntersection clContext workGroupSize
+            let findIntersection =
+                Intersect.findKeysIntersection clContext workGroupSize
 
             fun (queue: MailboxProcessor<_>) allocationMode (front: ClMatrix.COO<_>) (levels: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
-                let intersection = findIntersection queue DeviceOnly front levels
+                let intersection =
+                    findIntersection queue DeviceOnly front levels
 
                 // Remove mutual elements
-                let newFront = updateFront queue allocationMode front intersection
+                let newFront =
+                    updateFront queue allocationMode front intersection
 
                 intersection.Free queue
 
@@ -75,15 +84,15 @@ module internal MSBFS =
 
             let copy = Matrix.copy clContext workGroupSize
 
-            let updateFrontAndLevels = updateFrontAndLevels clContext workGroupSize
+            let updateFrontAndLevels =
+                updateFrontAndLevels clContext workGroupSize
 
             fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int list) ->
                 let vertexCount = matrix.RowCount
                 let sourceVertexCount = source.Length
 
                 let startMatrix =
-                    source
-                    |> List.mapi (fun i vertex -> i, vertex, 1)
+                    source |> List.mapi (fun i vertex -> i, vertex, 1)
 
                 let mutable levels =
                     startMatrix
@@ -124,11 +133,11 @@ module internal MSBFS =
             workGroupSize
             =
 
-            let SSBFS = BFS.singleSourceSparse add mul clContext workGroupSize
+            let SSBFS =
+                BFS.singleSourceSparse add mul clContext workGroupSize
 
             fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int list) ->
-                source
-                |> List.map (SSBFS queue matrix)
+                source |> List.map (SSBFS queue matrix)
 
     module Parents =
         let private updateFrontAndParents (clContext: ClContext) workGroupSize =
@@ -136,38 +145,43 @@ module internal MSBFS =
             // every front value should be equal to its column number
             let frontExclude = frontExclude clContext workGroupSize
 
-            let mergeDisjoint = Matrix.mergeDisjoint clContext workGroupSize
+            let mergeDisjoint =
+                Matrix.mergeDisjoint clContext workGroupSize
 
-            let findIntersection = Intersect.findKeysIntersection clContext workGroupSize
+            let findIntersection =
+                Intersect.findKeysIntersection clContext workGroupSize
 
             fun (queue: MailboxProcessor<Msg>) allocationMode (front: ClMatrix.COO<_>) (parents: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
-                let intersection = findIntersection queue DeviceOnly front parents
+                let intersection =
+                    findIntersection queue DeviceOnly front parents
 
                 // Remove mutual elements
-                let newFront = frontExclude queue allocationMode front intersection
+                let newFront =
+                    frontExclude queue allocationMode front intersection
 
                 intersection.Free queue
 
                 match newFront with
                 | Some f ->
                     // Update levels
-                    let resultFront =
-                        { f with Values = f.Columns }
+                    let resultFront = { f with Values = f.Columns }
                     let newLevels = mergeDisjoint queue parents f
                     newLevels, Some resultFront
                 | _ -> parents, None
 
-        let run<'a when 'a: struct>
-            (clContext: ClContext)
-            workGroupSize
-            =
+        let run<'a when 'a: struct> (clContext: ClContext) workGroupSize =
 
             let spGeMM =
-                Operations.SpGeMM.COO.expand (ArithmeticOperations.min -1) (ArithmeticOperations.fst -1) clContext workGroupSize
+                Operations.SpGeMM.COO.expand
+                    (ArithmeticOperations.min -1)
+                    (ArithmeticOperations.fst -1)
+                    clContext
+                    workGroupSize
 
-            let updateFrontAndLevels = updateFrontAndParents clContext workGroupSize
+            let updateFrontAndLevels =
+                updateFrontAndParents clContext workGroupSize
 
             fun (queue: MailboxProcessor<Msg>) (inputMatrix: ClMatrix<'a>) (source: int list) ->
                 let vertexCount = inputMatrix.RowCount

@@ -94,7 +94,14 @@ module ClMatrix =
                 |> Seq.choose id
                 |> Seq.iter (fun vector -> vector.Dispose q)
 
-        member this.NNZ = this.Rows |> List.fold (fun acc row -> match row with | Some r -> acc + r.NNZ | None -> acc) 0
+        member this.NNZ =
+            this.Rows
+            |> List.fold
+                (fun acc row ->
+                    match row with
+                    | Some r -> acc + r.NNZ
+                    | None -> acc)
+                0
 
     type Tuple<'elem when 'elem: struct> =
         { Context: ClContext

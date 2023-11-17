@@ -76,7 +76,9 @@ module Matrix =
             Sparse.Vector.copyTo clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (source: ClMatrix<'a>) (destination: ClMatrix<'a>) ->
-            if source.NNZ <> destination.NNZ || source.RowCount <> destination.RowCount || source.ColumnCount <> destination.ColumnCount then
+            if source.NNZ <> destination.NNZ
+               || source.RowCount <> destination.RowCount
+               || source.ColumnCount <> destination.ColumnCount then
                 failwith "Two matrices are not of the same size or they have different number of non-zero elements"
 
             match source, destination with
@@ -93,10 +95,13 @@ module Matrix =
                 copyTo processor s.ColumnPointers d.ColumnPointers
                 copyDataTo processor s.Values d.Values
             | ClMatrix.LIL s, ClMatrix.LIL d ->
-                List.iter2 (fun sourceVector destinationVector ->
-                    match sourceVector, destinationVector with
-                    | Some sv, Some dv -> vectorCopyTo processor sv dv
-                    | _ -> failwith "Vectors of LIL matrix are not of the same size") s.Rows d.Rows
+                List.iter2
+                    (fun sourceVector destinationVector ->
+                        match sourceVector, destinationVector with
+                        | Some sv, Some dv -> vectorCopyTo processor sv dv
+                        | _ -> failwith "Vectors of LIL matrix are not of the same size")
+                    s.Rows
+                    d.Rows
             | _ -> failwith "Matrix formats are not matching"
 
     /// <summary>

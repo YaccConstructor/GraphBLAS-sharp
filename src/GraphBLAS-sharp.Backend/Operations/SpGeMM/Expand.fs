@@ -522,7 +522,8 @@ module internal Expand =
 
         let runManySteps opAdd opMul (clContext: ClContext) workGroupSize =
 
-            let compress = COO.Matrix.compressRows clContext workGroupSize
+            let compress =
+                COO.Matrix.compressRows clContext workGroupSize
 
             let gather =
                 Common.Gather.run clContext workGroupSize
@@ -540,7 +541,8 @@ module internal Expand =
 
             fun (processor: MailboxProcessor<_>) allocationMode maxAllocSize generalLength (leftMatrix: ClMatrix.COO<'a>) segmentLengths rightMatrixRowsNNZ (rightMatrix: ClMatrix.CSR<'b>) ->
 
-                let leftRowPointers = compress processor allocationMode leftMatrix.Rows leftMatrix.RowCount
+                let leftRowPointers =
+                    compress processor allocationMode leftMatrix.Rows leftMatrix.RowCount
 
                 // extract segment lengths by left matrix rows pointers
                 let segmentPointersByLeftMatrixRows =

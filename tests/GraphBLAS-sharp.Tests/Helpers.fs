@@ -340,7 +340,11 @@ module HostPrimitives =
     let MSBFSParents matrix source =
         let opAdd a b =
             let result = min a b
-            if result = -1 then None else Some result
+
+            if result = -1 then
+                None
+            else
+                Some result
 
         let opMul (a: int) _ = if a = -1 then None else Some a
 
@@ -353,8 +357,7 @@ module HostPrimitives =
             <| -1
 
         source
-        |> Seq.iteri (fun row vertex ->
-            front.[row, vertex] <- vertex)
+        |> Seq.iteri (fun row vertex -> front.[row, vertex] <- vertex)
 
         let parents =
             Array2D.create
@@ -369,13 +372,14 @@ module HostPrimitives =
             stop <- true
 
             newFront
-            |> Array2D.iteri (fun i j value ->
-                if value <> -1 then
-                    if parents.[i, j] <> -1 then
-                        newFront.[i, j] <- -1
-                    else
-                        stop <- false
-                        parents.[i, j] <- value)
+            |> Array2D.iteri
+                (fun i j value ->
+                    if value <> -1 then
+                        if parents.[i, j] <> -1 then
+                            newFront.[i, j] <- -1
+                        else
+                            stop <- false
+                            parents.[i, j] <- value)
 
         front
 

@@ -255,7 +255,8 @@ module Matrix =
     /// </remarks>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let mergeDisjoint (clContext: ClContext) workGroupSize = Merge.runDisjoint clContext workGroupSize
+    let mergeDisjoint (clContext: ClContext) workGroupSize =
+        Merge.runDisjoint clContext workGroupSize
 
     let ofList (clContext: ClContext) allocationMode rowCount columnCount (elements: (int * int * 'a) list) =
         let rows, columns, values =
@@ -278,7 +279,8 @@ module Matrix =
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let subRows (clContext: ClContext) workGroupSize =
 
-        let upperBound = ClArray.upperBound clContext workGroupSize
+        let upperBound =
+            ClArray.upperBound clContext workGroupSize
 
         let blit = ClArray.blit clContext workGroupSize
 
@@ -298,8 +300,14 @@ module Matrix =
             let lastRowClCell = clContext.CreateClCell(startRow + count)
 
             // extract rows
-            let firstIndex = (upperBound processor matrix.Rows firstRowClCell).ToHostAndFree processor
-            let lastIndex = (upperBound processor matrix.Rows lastRowClCell).ToHostAndFree processor - 1
+            let firstIndex =
+                (upperBound processor matrix.Rows firstRowClCell)
+                    .ToHostAndFree processor
+
+            let lastIndex =
+                (upperBound processor matrix.Rows lastRowClCell)
+                    .ToHostAndFree processor
+                - 1
 
             firstRowClCell.Free processor
             lastRowClCell.Free processor

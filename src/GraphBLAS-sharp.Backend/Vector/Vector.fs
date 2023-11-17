@@ -46,12 +46,17 @@ module Vector =
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let ofList (clContext: ClContext) workGroupSize =
-        let denseOfList = Dense.Vector.ofList clContext workGroupSize
+        let denseOfList =
+            Dense.Vector.ofList clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode format size (elements: (int * 'a) list) ->
             match format with
-            | Sparse -> Sparse.Vector.ofList clContext allocationMode size elements |> ClVector.Sparse
-            | Dense -> denseOfList processor allocationMode size elements |> ClVector.Dense
+            | Sparse ->
+                Sparse.Vector.ofList clContext allocationMode size elements
+                |> ClVector.Sparse
+            | Dense ->
+                denseOfList processor allocationMode size elements
+                |> ClVector.Dense
 
     /// <summary>
     /// Creates new vector with the values from the given one.

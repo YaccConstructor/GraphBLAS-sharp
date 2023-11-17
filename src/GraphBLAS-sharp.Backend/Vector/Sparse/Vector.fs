@@ -27,8 +27,8 @@ module Vector =
         let copyDataTo = ClArray.copyTo clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (source: Sparse<'a>) (destination: Sparse<'a>) ->
-              copyTo processor source.Indices destination.Indices
-              copyDataTo processor source.Values destination.Values
+            copyTo processor source.Indices destination.Indices
+            copyDataTo processor source.Values destination.Values
 
     let map = Map.run
 

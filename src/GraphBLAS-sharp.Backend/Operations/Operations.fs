@@ -133,7 +133,8 @@ module Operations =
 
             fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) (resultVector: ClVector<'c>) ->
                 match leftVector, rightVector, resultVector with
-                | ClVector.Dense left, ClVector.Dense right, ClVector.Dense result -> map2Dense processor left right result
+                | ClVector.Dense left, ClVector.Dense right, ClVector.Dense result ->
+                    map2Dense processor left right result
                 | _ -> failwith "Unsupported vector format"
 
         /// <summary>

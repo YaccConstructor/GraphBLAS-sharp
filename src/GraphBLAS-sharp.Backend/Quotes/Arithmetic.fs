@@ -191,8 +191,7 @@ module ArithmeticOperations =
             | Some true -> None
             | _ -> Some true @>
 
-    let intNotQ =
-        <@ fun x -> if x = 0 then 1 else 0 @>
+    let intNotQ = <@ fun x -> if x = 0 then 1 else 0 @>
 
     let inline private binOpQ zero op =
         <@ fun (left: 'a) (right: 'a) ->
@@ -251,11 +250,14 @@ module ArithmeticOperations =
     let min zero =
         <@ fun x y ->
             let result = min x y
-            if result = zero then None else Some result @>
+
+            if result = zero then
+                None
+            else
+                Some result @>
 
     let fst zero =
-        <@ fun x _ ->
-            if x = zero then None else Some x @>
+        <@ fun x _ -> if x = zero then None else Some x @>
 
     //PageRank specific
     let squareOfDifference =

@@ -201,23 +201,19 @@ module Merge =
 
         fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.COO<'a>) ->
 
-            let length = leftMatrix.Columns.Length + rightMatrix.Columns.Length
+            let length =
+                leftMatrix.Columns.Length
+                + rightMatrix.Columns.Length
 
             let rows, cols, leftValues, rightValues, isLeft = merge processor leftMatrix rightMatrix
 
-            let ndRange = Range1D.CreateValid(length, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
 
             let mergeValuesKernel = mergeValuesKernel.GetKernel()
 
             processor.Post(
-                Msg.MsgSetArguments
-                    (fun () ->
-                        mergeValuesKernel.KernelFunc
-                            ndRange
-                            length
-                            leftValues
-                            rightValues
-                            isLeft)
+                Msg.MsgSetArguments(fun () -> mergeValuesKernel.KernelFunc ndRange length leftValues rightValues isLeft)
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(mergeValuesKernel))

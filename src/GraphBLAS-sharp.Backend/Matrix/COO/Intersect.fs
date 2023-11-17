@@ -16,25 +16,29 @@ module internal Intersect =
 
                 if gid < bitmapSize then
 
-                    let index: uint64 = ((uint64 leftRows.[gid]) <<< 32) ||| (uint64 leftColumns.[gid])
+                    let index: uint64 =
+                        ((uint64 leftRows.[gid]) <<< 32)
+                        ||| (uint64 leftColumns.[gid])
 
-                    let intersect = (%Search.Bin.existsByKey2D) bitmapSize index rightRows rightColumns
+                    let intersect =
+                        (%Search.Bin.existsByKey2D) bitmapSize index rightRows rightColumns
 
                     if intersect then
                         bitmap.[gid] <- 1
                     else
                         bitmap.[gid] <- 0 @>
 
-        let kernel =
-            clContext.Compile <| findIntersection
+        let kernel = clContext.Compile <| findIntersection
 
         fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.COO<'b>) ->
 
             let bitmapSize = leftMatrix.NNZ
 
-            let bitmap = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, bitmapSize)
+            let bitmap =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, bitmapSize)
 
-            let ndRange = Range1D.CreateValid(bitmapSize, workGroupSize)
+            let ndRange =
+                Range1D.CreateValid(bitmapSize, workGroupSize)
 
             let kernel = kernel.GetKernel()
 

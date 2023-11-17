@@ -146,9 +146,7 @@ module ClArray =
 
             let kernel = program.GetKernel()
 
-            processor.Post(
-                Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange source destination source.Length)
-            )
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange source destination source.Length))
 
             processor.Post(Msg.CreateRunMsg<_, _> kernel)
 
@@ -829,7 +827,8 @@ module ClArray =
     /// <param name="op">The function to transform elements of the array.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize = Map.mapInPlace op clContext workGroupSize
+    let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize =
+        Map.mapInPlace op clContext workGroupSize
 
     /// <summary>
     /// Builds a new array whose elements are the results of applying the given function
@@ -839,7 +838,8 @@ module ClArray =
     /// <param name="op">The function to transform elements of the array.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) = Map.mapWithValue clContext workGroupSize op
+    let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
+        Map.mapWithValue clContext workGroupSize op
 
     /// <summary>
     /// Builds a new array whose elements are the results of applying the given function
@@ -851,7 +851,8 @@ module ClArray =
     /// <param name="map">The function to transform the pairs of the input elements.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize = Map.map2 map clContext workGroupSize
+    let map2<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
+        Map.map2 map clContext workGroupSize
 
     /// <summary>
     /// Fills the third given array with the results of applying the given function
@@ -863,7 +864,8 @@ module ClArray =
     /// <param name="map">The function to transform the pairs of the input elements.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize = Map.map2InPlace map clContext workGroupSize
+    let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
+        Map.map2InPlace map clContext workGroupSize
 
     /// <summary>
     /// Excludes elements, pointed by the bitmap.
@@ -872,22 +874,28 @@ module ClArray =
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let excludeElements (clContext: ClContext) workGroupSize =
 
-        let invert = mapInPlace ArithmeticOperations.intNotQ clContext workGroupSize
+        let invert =
+            mapInPlace ArithmeticOperations.intNotQ clContext workGroupSize
 
-        let prefixSum = PrefixSum.standardExcludeInPlace clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
 
-        let scatter = Scatter.lastOccurrence clContext workGroupSize
+        let scatter =
+            Scatter.lastOccurrence clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (excludeBitmap: ClArray<int>) (inputArray: ClArray<'a>) ->
 
             invert queue excludeBitmap
 
-            let length = (prefixSum queue excludeBitmap).ToHostAndFree queue
+            let length =
+                (prefixSum queue excludeBitmap)
+                    .ToHostAndFree queue
 
             if length = 0 then
                 None
             else
-                let result = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
+                let result =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
 
                 scatter queue excludeBitmap inputArray result
 
