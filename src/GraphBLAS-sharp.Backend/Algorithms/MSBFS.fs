@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Backend.Matrix.LIL
 open GraphBLAS.FSharp.Backend.Matrix.COO
 
@@ -50,10 +51,12 @@ module internal MSBFS =
             let mergeDisjoint =
                 Matrix.mergeDisjoint clContext workGroupSize
 
+            let setLevel = ClArray.fill clContext workGroupSize
+
             let findIntersection =
                 Intersect.findKeysIntersection clContext workGroupSize
 
-            fun (queue: MailboxProcessor<_>) allocationMode (front: ClMatrix.COO<_>) (levels: ClMatrix.COO<_>) ->
+            fun (queue: MailboxProcessor<_>) allocationMode (level: int) (front: ClMatrix.COO<_>) (levels: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
                 let intersection =
@@ -68,7 +71,14 @@ module internal MSBFS =
                 match newFront with
                 | Some f ->
                     // Update levels
+                    let levelClCell = clContext.CreateClCell level
+
+                    setLevel queue levelClCell 0 f.Values.Length f.Values
+
+                    levelClCell.Free queue
+
                     let newLevels = mergeDisjoint queue levels f
+
                     newLevels, newFront
                 | _ -> levels, None
 
@@ -114,7 +124,7 @@ module internal MSBFS =
                     | Some newFrontier ->
                         front.Dispose queue
                         //Filtering visited vertices
-                        match updateFrontAndLevels queue DeviceOnly newFrontier levels with
+                        match updateFrontAndLevels queue DeviceOnly level newFrontier levels with
                         | l, Some f ->
                             front <- f
                             levels.Dispose queue

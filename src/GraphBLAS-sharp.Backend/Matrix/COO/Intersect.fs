@@ -12,7 +12,7 @@ module internal Intersect =
             <@ fun (ndRange: Range1D) (leftNNZ: int) (rightNNZ: int) (leftRows: ClArray<int>) (leftColumns: ClArray<int>) (rightRows: ClArray<int>) (rightColumns: ClArray<int>) (bitmap: ClArray<int>) ->
 
                 let gid = ndRange.GlobalID0
-                let bitmapSize = min leftNNZ rightNNZ
+                let bitmapSize = leftNNZ
 
                 if gid < bitmapSize then
 
@@ -21,7 +21,7 @@ module internal Intersect =
                         ||| (uint64 leftColumns.[gid])
 
                     let intersect =
-                        (%Search.Bin.existsByKey2D) bitmapSize index rightRows rightColumns
+                        (%Search.Bin.existsByKey2D) rightNNZ index rightRows rightColumns
 
                     if intersect then
                         bitmap.[gid] <- 1

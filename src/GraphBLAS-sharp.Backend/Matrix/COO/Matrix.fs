@@ -243,7 +243,7 @@ module Matrix =
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let findIntersectionByKeys (clContext: ClContext) workGroupSize =
+    let findKeysIntersection (clContext: ClContext) workGroupSize =
         Intersect.findKeysIntersection clContext workGroupSize
 
     /// <summary>

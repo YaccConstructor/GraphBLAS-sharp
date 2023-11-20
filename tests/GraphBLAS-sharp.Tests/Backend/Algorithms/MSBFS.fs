@@ -32,7 +32,7 @@ let makeLevelsTest context queue bfs (matrix: int [,]) =
         let matrixDevice = matrixHost.ToDevice context
 
         let expectedArray2D: int [,] =
-            Array2D.zeroCreate sourceVertexCount (Array2D.length2 matrix)
+            Array2D.zeroCreate sourceVertexCount (Array2D.length1 matrix)
 
         source
         |> Seq.iteri
@@ -109,7 +109,7 @@ let makeParentsTest context queue bfs (matrix: int [,]) =
 
 let createParentsTest context queue testFun =
     testFun
-    |> makeLevelsTest context queue
+    |> makeParentsTest context queue
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let parentsTestFixtures (testContext: TestContext) =
@@ -119,7 +119,7 @@ let parentsTestFixtures (testContext: TestContext) =
       let bfsLevels =
           Algorithms.MSBFS.runParents context workGroupSize
 
-      createLevelsTest context queue bfsLevels ]
+      createParentsTest context queue bfsLevels ]
 
 let parentsTests =
-    TestCases.gpuTests "MSBFS Levels tests" parentsTestFixtures
+    TestCases.gpuTests "MSBFS Parents tests" parentsTestFixtures

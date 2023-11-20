@@ -3,6 +3,7 @@
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module Map =
     /// <summary>
@@ -15,11 +16,11 @@ module Map =
     let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
-            <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
+            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
 
                 let gid = ndRange.GlobalID0
 
-                if gid < lenght then
+                if gid < length then
                     result.[gid] <- (%op) inputArray.[gid] @>
 
         let kernel = clContext.Compile map
@@ -50,11 +51,11 @@ module Map =
     let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let map =
-            <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) ->
+            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) ->
 
                 let gid = ndRange.GlobalID0
 
-                if gid < lenght then
+                if gid < length then
                     inputArray.[gid] <- (%op) inputArray.[gid] @>
 
         let kernel = clContext.Compile map
@@ -81,11 +82,11 @@ module Map =
     let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
 
         let map =
-            <@ fun (ndRange: Range1D) lenght (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
+            <@ fun (ndRange: Range1D) length (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
 
                 let gid = ndRange.GlobalID0
 
-                if gid < lenght then
+                if gid < length then
                     result.[gid] <- (%op) value.Value inputArray.[gid] @>
 
         let kernel = clContext.Compile map
@@ -107,6 +108,8 @@ module Map =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            valueClCell.Free processor
 
             result
 

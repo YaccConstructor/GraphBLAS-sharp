@@ -98,7 +98,7 @@ module Search =
 
         /// <summary>
         /// Searches value in array by two keys.
-        /// In case there is a value at the given keys position, it is returned.
+        /// In case there is a value at the given keys position, it returns true.
         /// </summary>
         let existsByKey2D<'a> =
             <@ fun length sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) ->
