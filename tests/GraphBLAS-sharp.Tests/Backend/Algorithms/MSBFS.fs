@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config = Utils.undirectedAlgoConfig
+
 let workGroupSize = Utils.defaultWorkGroupSize
 
 let makeLevelsTest context queue bfs (matrix: int [,]) =
@@ -19,11 +20,14 @@ let makeLevelsTest context queue bfs (matrix: int [,]) =
     let largestComponent =
         ConnectedComponents.largestComponent graph
 
+    Array.sortInPlace largestComponent
+
     if largestComponent.Length > 1 then
         let sourceVertexCount = max 2 (largestComponent.Length / 10)
 
         let source =
-            largestComponent.[0..sourceVertexCount]
+            largestComponent.[0..sourceVertexCount - 1]
+            |> Array.sort
             |> Array.toList
 
         let matrixHost =
@@ -35,7 +39,7 @@ let makeLevelsTest context queue bfs (matrix: int [,]) =
             Array2D.zeroCreate sourceVertexCount (Array2D.length1 matrix)
 
         source
-        |> Seq.iteri
+        |> List.iteri
             (fun i vertex ->
                 (snd (BFS.runUndirected graph vertex))
                 |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
@@ -53,7 +57,7 @@ let makeLevelsTest context queue bfs (matrix: int [,]) =
         | Matrix.COO a, Matrix.COO e -> Utils.compareCOOMatrix (=) a e
         | _ -> failwith "Not implemented"
 
-let createLevelsTest context queue testFun =
+let createLevelsTest<'a> context queue testFun =
     testFun
     |> makeLevelsTest context queue
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -64,12 +68,12 @@ let levelsTestFixtures (testContext: TestContext) =
 
       let bfsLevels =
           Algorithms.MSBFS.runLevels
-              (fst ArithmeticOperations.intAdd)
-              (fst ArithmeticOperations.intMul)
+              ArithmeticOperations.intAddWithoutZero
+              ArithmeticOperations.intMulWithoutZero
               context
               workGroupSize
 
-      createLevelsTest context queue bfsLevels ]
+      createLevelsTest<int> context queue bfsLevels ]
 
 let levelsTests =
     TestCases.gpuTests "MSBFS Levels tests" levelsTestFixtures
