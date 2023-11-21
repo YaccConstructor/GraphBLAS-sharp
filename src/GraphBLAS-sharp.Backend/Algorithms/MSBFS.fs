@@ -3,37 +3,55 @@ namespace GraphBLAS.FSharp.Backend.Algorithms
 open Brahma.FSharp
 open FSharp.Quotations
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Common
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
+open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Backend.Matrix.LIL
 open GraphBLAS.FSharp.Backend.Matrix.COO
 
 module internal MSBFS =
     let private frontExclude (clContext: ClContext) workGroupSize =
 
-        let excludeValues =
-            ClArray.excludeElements clContext workGroupSize
+        let invert =
+            ClArray.mapInPlace ArithmeticOperations.intNotQ clContext workGroupSize
 
-        let excludeIndices =
-            ClArray.excludeElements clContext workGroupSize
+        let prefixSum =
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
+
+        let scatterIndices =
+            Scatter.lastOccurrence clContext workGroupSize
+
+        let scatterValues =
+            Scatter.lastOccurrence clContext workGroupSize
 
         fun (queue: MailboxProcessor<_>) allocationMode (front: ClMatrix.COO<_>) (intersection: ClArray<int>) ->
 
-            let newRows =
-                excludeIndices queue allocationMode intersection front.Rows
+            invert queue intersection
 
-            let newColumns =
-                excludeIndices queue allocationMode intersection front.Columns
+            let length =
+                (prefixSum queue intersection)
+                    .ToHostAndFree queue
 
-            let newValues =
-                excludeValues queue allocationMode intersection front.Values
+            if length = 0 then
+                None
+            else
+                let rows =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
 
-            match newRows, newColumns, newValues with
-            | Some rows, Some columns, Some values ->
+                let columns =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
+
+                let values =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
+
+                scatterIndices queue intersection front.Rows rows
+                scatterIndices queue intersection front.Columns columns
+                scatterValues queue intersection front.Values values
+
                 { Context = clContext
                   Rows = rows
                   Columns = columns
@@ -41,7 +59,6 @@ module internal MSBFS =
                   RowCount = front.RowCount
                   ColumnCount = front.ColumnCount }
                 |> Some
-            | _ -> None
 
     module Levels =
         let private updateFrontAndLevels (clContext: ClContext) workGroupSize =
@@ -70,13 +87,14 @@ module internal MSBFS =
 
                 match newFront with
                 | Some f ->
-                    // Update levels
                     let levelClCell = clContext.CreateClCell level
 
+                    // Set current level value to all remaining front positions
                     setLevel queue levelClCell 0 f.Values.Length f.Values
 
                     levelClCell.Free queue
 
+                    // Update levels
                     let newLevels = mergeDisjoint queue levels f
 
                     newLevels, newFront
@@ -110,7 +128,7 @@ module internal MSBFS =
 
                 let mutable front = copy queue DeviceOnly levels
 
-                let mutable level = 0
+                let mutable level = 1
                 let mutable stop = false
 
                 while not stop do
@@ -121,15 +139,21 @@ module internal MSBFS =
                     | None ->
                         front.Dispose queue
                         stop <- true
+
                     | Some newFrontier ->
                         front.Dispose queue
+
                         //Filtering visited vertices
                         match updateFrontAndLevels queue DeviceOnly level newFrontier levels with
                         | l, Some f ->
                             front <- f
+
                             levels.Dispose queue
+
                             levels <- l
+
                             newFrontier.Dispose queue
+
                         | _, None ->
                             stop <- true
                             newFrontier.Dispose queue
@@ -151,8 +175,6 @@ module internal MSBFS =
 
     module Parents =
         let private updateFrontAndParents (clContext: ClContext) workGroupSize =
-            // update parents same as levels
-            // every front value should be equal to its column number
             let frontExclude = frontExclude clContext workGroupSize
 
             let mergeDisjoint =
@@ -175,10 +197,15 @@ module internal MSBFS =
 
                 match newFront with
                 | Some f ->
-                    // Update levels
                     let resultFront = { f with Values = f.Columns }
-                    let newLevels = mergeDisjoint queue parents f
-                    newLevels, Some resultFront
+
+                    // Update parents
+                    let newParents = mergeDisjoint queue parents f
+
+                    f.Values.Free queue
+
+                    newParents, Some resultFront
+
                 | _ -> parents, None
 
         let run<'a when 'a: struct> (clContext: ClContext) workGroupSize =
@@ -190,7 +217,7 @@ module internal MSBFS =
                     clContext
                     workGroupSize
 
-            let updateFrontAndLevels =
+            let updateFrontAndParents =
                 updateFrontAndParents clContext workGroupSize
 
             fun (queue: MailboxProcessor<Msg>) (inputMatrix: ClMatrix<'a>) (source: int list) ->
@@ -227,15 +254,20 @@ module internal MSBFS =
                     | None ->
                         front.Dispose queue
                         stop <- true
+
                     | Some newFrontier ->
                         front.Dispose queue
+
                         //Filtering visited vertices
-                        match updateFrontAndLevels queue DeviceOnly newFrontier parents with
-                        | l, Some f ->
+                        match updateFrontAndParents queue DeviceOnly newFrontier parents with
+                        | p, Some f ->
                             front <- f
+
                             parents.Dispose queue
-                            parents <- l
+                            parents <- p
+
                             newFrontier.Dispose queue
+
                         | _, None ->
                             stop <- true
                             newFrontier.Dispose queue

@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Quotes
 
 open GraphBLAS.FSharp.Objects
+open Microsoft.FSharp.Quotations
 
 module ArithmeticOperations =
     let inline private mkUnaryOp zero unaryOp =
@@ -230,6 +231,13 @@ module ArithmeticOperations =
     let floatMul = createPair 0.0 (*) <@ (*) @>
 
     let float32Mul = createPair 0.0f (*) <@ (*) @>
+
+    // without zero
+    let intAddWithoutZero =
+        <@ fun x y -> Some (x + y) @>
+
+    let intMulWithoutZero =
+        <@ fun x y -> Some (x * y) @>
 
     // other operations
     let less<'a when 'a: comparison> =

@@ -260,10 +260,9 @@ module Matrix =
 
     let ofList (clContext: ClContext) allocationMode rowCount columnCount (elements: (int * int * 'a) list) =
         let rows, columns, values =
-            elements
-            |> Array.ofList
-            |> Array.sortBy (fun (x, _, _) -> x)
-            |> Array.unzip3
+            let elements = elements |> Array.ofList
+            elements |> Array.sortInPlaceBy (fun (x, _, _) -> x)
+            elements |> Array.unzip3
 
         { Context = clContext
           Rows = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, rows)
