@@ -183,6 +183,10 @@ module internal MSBFS =
             let findIntersection =
                 Intersect.findKeysIntersection clContext workGroupSize
 
+            let copyIndices = ClArray.copyTo clContext workGroupSize
+
+            // let copyMatrix = Matrix.copy clContext workGroupSize
+
             fun (queue: MailboxProcessor<Msg>) allocationMode (front: ClMatrix.COO<_>) (parents: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
@@ -197,14 +201,12 @@ module internal MSBFS =
 
                 match newFront with
                 | Some f ->
-                    let resultFront = { f with Values = f.Columns }
-
                     // Update parents
                     let newParents = mergeDisjoint queue parents f
 
-                    f.Values.Free queue
+                    copyIndices queue f.Columns f.Values
 
-                    newParents, Some resultFront
+                    newParents, Some f
 
                 | _ -> parents, None
 
