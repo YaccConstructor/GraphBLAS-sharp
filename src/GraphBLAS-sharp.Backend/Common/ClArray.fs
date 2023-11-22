@@ -133,7 +133,7 @@ module ClArray =
                 let i = ndRange.GlobalID0
 
                 if i < inputArrayLength then
-                    source.[i] <- destination.[i] @>
+                    destination.[i] <- source.[i] @>
 
         let program = clContext.Compile(copy)
 

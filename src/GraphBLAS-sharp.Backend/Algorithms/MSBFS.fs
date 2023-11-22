@@ -119,6 +119,8 @@ module internal MSBFS =
                 let vertexCount = matrix.RowCount
                 let sourceVertexCount = source.Length
 
+                let source = source |> List.sort
+
                 let startMatrix =
                     source |> List.mapi (fun i vertex -> i, vertex, 1)
 
@@ -185,8 +187,6 @@ module internal MSBFS =
 
             let copyIndices = ClArray.copyTo clContext workGroupSize
 
-            // let copyMatrix = Matrix.copy clContext workGroupSize
-
             fun (queue: MailboxProcessor<Msg>) allocationMode (front: ClMatrix.COO<_>) (parents: ClMatrix.COO<_>) ->
 
                 // Find intersection of levels and front indices.
@@ -214,8 +214,8 @@ module internal MSBFS =
 
             let spGeMM =
                 Operations.SpGeMM.COO.expand
-                    (ArithmeticOperations.min -1)
-                    (ArithmeticOperations.fst -1)
+                    (ArithmeticOperations.min)
+                    (ArithmeticOperations.fst)
                     clContext
                     workGroupSize
 
@@ -225,6 +225,8 @@ module internal MSBFS =
             fun (queue: MailboxProcessor<Msg>) (inputMatrix: ClMatrix<'a>) (source: int list) ->
                 let vertexCount = inputMatrix.RowCount
                 let sourceVertexCount = source.Length
+
+                let source = source |> List.sort
 
                 let matrix =
                     match inputMatrix with

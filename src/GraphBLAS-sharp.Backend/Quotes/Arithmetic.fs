@@ -255,17 +255,9 @@ module ArithmeticOperations =
             | None, Some y -> Some y
             | _ -> None @>
 
-    let min zero =
-        <@ fun x y ->
-            let result = min x y
+    let min<'a when 'a: comparison> = <@ fun (x: 'a) (y: 'a) -> Some (min x y) @>
 
-            if result = zero then
-                None
-            else
-                Some result @>
-
-    let fst zero =
-        <@ fun x _ -> if x = zero then None else Some x @>
+    let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>
 
     //PageRank specific
     let squareOfDifference =
