@@ -233,11 +233,9 @@ module ArithmeticOperations =
     let float32Mul = createPair 0.0f (*) <@ (*) @>
 
     // without zero
-    let intAddWithoutZero =
-        <@ fun x y -> Some (x + y) @>
+    let intAddWithoutZero = <@ fun x y -> Some(x + y) @>
 
-    let intMulWithoutZero =
-        <@ fun x y -> Some (x * y) @>
+    let intMulWithoutZero = <@ fun x y -> Some(x * y) @>
 
     // other operations
     let less<'a when 'a: comparison> =
@@ -255,7 +253,8 @@ module ArithmeticOperations =
             | None, Some y -> Some y
             | _ -> None @>
 
-    let min<'a when 'a: comparison> = <@ fun (x: 'a) (y: 'a) -> Some (min x y) @>
+    let min<'a when 'a: comparison> =
+        <@ fun (x: 'a) (y: 'a) -> Some(min x y) @>
 
     let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>
 

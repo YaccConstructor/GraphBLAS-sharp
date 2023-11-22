@@ -33,8 +33,7 @@ module internal MSBFS =
             invert queue intersection
 
             let length =
-                (prefixSum queue intersection)
-                    .ToHostAndFree queue
+                (prefixSum queue intersection).ToHostAndFree queue
 
             if length = 0 then
                 None
