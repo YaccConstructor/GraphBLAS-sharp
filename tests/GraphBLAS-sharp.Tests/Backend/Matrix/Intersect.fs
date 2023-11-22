@@ -12,33 +12,39 @@ open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 let config =
     { Utils.defaultConfig with
-        arbitrary = [ typeof<Generators.PairOfSparseMatrices> ] }
+          arbitrary = [ typeof<Generators.PairOfSparseMatrices> ] }
 
 let workGroupSize = Utils.defaultWorkGroupSize
 
-let context = Context.defaultContext.ClContext
-let processor = Context.defaultContext.Queue
+let context = defaultContext.ClContext
+let processor = defaultContext.Queue
 
-let makeTest isZero testFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
+let makeTest<'a when 'a: struct> isZero testFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
 
-    let m1 = Matrix.COO.FromArray2D(leftMatrix, isZero)
-    let m2 = Matrix.COO.FromArray2D(rightMatrix, isZero)
+    let m1 =
+        Matrix.COO.FromArray2D(leftMatrix, isZero)
+
+    let m2 =
+        Matrix.COO.FromArray2D(rightMatrix, isZero)
 
     if m1.NNZ > 0 && m2.NNZ > 0 then
+
         let expected =
-            let leftIndices =
-                (m1.Rows, m1.Columns)
-                ||> Array.zip
+            let mutable index = 0
+            let bitmap = Array.zeroCreate m1.NNZ
 
-            let rightIndices =
-                (m2.Rows, m2.Columns)
-                ||> Array.zip
+            leftMatrix
+            |> Array2D.iteri (fun row col value ->
+                if row < m2.RowCount
+                   && col < m2.ColumnCount
+                   && not <| isZero rightMatrix.[row, col]
+                   && not <| isZero value then
+                    bitmap.[index] <- 1
 
-            Array.init
-            <| m1.NNZ
-            <| fun i ->
-                let index = leftIndices.[i]
-                if Array.exists ((=) index) rightIndices then 1 else 0
+                if not <| isZero value then
+                    index <- index + 1)
+
+            bitmap
 
         let m1 = m1.ToDevice context
         let m2 = m2.ToDevice context
@@ -55,9 +61,9 @@ let makeTest isZero testFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
         "Matrices should be equal"
         |> Expect.equal actual expected
 
-let createTest isZero =
+let inline createTest<'a when 'a: struct> (isZero: 'a -> bool) =
     Matrix.COO.Matrix.findKeysIntersection context workGroupSize
-    |> makeTest isZero
+    |> makeTest<'a> isZero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
 let tests =

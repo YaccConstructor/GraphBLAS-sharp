@@ -34,9 +34,10 @@ module Generators =
         }
 
     let genericSparseGenerator zero valuesGen handler =
-        let maxSparsity = 10
+        let minSparsity = 10
+        let maxSparsity = 50
         let upperBound = 100
-        let sparsityGen = Gen.choose (1, maxSparsity)
+        let sparsityGen = Gen.choose (minSparsity, maxSparsity)
 
         let genWithSparsity sparseValuesGenProvider =
             gen {
@@ -469,44 +470,22 @@ module Generators =
             gen {
                 let! rowCount, columnCount = dimension2DGenerator
 
-                let! matrixA =
-                    valuesGenerator
+                let! pairs =
+                    Gen.two valuesGenerator
                     |> Gen.array2DOfDim (rowCount, columnCount)
 
-                let! matrixB =
-                    valuesGenerator
-                    |> Gen.array2DOfDim (rowCount, columnCount)
+                let isZero = (=) zero
 
-                for row in 0 .. rowCount - 1 do
-                    for col in 0 .. columnCount - 1 do
+                let pairs =
+                    pairs
+                    |> Array2D.map
+                        (fun (fst, snd) ->
+                            match () with
+                            | () when isZero fst && not <| isZero snd -> (zero, snd)
+                            | () when not <| isZero fst && isZero snd -> (fst, zero)
+                            | () -> (fst, zero))
 
-                        if matrixA.[row, col] <> zero then
-                            matrixB.[row, col] <- matrixA.[row, col]
-
-                return (matrixA, matrixB)
-
-                // let! rowCount, columnCount = dimension2DGenerator
-                //
-                // let! arrayA =
-                //     valuesGenerator
-                //     |> Gen.arrayOfLength (rowCount * columnCount)
-                //
-                // let! arrayB =
-                //     arrayA
-                //     |> Gen.collectToArr (fun v -> if v = zero then valuesGenerator else Gen.constant zero)
-                //
-                // let matrixA = Array2D.zeroCreate rowCount columnCount
-                // let matrixB = Array2D.zeroCreate rowCount columnCount
-                //
-                // (arrayA, arrayB)
-                // ||> Array.iteri2 (fun i valueA valueB ->
-                //     let row = i / columnCount
-                //     let column = i % columnCount
-                //
-                //     matrixA.[row, column] <- valueA
-                //     matrixB.[row, column] <- valueB)
-                //
-                // return (matrixA, matrixB)
+                return pairs
             }
 
         static member IntType() =
@@ -1435,15 +1414,20 @@ module Generators =
 
                     let! array = Gen.arrayOfLength length valuesGenerator
 
-                    let! bitmap = Gen.collectToArr (fun value -> if value = zero then Gen.constant 0 else Gen.choose (0, 1)) array
+                    let! bitmap =
+                        Gen.collectToArr
+                            (fun value ->
+                                if value = zero then
+                                    Gen.constant 0
+                                else
+                                    Gen.choose (0, 1))
+                            array
 
                     return (array, bitmap)
                 }
 
             static member IntType() =
-                arrayAndBitmap
-                <| Arb.generate<int>
-                <| 0
+                arrayAndBitmap <| Arb.generate<int> <| 0
                 |> Arb.fromGen
 
             static member FloatType() =
@@ -1461,44 +1445,31 @@ module Generators =
                 |> Arb.fromGen
 
             static member SByteType() =
-                arrayAndBitmap
-                <| Arb.generate<sbyte>
-                <| 0y
+                arrayAndBitmap <| Arb.generate<sbyte> <| 0y
                 |> Arb.fromGen
 
             static member ByteType() =
-                arrayAndBitmap
-                <| Arb.generate<byte>
-                <| 0uy
+                arrayAndBitmap <| Arb.generate<byte> <| 0uy
                 |> Arb.fromGen
 
             static member Int16Type() =
-                arrayAndBitmap
-                <| Arb.generate<int16>
-                <| 0s
+                arrayAndBitmap <| Arb.generate<int16> <| 0s
                 |> Arb.fromGen
 
             static member UInt16Type() =
-                arrayAndBitmap
-                <| Arb.generate<uint16>
-                <| 0us
+                arrayAndBitmap <| Arb.generate<uint16> <| 0us
                 |> Arb.fromGen
 
             static member Int32Type() =
-                arrayAndBitmap
-                <| Arb.generate<int32>
-                <| 0
+                arrayAndBitmap <| Arb.generate<int32> <| 0
                 |> Arb.fromGen
 
             static member UInt32Type() =
-                arrayAndBitmap
-                <| Arb.generate<uint32>
-                <| 0u
+                arrayAndBitmap <| Arb.generate<uint32> <| 0u
                 |> Arb.fromGen
+
             static member BoolType() =
-                arrayAndBitmap
-                <| Arb.generate<bool>
-                <| false
+                arrayAndBitmap <| Arb.generate<bool> <| false
                 |> Arb.fromGen
 
         type Set() =
@@ -1673,4 +1644,3 @@ module Generators =
             static member BoolType() =
                 arrayAndChunkPosition <| Arb.generate<bool>
                 |> Arb.fromGen
-

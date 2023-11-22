@@ -22,7 +22,9 @@ let makeTest<'a> isEqual (zero: 'a) testFun ((array, bitmap): 'a array * int arr
         let arrayCl = context.CreateClArray array
         let bitmapCl = context.CreateClArray bitmap
 
-        let actual: ClArray<'a> option = testFun processor HostInterop bitmapCl arrayCl
+        let actual: ClArray<'a> option =
+            testFun processor HostInterop bitmapCl arrayCl
+
         let actual =
             actual
             |> Option.map (fun a -> a.ToHostAndFree processor)

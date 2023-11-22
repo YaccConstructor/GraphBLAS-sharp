@@ -79,7 +79,8 @@ let levelsTests =
     TestCases.gpuTests "MSBFS Levels tests" levelsTestFixtures
 
 let makeParentsTest context queue bfs (matrix: int [,]) =
-    let graph = undirectedFromArray2D matrix -1
+
+    let graph = undirectedFromArray2D matrix 0
 
     let largestComponent =
         ConnectedComponents.largestComponent graph
@@ -87,20 +88,17 @@ let makeParentsTest context queue bfs (matrix: int [,]) =
     if largestComponent.Length > 1 then
         let sourceVertexCount = max 2 (largestComponent.Length / 10)
 
-        let source =
-            largestComponent.[0..sourceVertexCount]
-            |> Array.toList
+        let source = largestComponent.[0..sourceVertexCount]
+        source |> Array.sortInPlace
+        let source = source |> Array.toList
 
         let matrixHost =
-            Utils.createMatrixFromArray2D CSR matrix ((=) -1)
+            Utils.createMatrixFromArray2D CSR matrix ((=) 0)
 
         let matrixDevice = matrixHost.ToDevice context
 
-        let expectedArray2D =
-            HostPrimitives.MSBFSParents matrix source
-
         let expected =
-            Utils.createMatrixFromArray2D COO expectedArray2D ((=) -1)
+            HostPrimitives.MSBFSParents matrix source
 
         let actual: ClMatrix<int> = bfs queue matrixDevice source
         let actual = actual.ToHostAndFree queue
@@ -111,7 +109,7 @@ let makeParentsTest context queue bfs (matrix: int [,]) =
         | Matrix.COO a, Matrix.COO e -> Utils.compareCOOMatrix (=) a e
         | _ -> failwith "Not implemented"
 
-let createParentsTest context queue testFun =
+let createParentsTest<'a> context queue testFun =
     testFun
     |> makeParentsTest context queue
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
@@ -120,10 +118,10 @@ let parentsTestFixtures (testContext: TestContext) =
     [ let context = testContext.ClContext
       let queue = testContext.Queue
 
-      let bfsLevels =
+      let bfsParents =
           Algorithms.MSBFS.runParents context workGroupSize
 
-      createParentsTest context queue bfsLevels ]
+      createParentsTest context queue bfsParents ]
 
 let parentsTests =
     TestCases.gpuTests "MSBFS Parents tests" parentsTestFixtures

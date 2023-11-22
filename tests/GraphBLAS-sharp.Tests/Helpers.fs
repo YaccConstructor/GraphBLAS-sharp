@@ -338,23 +338,29 @@ module HostPrimitives =
             op leftElement rightElement
 
     let MSBFSParents matrix source =
+        let zero = -2
+
         let opAdd a b =
             let result = min a b
 
-            if result = -1 then
+            if result = zero then
                 None
             else
                 Some result
 
-        let opMul (a: int) _ = if a = -1 then None else Some a
+        let opMul (a: int) (b: int) =
+            if a = zero || b = 0 then
+                None
+            else
+                Some a
 
-        let array2DMultiplication = array2DMultiplication -1 opMul opAdd
+        let array2DMultiplication = array2DMultiplication zero opMul opAdd
 
-        let front =
+        let mutable front =
             Array2D.create
             <| Seq.length source
             <| Array2D.length1 matrix
-            <| -1
+            <| zero
 
         source
         |> Seq.iteri (fun row vertex -> front.[row, vertex] <- vertex)
@@ -363,7 +369,10 @@ module HostPrimitives =
             Array2D.create
             <| Seq.length source
             <| Array2D.length1 matrix
-            <| -1
+            <| zero
+
+        source
+        |> Seq.iteri (fun row vertex -> parents.[row, vertex] <- -1)
 
         let mutable stop = false
 
@@ -373,15 +382,19 @@ module HostPrimitives =
 
             newFront
             |> Array2D.iteri
-                (fun i j value ->
-                    if value <> -1 then
-                        if parents.[i, j] <> -1 then
-                            newFront.[i, j] <- -1
+                (fun row col value ->
+                    if value <> zero then
+                        if parents.[row, col] <> zero then
+                            newFront.[row, col] <- zero
+
                         else
                             stop <- false
-                            parents.[i, j] <- value)
+                            parents.[row, col] <- value
+                            newFront.[row, col] <- col)
 
-        front
+            front <- newFront
+
+        Utils.createMatrixFromArray2D COO parents ((=) -2)
 
 module Context =
     type TestContext =

@@ -110,7 +110,10 @@ let testsCOO =
       createTestCOO (=) false ]
     |> testList "COO"
 
-let makeTestCOODisjoint isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
+let makeTestCOODisjoint isEqual zero testFun (array: ('a * 'a) [,]) =
+
+    let leftArray = Array2D.map fst array
+    let rightArray = Array2D.map snd array
 
     let leftMatrix =
         Matrix.COO.FromArray2D(leftArray, isEqual zero)
@@ -123,24 +126,29 @@ let makeTestCOODisjoint isEqual zero testFun (leftArray: 'a [,], rightArray: 'a 
         let clLeftMatrix = leftMatrix.ToDevice context
         let clRightMatrix = rightMatrix.ToDevice context
 
-        let actual: ClMatrix.COO<'a> = testFun processor clLeftMatrix clRightMatrix
+        let actual: ClMatrix.COO<'a> =
+            testFun processor clLeftMatrix clRightMatrix
+
         let actual = actual.ToHostAndFree processor
 
         clLeftMatrix.Dispose processor
         clRightMatrix.Dispose processor
 
         rightArray
-        |> Array2D.iteri (fun row column value -> leftArray.[row, column] <- value)
+        |> Array2D.iteri
+            (fun row column value ->
+                if value <> zero then
+                    leftArray.[row, column] <- value)
 
-        let expected = Matrix.COO.FromArray2D(leftArray, isEqual zero)
+        let expected =
+            Matrix.COO.FromArray2D(leftArray, isEqual zero)
 
         Utils.compareCOOMatrix isEqual actual expected
 
 let createTestCOODisjoint isEqual (zero: 'a) =
     let configDisjoint =
-        {Utils.defaultConfig with
-            endSize = 10
-            arbitrary = [ typeof<Generators.PairOfDisjointMatricesOfTheSameSize> ]}
+        { Utils.defaultConfig with
+              arbitrary = [ typeof<Generators.PairOfDisjointMatricesOfTheSameSize> ] }
 
     Matrix.COO.Merge.runDisjoint context Utils.defaultWorkGroupSize
     |> makeTestCOODisjoint isEqual zero
@@ -221,4 +229,5 @@ let testsCSR =
     |> testList "CSR"
 
 let allTests =
-    [ testsCSR; testsCOO; testsCOODisjoint ] |> testList "Merge"
+    [ testsCSR; testsCOO; testsCOODisjoint ]
+    |> testList "Merge"
