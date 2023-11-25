@@ -130,32 +130,6 @@ module Search =
         /// Find lower position of item in array.
         /// </summary>
         let lowerPosition<'a when 'a: equality and 'a: comparison> =
-            <@ fun length sourceItem (keys: ClArray<'a>) ->
-
-                let mutable leftEdge = 0
-                let mutable rightEdge = length - 1
-                let mutable resultPosition = None
-
-                while leftEdge <= rightEdge do
-                    let currentPosition = (leftEdge + rightEdge) / 2
-                    let currentKey = keys.[currentPosition]
-
-                    if sourceItem = currentKey then
-                        // remember positions and move left
-                        resultPosition <- Some currentPosition
-
-                        rightEdge <- currentPosition - 1
-                    elif sourceItem < currentKey then
-                        rightEdge <- currentPosition - 1
-                    else
-                        leftEdge <- currentPosition + 1
-
-                resultPosition @>
-
-        /// <summary>
-        /// Find lower position of item in array.
-        /// </summary>
-        let lowerPositionLocal<'a when 'a: equality and 'a: comparison> =
             <@ fun length sourceItem (keys: 'a []) ->
 
                 let mutable leftEdge = 0

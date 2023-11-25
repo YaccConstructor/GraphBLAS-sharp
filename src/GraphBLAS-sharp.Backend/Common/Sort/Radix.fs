@@ -269,7 +269,7 @@ module internal Radix =
                 failwith "Mismatch of key lengths and value. Lengths must be the same"
 
             if values.Length <= 1 then
-                copy processor DeviceOnly keys, dataCopy processor DeviceOnly values
+                dataCopy processor allocationMode values
             else
                 let firstKeys = copy processor DeviceOnly keys
 
@@ -319,26 +319,14 @@ module internal Radix =
                     keysPair <- swap keysPair
                     valuesPair <- swap valuesPair
 
-                    globalOffset.Free processor
                     localOffset.Free processor
                     shift.Free processor
 
+                (fst keysPair).Free processor
                 (snd keysPair).Free processor
                 (snd valuesPair).Free processor
 
-                (fst keysPair, fst valuesPair)
-
-    let runByKeysStandardValuesOnly clContext workGroupSize =
-        let runByKeys =
-            runByKeys clContext workGroupSize defaultBitCount
-
-        fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a>) ->
-            let keys, values =
-                runByKeys processor allocationMode keys values
-
-            keys.Free processor
-
-            values
+                (fst valuesPair)
 
     let runByKeysStandard clContext workGroupSize =
         runByKeys clContext workGroupSize defaultBitCount

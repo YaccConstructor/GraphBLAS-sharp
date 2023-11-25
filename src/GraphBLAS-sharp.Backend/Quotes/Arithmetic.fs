@@ -1,7 +1,6 @@
-namespace GraphBLAS.FSharp.Backend.Quotes
+﻿namespace GraphBLAS.FSharp.Backend.Quotes
 
 open GraphBLAS.FSharp.Objects
-open Microsoft.FSharp.Quotations
 
 module ArithmeticOperations =
     let inline private mkUnaryOp zero unaryOp =
@@ -36,16 +35,6 @@ module ArithmeticOperations =
             | Right s -> res <- s
 
             if res = zero then None else Some res @>
-
-    let inline private mkNumericSumAsMul zero =
-        <@ fun (x: 't option) (y: 't option) ->
-            let mutable res = None
-
-            match x, y with
-            | Some f, Some s -> res <- Some(f + s)
-            | _ -> ()
-
-            res @>
 
     let inline private mkNumericMul zero =
         <@ fun (x: 't option) (y: 't option) ->
@@ -184,15 +173,11 @@ module ArithmeticOperations =
     let floatMulAtLeastOne = mkNumericMulAtLeastOne 0.0
     let float32MulAtLeastOne = mkNumericMulAtLeastOne 0f
 
-    let intSumAsMul = mkNumericSumAsMul System.Int32.MaxValue
-
     let notOption =
         <@ fun x ->
             match x with
             | Some true -> None
             | _ -> Some true @>
-
-    let intNotQ = <@ fun x -> if x = 0 then 1 else 0 @>
 
     let inline private binOpQ zero op =
         <@ fun (left: 'a) (right: 'a) ->
@@ -231,42 +216,3 @@ module ArithmeticOperations =
     let floatMul = createPair 0.0 (*) <@ (*) @>
 
     let float32Mul = createPair 0.0f (*) <@ (*) @>
-
-    // without zero
-    let intAddWithoutZero = <@ fun x y -> Some(x + y) @>
-
-    let intMulWithoutZero = <@ fun x y -> Some(x * y) @>
-
-    // other operations
-    let less<'a when 'a: comparison> =
-        <@ fun (x: 'a option) (y: 'a option) ->
-            match x, y with
-            | Some x, Some y -> if (x < y) then Some 1 else None
-            | Some x, None -> Some 1
-            | _ -> None @>
-
-    let minOption<'a when 'a: comparison> =
-        <@ fun (x: 'a option) (y: 'a option) ->
-            match x, y with
-            | Some x, Some y -> Some(min x y)
-            | Some x, None -> Some x
-            | None, Some y -> Some y
-            | _ -> None @>
-
-    let min<'a when 'a: comparison> =
-        <@ fun (x: 'a) (y: 'a) -> Some(min x y) @>
-
-    let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>
-
-    //PageRank specific
-    let squareOfDifference =
-        <@ fun (x: float32 option) (y: float32 option) ->
-            let mutable res = 0.0f
-
-            match x, y with
-            | Some f, Some s -> res <- (f - s) * (f - s)
-            | Some f, None -> res <- f * f
-            | None, Some s -> res <- s * s
-            | None, None -> ()
-
-            if res = 0.0f then None else Some res @>

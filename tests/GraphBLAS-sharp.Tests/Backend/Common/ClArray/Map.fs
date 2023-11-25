@@ -4,7 +4,7 @@ open Expecto
 open Brahma.FSharp
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 
@@ -44,7 +44,7 @@ let createTest<'a when 'a: equality> (testContext: TestContext) (zero: 'a) isEqu
     let context = testContext.ClContext
 
     let map =
-        Map.map (Map.optionToValueOrZero zero) context wgSize
+        ClArray.map (Map.optionToValueOrZero zero) context wgSize
 
     makeTest testContext map zero isEqual
     |> testPropertyWithConfig config $"Correctness on {typeof<'a>}"

@@ -51,7 +51,7 @@ let correctnessGenericTest
     zero
     sumOp
     mulOp
-    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix<'a> -> ClVector<'a> -> ClVector<'a>)
+    (spMV: MailboxProcessor<_> -> AllocationFlag -> ClMatrix.CSR<'a> -> ClArray<'a option> -> ClArray<'a option>)
     (isEqual: 'a -> 'a -> bool)
     q
     (testContext: TestContext)
@@ -68,15 +68,14 @@ let correctnessGenericTest
         try
             let m = mtx.ToDevice testContext.ClContext
 
-            let v = vtr.ToDevice testContext.ClContext
+            match vtr, m with
+            | Vector.Dense vtr, ClMatrix.CSR m ->
+                let v = vtr.ToDevice testContext.ClContext
 
-            let res = spMV testContext.Queue HostInterop m v
+                let res = spMV testContext.Queue HostInterop m v
 
-            m.Dispose q
-            v.Dispose q
-
-            match res with
-            | ClVector.Dense res ->
+                (ClMatrix.CSR m).Dispose q
+                v.Free q
                 let hostRes = res.ToHostAndFree q
 
                 checkResult isEqual sumOp mulOp zero matrix vector hostRes

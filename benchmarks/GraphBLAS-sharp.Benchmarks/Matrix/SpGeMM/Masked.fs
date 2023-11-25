@@ -51,7 +51,7 @@ type Masked<'elem when 'elem : struct>(
     static member AvaliableContexts = Utils.availableContexts
 
     static member InputMatrixProviderBuilder pathToConfig =
-        let datasetFolder = ""
+        let datasetFolder = "Mxm"
         pathToConfig
         |> Utils.getMatricesFilenames
         |> Seq.map

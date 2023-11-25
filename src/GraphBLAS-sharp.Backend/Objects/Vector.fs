@@ -18,6 +18,7 @@ module ClVector =
             member this.Dispose(q) =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Indices))
+                q.PostAndReply(Msg.MsgNotifyMe)
 
         member this.Dispose(q) = (this :> IDeviceMemObject).Dispose(q)
 

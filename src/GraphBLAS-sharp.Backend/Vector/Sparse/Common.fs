@@ -3,7 +3,6 @@ namespace GraphBLAS.FSharp.Backend.Vector.Sparse
 open Brahma.FSharp
 open Microsoft.FSharp.Control
 open GraphBLAS.FSharp
-open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Objects.ClVector
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
@@ -75,7 +74,7 @@ module internal Common =
         let concatIndices = ClArray.concat clContext workGroupSize
 
         let mapIndices =
-            Common.Map.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
+            ClArray.mapWithValue clContext workGroupSize <@ fun x y -> x + y @>
 
         fun (processor: MailboxProcessor<_>) allocationMode (vectors: Sparse<'a> seq) ->
 

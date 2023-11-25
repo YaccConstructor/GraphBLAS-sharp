@@ -51,7 +51,7 @@ let checkResult isZero isComplemented (actual: Vector<'a>) (vector: 'a []) (mask
 let makeTest<'a when 'a: struct and 'a: equality>
     (isZero: 'a -> bool)
     (toDense: MailboxProcessor<_> -> AllocationFlag -> ClVector<'a> -> ClVector<'a>)
-    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> 'a -> ClVector<'a>)
+    (fillVector: MailboxProcessor<Msg> -> AllocationFlag -> ClVector<'a> -> ClVector<'a> -> ClCell<'a> -> ClVector<'a>)
     isComplemented
     case
     (vector: 'a [], mask: 'a [], value: 'a)
@@ -72,9 +72,10 @@ let makeTest<'a when 'a: struct and 'a: equality>
         let clMaskVector = maskVector.ToDevice context
 
         try
+            let clValue = context.CreateClCell<'a> value
 
             let clActual =
-                fillVector q HostInterop clLeftVector clMaskVector value
+                fillVector q HostInterop clLeftVector clMaskVector clValue
 
             let cooClActual = toDense q HostInterop clActual
 
