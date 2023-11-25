@@ -16,8 +16,13 @@ let processor = Context.defaultContext.Queue
 
 let context = Context.defaultContext.ClContext
 
-let checkResultByKeys (inputArray: (int * 'a) []) (actualValues: 'a []) =
-    let expectedValues = Seq.sortBy fst inputArray |> Seq.map snd
+let checkResultByKeys (inputArray: (int * 'a) []) (actualKeys: int []) (actualValues: 'a []) =
+    let expected = Seq.sortBy fst inputArray
+    let expectedKeys = expected |> Seq.map fst
+    let expectedValues = expected |> Seq.map snd
+
+    "Keys must be the same"
+    |> Expect.sequenceEqual expectedKeys actualKeys
 
     "Values must be the same"
     |> Expect.sequenceEqual expectedValues actualValues
@@ -31,12 +36,13 @@ let makeTestByKeys<'a when 'a: equality> sortFun (array: (int * 'a) []) =
         let clKeys = keys.ToDevice context
         let clValues = values.ToDevice context
 
-        let clActualValues: ClArray<'a> =
+        let clActualKeys, clActualValues: ClArray<int> * ClArray<'a> =
             sortFun processor HostInterop clKeys clValues
 
+        let actualKeys = clActualKeys.ToHostAndFree processor
         let actualValues = clActualValues.ToHostAndFree processor
 
-        checkResultByKeys array actualValues
+        checkResultByKeys array actualKeys actualValues
 
 let createTestByKeys<'a when 'a: equality and 'a: struct> =
     let sort =

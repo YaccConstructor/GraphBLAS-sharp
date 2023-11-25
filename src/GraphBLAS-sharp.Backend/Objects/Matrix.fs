@@ -23,7 +23,6 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Columns))
                 q.Post(Msg.CreateFreeMsg<_>(this.RowPointers))
-                q.PostAndReply(Msg.MsgNotifyMe)
 
         member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 

@@ -27,7 +27,7 @@ type Benchmarks<'elem when 'elem : struct>(
 
     member val HostVectorPair = Unchecked.defaultof<Vector<'elem> * Vector<'elem>> with get, set
 
-    member val ResultVector = Unchecked.defaultof<ClVector<'elem>> with get,set
+    member val ResultVector = Unchecked.defaultof<ClVector<'elem> option> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -67,7 +67,9 @@ type Benchmarks<'elem when 'elem : struct>(
         secondVector.Dispose this.Processor
 
     member this.ClearResult() =
-        this.ResultVector.Dispose this.Processor
+        match this.ResultVector with
+        | Some v -> v.Dispose this.Processor
+        | None -> ()
 
     member this.CreateVectors()  =
         this.HostVectorPair <- List.last (Gen.sample this.Size 1 generator)
@@ -162,8 +164,12 @@ module WithTransfer =
         override this.Benchmark () =
             this.LoadVectorsToGPU()
             this.Map2()
-            this.ResultVector.ToHost this.Processor |> ignore
-            this.Processor.PostAndReply Msg.MsgNotifyMe
+            match this.ResultVector with
+            | Some v ->
+                v.ToHost this.Processor |> ignore
+                this.Processor.PostAndReply Msg.MsgNotifyMe
+            | None -> ()
+
 
         [<IterationCleanup>]
         override this.IterationCleanup () =

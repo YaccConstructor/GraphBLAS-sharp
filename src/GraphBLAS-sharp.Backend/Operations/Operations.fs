@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp
 
 open Brahma.FSharp
+open Microsoft.FSharp.Core
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
@@ -60,11 +61,11 @@ module Operations =
             fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
                 match leftVector, rightVector with
                 | ClVector.Dense left, ClVector.Dense right ->
-                    ClVector.Dense
-                    <| map2Dense processor allocationMode left right
+                    map2Dense processor allocationMode left right
+                    |> ClVector.Dense
+                    |> Some
                 | ClVector.Sparse left, ClVector.Sparse right ->
-                    ClVector.Sparse
-                    <| map2Sparse processor allocationMode left right
+                    Option.map ClVector.Sparse (map2Sparse processor allocationMode left right)
                 | _ -> failwith "Vector formats are not matching."
 
         /// <summary>
@@ -90,11 +91,11 @@ module Operations =
             fun (processor: MailboxProcessor<_>) allocationMode (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
                 match leftVector, rightVector with
                 | ClVector.Sparse left, ClVector.Sparse right ->
-                    ClVector.Sparse
-                    <| map2Sparse processor allocationMode left right
+                    Option.map ClVector.Sparse (map2Sparse processor allocationMode left right)
                 | ClVector.Dense left, ClVector.Dense right ->
-                    ClVector.Dense
-                    <| map2Dense processor allocationMode left right
+                    map2Dense processor allocationMode left right
+                    |> ClVector.Dense
+                    |> Some
                 | _ -> failwith "Vector formats are not matching."
 
         /// <summary>
@@ -293,7 +294,7 @@ module Operations =
     /// <param name="mul">Type of binary function to combine entries.</param>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let SpMVInplace
+    let SpMVInPlace
         (add: Expr<'c option -> 'c option -> 'c option>)
         (mul: Expr<'a option -> 'b option -> 'c option>)
         (clContext: ClContext)
@@ -309,9 +310,69 @@ module Operations =
             | _ -> failwith "Not implemented yet"
 
     /// <summary>
-    /// Matrix-vector multiplication.
+    /// CSR Matrix - dense vector multiplication.
     /// </summary>
-    let SpMV = SpMV.run
+    /// <param name="add">Type of binary function to reduce entries.</param>
+    /// <param name="mul">Type of binary function to combine entries.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let SpMV
+        (add: Expr<'c option -> 'c option -> 'c option>)
+        (mul: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let run = SpMV.run add mul clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationFlag (matrix: ClMatrix<'a>) (vector: ClVector<'b>) ->
+            match matrix, vector with
+            | ClMatrix.CSR m, ClVector.Dense v -> run queue allocationFlag m v |> ClVector.Dense
+            | _ -> failwith "Not implemented yet"
+
+    /// <summary>
+    /// CSR Matrix - sparse vector multiplication. Optimized for bool OR and AND operations.
+    /// </summary>
+    /// <param name="add">Type of binary function to reduce entries.</param>
+    /// <param name="mul">Type of binary function to combine entries.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let SpMSpVBool
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let run =
+            SpMSpV.runBoolStandard add mul clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix<bool>) (vector: ClVector<bool>) ->
+            match matrix, vector with
+            | ClMatrix.CSR m, ClVector.Sparse v -> Option.map ClVector.Sparse (run queue m v)
+            | _ -> failwith "Not implemented yet"
+
+    /// <summary>
+    /// CSR Matrix - sparse vector multiplication.
+    /// </summary>
+    /// <param name="add">Type of binary function to reduce entries.</param>
+    /// <param name="mul">Type of binary function to combine entries.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let SpMSpV
+        (add: Expr<'c option -> 'c option -> 'c option>)
+        (mul: Expr<'a option -> 'b option -> 'c option>)
+        (clContext: ClContext)
+        workGroupSize
+        =
+
+        let run =
+            SpMSpV.run add mul clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) (matrix: ClMatrix<'a>) (vector: ClVector<'b>) ->
+            match matrix, vector with
+            | ClMatrix.CSR m, ClVector.Sparse v -> Option.map ClVector.Sparse (run queue m v)
+            | _ -> failwith "Not implemented yet"
 
     /// <summary>
     /// Kronecker product for matrices.

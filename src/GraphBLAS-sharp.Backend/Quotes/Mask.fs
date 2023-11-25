@@ -7,6 +7,12 @@ module Mask =
             | _, None -> left
             | _ -> right @>
 
+    let assignComplemented<'a when 'a: struct> =
+        <@ fun (left: 'a option) (right: 'a option) ->
+            match left, right with
+            | _, None -> right
+            | _ -> left @>
+
     let op<'a, 'b when 'a: struct and 'b: struct> =
         <@ fun (left: 'a option) (right: 'b option) ->
             match right with

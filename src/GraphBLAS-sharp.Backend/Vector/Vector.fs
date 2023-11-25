@@ -15,30 +15,29 @@ open GraphBLAS.FSharp.Backend.Vector
 [<RequireQualifiedAccess>]
 module Vector =
     /// <summary>
-    /// Builds vector of given format with fixed size and fills it with the given value.
-    /// </summary>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let create (clContext: ClContext) workGroupSize =
-        let create = ClArray.create clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode size format value ->
-            match format with
-            | Sparse -> failwith "Attempting to create full sparse vector"
-            | Dense ->
-                ClVector.Dense
-                <| create processor allocationMode size value
-
-    /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let zeroCreate (clContext: ClContext) workGroupSize =
-        let create = create clContext workGroupSize
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode size format ->
-            create processor allocationMode size format None
+            match format with
+            | Sparse ->
+                ClVector.Sparse
+                    { Context = clContext
+                      Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| 0 |])
+                      Values =
+                          clContext.CreateClArrayWithSpecificAllocationMode(
+                              allocationMode,
+                              [| Unchecked.defaultof<'a> |]
+                          ) // TODO empty vector
+                      Size = size }
+            | Dense ->
+                ClVector.Dense
+                <| zeroCreate processor allocationMode size
 
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the values from the given list.
@@ -46,17 +45,49 @@ module Vector =
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let ofList (clContext: ClContext) workGroupSize =
-        let denseOfList =
-            Dense.Vector.ofList clContext workGroupSize
+        let scatter =
+            Common.Scatter.lastOccurrence clContext workGroupSize
+
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
+
+        let map =
+            Common.Map.map <@ Some @> clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode format size (elements: (int * 'a) list) ->
             match format with
             | Sparse ->
-                Sparse.Vector.ofList clContext allocationMode size elements
+                let indices, values =
+                    elements
+                    |> Array.ofList
+                    |> Array.sortBy fst
+                    |> Array.unzip
+
+                { Context = clContext
+                  Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, indices)
+                  Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
+                  Size = size }
                 |> ClVector.Sparse
             | Dense ->
-                denseOfList processor allocationMode size elements
-                |> ClVector.Dense
+                let indices, values = elements |> Array.ofList |> Array.unzip
+
+                let values =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
+
+                let indices =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, indices)
+
+                let mappedValues = map processor DeviceOnly values
+
+                let result = zeroCreate processor allocationMode size
+
+                scatter processor indices mappedValues result
+
+                processor.Post(Msg.CreateFreeMsg(mappedValues))
+                processor.Post(Msg.CreateFreeMsg(indices))
+                processor.Post(Msg.CreateFreeMsg(values))
+
+                ClVector.Dense result
 
     /// <summary>
     /// Creates new vector with the values from the given one.

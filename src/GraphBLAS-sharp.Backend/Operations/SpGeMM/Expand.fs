@@ -1,4 +1,4 @@
-namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
+﻿namespace GraphBLAS.FSharp.Backend.Operations.SpGeMM
 
 open Brahma.FSharp
 open FSharp.Quotations
@@ -37,7 +37,7 @@ module internal Expand =
 
     let multiply (predicate: Expr<'a -> 'b -> 'c option>) (clContext: ClContext) workGroupSize =
         let getBitmap =
-            ClArray.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
+            Backend.Common.Map.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
             Common.PrefixSum.standardExcludeInPlace clContext workGroupSize
@@ -174,10 +174,10 @@ module internal Expand =
     let sortByColumnsAndRows (clContext: ClContext) workGroupSize =
 
         let sortByKeyIndices =
-            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandardValuesOnly clContext workGroupSize
 
         let sortByKeyValues =
-            Common.Sort.Radix.runByKeysStandard clContext workGroupSize
+            Common.Sort.Radix.runByKeysStandardValuesOnly clContext workGroupSize
 
         let sortKeys =
             Common.Sort.Radix.standardRunKeysOnly clContext workGroupSize
@@ -213,7 +213,7 @@ module internal Expand =
             Common.Reduce.ByKey2D.Option.segmentSequential opAdd clContext workGroupSize
 
         let getUniqueBitmap =
-            ClArray.Bitmap.lastOccurrence2 clContext workGroupSize
+            Backend.Common.Bitmap.lastOccurrence2 clContext workGroupSize
 
         let prefixSum =
             Common.PrefixSum.standardExcludeInPlace clContext workGroupSize

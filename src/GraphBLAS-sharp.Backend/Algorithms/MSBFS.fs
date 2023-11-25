@@ -161,19 +161,6 @@ module internal MSBFS =
 
                 ClMatrix.COO levels
 
-        let runSingleSourceMultipleTimes<'a when 'a: struct>
-            (add: Expr<int option -> int option -> int option>)
-            (mul: Expr<'a option -> int option -> int option>)
-            (clContext: ClContext)
-            workGroupSize
-            =
-
-            let SSBFS =
-                BFS.singleSourceSparse add mul clContext workGroupSize
-
-            fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int list) ->
-                source |> List.map (SSBFS queue matrix)
-
     module Parents =
         let private updateFrontAndParents (clContext: ClContext) workGroupSize =
             let frontExclude = frontExclude clContext workGroupSize
