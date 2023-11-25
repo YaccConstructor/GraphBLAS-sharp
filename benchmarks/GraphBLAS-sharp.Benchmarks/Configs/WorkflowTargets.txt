@@ -1,1 +1,1 @@
-BFSWithoutTransferBenchmark
+BFSWithoutTransfer
