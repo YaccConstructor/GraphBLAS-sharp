@@ -305,12 +305,12 @@ module internal Kronecker =
 
         let setPositions = setPositions clContext workGroupSize
 
-        fun queue (rowsEdges: (int * int) array) (matrixRight: CSR<'b>) (leftValues: ClArray<'a>) (leftColsHost: int array) (resultMatrix: COO<'c>) ->
+        fun queue (rowBoundaries: (int * int) array) (matrixRight: CSR<'b>) (leftValues: ClArray<'a>) (leftColsHost: int array) (resultMatrix: COO<'c>) ->
 
             let setPositions =
                 setPositions queue matrixRight.RowCount matrixRight.ColumnCount
 
-            let rowCount = rowsEdges.Length
+            let rowCount = rowBoundaries.Length
 
             let length =
                 matrixRight.RowCount * matrixRight.ColumnCount
@@ -326,7 +326,7 @@ module internal Kronecker =
             let value = clContext.CreateClCell Unchecked.defaultof<'a>
 
             for row in 0 .. rowCount - 1 do
-                let leftEdge, rightEdge = rowsEdges.[row]
+                let leftEdge, rightEdge = rowBoundaries.[row]
 
                 for i in leftEdge .. rightEdge do
                     itemTo queue i leftValues value
@@ -352,14 +352,13 @@ module internal Kronecker =
         =
 
         let countZeroElementsInRow =
-            <@ fun (ndRange: Range1D) (row: int) (nnzInRow: int) (columnCount: int) (columns: ClArray<int>) (rowsEdges: ClArray<int * int>) (result: ClArray<int>) ->
+            <@ fun (ndRange: Range1D) (firstIndex: int) (lastIndex: int) (columnCount: int) (columns: ClArray<int>) (result: ClArray<int>) ->
 
                  let gid = ndRange.GlobalID0
 
-                 if gid <= nnzInRow then
+                 let nnzInRow = lastIndex - firstIndex + 1
 
-                     let firstIndex = fst rowsEdges.[row]
-                     let lastIndex = snd rowsEdges.[row]
+                 if gid <= nnzInRow then
 
                      if nnzInRow = 0 then
                          result.[0] <- columnCount
@@ -375,7 +374,7 @@ module internal Kronecker =
 
         let kernel = clContext.Compile countZeroElementsInRow
 
-        fun (queue: MailboxProcessor<_>) (matrix: CSR<_>) (rowsEdges: ClArray<int * int>) (nnzInRows: int array) ->
+        fun (queue: MailboxProcessor<_>) (matrix: CSR<_>) (rowBoundaries: (int * int) array) ->
 
             let kernel = kernel.GetKernel()
 
@@ -383,14 +382,18 @@ module internal Kronecker =
 
             for row in 0 .. matrix.RowCount - 1 do
 
-                let length = nnzInRows.[row] + 1
+                let firstIndex = fst rowBoundaries.[row]
+                let lastIndex = snd rowBoundaries.[row]
+
+                let nnzInRow = lastIndex - firstIndex + 1
+                let length = nnzInRow + 1
 
                 let ndRange =
                     Range1D.CreateValid(length, workGroupSize)
 
                 let result = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
-                queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange row nnzInRows.[row] matrix.ColumnCount matrix.Columns rowsEdges result))
+                queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange firstIndex lastIndex matrix.ColumnCount matrix.Columns result))
                 queue.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 zeroCounts.[row] <- result
@@ -404,8 +407,6 @@ module internal Kronecker =
         =
 
         let pairwise = ClArray.pairwise clContext workGroupSize
-
-        let mapSubtract = ClArray.map <@ fun (a, b) -> b - a @> clContext workGroupSize
 
         let mapInPlace = ClArray.mapInPlace <@ fun (a, b) -> (a, b - 1) @> clContext workGroupSize
 
@@ -441,18 +442,14 @@ module internal Kronecker =
                 |> Option.defaultWith
                     (fun () -> failwith "The state of the matrix is broken. The length of the rowPointers must be >= 2")
 
-            let nnzInRows = (mapSubtract queue DeviceOnly pairsOfRowPointers).ToHostAndFree queue
-
             mapInPlace queue pairsOfRowPointers
 
-            let rowsEdges = pairsOfRowPointers
+            let rowBoundaries = pairsOfRowPointers.ToHostAndFree queue
 
-            let zeroCounts = countZeroElements queue matrixLeft rowsEdges nnzInRows
-
-            let rowsEdges = rowsEdges.ToHostAndFree queue // TODO: get rid of transfer to host
+            let zeroCounts = countZeroElements queue matrixLeft rowBoundaries
 
             let startIndex =
-                insertNonZero queue rowsEdges matrixRight matrixLeft.Values leftColumns resultMatrix
+                insertNonZero queue rowBoundaries matrixRight matrixLeft.Values leftColumns resultMatrix
 
             matrixZero
             |> Option.iter (fun m -> insertZero queue startIndex zeroCounts m resultMatrix)
