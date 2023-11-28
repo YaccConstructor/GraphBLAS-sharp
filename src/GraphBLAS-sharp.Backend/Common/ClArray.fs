@@ -699,11 +699,11 @@ module ClArray =
         bound<'a, int> Search.Bin.lowerBound clContext
 
     /// <summary>
-    /// Gets the value at the specified position from the input array.
+    /// Gets the value at the specified position from the input array and insert it into given ClCell.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let item<'a> (clContext: ClContext) workGroupSize =
+    let itemTo<'a> (clContext: ClContext) workGroupSize =
 
         let kernel =
             <@ fun (ndRange: Range1D) index (array: ClArray<'a>) (result: ClCell<'a>) ->
@@ -715,6 +715,27 @@ module ClArray =
 
         let program = clContext.Compile kernel
 
+        fun (processor: MailboxProcessor<_>) (index: int) (array: ClArray<'a>) (output: ClCell<'a>) ->
+
+            if index < 0 || index >= array.Length then
+                failwith "Index out of range"
+
+            let kernel = program.GetKernel()
+
+            let ndRange = Range1D.CreateValid(1, workGroupSize)
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange index array output))
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+    /// <summary>
+    /// Gets the value at the specified position from the input array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let item<'a> (clContext: ClContext) workGroupSize =
+
+        let itemTo = itemTo clContext workGroupSize
+
         fun (processor: MailboxProcessor<_>) (index: int) (array: ClArray<'a>) ->
 
             if index < 0 || index >= array.Length then
@@ -723,12 +744,7 @@ module ClArray =
             let result =
                 clContext.CreateClCell Unchecked.defaultof<'a>
 
-            let kernel = program.GetKernel()
-
-            let ndRange = Range1D.CreateValid(1, workGroupSize)
-
-            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange index array result))
-            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+            itemTo processor index array result
 
             result
 
@@ -781,3 +797,22 @@ module ClArray =
             bitmap.Free processor
 
             result
+
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to each of the elements of the array.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize = Map.map op clContext workGroupSize
+
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to each of the elements of the array.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize =
+        Map.mapInPlace op clContext workGroupSize
