@@ -23,7 +23,7 @@ type Benchmarks(
 
     let mutable funToBenchmark = None
     let mutable matrix = Unchecked.defaultof<ClMatrix<float32>>
-    let mutable matrixPrepared = Unchecked.defaultof<ClMatrix<float32>>
+    let mutable matrixPrepared = Unchecked.defaultof<PageRankMatrix<float32>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
     let accuracy = 0.00000001f

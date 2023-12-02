@@ -173,3 +173,36 @@ type ClMatrix<'a when 'a: struct> =
         | ClMatrix.COO matrix -> matrix.NNZ
         | ClMatrix.CSC matrix -> matrix.NNZ
         | ClMatrix.LIL matrix -> matrix.NNZ
+
+/// <summary>
+/// Represents an abstraction over matrix, which is converted to correct format for PageRank algorithm
+/// </summary>
+type PageRankMatrix<'a when 'a: struct> =
+    | PageRankMatrix of ClMatrix<'a>
+    /// <summary>
+    /// Gets the number of rows in matrix.
+    /// </summary>
+    member this.RowCount =
+        match this with
+        | PageRankMatrix matrix -> matrix.RowCount
+
+    /// <summary>
+    /// Gets the number of columns in matrix.
+    /// </summary>
+    member this.ColumnCount =
+        match this with
+        | PageRankMatrix matrix -> matrix.ColumnCount
+
+    /// <summary>
+    /// Release device resources allocated for the matrix.
+    /// </summary>
+    member this.Dispose q =
+        match this with
+        | PageRankMatrix matrix -> matrix.Dispose q
+
+    /// <summary>
+    /// Gets the number of non-zero elements in matrix.
+    /// </summary>
+    member this.NNZ =
+        match this with
+        | PageRankMatrix matrix -> matrix.NNZ

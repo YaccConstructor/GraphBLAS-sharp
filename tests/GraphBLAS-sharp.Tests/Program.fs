@@ -92,7 +92,8 @@ let algorithmsTests =
     testList
         "Algorithms tests"
         [ Algorithms.BFS.tests
-          Algorithms.SSSP.tests ]
+          Algorithms.SSSP.tests
+          Algorithms.PageRank.tests ]
     |> testSequenced
 
 let deviceTests =

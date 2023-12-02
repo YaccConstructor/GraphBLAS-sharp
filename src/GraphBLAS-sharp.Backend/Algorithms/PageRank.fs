@@ -131,6 +131,7 @@ module internal PageRank =
 
                 transposeInPlace queue DeviceOnly newMatrix
                 |> ClMatrix.CSR
+                |> PageRankMatrix
             | _ -> failwith "Not implemented"
 
     let run (clContext: ClContext) workGroupSize =
@@ -154,8 +155,7 @@ module internal PageRank =
         let create =
             GraphBLAS.FSharp.Vector.create clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<float32>) accuracy ->
-
+        fun (queue: MailboxProcessor<Msg>) (PageRankMatrix matrix) accuracy ->
             let vertexCount = matrix.RowCount
 
             //None is 0
