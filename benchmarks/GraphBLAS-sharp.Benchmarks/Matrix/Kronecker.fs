@@ -139,4 +139,4 @@ module WithoutTransfer =
             )
 
         static member InputMatrixProvider =
-            Benchmarks<_>.InputMatrixProviderBuilder "SpGeMM.txt"
+            Benchmarks<_>.InputMatrixProviderBuilder "Kronecker.txt"
