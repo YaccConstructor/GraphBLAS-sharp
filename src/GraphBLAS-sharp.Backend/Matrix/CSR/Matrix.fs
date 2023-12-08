@@ -393,8 +393,7 @@ module Matrix =
             { Context = clContext
               RowCount = matrix.RowCount
               ColumnCount = matrix.ColumnCount
-              Rows = rows
-              NNZ = matrix.NNZ }
+              Rows = rows }
 
     /// <summary>
     /// Gets the number of non-zero elements in each row.

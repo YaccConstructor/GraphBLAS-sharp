@@ -3,6 +3,7 @@
 open Brahma.FSharp
 open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module Map =
     /// <summary>
@@ -15,11 +16,11 @@ module Map =
     let map<'a, 'b> (op: Expr<'a -> 'b>) (clContext: ClContext) workGroupSize =
 
         let map =
-            <@ fun (ndRange: Range1D) lenght (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
+            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) (result: ClArray<'b>) ->
 
                 let gid = ndRange.GlobalID0
 
-                if gid < lenght then
+                if gid < length then
                     result.[gid] <- (%op) inputArray.[gid] @>
 
         let kernel = clContext.Compile map
@@ -41,6 +42,36 @@ module Map =
             result
 
     /// <summary>
+    /// Changes elements of the input array, applying the given function
+    /// to each element of the array.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize =
+
+        let map =
+            <@ fun (ndRange: Range1D) length (inputArray: ClArray<'a>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+                    inputArray.[gid] <- (%op) inputArray.[gid] @>
+
+        let kernel = clContext.Compile map
+
+        fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
+
+            let ndRange =
+                Range1D.CreateValid(inputArray.Length, workGroupSize)
+
+            let kernel = kernel.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange inputArray.Length inputArray))
+
+            processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+    /// <summary>
     /// Builds a new array whose elements are the results of applying the given function
     /// to the corresponding pairs of values, where the first element of pair is from the given array
     /// and the second element is the given value.
@@ -51,11 +82,11 @@ module Map =
     let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
 
         let map =
-            <@ fun (ndRange: Range1D) lenght (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
+            <@ fun (ndRange: Range1D) length (value: ClCell<'a>) (inputArray: ClArray<'b>) (result: ClArray<'c>) ->
 
                 let gid = ndRange.GlobalID0
 
-                if gid < lenght then
+                if gid < length then
                     result.[gid] <- (%op) value.Value inputArray.[gid] @>
 
         let kernel = clContext.Compile map
@@ -77,6 +108,8 @@ module Map =
             )
 
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
+
+            valueClCell.Free processor
 
             result
 
