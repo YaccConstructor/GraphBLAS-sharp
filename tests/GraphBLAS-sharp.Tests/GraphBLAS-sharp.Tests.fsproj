@@ -19,7 +19,7 @@
         <Compile Include="Backend/QuickGraph/CreateGraph.fs" />
         <Compile Include="Backend/Algorithms/BFS.fs" />
         <Compile Include="Backend/Algorithms/SSSP.fs" />
-        <Compile Include="Backend/Algorithms/PageRank.fs" />
+        <Compile Include="Backend/Algorithms/MSBFS.fs" />
         <Compile Include="Backend/Common/ClArray/Blit.fs" />
         <Compile Include="Backend/Common/ClArray/Choose.fs" />
         <Compile Include="Backend/Common/ClArray/ChunkBySize.fs" />
@@ -35,6 +35,7 @@
         <Compile Include="Backend/Common/ClArray/UpperBound.fs" />
         <Compile Include="Backend/Common/ClArray/Set.fs" />
         <Compile Include="Backend/Common/ClArray/Item.fs" />
+        <Compile Include="Backend/Common/ClArray/ExcludeElements.fs" />
         <Compile Include="Backend/Common/Gather.fs" />
         <Compile Include="Backend/Common/Reduce/Reduce.fs" />
         <Compile Include="Backend/Common/Reduce/ReduceByKey.fs" />
@@ -51,11 +52,13 @@
         <Compile Include="Backend/Matrix/RowsLengths.fs" />
         <Compile Include="Backend/Matrix/SpGeMM/Expand.fs" />
         <Compile Include="Backend/Matrix/SpGeMM/Masked.fs" />
+        <Compile Include="Backend/Matrix/SpGeMM/ExpandCOO.fs" />
         <Compile Include="Backend/Matrix/Transpose.fs" />
         <Compile Include="Backend/Matrix/Merge.fs" />
         <Compile Include="Backend/Matrix/ExpandRows.fs" />
         <Compile Include="Backend/Matrix/SubRows.fs" />
         <Compile Include="Backend/Matrix/Kronecker.fs" />
+        <Compile Include="Backend/Matrix/Intersect.fs" />
         <Compile Include="Backend/Vector/AssignByMask.fs" />
         <Compile Include="Backend/Vector/Convert.fs" />
         <Compile Include="Backend/Vector/Copy.fs" />
@@ -63,7 +66,7 @@
         <Compile Include="Backend/Vector/OfList.fs" />
         <Compile Include="Backend/Vector/Reduce.fs" />
         <Compile Include="Backend/Vector/SpMV.fs" />
-        <Compile Include="Backend/Vector/Create.fs" />
+        <Compile Include="Backend/Vector/ZeroCreate.fs" />
         <Compile Include="Backend/Vector/Merge.fs" />
         <Compile Include="Backend/Vector/SpMSpV.fs" />
         <Compile Include="Backend/Vector/Map.fs" />

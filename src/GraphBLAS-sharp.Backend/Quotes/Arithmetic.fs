@@ -1,6 +1,7 @@
 namespace GraphBLAS.FSharp.Backend.Quotes
 
 open GraphBLAS.FSharp.Objects
+open Microsoft.FSharp.Quotations
 
 module ArithmeticOperations =
     let inline private mkUnaryOp zero unaryOp =
@@ -191,6 +192,8 @@ module ArithmeticOperations =
             | Some true -> None
             | _ -> Some true @>
 
+    let intNotQ = <@ fun x -> if x = 0 then 1 else 0 @>
+
     let inline private binOpQ zero op =
         <@ fun (left: 'a) (right: 'a) ->
             let result = (%op) left right
@@ -229,6 +232,11 @@ module ArithmeticOperations =
 
     let float32Mul = createPair 0.0f (*) <@ (*) @>
 
+    // without zero
+    let intAddWithoutZero = <@ fun x y -> Some(x + y) @>
+
+    let intMulWithoutZero = <@ fun x y -> Some(x * y) @>
+
     // other operations
     let less<'a when 'a: comparison> =
         <@ fun (x: 'a option) (y: 'a option) ->
@@ -237,7 +245,7 @@ module ArithmeticOperations =
             | Some x, None -> Some 1
             | _ -> None @>
 
-    let min<'a when 'a: comparison> =
+    let minOption<'a when 'a: comparison> =
         <@ fun (x: 'a option) (y: 'a option) ->
             match x, y with
             | Some x, Some y -> Some(min x y)
@@ -245,15 +253,7 @@ module ArithmeticOperations =
             | None, Some y -> Some y
             | _ -> None @>
 
-    //PageRank specific
-    let squareOfDifference =
-        <@ fun (x: float32 option) (y: float32 option) ->
-            let mutable res = 0.0f
+    let min<'a when 'a: comparison> =
+        <@ fun (x: 'a) (y: 'a) -> Some(min x y) @>
 
-            match x, y with
-            | Some f, Some s -> res <- (f - s) * (f - s)
-            | Some f, None -> res <- f * f
-            | None, Some s -> res <- s * s
-            | None, None -> ()
-
-            if res = 0.0f then None else Some res @>
+    let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>

@@ -7,8 +7,8 @@ import platform
 
 from dataclasses import dataclass
 
-ROOT = pathlib.Path(__file__).parent.parent.parent.parent
-BENCHMARKS = pathlib.Path(__file__).parent.parent
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+BENCHMARKS = pathlib.Path(__file__).resolve().parent.parent
 CONFIGS = BENCHMARKS / "Configs"
 BINARIES = BENCHMARKS / "bin" / "Release" / "net7.0"
 RESULTS = ROOT / "BenchmarkDotNet.Artifacts" / "results"

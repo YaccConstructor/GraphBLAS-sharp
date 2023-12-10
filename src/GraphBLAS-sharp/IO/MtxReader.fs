@@ -68,40 +68,46 @@ type MtxReader(pathToFile: string) =
             let sortedData =
                 match this.Symmetry with
                 | General ->
-                    [ 0 .. nnz - 1 ]
-                    |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
-                    |> Array.ofList
-                    |> Array.Parallel.map
-                        (fun line ->
-                            let i = int line.[0]
-                            let j = int line.[1]
+                    let result =
+                        [| 0 .. nnz - 1 |]
+                        |> Array.map
+                            (fun _ ->
+                                let line = streamReader.ReadLine().Split(' ')
 
-                            let v =
-                                converter
-                                <| if line.Length > 2 then line.[2] else ""
+                                let i = int line.[0]
+                                let j = int line.[1]
 
-                            struct (pack i j, v))
-                    |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
+                                let v =
+                                    converter
+                                    <| if line.Length > 2 then line.[2] else ""
+
+                                struct (pack i j, v))
+
+                    Array.sortInPlaceBy (fun struct (packedIndex, _) -> packedIndex) result
+                    result
                 | Symmetric ->
-                    [ 0 .. nnz - 1 ]
-                    |> List.map (fun _ -> streamReader.ReadLine().Split(' '))
-                    |> Array.ofList
-                    |> Array.Parallel.map
-                        (fun line ->
-                            let i = int line.[0]
-                            let j = int line.[1]
+                    let result =
+                        [| 0 .. nnz - 1 |]
+                        |> Array.map
+                            (fun _ ->
+                                let line = streamReader.ReadLine().Split(' ')
 
-                            let v =
-                                converter
-                                <| if line.Length > 2 then line.[2] else ""
+                                let i = int line.[0]
+                                let j = int line.[1]
 
-                            if i = j then
-                                [| struct (pack i j, v) |]
-                            else
-                                [| struct (pack i j, v)
-                                   struct (pack j i, v) |])
-                    |> Array.concat
-                    |> Array.sortBy (fun struct (packedIndex, _) -> packedIndex)
+                                let v =
+                                    converter
+                                    <| if line.Length > 2 then line.[2] else ""
+
+                                if i = j then
+                                    [| struct (pack i j, v) |]
+                                else
+                                    [| struct (pack i j, v)
+                                       struct (pack j i, v) |])
+                        |> Array.concat
+
+                    Array.sortInPlaceBy (fun struct (packedIndex, _) -> packedIndex) result
+                    result
                 | _ ->
                     failwith
                     <| sprintf "This symmetry processing is not implemented: %A" this.Symmetry

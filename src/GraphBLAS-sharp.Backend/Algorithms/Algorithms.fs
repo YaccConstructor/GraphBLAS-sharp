@@ -12,10 +12,10 @@ module Algorithms =
 
         let singleSourcePushPull = BFS.singleSourcePushPull
 
+    module MSBFS =
+        let runLevels = MSBFS.Levels.run
+
+        let runParents = MSBFS.Parents.run
+
     module SSSP =
         let run = SSSP.run
-
-    module PageRank =
-        let run = PageRank.run
-
-        let prepareMatrix = PageRank.prepareMatrix

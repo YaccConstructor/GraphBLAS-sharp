@@ -1,7 +1,7 @@
 open Expecto
+open GraphBLAS.FSharp.Test.Generators
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
-open GraphBLAS.FSharp.Tests.Backend.Matrix
 
 let matrixTests =
     testList
@@ -15,6 +15,7 @@ let matrixTests =
           Matrix.ByRows.tests
           Matrix.ExpandRows.tests
           Matrix.SubRows.tests
+          Matrix.Intersect.tests
           Matrix.Kronecker.tests
 
           Matrix.SpGeMM.Expand.tests
@@ -94,6 +95,8 @@ let algorithmsTests =
         [ Algorithms.BFS.tests
           Algorithms.SSSP.tests
           Algorithms.PageRank.tests ]
+          Algorithms.MSBFS.levelsTests
+          Algorithms.MSBFS.parentsTests ]
     |> testSequenced
 
 let deviceTests =

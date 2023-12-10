@@ -187,8 +187,7 @@ module Matrix =
             { Context = context
               RowCount = this.RowCount
               ColumnCount = this.ColumnCount
-              Rows = rows
-              NNZ = this.NNZ }
+              Rows = rows }
 
     type Tuples<'a> =
         { RowIndices: int []

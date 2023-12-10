@@ -218,3 +218,34 @@ module Vector =
 
                     result
                 | None -> clContext.CreateClCell Unchecked.defaultof<'a>
+
+    let ofList (clContext: ClContext) workGroupSize =
+        let scatter =
+            Common.Scatter.lastOccurrence clContext workGroupSize
+
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
+
+        let map =
+            Backend.Common.Map.map <@ Some @> clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode size (elements: (int * 'a) list) ->
+            let indices, values = elements |> Array.ofList |> Array.unzip
+
+            let values =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, values)
+
+            let indices =
+                clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, indices)
+
+            let mappedValues = map processor DeviceOnly values
+
+            let result = zeroCreate processor allocationMode size
+
+            scatter processor indices mappedValues result
+
+            processor.Post(Msg.CreateFreeMsg(mappedValues))
+            processor.Post(Msg.CreateFreeMsg(indices))
+            processor.Post(Msg.CreateFreeMsg(values))
+
+            result

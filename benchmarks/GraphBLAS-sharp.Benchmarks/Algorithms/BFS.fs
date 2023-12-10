@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Benchmarks.Algorithms.BFS
+namespace GraphBLAS.FSharp.Benchmarks.Algorithms.BFS
 
 open System.IO
 open BenchmarkDotNet.Attributes
@@ -12,8 +12,8 @@ open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
-[<IterationCount(10)>]
-[<WarmupCount(3)>]
+[<IterationCount(100)>]
+[<WarmupCount(10)>]
 [<Config(typeof<Configs.Matrix>)>]
 type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
@@ -211,4 +211,3 @@ type BFSWithTransferBenchmarkBool() =
 
     static member InputMatrixProvider =
         Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
-

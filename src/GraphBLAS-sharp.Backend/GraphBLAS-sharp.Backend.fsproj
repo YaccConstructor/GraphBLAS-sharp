@@ -53,6 +53,7 @@
     <Compile Include="Matrix/COO/Map.fs" />
     <Compile Include="Matrix/COO/Merge.fs" />
     <Compile Include="Matrix/COO/Map2.fs" />
+    <Compile Include="Matrix/COO/Intersect.fs" />
     <Compile Include="Matrix/COO/Matrix.fs" />
     <Compile Include="Matrix/CSR/Merge.fs" />
     <Compile Include="Matrix/CSR/Map2.fs" />
@@ -68,8 +69,8 @@
     <Compile Include="Operations/Operations.fs" />
 
     <Compile Include="Algorithms/BFS.fs" />
+    <Compile Include="Algorithms/MSBFS.fs" />
     <Compile Include="Algorithms/SSSP.fs" />
-    <Compile Include="Algorithms/PageRank.fs" />
     <Compile Include="Algorithms/Algorithms.fs" />
       
   </ItemGroup>

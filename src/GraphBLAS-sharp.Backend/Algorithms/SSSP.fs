@@ -7,11 +7,11 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module internal SSSP =
+module SSSP =
     let run (clContext: ClContext) workGroupSize =
 
         let less = ArithmeticOperations.less<int>
-        let min = ArithmeticOperations.min<int>
+        let min = ArithmeticOperations.minOption<int>
         let plus = ArithmeticOperations.intSumAsMul
 
         let spMVInPlace =
@@ -76,4 +76,6 @@ module internal SSSP =
             front1.Dispose queue
             front2.Dispose queue
 
-            distance
+            match distance with
+            | ClVector.Dense dist -> dist
+            | _ -> failwith "not implemented"

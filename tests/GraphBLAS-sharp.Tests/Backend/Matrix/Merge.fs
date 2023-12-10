@@ -2,12 +2,14 @@ module GraphBLAS.FSharp.Tests.Backend.Matrix.Merge
 
 open Brahma.FSharp
 open Expecto
+open GraphBLAS.FSharp.Test
 open Microsoft.FSharp.Collections
 open GraphBLAS.FSharp.Backend
 open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Backend
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let context = Context.defaultContext.ClContext
 
@@ -108,6 +110,60 @@ let testsCOO =
       createTestCOO (=) false ]
     |> testList "COO"
 
+let makeTestCOODisjoint isEqual zero testFun (array: ('a * 'a) [,]) =
+
+    let leftArray = Array2D.map fst array
+    let rightArray = Array2D.map snd array
+
+    let leftMatrix =
+        Matrix.COO.FromArray2D(leftArray, isEqual zero)
+
+    let rightMatrix =
+        Matrix.COO.FromArray2D(rightArray, isEqual zero)
+
+    if leftMatrix.NNZ > 0 && rightMatrix.NNZ > 0 then
+
+        let clLeftMatrix = leftMatrix.ToDevice context
+        let clRightMatrix = rightMatrix.ToDevice context
+
+        let actual: ClMatrix.COO<'a> =
+            testFun processor clLeftMatrix clRightMatrix
+
+        let actual = actual.ToHostAndFree processor
+
+        clLeftMatrix.Dispose processor
+        clRightMatrix.Dispose processor
+
+        rightArray
+        |> Array2D.iteri
+            (fun row column value ->
+                if value <> zero then
+                    leftArray.[row, column] <- value)
+
+        let expected =
+            Matrix.COO.FromArray2D(leftArray, isEqual zero)
+
+        Utils.compareCOOMatrix isEqual actual expected
+
+let createTestCOODisjoint isEqual (zero: 'a) =
+    let configDisjoint =
+        { Utils.defaultConfig with
+              arbitrary = [ typeof<Generators.PairOfDisjointMatricesOfTheSameSize> ] }
+
+    Matrix.COO.Merge.runDisjoint context Utils.defaultWorkGroupSize
+    |> makeTestCOODisjoint isEqual zero
+    |> testPropertyWithConfig configDisjoint $"test on {typeof<'a>}"
+
+let testsCOODisjoint =
+    [ createTestCOODisjoint (=) 0
+
+      if Utils.isFloat64Available context.ClDevice then
+          createTestCOODisjoint (=) 0.0
+
+      createTestCOODisjoint (=) 0.0f
+      createTestCOODisjoint (=) false ]
+    |> testList "COO Disjoint"
+
 let makeTestCSR isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
     let leftMatrix =
         Matrix.CSR.FromArray2D(leftArray, isEqual zero)
@@ -173,4 +229,5 @@ let testsCSR =
     |> testList "CSR"
 
 let allTests =
-    [ testsCSR; testsCOO ] |> testList "Merge"
+    [ testsCSR; testsCOO; testsCOODisjoint ]
+    |> testList "Merge"

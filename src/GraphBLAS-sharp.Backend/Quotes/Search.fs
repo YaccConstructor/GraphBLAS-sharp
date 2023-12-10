@@ -97,6 +97,36 @@ module Search =
                 result @>
 
         /// <summary>
+        /// Searches value in array by two keys.
+        /// In case there is a value at the given keys position, it returns true.
+        /// </summary>
+        let existsByKey2D<'a> =
+            <@ fun length sourceIndex (rowIndices: ClArray<int>) (columnIndices: ClArray<int>) ->
+
+                let mutable leftEdge = 0
+                let mutable rightEdge = length - 1
+
+                let mutable result = false
+
+                while leftEdge <= rightEdge do
+                    let middleIdx = (leftEdge + rightEdge) / 2
+
+                    let currentIndex: uint64 =
+                        ((uint64 rowIndices.[middleIdx]) <<< 32)
+                        ||| (uint64 columnIndices.[middleIdx])
+
+                    if sourceIndex = currentIndex then
+                        result <- true
+
+                        rightEdge <- -1 // TODO() break
+                    elif sourceIndex < currentIndex then
+                        rightEdge <- middleIdx - 1
+                    else
+                        leftEdge <- middleIdx + 1
+
+                result @>
+
+        /// <summary>
         /// Find lower position of item in array.
         /// </summary>
         let lowerPosition<'a when 'a: equality and 'a: comparison> =

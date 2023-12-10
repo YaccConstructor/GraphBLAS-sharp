@@ -45,7 +45,8 @@ let testFixtures (testContext: TestContext) =
 
               let matrix = matrixHost.ToDevice context
 
-              let resDense = ssspDense queue matrix source
+              let resDense =
+                  ssspDense queue matrix source |> ClVector.Dense
 
               let resHost = resDense.ToHost queue
 

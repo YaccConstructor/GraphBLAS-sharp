@@ -25,7 +25,6 @@
     <Compile Include="Matrix/Map2/MathNET.fs" />
     <Compile Include="Vector/Map2.fs" />
     <Compile Include="Algorithms/BFS.fs" />
-    <Compile Include="Algorithms/PageRank.fs" />
     <Compile Include="Program.fs" />
     <Folder Include="Datasets" />
   </ItemGroup>

@@ -15,30 +15,29 @@ open GraphBLAS.FSharp.Backend.Vector
 [<RequireQualifiedAccess>]
 module Vector =
     /// <summary>
-    /// Builds vector of given format with fixed size and fills it with the given value.
-    /// </summary>
-    /// <param name="clContext">OpenCL context.</param>
-    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let create (clContext: ClContext) workGroupSize =
-        let create = ClArray.create clContext workGroupSize
-
-        fun (processor: MailboxProcessor<_>) allocationMode size format value ->
-            match format with
-            | Sparse -> failwith "Attempting to create full sparse vector"
-            | Dense ->
-                ClVector.Dense
-                <| create processor allocationMode size value
-
-    /// <summary>
     /// Builds vector of given format with fixed size and fills it with the default values of desired type.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let zeroCreate (clContext: ClContext) workGroupSize =
-        let create = create clContext workGroupSize
+        let zeroCreate =
+            ClArray.zeroCreate clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) allocationMode size format ->
-            create processor allocationMode size format None
+            match format with
+            | Sparse ->
+                ClVector.Sparse
+                    { Context = clContext
+                      Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, [| 0 |])
+                      Values =
+                          clContext.CreateClArrayWithSpecificAllocationMode(
+                              allocationMode,
+                              [| Unchecked.defaultof<'a> |]
+                          ) // TODO empty vector
+                      Size = size }
+            | Dense ->
+                ClVector.Dense
+                <| zeroCreate processor allocationMode size
 
     /// <summary>
     /// Builds vector of given format with fixed size and fills it with the values from the given list.

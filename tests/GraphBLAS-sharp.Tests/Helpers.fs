@@ -337,6 +337,65 @@ module HostPrimitives =
 
             op leftElement rightElement
 
+    let MSBFSParents matrix source =
+        let zero = -2
+
+        let opAdd a b =
+            let result = min a b
+
+            if result = zero then
+                None
+            else
+                Some result
+
+        let opMul (a: int) (b: int) =
+            if a = zero || b = 0 then
+                None
+            else
+                Some a
+
+        let array2DMultiplication = array2DMultiplication zero opMul opAdd
+
+        let mutable front =
+            Array2D.create
+            <| Seq.length source
+            <| Array2D.length1 matrix
+            <| zero
+
+        source
+        |> Seq.iteri (fun row vertex -> front.[row, vertex] <- vertex)
+
+        let parents =
+            Array2D.create
+            <| Seq.length source
+            <| Array2D.length1 matrix
+            <| zero
+
+        source
+        |> Seq.iteri (fun row vertex -> parents.[row, vertex] <- -1)
+
+        let mutable stop = false
+
+        while not stop do
+            let newFront = array2DMultiplication front matrix
+            stop <- true
+
+            newFront
+            |> Array2D.iteri
+                (fun row col value ->
+                    if value <> zero then
+                        if parents.[row, col] <> zero then
+                            newFront.[row, col] <- zero
+
+                        else
+                            stop <- false
+                            parents.[row, col] <- value
+                            newFront.[row, col] <- col)
+
+            front <- newFront
+
+        Utils.createMatrixFromArray2D COO parents ((=) -2)
+
 module Context =
     type TestContext =
         { ClContext: ClContext

@@ -87,7 +87,7 @@ module internal BFS =
         let fillSubVectorTo =
             Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =
@@ -149,7 +149,7 @@ module internal BFS =
             Vector.map2Sparse Mask.complementedOp clContext workGroupSize
 
         let fillSubVectorInPlace =
-            Vector.assignByMaskInPlace Mask.assign clContext workGroupSize
+            Vector.assignByMaskInPlace (Mask.assign) clContext workGroupSize
 
         let toSparse = Vector.toSparse clContext workGroupSize
 
