@@ -11,8 +11,8 @@ open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal BFS =
     let singleSource
-        (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> int option -> int option>)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -41,7 +41,7 @@ module internal BFS =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let front =
-                ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
+                ofList queue DeviceOnly Dense vertexCount [ source, true ]
 
             let mutable level = 0
             let mutable stop = false
@@ -67,14 +67,14 @@ module internal BFS =
             levels
 
     let singleSourceSparse
-        (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> int option -> int option>)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
         (clContext: ClContext)
         workGroupSize
         =
 
         let spMSpV =
-            Operations.SpMSpV add mul clContext workGroupSize
+            Operations.SpMSpVBool add mul clContext workGroupSize
 
         let zeroCreate =
             Vector.zeroCreate clContext workGroupSize
@@ -94,7 +94,7 @@ module internal BFS =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let mutable front =
-                ofList queue DeviceOnly Sparse vertexCount [ source, 1 ]
+                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
 
             let mutable level = 0
             let mutable stop = false
@@ -125,8 +125,8 @@ module internal BFS =
 
 
     let singleSourcePushPull
-        (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> int option -> int option>)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -135,7 +135,7 @@ module internal BFS =
             Operations.SpMVInPlace add mul clContext workGroupSize
 
         let spMSpV =
-            Operations.SpMSpV add mul clContext workGroupSize
+            Operations.SpMSpVBool add mul clContext workGroupSize
 
         let zeroCreate =
             Vector.zeroCreate clContext workGroupSize
@@ -159,7 +159,7 @@ module internal BFS =
             ClArray.count Predicates.isSome clContext workGroupSize
 
         //Push or pull functions
-        let getNNZ (queue: MailboxProcessor<Msg>) (v: ClVector<int>) =
+        let getNNZ (queue: MailboxProcessor<Msg>) (v: ClVector<bool>) =
             match v with
             | ClVector.Sparse v -> v.NNZ
             | ClVector.Dense v -> countNNZ queue v
@@ -169,14 +169,14 @@ module internal BFS =
         let push nnz size =
             (float32 nnz) / (float32 size) <= SPARSITY
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let mutable frontier =
-                ofList queue DeviceOnly Sparse vertexCount [ source, 1 ]
+                ofList queue DeviceOnly Sparse vertexCount [ source, true ]
 
             let mutable level = 0
             let mutable stop = false

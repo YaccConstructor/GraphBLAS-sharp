@@ -27,7 +27,7 @@ type Benchmarks<'elem when 'elem : struct>(
     let mutable matrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
-    member val ResultLevels = Unchecked.defaultof<ClVector<'elem>> with get,set
+    member val ResultLevels = Unchecked.defaultof<ClVector<int>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -127,24 +127,24 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
         this.BFS()
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
-type BFSWithoutTransferBenchmarkInt32() =
+type BFSWithoutTransferBenchmarkBool() =
 
-    inherit WithoutTransferBenchmark<int>(
-        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
+    inherit WithoutTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSource ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
         0,
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 
     static member InputMatrixProvider =
         Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
 
-type BFSPushPullWithoutTransferBenchmarkInt32() =
+type BFSPushPullWithoutTransferBenchmarkBool() =
 
-    inherit WithoutTransferBenchmark<int>(
-        (Algorithms.BFS.singleSourcePushPull ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
+    inherit WithoutTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSourcePushPull ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
         0,
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 
@@ -200,12 +200,12 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
             this.Processor.PostAndReply Msg.MsgNotifyMe
         | _ -> failwith "Impossible"
 
-type BFSWithTransferBenchmarkInt32() =
+type BFSWithTransferBenchmarkBool() =
 
-    inherit WithTransferBenchmark<int>(
-        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
+    inherit WithTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSource ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
         0,
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 

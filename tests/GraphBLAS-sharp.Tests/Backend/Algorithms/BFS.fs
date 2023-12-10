@@ -21,27 +21,29 @@ let testFixtures (testContext: TestContext) =
 
       let bfs =
           Algorithms.BFS.singleSource
-              ArithmeticOperations.intSumOption
-              ArithmeticOperations.intMulOption
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
               context
               workGroupSize
 
       let bfsSparse =
           Algorithms.BFS.singleSourceSparse
-              ArithmeticOperations.intSumOption
-              ArithmeticOperations.intMulOption
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
               context
               workGroupSize
 
       let bfsPushPull =
           Algorithms.BFS.singleSourcePushPull
-              ArithmeticOperations.intSumOption
-              ArithmeticOperations.intMulOption
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
               context
               workGroupSize
 
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
+
+          let matrixBool = Array2D.map (fun x -> x <> 0) matrix
 
           let graph = undirectedFromArray2D matrix 0
 
@@ -56,7 +58,7 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D CSR matrix ((=) 0)
+                  Utils.createMatrixFromArray2D CSR matrixBool ((=) false)
 
               let matrix = matrixHost.ToDevice context
 
