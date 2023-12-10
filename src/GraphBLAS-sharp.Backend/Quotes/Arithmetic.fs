@@ -257,3 +257,16 @@ module ArithmeticOperations =
         <@ fun (x: 'a) (y: 'a) -> Some(min x y) @>
 
     let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>
+
+    //PageRank specific
+    let squareOfDifference =
+        <@ fun (x: float32 option) (y: float32 option) ->
+            let mutable res = 0.0f
+
+            match x, y with
+            | Some f, Some s -> res <- (f - s) * (f - s)
+            | Some f, None -> res <- f * f
+            | None, Some s -> res <- s * s
+            | None, None -> ()
+
+            if res = 0.0f then None else Some res @>

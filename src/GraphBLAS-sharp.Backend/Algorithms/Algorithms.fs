@@ -19,3 +19,8 @@ module Algorithms =
 
     module SSSP =
         let run = SSSP.run
+
+    module PageRank =
+        let run = PageRank.run
+
+        let prepareMatrix = PageRank.prepareMatrix

@@ -60,7 +60,7 @@ let makeLevelsTest context queue bfs (matrix: int [,]) =
 let createLevelsTest<'a> context queue testFun =
     testFun
     |> makeLevelsTest context queue
-    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}, %A{context}"
 
 let levelsTestFixtures (testContext: TestContext) =
     [ let context = testContext.ClContext
@@ -112,7 +112,7 @@ let makeParentsTest context queue bfs (matrix: int [,]) =
 let createParentsTest<'a> context queue testFun =
     testFun
     |> makeParentsTest context queue
-    |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
+    |> testPropertyWithConfig config $"test on %A{typeof<'a>}, %A{context}"
 
 let parentsTestFixtures (testContext: TestContext) =
     [ let context = testContext.ClContext

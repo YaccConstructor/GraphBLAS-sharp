@@ -76,6 +76,4 @@ module SSSP =
             front1.Dispose queue
             front2.Dispose queue
 
-            match distance with
-            | ClVector.Dense dist -> dist
-            | _ -> failwith "not implemented"
+            distance

@@ -34,7 +34,7 @@ module internal BFS =
         let containsNonZero =
             Vector.exists Predicates.isSome clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =

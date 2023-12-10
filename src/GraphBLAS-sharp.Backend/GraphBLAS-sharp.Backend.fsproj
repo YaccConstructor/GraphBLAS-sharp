@@ -71,6 +71,7 @@
     <Compile Include="Algorithms/BFS.fs" />
     <Compile Include="Algorithms/MSBFS.fs" />
     <Compile Include="Algorithms/SSSP.fs" />
+    <Compile Include="Algorithms/PageRank.fs" />  
     <Compile Include="Algorithms/Algorithms.fs" />
       
   </ItemGroup>

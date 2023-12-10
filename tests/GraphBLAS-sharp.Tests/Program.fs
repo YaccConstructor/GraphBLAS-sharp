@@ -94,7 +94,7 @@ let algorithmsTests =
         "Algorithms tests"
         [ Algorithms.BFS.tests
           Algorithms.SSSP.tests
-          Algorithms.PageRank.tests ]
+          Algorithms.PageRank.tests
           Algorithms.MSBFS.levelsTests
           Algorithms.MSBFS.parentsTests ]
     |> testSequenced
