@@ -1,4 +1,4 @@
-module GraphBLAS.FSharp.Benchmarks.Matrix.SpGeMM.Expand
+module GraphBLAS.FSharp.Benchmarks.Matrix.Kronecker
 
 open System.IO
 open BenchmarkDotNet.Attributes
