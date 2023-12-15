@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Backend.Matrix.LIL
 
 open Brahma.FSharp
 open GraphBLAS.FSharp
+open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 
@@ -43,3 +44,9 @@ module Matrix =
               RowPointers = rowsPointers
               Columns = columnsIndices
               Values = values }
+
+    let ofVectors (clContext: ClContext) rowCount columnCount (vectors: ClVector.Sparse<_> option list) =
+        { Context = clContext
+          RowCount = rowCount
+          ColumnCount = columnCount
+          Rows = vectors }

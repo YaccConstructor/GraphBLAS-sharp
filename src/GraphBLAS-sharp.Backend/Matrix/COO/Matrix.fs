@@ -8,8 +8,28 @@ open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClMatrix
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 module Matrix =
+    /// <summary>
+    /// Creates new COO matrix with the values from the given one.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let copy (clContext: ClContext) workGroupSize =
+
+        let copy = ClArray.copy clContext workGroupSize
+
+        let copyData = ClArray.copy clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode (matrix: COO<'a>) ->
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = copy processor allocationMode matrix.Rows
+              Columns = copy processor allocationMode matrix.Columns
+              Values = copyData processor allocationMode matrix.Values }
+
     /// <summary>
     /// Builds a new COO matrix whose elements are the results of applying the given function
     /// to each of the elements of the matrix.
@@ -84,7 +104,7 @@ module Matrix =
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-    let private compressRows (clContext: ClContext) workGroupSize =
+    let compressRows (clContext: ClContext) workGroupSize =
 
         let compressRows =
             <@ fun (ndRange: Range1D) (rows: ClArray<int>) (nnz: int) (rowPointers: ClArray<int>) ->
@@ -197,8 +217,8 @@ module Matrix =
     /// <summary>
     /// Transposes the given matrix and returns result as a new matrix.
     /// </summary>
-    ///<param name="clContext">OpenCL context.</param>
-    ///<param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let transpose (clContext: ClContext) workGroupSize =
 
         let transposeInPlace = transposeInPlace clContext workGroupSize
@@ -216,3 +236,106 @@ module Matrix =
               Columns = copy queue allocationMode matrix.Columns
               Values = copyData queue allocationMode matrix.Values }
             |> transposeInPlace queue
+
+    /// <summary>
+    /// Builds a bitmap. Maps non-zero elements of the left matrix
+    /// to 1 if the right matrix has non zero element under the same row and column pair, otherwise 0.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let findKeysIntersection (clContext: ClContext) workGroupSize =
+        Intersect.findKeysIntersection clContext workGroupSize
+
+    /// <summary>
+    /// Merges two disjoint matrices of the same size.
+    /// </summary>
+    /// <remarks>
+    /// Matrices should have the same number of rows and columns. <br/>
+    /// Matrices should not have non zero values with the same index.
+    /// </remarks>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let mergeDisjoint (clContext: ClContext) workGroupSize =
+        Merge.runDisjoint clContext workGroupSize
+
+    let ofList (clContext: ClContext) allocationMode rowCount columnCount (elements: (int * int * 'a) list) =
+        let rows, columns, values =
+            let elements = elements |> Array.ofList
+
+            elements
+            |> Array.sortInPlaceBy (fun (x, _, _) -> x)
+
+            elements |> Array.unzip3
+
+        { Context = clContext
+          Rows = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, rows)
+          Columns = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, columns)
+          Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
+          RowCount = rowCount
+          ColumnCount = columnCount }
+
+    /// <summary>
+    /// Returns matrix composed of all elements from the given row range of the input matrix.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let subRows (clContext: ClContext) workGroupSize =
+
+        let upperBound =
+            ClArray.upperBound clContext workGroupSize
+
+        let blit = ClArray.blit clContext workGroupSize
+
+        let blitData = ClArray.blit clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) allocationMode startRow count (matrix: ClMatrix.COO<'a>) ->
+            if count <= 0 then
+                failwith "Count must be greater than zero"
+
+            if startRow < 0 then
+                failwith "startIndex must be greater then zero"
+
+            if startRow + count > matrix.RowCount then
+                failwith "startIndex and count sum is larger than the matrix row count"
+
+            let firstRowClCell = clContext.CreateClCell(startRow - 1)
+            let lastRowClCell = clContext.CreateClCell(startRow + count)
+
+            // extract rows
+            let firstIndex =
+                (upperBound processor matrix.Rows firstRowClCell)
+                    .ToHostAndFree processor
+
+            let lastIndex =
+                (upperBound processor matrix.Rows lastRowClCell)
+                    .ToHostAndFree processor
+                - 1
+
+            firstRowClCell.Free processor
+            lastRowClCell.Free processor
+
+            let resultLength = lastIndex - firstIndex + 1
+
+            let rows =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            blit processor matrix.Columns firstIndex rows 0 resultLength
+
+            // extract values
+            let values =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            blitData processor matrix.Values firstIndex values 0 resultLength
+
+            // extract indices
+            let columns =
+                clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, resultLength)
+
+            blit processor matrix.Columns firstIndex columns 0 resultLength
+
+            { Context = clContext
+              RowCount = matrix.RowCount
+              ColumnCount = matrix.ColumnCount
+              Rows = rows
+              Columns = columns
+              Values = values }

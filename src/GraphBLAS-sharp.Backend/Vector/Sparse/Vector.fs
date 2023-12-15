@@ -6,6 +6,7 @@ open Microsoft.FSharp.Quotations
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVector
+open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 module Vector =
@@ -19,6 +20,15 @@ module Vector =
               Indices = copy processor allocationMode vector.Indices
               Values = copyData processor allocationMode vector.Values
               Size = vector.Size }
+
+    let copyTo (clContext: ClContext) workGroupSize =
+        let copyTo = ClArray.copyTo clContext workGroupSize
+
+        let copyDataTo = ClArray.copyTo clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (source: Sparse<'a>) (destination: Sparse<'a>) ->
+            copyTo processor source.Indices destination.Indices
+            copyDataTo processor source.Values destination.Values
 
     let map = Map.run
 
@@ -74,3 +84,15 @@ module Vector =
             Common.Reduce.reduce opAdd clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (vector: ClVector.Sparse<'a>) -> reduce processor vector.Values
+
+    let ofList (clContext: ClContext) allocationMode size (elements: (int * 'a) list) =
+        let indices, values =
+            elements
+            |> Array.ofList
+            |> Array.sortBy fst
+            |> Array.unzip
+
+        { Context = clContext
+          Indices = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, indices)
+          Values = clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, values)
+          Size = size }

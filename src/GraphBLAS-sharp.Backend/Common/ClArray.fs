@@ -122,6 +122,35 @@ module ClArray =
             outputArray
 
     /// <summary>
+    /// Copies all elements from source to destination array.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let copyTo (clContext: ClContext) workGroupSize =
+        let copy =
+            <@ fun (ndRange: Range1D) (source: ClArray<'a>) (destination: ClArray<'a>) inputArrayLength ->
+
+                let i = ndRange.GlobalID0
+
+                if i < inputArrayLength then
+                    destination.[i] <- source.[i] @>
+
+        let program = clContext.Compile(copy)
+
+        fun (processor: MailboxProcessor<_>) (source: ClArray<'a>) (destination: ClArray<'a>) ->
+            if source.Length <> destination.Length then
+                failwith "The source array length differs from the destination array length."
+
+            let ndRange =
+                Range1D.CreateValid(source.Length, workGroupSize)
+
+            let kernel = program.GetKernel()
+
+            processor.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange source destination source.Length))
+
+            processor.Post(Msg.CreateRunMsg<_, _> kernel)
+
+    /// <summary>
     /// Creates an array of the given size by replicating the values of the given initial array.
     /// </summary>
     /// <param name="clContext">OpenCL context.</param>
@@ -816,3 +845,74 @@ module ClArray =
     /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
     let mapInPlace<'a> (op: Expr<'a -> 'a>) (clContext: ClContext) workGroupSize =
         Map.mapInPlace op clContext workGroupSize
+
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding pairs of values, where the first element of pair is from the given array
+    /// and the second element is the given value.
+    /// </summary>
+    /// <param name="op">The function to transform elements of the array.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let mapWithValue<'a, 'b, 'c> (clContext: ClContext) workGroupSize (op: Expr<'a -> 'b -> 'c>) =
+        Map.mapWithValue clContext workGroupSize op
+
+    /// <summary>
+    /// Builds a new array whose elements are the results of applying the given function
+    /// to the corresponding elements of the two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
+        Map.map2 map clContext workGroupSize
+
+    /// <summary>
+    /// Fills the third given array with the results of applying the given function
+    /// to the corresponding elements of the first two given arrays pairwise.
+    /// </summary>
+    /// <remarks>
+    /// The first two input arrays must have the same lengths.
+    /// </remarks>
+    /// <param name="map">The function to transform the pairs of the input elements.</param>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let map2InPlace<'a, 'b, 'c> (map: Expr<'a -> 'b -> 'c>) (clContext: ClContext) workGroupSize =
+        Map.map2InPlace map clContext workGroupSize
+
+    /// <summary>
+    /// Excludes elements, pointed by the bitmap.
+    /// </summary>
+    /// <param name="clContext">OpenCL context.</param>
+    /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+    let excludeElements (clContext: ClContext) workGroupSize =
+
+        let invert =
+            mapInPlace ArithmeticOperations.intNotQ clContext workGroupSize
+
+        let prefixSum =
+            PrefixSum.standardExcludeInPlace clContext workGroupSize
+
+        let scatter =
+            Scatter.lastOccurrence clContext workGroupSize
+
+        fun (queue: MailboxProcessor<_>) allocationMode (excludeBitmap: ClArray<int>) (inputArray: ClArray<'a>) ->
+
+            invert queue excludeBitmap
+
+            let length =
+                (prefixSum queue excludeBitmap)
+                    .ToHostAndFree queue
+
+            if length = 0 then
+                None
+            else
+                let result =
+                    clContext.CreateClArrayWithSpecificAllocationMode(allocationMode, length)
+
+                scatter queue excludeBitmap inputArray result
+
+                Some result

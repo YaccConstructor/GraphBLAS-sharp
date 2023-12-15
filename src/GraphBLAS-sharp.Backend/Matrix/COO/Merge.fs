@@ -1,8 +1,10 @@
 namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.ClMatrix
+open GraphBLAS.FSharp.Objects.ArraysExtensions
 
 module Merge =
     let run<'a, 'b when 'a: struct and 'b: struct> (clContext: ClContext) workGroupSize =
@@ -180,3 +182,48 @@ module Merge =
             processor.Post(Msg.CreateRunMsg<_, _>(kernel))
 
             allRows, allColumns, leftMergedValues, rightMergedValues, isLeft
+
+    let runDisjoint<'a when 'a: struct> (clContext: ClContext) workGroupSize =
+
+        let mergeValues =
+            <@ fun (ndRange: Range1D) (length: int) (leftValues: ClArray<'a>) (rightValues: ClArray<'a>) (isLeft: ClArray<int>) ->
+
+                let gid = ndRange.GlobalID0
+
+                if gid < length then
+
+                    if isLeft.[gid] = 0 then
+                        leftValues.[gid] <- rightValues.[gid] @>
+
+        let mergeValuesKernel = clContext.Compile(mergeValues)
+
+        let merge = run clContext workGroupSize
+
+        fun (processor: MailboxProcessor<_>) (leftMatrix: ClMatrix.COO<'a>) (rightMatrix: ClMatrix.COO<'a>) ->
+
+            let length =
+                leftMatrix.Columns.Length
+                + rightMatrix.Columns.Length
+
+            let rows, cols, leftValues, rightValues, isLeft = merge processor leftMatrix rightMatrix
+
+            let ndRange =
+                Range1D.CreateValid(length, workGroupSize)
+
+            let mergeValuesKernel = mergeValuesKernel.GetKernel()
+
+            processor.Post(
+                Msg.MsgSetArguments(fun () -> mergeValuesKernel.KernelFunc ndRange length leftValues rightValues isLeft)
+            )
+
+            processor.Post(Msg.CreateRunMsg<_, _>(mergeValuesKernel))
+
+            isLeft.Free processor
+            rightValues.Free processor
+
+            { Context = clContext
+              Rows = rows
+              Columns = cols
+              Values = leftValues
+              ColumnCount = leftMatrix.ColumnCount
+              RowCount = leftMatrix.RowCount }

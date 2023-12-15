@@ -187,4 +187,3 @@ type BFSWithTransferBenchmarkInt32() =
 
     static member InputMatrixProvider =
         Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
-

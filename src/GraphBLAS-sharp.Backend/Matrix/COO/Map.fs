@@ -1,6 +1,5 @@
 ﻿namespace GraphBLAS.FSharp.Backend.Matrix.COO
 
-open System
 open Brahma.FSharp
 open GraphBLAS.FSharp.Backend.Matrix
 open GraphBLAS.FSharp.Backend.Quotes

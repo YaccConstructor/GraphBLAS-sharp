@@ -98,6 +98,89 @@ module Operations =
                     |> Some
                 | _ -> failwith "Vector formats are not matching."
 
+        /// <summary>
+        /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+        /// Stores the result in the left vector.
+        /// </summary>
+        /// <remarks>
+        /// The two input arrays must have the same lengths.
+        /// </remarks>
+        /// <param name="map">The function to transform the pairs of the input elements.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map2InPlace (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+            let map2Dense =
+                Dense.Vector.map2InPlace map clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+                match leftVector, rightVector with
+                | ClVector.Dense left, ClVector.Dense right -> map2Dense processor left right left
+                | _ -> failwith "Unsupported vector format"
+
+        /// <summary>
+        /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+        /// Stores the result in the given vector.
+        /// </summary>
+        /// <remarks>
+        /// The two input arrays must have the same lengths.
+        /// </remarks>
+        /// <param name="map">The function to transform the pairs of the input elements.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map2To (map: Expr<'a option -> 'b option -> 'c option>) (clContext: ClContext) workGroupSize =
+            let map2Dense =
+                Dense.Vector.map2InPlace map clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) (resultVector: ClVector<'c>) ->
+                match leftVector, rightVector, resultVector with
+                | ClVector.Dense left, ClVector.Dense right, ClVector.Dense result ->
+                    map2Dense processor left right result
+                | _ -> failwith "Unsupported vector format"
+
+        /// <summary>
+        /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+        /// Returns new vector.
+        /// </summary>
+        /// <remarks>
+        /// The two input arrays must have the same lengths.
+        /// </remarks>
+        /// <param name="map">The function to transform the pairs of the input elements.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map2Dense (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+            let map2Dense =
+                Dense.Vector.map2 map clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationFlag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+                match leftVector, rightVector with
+                | ClVector.Dense left, ClVector.Dense right -> map2Dense processor allocationFlag left right
+                | _ -> failwith "Unsupported vector format"
+
+        /// <summary>
+        /// Applying the given function to the corresponding elements of the two given arrays pairwise.
+        /// Returns new vector as option.
+        /// </summary>
+        /// <remarks>
+        /// The two input arrays must have the same lengths.
+        /// </remarks>
+        /// <param name="map">The function to transform the pairs of the input elements.</param>
+        /// <param name="clContext">OpenCL context.</param>
+        /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+        let map2Sparse (map: Expr<'a option -> 'b option -> 'a option>) (clContext: ClContext) workGroupSize =
+            let map2Sparse =
+                Sparse.Map2.run map clContext workGroupSize
+
+            let map2SparseDense =
+                Sparse.Map2.runSparseDense map clContext workGroupSize
+
+            fun (processor: MailboxProcessor<_>) allocationFlag (leftVector: ClVector<'a>) (rightVector: ClVector<'b>) ->
+                match leftVector, rightVector with
+                | ClVector.Sparse left, ClVector.Sparse right ->
+                    Option.map ClVector.Sparse (map2Sparse processor allocationFlag left right)
+                | ClVector.Sparse left, ClVector.Dense right ->
+                    Option.map ClVector.Sparse (map2SparseDense processor allocationFlag left right)
+                | _ -> failwith "Unsupported vector format"
+
     module Matrix =
         /// <summary>
         /// Builds a new matrix whose elements are the results of applying the given function
@@ -374,3 +457,43 @@ module Operations =
 
                     run processor allocationMode resultCapacity leftMatrix rightMatrix
                 | _ -> failwith "Matrix formats are not matching"
+
+        module COO =
+            /// <summary>
+            /// Generalized matrix-matrix multiplication. Left matrix should be in COO format.
+            /// </summary>
+            /// <param name="opAdd">Type of binary function to reduce entries.</param>
+            /// <param name="opMul">Type of binary function to combine entries.</param>
+            /// <param name="clContext">OpenCL context.</param>
+            /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
+            let expand
+                (opAdd: Expr<'c -> 'c -> 'c option>)
+                (opMul: Expr<'a -> 'b -> 'c option>)
+                (clContext: ClContext)
+                workGroupSize
+                =
+
+                let run =
+                    SpGeMM.Expand.COO.run opAdd opMul clContext workGroupSize
+
+                fun (processor: MailboxProcessor<_>) allocationMode (leftMatrix: ClMatrix<'a>) (rightMatrix: ClMatrix<'b>) ->
+                    match leftMatrix, rightMatrix with
+                    | ClMatrix.COO leftMatrix, ClMatrix.CSR rightMatrix ->
+                        let allocCapacity =
+                            List.max [ sizeof<'a>
+                                       sizeof<'c>
+                                       sizeof<'b> ]
+                            |> uint64
+                            |> (*) 1UL<Byte>
+
+                        let resultCapacity =
+                            (clContext.MaxMemAllocSize / allocCapacity) / 3UL
+
+                        let resultCapacity =
+                            (min
+                             <| uint64 System.Int32.MaxValue
+                             <| resultCapacity)
+                            |> int
+
+                        run processor allocationMode resultCapacity leftMatrix rightMatrix
+                    | _ -> failwith "Matrix formats are not matching"
