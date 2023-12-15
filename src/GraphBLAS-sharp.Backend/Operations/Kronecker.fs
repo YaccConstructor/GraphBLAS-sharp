@@ -323,7 +323,8 @@ module internal Kronecker =
 
             let mutable startIndex = 0
 
-            let value = clContext.CreateClCell Unchecked.defaultof<'a>
+            let value =
+                clContext.CreateClCell Unchecked.defaultof<'a>
 
             for row in 0 .. rowCount - 1 do
                 let leftEdge, rightEdge = rowBoundaries.[row]
@@ -346,31 +347,31 @@ module internal Kronecker =
 
             startIndex
 
-    let private countZeroElements
-        (clContext: ClContext)
-        workGroupSize
-        =
+    let private countZeroElements (clContext: ClContext) workGroupSize =
 
         let countZeroElementsInRow =
             <@ fun (ndRange: Range1D) (firstIndex: int) (lastIndex: int) (columnCount: int) (columns: ClArray<int>) (result: ClArray<int>) ->
 
-                 let gid = ndRange.GlobalID0
+                let gid = ndRange.GlobalID0
 
-                 let nnzInRow = lastIndex - firstIndex + 1
+                let nnzInRow = lastIndex - firstIndex + 1
 
-                 if gid <= nnzInRow then
+                if gid <= nnzInRow then
 
-                     if nnzInRow = 0 then
-                         result.[0] <- columnCount
+                    if nnzInRow = 0 then
+                        result.[0] <- columnCount
 
-                     elif gid = nnzInRow then
+                    elif gid = nnzInRow then
                         result.[nnzInRow] <- columnCount - columns.[lastIndex] - 1
 
-                     elif gid = 0 then
-                         result.[0] <- columns.[firstIndex]
+                    elif gid = 0 then
+                        result.[0] <- columns.[firstIndex]
 
-                     else
-                         result.[gid] <- columns.[firstIndex + gid] - columns.[firstIndex + gid - 1] - 1 @>
+                    else
+                        result.[gid] <-
+                            columns.[firstIndex + gid]
+                            - columns.[firstIndex + gid - 1]
+                            - 1 @>
 
         let kernel = clContext.Compile countZeroElementsInRow
 
@@ -391,9 +392,15 @@ module internal Kronecker =
                 let ndRange =
                     Range1D.CreateValid(length, workGroupSize)
 
-                let result = clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
+                let result =
+                    clContext.CreateClArrayWithSpecificAllocationMode(DeviceOnly, length)
 
-                queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange firstIndex lastIndex matrix.ColumnCount matrix.Columns result))
+                queue.Post(
+                    Msg.MsgSetArguments
+                        (fun () ->
+                            kernel.KernelFunc ndRange firstIndex lastIndex matrix.ColumnCount matrix.Columns result)
+                )
+
                 queue.Post(Msg.CreateRunMsg<_, _>(kernel))
 
                 zeroCounts.[row] <- result
@@ -408,9 +415,11 @@ module internal Kronecker =
 
         let pairwise = ClArray.pairwise clContext workGroupSize
 
-        let mapInPlace = ClArray.mapInPlace <@ fun (a, b) -> (a, b - 1) @> clContext workGroupSize
+        let mapInPlace =
+            ClArray.mapInPlace <@ fun (a, b) -> (a, b - 1) @> clContext workGroupSize
 
-        let countZeroElements = countZeroElements clContext workGroupSize
+        let countZeroElements =
+            countZeroElements clContext workGroupSize
 
         let insertNonZero = insertNonZero clContext workGroupSize op
 
@@ -446,7 +455,8 @@ module internal Kronecker =
 
             let rowBoundaries = pairsOfRowPointers.ToHostAndFree queue
 
-            let zeroCounts = countZeroElements queue matrixLeft rowBoundaries
+            let zeroCounts =
+                countZeroElements queue matrixLeft rowBoundaries
 
             let startIndex =
                 insertNonZero queue rowBoundaries matrixRight matrixLeft.Values leftColumns resultMatrix
