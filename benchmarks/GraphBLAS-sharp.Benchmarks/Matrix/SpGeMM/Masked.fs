@@ -152,6 +152,7 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
         this.ReadMatrices ()
         this.LoadMatricesToGPU ()
         this.ConvertSecondMatrixToCSC()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<Benchmark>]
     override this.Benchmark () =
@@ -161,6 +162,7 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
     [<IterationCleanup>]
     override this.IterationCleanup () =
         this.ClearResult()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalCleanup>]
     override this.GlobalCleanup () =
@@ -182,6 +184,7 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
     override this.GlobalSetup() =
         this.ReadMatrices()
         this.LoadMatricesToGPU ()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<Benchmark>]
     override this.Benchmark() =
@@ -194,6 +197,7 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
     override this.IterationCleanup() =
         this.ClearResult()
         this.ConvertSecondMatrixToCSR()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =

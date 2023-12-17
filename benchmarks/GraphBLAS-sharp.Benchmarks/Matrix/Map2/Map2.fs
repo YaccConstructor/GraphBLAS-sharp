@@ -251,6 +251,7 @@ module WithTransfer =
         [<GlobalSetup>]
         override this.GlobalSetup() =
             this.ReadMatrices()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()
@@ -259,6 +260,7 @@ module WithTransfer =
         override this.IterationCleanup() =
             this.ClearInputMatrices()
             this.ClearResult()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<Benchmark>]
         override this.Benchmark() =

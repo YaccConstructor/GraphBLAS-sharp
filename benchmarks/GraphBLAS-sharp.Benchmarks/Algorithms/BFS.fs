@@ -113,10 +113,12 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
     override this.GlobalSetup() =
         this.ReadMatrix()
         this.LoadMatrixToGPU()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -180,6 +182,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     [<GlobalSetup>]
     override this.GlobalSetup() =
         this.ReadMatrix()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -189,6 +192,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     override this.IterationCleanup() =
         this.ClearInputMatrix()
         this.ClearResult()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<Benchmark>]
     override this.Benchmark() =

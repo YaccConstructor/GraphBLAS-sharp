@@ -115,6 +115,7 @@ module WithoutTransfer =
         override this.GlobalSetup() =
             this.ReadMatrices()
             this.LoadMatricesToGPU()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<Benchmark>]
         override this.Benchmark() =
@@ -124,6 +125,7 @@ module WithoutTransfer =
         [<IterationCleanup>]
         override this.IterationCleanup () =
             this.ClearResult()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<GlobalCleanup>]
         override this.GlobalCleanup () =

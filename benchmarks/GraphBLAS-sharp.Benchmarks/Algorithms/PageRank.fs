@@ -117,10 +117,12 @@ type PageRankWithoutTransferBenchmarkFloat32() =
         this.Processor.PostAndReply(Msg.MsgNotifyMe)
         this.PrepareMatrix()
         this.ClearInputMatrix()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
+        this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =

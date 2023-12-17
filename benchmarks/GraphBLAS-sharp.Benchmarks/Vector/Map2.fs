@@ -115,6 +115,7 @@ module WithoutTransfer =
         override this.IterationCleanup() =
             this.ClearResult()
             this.ClearInputVectors()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()
@@ -159,6 +160,7 @@ module WithTransfer =
         [<IterationSetup>]
         override this.IterationSetup() =
             this.CreateVectors()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<Benchmark>]
         override this.Benchmark () =
@@ -175,6 +177,7 @@ module WithTransfer =
         override this.IterationCleanup () =
             this.ClearInputVectors()
             this.ClearResult()
+            this.Processor.PostAndReply(Msg.MsgNotifyMe)
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()
