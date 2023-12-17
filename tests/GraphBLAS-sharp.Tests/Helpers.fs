@@ -38,6 +38,10 @@ module Utils =
         float (abs (x - y)) < Accuracy.medium.absolute
         || x.Equals y
 
+    let inline float32IsEqualLowAccuracy x y =
+        float (abs (x - y)) < Accuracy.low.absolute
+        || x.Equals y
+
     let vectorToDenseVector =
         function
         | Vector.Dense vector -> vector

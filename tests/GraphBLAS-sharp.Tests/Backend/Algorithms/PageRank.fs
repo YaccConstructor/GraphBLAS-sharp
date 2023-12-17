@@ -7,8 +7,7 @@ open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
 
-let private alpha = 0.85f
-let private accuracy = 0.00001f
+let private accuracy = float32 Accuracy.low.absolute
 
 let prepareNaive (matrix: float32 [,]) =
     let result = Array2D.copy matrix
@@ -23,7 +22,7 @@ let prepareNaive (matrix: float32 [,]) =
         (fun r c v ->
             result.[r, c] <-
                 if v <> 0f then
-                    alpha / outDegrees.[r]
+                    Backend.Algorithms.PageRank.alpha / outDegrees.[r]
                 else
                     0f)
         matrix
@@ -47,7 +46,10 @@ let pageRankNaive (matrix: float32 [,]) =
         Array.create rowCount (1f / (float32 rowCount))
 
     let mutable error = accuracy + 1f
-    let addConst = (1f - alpha) / (float32 rowCount)
+
+    let addConst =
+        (1f - Backend.Algorithms.PageRank.alpha)
+        / (float32 rowCount)
 
     while (error > accuracy) do
         for r in 0 .. rowCount - 1 do
@@ -109,7 +111,7 @@ let testFixtures (testContext: TestContext) =
 
                   for i in 0 .. actual.Length - 1 do
                       Expect.isTrue
-                          ((abs (actual.[i] - expected.[i])) < accuracy)
+                          (Utils.float32IsEqualLowAccuracy actual.[i] expected.[i])
                           (sprintf "Values should be equal. Expected %A, actual %A" expected.[i] actual.[i])
 
               | _ -> failwith "Not implemented" ]
