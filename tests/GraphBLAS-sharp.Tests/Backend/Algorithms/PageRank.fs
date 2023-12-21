@@ -1,4 +1,4 @@
-﻿module GraphBLAS.FSharp.Tests.Backend.Algorithms.PageRank
+module GraphBLAS.FSharp.Tests.Backend.Algorithms.PageRank
 
 open Expecto
 open GraphBLAS.FSharp
@@ -6,8 +6,6 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Tests.Context
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects
-
-let private accuracy = float32 Accuracy.low.absolute
 
 let prepareNaive (matrix: float32 [,]) =
     let result = Array2D.copy matrix
@@ -22,7 +20,7 @@ let prepareNaive (matrix: float32 [,]) =
         (fun r c v ->
             result.[r, c] <-
                 if v <> 0f then
-                    Backend.Algorithms.PageRank.alpha / outDegrees.[r]
+                    Constants.PageRank.alpha / outDegrees.[r]
                 else
                     0f)
         matrix
@@ -45,13 +43,13 @@ let pageRankNaive (matrix: float32 [,]) =
     let mutable prev =
         Array.create rowCount (1f / (float32 rowCount))
 
-    let mutable error = accuracy + 1f
+    let mutable error = Constants.PageRank.accuracy + 1f
 
     let addConst =
-        (1f - Backend.Algorithms.PageRank.alpha)
+        (1f - Constants.PageRank.alpha)
         / (float32 rowCount)
 
-    while (error > accuracy) do
+    while (error > Constants.PageRank.accuracy) do
         for r in 0 .. rowCount - 1 do
             result.[r] <- 0f
 
@@ -74,7 +72,9 @@ let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
       let context = testContext.ClContext
       let queue = testContext.Queue
-      let workGroupSize = Utils.defaultWorkGroupSize
+
+      let workGroupSize =
+          GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
 
       let testName =
           sprintf "Test on %A" testContext.ClContext
@@ -97,7 +97,8 @@ let testFixtures (testContext: TestContext) =
               let preparedMatrix =
                   Algorithms.PageRank.prepareMatrix context workGroupSize queue matrix
 
-              let res = pageRank queue preparedMatrix accuracy
+              let res =
+                  pageRank queue preparedMatrix Constants.PageRank.accuracy
 
               let resHost = res.ToHost queue
 

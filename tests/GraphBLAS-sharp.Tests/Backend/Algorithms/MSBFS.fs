@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 
 let config = Utils.undirectedAlgoConfig
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let makeLevelsTest context queue bfs (matrix: int [,]) =
     let graph = undirectedFromArray2D matrix 0

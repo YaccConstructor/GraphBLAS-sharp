@@ -14,7 +14,7 @@ let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
       let context = testContext.ClContext
       let queue = testContext.Queue
-      let workGroupSize = Utils.defaultWorkGroupSize
+      let workGroupSize = Constants.Common.defaultWorkGroupSize
 
       let testName =
           sprintf "Test on %A" testContext.ClContext

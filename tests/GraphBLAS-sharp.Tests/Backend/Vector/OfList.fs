@@ -15,7 +15,7 @@ let logger = Log.create "Vector.ofList.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let checkResult
     (isEqual: 'a -> 'a -> bool)

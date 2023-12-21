@@ -14,7 +14,7 @@ let config =
     { Utils.defaultConfig with
           arbitrary = [ typeof<Generators.PairOfSparseMatrices> ] }
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let context = defaultContext.ClContext
 let processor = defaultContext.Queue

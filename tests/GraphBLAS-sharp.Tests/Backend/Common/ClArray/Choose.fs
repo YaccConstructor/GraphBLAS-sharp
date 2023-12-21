@@ -9,7 +9,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let config = Utils.defaultConfig
 
@@ -80,7 +80,7 @@ let makeTest2 testContext isEqual opMap testFun (firstArray: 'a [], secondArray:
             |> Utils.compareArrays isEqual actual expected
 
 let createTest2 testsContext (isEqual: 'a -> 'a -> bool) (opMapQ, opMap) testFun =
-    testFun opMapQ testsContext.ClContext Utils.defaultWorkGroupSize
+    testFun opMapQ testsContext.ClContext Constants.Common.defaultWorkGroupSize
     |> makeTest2 testsContext isEqual opMap
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

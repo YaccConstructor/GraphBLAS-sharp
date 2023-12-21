@@ -11,7 +11,6 @@ open OpenCL.Net
 
 [<RequireQualifiedAccess>]
 module Utils =
-    let defaultWorkGroupSize = 32
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with

@@ -18,7 +18,7 @@ open Mono.CompilerServices.SymbolWriter
 let logger = Log.create "Vector.Map.Tests"
 
 let config = Utils.defaultConfig
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, %A{case}"

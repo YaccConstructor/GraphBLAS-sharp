@@ -11,8 +11,13 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module internal PageRank =
-    let alpha = 0.85f
+module PageRank =
+    type PageRankMatrix =
+        | PreparedMatrix of ClMatrix<float32>
+
+        member this.Dispose(processor: MailboxProcessor<Msg>) =
+            match this with
+            | PreparedMatrix matrix -> matrix.Dispose processor
 
     let private countOutDegree (clContext: ClContext) workGroupSize =
 
@@ -40,10 +45,10 @@ module internal PageRank =
 
             outDegree
 
-    let prepareMatrix (clContext: ClContext) workGroupSize =
+    let internal prepareMatrix (clContext: ClContext) workGroupSize =
 
         //Passing global variable to kernel in Brahma is not possible
-        let alpha = alpha
+        let alpha = Constants.PageRank.alpha
 
         let op =
             <@ fun (x: float32 option) y ->
@@ -131,10 +136,10 @@ module internal PageRank =
 
                 transposeInPlace queue DeviceOnly newMatrix
                 |> ClMatrix.CSR
-                |> PageRankMatrix
+                |> PreparedMatrix
             | _ -> failwith "Not implemented"
 
-    let run (clContext: ClContext) workGroupSize =
+    let internal run (clContext: ClContext) workGroupSize =
 
         let squareOfDifference = ArithmeticOperations.squareOfDifference
         let plus = ArithmeticOperations.float32SumOption
@@ -155,7 +160,7 @@ module internal PageRank =
         let create =
             GraphBLAS.FSharp.Vector.create clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (PageRankMatrix matrix) accuracy ->
+        fun (queue: MailboxProcessor<Msg>) (PreparedMatrix matrix) accuracy ->
             let vertexCount = matrix.RowCount
 
             //None is 0
@@ -169,7 +174,15 @@ module internal PageRank =
                 create queue DeviceOnly vertexCount Dense None
 
             let addition =
-                create queue DeviceOnly vertexCount Dense (Some((1.0f - alpha) / (float32 vertexCount)))
+                create
+                    queue
+                    DeviceOnly
+                    vertexCount
+                    Dense
+                    (Some(
+                        (1.0f - Constants.PageRank.alpha)
+                        / (float32 vertexCount)
+                    ))
 
             let mutable error = accuracy + 0.1f
 
@@ -178,7 +191,7 @@ module internal PageRank =
             while error > accuracy do
                 i <- i + 1
 
-                // rank = matrix*rank + (1 - alpha)/N
+                // rank = matrix*rank + (1 - ALPHA)/N
                 spMVTo queue matrix prevRank rank
                 addToResult queue rank addition
 

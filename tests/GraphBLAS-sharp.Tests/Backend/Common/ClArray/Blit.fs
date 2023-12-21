@@ -34,7 +34,7 @@ let makeTest<'a> isEqual testFun (source: 'a [], sourceIndex, target: 'a [], tar
         |> Utils.compareArrays isEqual actual target
 
 let createTest<'a when 'a: equality> isEqual =
-    ClArray.blit context Utils.defaultWorkGroupSize
+    ClArray.blit context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

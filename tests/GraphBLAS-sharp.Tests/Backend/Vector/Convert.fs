@@ -16,7 +16,7 @@ let logger =
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let makeTest
     formatFrom

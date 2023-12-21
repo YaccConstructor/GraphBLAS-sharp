@@ -11,7 +11,7 @@ open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 let logger = Log.create "Vector.reduce.Tests"
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let config = Utils.defaultConfig
 

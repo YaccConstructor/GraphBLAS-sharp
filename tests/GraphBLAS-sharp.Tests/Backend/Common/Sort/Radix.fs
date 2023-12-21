@@ -10,7 +10,8 @@ let config =
     { Utils.defaultConfig with
           startSize = 1000000 }
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize =
+    GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
 
 let processor = Context.defaultContext.Queue
 

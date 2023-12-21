@@ -13,7 +13,7 @@ open GraphBLAS.FSharp.Objects
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let checkResult
     sumOp

@@ -48,7 +48,7 @@ let makeTest<'a> isEqual (zero: 'a) testFun ((array, bitmap): 'a array * int arr
             |> Expect.isEmpty expected
 
 let createTest<'a> (zero: 'a) isEqual =
-    ClArray.excludeElements context Utils.defaultWorkGroupSize
+    ClArray.excludeElements context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

@@ -62,7 +62,7 @@ let makeTest isZero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
         |> Expect.sequenceEqual actualPointers expectedPointers
 
 let createTest<'a when 'a: struct> (isZero: 'a -> bool) =
-    Expand.getSegmentPointers context Utils.defaultWorkGroupSize
+    Expand.getSegmentPointers context Constants.Common.defaultWorkGroupSize
     |> makeTest isZero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
@@ -161,7 +161,7 @@ let makeExpandTest isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) 
             |> Utils.compareArrays (=) actualRows expectedRows
 
 let createExpandTest isEqual (zero: 'a) testFun =
-    testFun context Utils.defaultWorkGroupSize
+    testFun context Constants.Common.defaultWorkGroupSize
     |> makeExpandTest isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
@@ -208,7 +208,7 @@ let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightAr
             |> Expect.isTrue (expected.NNZ = 0)
 
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
-    testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
+    testFun opAddQ opMulQ context Constants.Common.defaultWorkGroupSize
     |> makeGeneralTest zero isEqual opAdd opMul
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

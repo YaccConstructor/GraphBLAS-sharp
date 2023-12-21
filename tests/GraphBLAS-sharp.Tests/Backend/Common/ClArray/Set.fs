@@ -30,7 +30,7 @@ let makeTest<'a when 'a: equality> testFun (array: 'a [], position, value: 'a) =
         |> Utils.compareArrays (=) actual array
 
 let createTest<'a when 'a: equality> =
-    ClArray.set context Utils.defaultWorkGroupSize
+    ClArray.set context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a>
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

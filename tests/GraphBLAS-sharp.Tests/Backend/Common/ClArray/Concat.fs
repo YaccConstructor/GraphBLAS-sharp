@@ -35,7 +35,7 @@ let makeTest<'a> isEqual testFun (arrays: 'a [] []) =
         |> Utils.compareArrays isEqual actual expected
 
 let createTest<'a> isEqual =
-    ClArray.concat context Utils.defaultWorkGroupSize
+    ClArray.concat context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

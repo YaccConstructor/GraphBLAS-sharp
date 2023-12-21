@@ -76,7 +76,7 @@ let makeTest isEqual zero testFun (firstArray: 'a []) (secondArray: 'a []) =
         |> Utils.compareArrays (=) actualIndices expectedIndices
 
 let createTest<'a when 'a: struct> isEqual (zero: 'a) =
-    Vector.Sparse.Merge.run context Utils.defaultWorkGroupSize
+    Vector.Sparse.Merge.run context Constants.Common.defaultWorkGroupSize
     |> makeTest isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

@@ -96,7 +96,7 @@ let makeTestCOO isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
         checkResult isEqual zero actual leftArray rightArray
 
 let createTestCOO isEqual (zero: 'a) =
-    Matrix.COO.Merge.run context Utils.defaultWorkGroupSize
+    Matrix.COO.Merge.run context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTestCOO isEqual zero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
@@ -150,7 +150,7 @@ let createTestCOODisjoint isEqual (zero: 'a) =
         { Utils.defaultConfig with
               arbitrary = [ typeof<Generators.PairOfDisjointMatricesOfTheSameSize> ] }
 
-    Matrix.COO.Merge.runDisjoint context Utils.defaultWorkGroupSize
+    Matrix.COO.Merge.runDisjoint context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTestCOODisjoint isEqual zero
     |> testPropertyWithConfig configDisjoint $"test on {typeof<'a>}"
 
@@ -214,7 +214,7 @@ let makeTestCSR isEqual zero testFun (leftArray: 'a [,], rightArray: 'a [,]) =
         checkResult isEqual zero actual leftArray rightArray
 
 let createTestCSR isEqual (zero: 'a) =
-    Matrix.CSR.Merge.run context Utils.defaultWorkGroupSize
+    Matrix.CSR.Merge.run context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTestCSR isEqual zero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 

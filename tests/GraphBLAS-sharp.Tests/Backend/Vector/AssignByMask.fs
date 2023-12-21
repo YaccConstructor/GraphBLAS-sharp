@@ -16,7 +16,7 @@ let logger = Log.create "Vector.assignByMask.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, vector: %A{case.Format}"

@@ -12,7 +12,7 @@ open GraphBLAS.FSharp.Tests.Context
 let logger = Log.create "SpGeMM.Masked.Tests"
 
 let context = defaultContext.ClContext
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let makeTest context q zero isEqual plus mul mxmFun (leftMatrix: 'a [,], rightMatrix: 'a [,], mask: bool [,]) =
 

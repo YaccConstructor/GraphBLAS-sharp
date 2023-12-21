@@ -50,7 +50,7 @@ let makeTest isZero testFun (array: 'a [,]) =
         |> Utils.compareArrays (=) actual expected
 
 let createTest<'a when 'a: struct> (isZero: 'a -> bool) =
-    CSR.Matrix.NNZInRows context Utils.defaultWorkGroupSize
+    CSR.Matrix.NNZInRows context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTest isZero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
