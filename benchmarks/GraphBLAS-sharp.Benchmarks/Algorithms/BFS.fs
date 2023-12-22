@@ -9,6 +9,7 @@ open GraphBLAS.FSharp.IO
 open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
@@ -113,12 +114,12 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
     override this.GlobalSetup() =
         this.ReadMatrix()
         this.LoadMatrixToGPU()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -182,7 +183,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     [<GlobalSetup>]
     override this.GlobalSetup() =
         this.ReadMatrix()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -192,7 +193,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     override this.IterationCleanup() =
         this.ClearInputMatrix()
         this.ClearResult()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<Benchmark>]
     override this.Benchmark() =

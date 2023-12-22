@@ -7,6 +7,7 @@ open GraphBLAS.FSharp.IO
 open Brahma.FSharp
 open Microsoft.FSharp.Core
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Objects
 
@@ -112,15 +113,15 @@ type PageRankWithoutTransferBenchmarkFloat32() =
     override this.GlobalSetup() =
         this.ReadMatrix()
         this.LoadMatrixToGPU()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
         this.PrepareMatrix()
         this.ClearInputMatrix()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -129,4 +130,4 @@ type PageRankWithoutTransferBenchmarkFloat32() =
     [<Benchmark>]
     override this.Benchmark() =
         this.PageRank()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor

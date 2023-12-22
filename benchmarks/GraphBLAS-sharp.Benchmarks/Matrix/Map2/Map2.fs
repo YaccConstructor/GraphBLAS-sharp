@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.IO
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.MatrixExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Benchmarks
 
@@ -118,12 +119,12 @@ module WithoutTransfer =
         override this.GlobalSetup() =
             this.ReadMatrices ()
             this.LoadMatricesToGPU ()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<Benchmark>]
         override this.Benchmark () =
             this.EWiseAddition()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<IterationCleanup>]
         override this.IterationCleanup () =
@@ -251,7 +252,7 @@ module WithTransfer =
         [<GlobalSetup>]
         override this.GlobalSetup() =
             this.ReadMatrices()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()
@@ -260,7 +261,7 @@ module WithTransfer =
         override this.IterationCleanup() =
             this.ClearInputMatrices()
             this.ClearResult()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<Benchmark>]
         override this.Benchmark() =

@@ -8,6 +8,7 @@ open GraphBLAS.FSharp.IO
 open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Benchmarks
 
 [<AbstractClass>]
@@ -115,17 +116,17 @@ module WithoutTransfer =
         override this.GlobalSetup() =
             this.ReadMatrices()
             this.LoadMatricesToGPU()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<Benchmark>]
         override this.Benchmark() =
             this.Mxm()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<IterationCleanup>]
         override this.IterationCleanup () =
             this.ClearResult()
-            this.Processor.PostAndReply(Msg.MsgNotifyMe)
+            finish this.Processor
 
         [<GlobalCleanup>]
         override this.GlobalCleanup () =
