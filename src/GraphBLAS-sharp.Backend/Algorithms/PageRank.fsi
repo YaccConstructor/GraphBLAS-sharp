@@ -3,6 +3,7 @@ namespace GraphBLAS.FSharp.Backend.Algorithms
 open Brahma.FSharp
 open GraphBLAS.FSharp.Objects
 
+[<RequireQualifiedAccess>]
 module PageRank =
     [<Sealed>]
     type PageRankMatrix =

@@ -7,7 +7,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module SSSP =
+module internal SSSP =
     let run (clContext: ClContext) workGroupSize =
 
         let less = ArithmeticOperations.less<int>

@@ -11,6 +11,7 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
+[<RequireQualifiedAccess>]
 module PageRank =
     type PageRankMatrix =
         | PreparedMatrix of ClMatrix<float32>
