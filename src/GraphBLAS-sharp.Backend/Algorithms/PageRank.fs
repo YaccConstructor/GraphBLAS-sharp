@@ -140,6 +140,7 @@ module PageRank =
                 |> PreparedMatrix
             | _ -> failwith "Not implemented"
 
+    // PageRank algorithm explanation: pi.math.cornell.edu/~mec/Winter2009/RalucaRemus/Lecture3/lecture3
     let internal run (clContext: ClContext) workGroupSize =
 
         let squareOfDifference = ArithmeticOperations.squareOfDifference
