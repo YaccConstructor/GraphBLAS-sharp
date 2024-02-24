@@ -13,8 +13,8 @@ open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
-[<IterationCount(100)>]
-[<WarmupCount(10)>]
+[<IterationCount(10)>]
+[<WarmupCount(3)>]
 [<Config(typeof<Configs.Matrix>)>]
 type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
