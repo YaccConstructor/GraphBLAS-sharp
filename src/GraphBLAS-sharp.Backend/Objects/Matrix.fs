@@ -2,6 +2,7 @@ namespace GraphBLAS.FSharp.Objects
 
 open Brahma.FSharp
 open GraphBLAS.FSharp.Objects
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 
 type MatrixFormat =
     | CSR
@@ -49,7 +50,7 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnPointers))
-                q.PostAndReply(Msg.MsgNotifyMe)
+                finish q
 
         member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 
@@ -76,7 +77,7 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
                 q.Post(Msg.CreateFreeMsg<_>(this.Columns))
                 q.Post(Msg.CreateFreeMsg<_>(this.Rows))
-                q.PostAndReply(Msg.MsgNotifyMe)
+                finish q
 
         member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 
@@ -114,7 +115,7 @@ module ClMatrix =
                 q.Post(Msg.CreateFreeMsg<_>(this.RowIndices))
                 q.Post(Msg.CreateFreeMsg<_>(this.ColumnIndices))
                 q.Post(Msg.CreateFreeMsg<_>(this.Values))
-                q.PostAndReply(Msg.MsgNotifyMe)
+                finish q
 
         member this.Dispose q = (this :> IDeviceMemObject).Dispose q
 

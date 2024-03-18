@@ -1,4 +1,4 @@
-﻿namespace GraphBLAS.FSharp.Benchmarks.Algorithms.BFS
+namespace GraphBLAS.FSharp.Benchmarks.Algorithms.BFS
 
 open System.IO
 open BenchmarkDotNet.Attributes
@@ -9,11 +9,12 @@ open GraphBLAS.FSharp.IO
 open GraphBLAS.FSharp.Benchmarks
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ArraysExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Backend.Quotes
 
 [<AbstractClass>]
-[<IterationCount(100)>]
-[<WarmupCount(10)>]
+[<IterationCount(10)>]
+[<WarmupCount(3)>]
 [<Config(typeof<Configs.Matrix>)>]
 type Benchmarks<'elem when 'elem : struct>(
     buildFunToBenchmark,
@@ -27,7 +28,7 @@ type Benchmarks<'elem when 'elem : struct>(
     let mutable matrix = Unchecked.defaultof<ClMatrix<'elem>>
     let mutable matrixHost = Unchecked.defaultof<_>
 
-    member val ResultLevels = Unchecked.defaultof<ClVector<'elem>> with get,set
+    member val ResultLevels = Unchecked.defaultof<ClVector<int>> with get,set
 
     [<ParamsSource("AvailableContexts")>]
     member val OclContextInfo = Unchecked.defaultof<Utils.BenchmarkContext * int> with get, set
@@ -113,10 +114,12 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
     override this.GlobalSetup() =
         this.ReadMatrix()
         this.LoadMatrixToGPU()
+        finish this.Processor
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -127,10 +130,34 @@ type WithoutTransferBenchmark<'elem when 'elem : struct>(
         this.BFS()
         this.Processor.PostAndReply Msg.MsgNotifyMe
 
-type BFSWithoutTransferBenchmarkInt32() =
+type BFSWithoutTransferBenchmarkBool() =
+
+    inherit WithoutTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSource ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
+
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+
+type BFSPushPullWithoutTransferBenchmarkBool() =
+
+    inherit WithoutTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSourcePushPull ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
+        0,
+        (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
+
+    static member InputMatrixProvider =
+        Benchmarks<_>.InputMatrixProviderBuilder "BFSBenchmarks.txt"
+
+type SSSPWithoutTransferBenchmarkInt32() =
 
     inherit WithoutTransferBenchmark<int>(
-        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
+        Algorithms.SSSP.run,
         int32,
         (fun _ -> Utils.nextInt (System.Random())),
         0,
@@ -156,6 +183,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     [<GlobalSetup>]
     override this.GlobalSetup() =
         this.ReadMatrix()
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =
@@ -165,6 +193,7 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
     override this.IterationCleanup() =
         this.ClearInputMatrix()
         this.ClearResult()
+        finish this.Processor
 
     [<Benchmark>]
     override this.Benchmark() =
@@ -176,12 +205,12 @@ type WithTransferBenchmark<'elem when 'elem : struct>(
             this.Processor.PostAndReply Msg.MsgNotifyMe
         | _ -> failwith "Impossible"
 
-type BFSWithTransferBenchmarkInt32() =
+type BFSWithTransferBenchmarkBool() =
 
-    inherit WithTransferBenchmark<int>(
-        (Algorithms.BFS.singleSource ArithmeticOperations.intSumOption ArithmeticOperations.intMulOption),
-        int32,
-        (fun _ -> Utils.nextInt (System.Random())),
+    inherit WithTransferBenchmark<bool>(
+        (Algorithms.BFS.singleSource ArithmeticOperations.boolSumOption ArithmeticOperations.boolMulOption),
+        (fun _ -> true),
+        (fun _ -> true),
         0,
         (fun context matrix -> ClMatrix.CSR <| matrix.ToCSR.ToDevice context))
 

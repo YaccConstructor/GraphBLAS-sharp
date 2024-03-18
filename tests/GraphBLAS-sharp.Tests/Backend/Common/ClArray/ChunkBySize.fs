@@ -32,7 +32,7 @@ let makeTestGetChunk<'a when 'a: equality> testFun (array: 'a [], startPosition,
         |> Expect.sequenceEqual actual (Array.sub array startPosition count)
 
 let creatTestSub<'a when 'a: equality> =
-    ClArray.sub context Utils.defaultWorkGroupSize
+    ClArray.sub context Constants.Common.defaultWorkGroupSize
     |> makeTestGetChunk<'a>
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 
@@ -72,7 +72,7 @@ let chunkBySizeConfig =
           arbitrary = [ typeof<Generators.ChunkBySize> ] }
 
 let creatTestChunkBySize<'a when 'a: equality> isEqual =
-    ClArray.chunkBySize context Utils.defaultWorkGroupSize
+    ClArray.chunkBySize context Constants.Common.defaultWorkGroupSize
     |> makeTestChunkBySize<'a> isEqual
     |> testPropertyWithConfig chunkBySizeConfig $"test on %A{typeof<'a>}"
 
@@ -89,7 +89,7 @@ let chunkBySizeTests =
 
 let creatTestChunkBySizeLazy<'a when 'a: equality> isEqual =
     (fun processor allocationMode chunkSize array ->
-        ClArray.lazyChunkBySize context Utils.defaultWorkGroupSize processor allocationMode chunkSize array
+        ClArray.lazyChunkBySize context Constants.Common.defaultWorkGroupSize processor allocationMode chunkSize array
         |> Seq.map (fun lazyValue -> lazyValue.Value)
         |> Seq.toArray)
     |> makeTestChunkBySize<'a> isEqual

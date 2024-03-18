@@ -17,7 +17,7 @@ let config =
 
 let logger = Log.create "kronecker.Tests"
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let makeTest testContext zero isEqual op kroneckerFun (leftMatrix: 'a [,], rightMatrix: 'a [,]) =
     let context = testContext.ClContext

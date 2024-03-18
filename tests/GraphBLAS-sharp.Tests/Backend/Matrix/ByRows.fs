@@ -45,7 +45,7 @@ let makeTest<'a when 'a: struct> isEqual zero testFun (array: 'a [,]) =
                     |> Expect.isFalse (Array.exists ((<<) not <| isEqual zero) array.[index, *]))
 
 let createTest isEqual (zero: 'a) =
-    CSR.Matrix.byRows context Utils.defaultWorkGroupSize
+    CSR.Matrix.byRows context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual zero
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

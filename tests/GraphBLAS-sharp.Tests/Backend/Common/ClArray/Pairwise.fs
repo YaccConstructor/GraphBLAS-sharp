@@ -34,7 +34,7 @@ let makeTest<'a> isEqual testFun (array: 'a []) =
             |> Expect.isTrue (array.Size <= 1)
 
 let createTest<'a> isEqual =
-    ClArray.pairwise context Utils.defaultWorkGroupSize
+    ClArray.pairwise context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

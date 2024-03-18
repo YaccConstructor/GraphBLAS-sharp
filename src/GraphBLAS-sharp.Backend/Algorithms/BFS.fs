@@ -11,8 +11,8 @@ open GraphBLAS.FSharp.Objects.ClCellExtensions
 
 module internal BFS =
     let singleSource
-        (add: Expr<int option -> int option -> int option>)
-        (mul: Expr<'a option -> int option -> int option>)
+        (add: Expr<bool option -> bool option -> bool option>)
+        (mul: Expr<bool option -> bool option -> bool option>)
         (clContext: ClContext)
         workGroupSize
         =
@@ -34,14 +34,14 @@ module internal BFS =
         let containsNonZero =
             Vector.exists Predicates.isSome clContext workGroupSize
 
-        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<'a>) (source: int) ->
+        fun (queue: MailboxProcessor<Msg>) (matrix: ClMatrix<bool>) (source: int) ->
             let vertexCount = matrix.RowCount
 
             let levels =
                 zeroCreate queue DeviceOnly vertexCount Dense
 
             let front =
-                ofList queue DeviceOnly Dense vertexCount [ source, 1 ]
+                ofList queue DeviceOnly Dense vertexCount [ source, true ]
 
             let mutable level = 0
             let mutable stop = false

@@ -15,7 +15,9 @@ let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
       let context = testContext.ClContext
       let queue = testContext.Queue
-      let workGroupSize = Utils.defaultWorkGroupSize
+
+      let workGroupSize =
+          GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
 
       let testName =
           sprintf "Test on %A" testContext.ClContext
@@ -45,8 +47,7 @@ let testFixtures (testContext: TestContext) =
 
               let matrix = matrixHost.ToDevice context
 
-              let resDense =
-                  ssspDense queue matrix source |> ClVector.Dense
+              let resDense = ssspDense queue matrix source
 
               let resHost = resDense.ToHost queue
 

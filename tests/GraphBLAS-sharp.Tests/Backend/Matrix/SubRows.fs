@@ -51,7 +51,7 @@ let makeTest isEqual zero testFun (array: 'a [,], sourceRow, count) =
             Utils.compareCOOMatrix isEqual actual expected
 
 let createTest isEqual (zero: 'a) =
-    CSR.Matrix.subRows context Utils.defaultWorkGroupSize
+    CSR.Matrix.subRows context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTest isEqual zero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 

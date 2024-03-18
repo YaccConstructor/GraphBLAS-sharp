@@ -14,15 +14,15 @@ let testFixtures (testContext: TestContext) =
     [ let config = Utils.undirectedAlgoConfig
       let context = testContext.ClContext
       let queue = testContext.Queue
-      let workGroupSize = Utils.defaultWorkGroupSize
+      let workGroupSize = Constants.Common.defaultWorkGroupSize
 
       let testName =
           sprintf "Test on %A" testContext.ClContext
 
       let bfs =
           Algorithms.BFS.singleSource
-              ArithmeticOperations.intSumOption
-              ArithmeticOperations.intMulOption
+              ArithmeticOperations.boolSumOption
+              ArithmeticOperations.boolMulOption
               context
               workGroupSize
 
@@ -43,6 +43,8 @@ let testFixtures (testContext: TestContext) =
       testPropertyWithConfig config testName
       <| fun (matrix: int [,]) ->
 
+          let matrixBool = Array2D.map (fun x -> x <> 0) matrix
+
           let graph = undirectedFromArray2D matrix 0
 
           let largestComponent =
@@ -56,7 +58,7 @@ let testFixtures (testContext: TestContext) =
                   |> Utils.createArrayFromDictionary (Array2D.length1 matrix) 0
 
               let matrixHost =
-                  Utils.createMatrixFromArray2D CSR matrix ((=) 0)
+                  Utils.createMatrixFromArray2D CSR matrixBool ((=) false)
 
               let matrixHostBool =
                   Utils.createMatrixFromArray2D CSR (Array2D.map (fun x -> x <> 0) matrix) ((=) false)

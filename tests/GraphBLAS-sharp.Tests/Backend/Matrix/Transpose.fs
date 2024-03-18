@@ -14,7 +14,7 @@ let logger = Log.create "Transpose.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, %A{case.Format}, %A{case.TestContext}"

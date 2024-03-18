@@ -15,7 +15,7 @@ let logger = Log.create "Vector.ElementWise.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let getCorrectnessTestName<'a> (case: OperationCase<'a>) dataType =
     $"Correctness on '{dataType} option -> '{dataType} option -> '{dataType} option, {case.Format}"

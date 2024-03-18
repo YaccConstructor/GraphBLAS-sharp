@@ -33,7 +33,7 @@ let makeTest<'a> isEqual testFun (value: 'a, targetPosition, count, target: 'a [
         |> Utils.compareArrays isEqual actual target
 
 let createTest<'a> isEqual =
-    ClArray.fill context Utils.defaultWorkGroupSize
+    ClArray.fill context Constants.Common.defaultWorkGroupSize
     |> makeTest<'a> isEqual
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

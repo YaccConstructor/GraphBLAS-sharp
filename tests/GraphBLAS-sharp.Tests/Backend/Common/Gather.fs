@@ -49,7 +49,7 @@ let makeTest isEqual testFun (array: (uint * 'a * 'a) []) =
 let createTest<'a> (isEqual: 'a -> 'a -> bool) testFun =
 
     let testFun =
-        testFun context Utils.defaultWorkGroupSize
+        testFun context Constants.Common.defaultWorkGroupSize
 
     makeTest isEqual testFun
     |> testPropertyWithConfig Utils.defaultConfig $"test on %A{typeof<'a>}"
@@ -90,7 +90,7 @@ let makeTestInit isEqual testFun indexMap (array: ('a * 'a) []) =
 let createTestInit<'a> (isEqual: 'a -> 'a -> bool) testFun indexMapQ indexMap =
 
     let testFun =
-        testFun indexMapQ context Utils.defaultWorkGroupSize
+        testFun indexMapQ context Constants.Common.defaultWorkGroupSize
 
     makeTestInit isEqual testFun indexMap
     |> testPropertyWithConfig Utils.defaultConfig $"test on {typeof<'a>}"

@@ -49,7 +49,7 @@ let makeGeneralTest zero isEqual opAdd opMul testFun (leftArray: 'a [,], rightAr
             |> Expect.isTrue (expected.NNZ = 0)
 
 let createGeneralTest (zero: 'a) isEqual (opAddQ, opAdd) (opMulQ, opMul) testFun =
-    testFun opAddQ opMulQ context Utils.defaultWorkGroupSize
+    testFun opAddQ opMulQ context Constants.Common.defaultWorkGroupSize
     |> makeGeneralTest zero isEqual opAdd opMul
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

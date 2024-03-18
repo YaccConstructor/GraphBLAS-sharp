@@ -15,7 +15,7 @@ let logger = Log.create "Convert.Tests"
 
 let config = Utils.defaultConfig
 
-let workGroupSize = Utils.defaultWorkGroupSize
+let workGroupSize = Constants.Common.defaultWorkGroupSize
 
 let context = defaultContext.ClContext
 
@@ -55,7 +55,7 @@ let makeTest context q formatFrom formatTo convertFun isZero (array: 'a [,]) =
 
 let createTest<'a when 'a: struct and 'a: equality> convertFun formatTo (isZero: 'a -> bool) =
     let convertFun =
-        convertFun context Utils.defaultWorkGroupSize
+        convertFun context Constants.Common.defaultWorkGroupSize
 
     Utils.listOfUnionCases<MatrixFormat>
     |> List.map

@@ -17,7 +17,7 @@ open GraphBLAS.FSharp.Objects.MatrixExtensions
 let logger = Log.create "Map.Tests"
 
 let config = Utils.defaultConfig
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let getCorrectnessTestName case datatype =
     $"Correctness on %s{datatype}, %A{case}"

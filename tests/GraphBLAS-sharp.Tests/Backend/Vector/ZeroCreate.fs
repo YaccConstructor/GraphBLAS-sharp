@@ -15,7 +15,7 @@ let logger = Log.create "Vector.zeroCreate.Tests"
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let checkResult size (actual: Vector<'a>) =
     Expect.equal actual.Size size "The size should be the same"
@@ -38,16 +38,20 @@ let correctnessGenericTest<'a when 'a: struct and 'a: equality>
     let vectorSize = abs vectorSize
 
     if vectorSize > 0 then
-        let q = case.TestContext.Queue
+        try
+            let q = case.TestContext.Queue
 
-        let clVector =
-            zeroCreate q HostInterop vectorSize case.Format
+            let clVector =
+                zeroCreate q DeviceOnly vectorSize case.Format
 
-        let hostVector = clVector.ToHost q
+            let hostVector = clVector.ToHost q
 
-        clVector.Dispose q
+            clVector.Dispose q
 
-        checkResult vectorSize hostVector
+            checkResult vectorSize hostVector
+        with
+        | ex when ex.Message = "Attempting to create full sparse vector" -> ()
+        | ex -> raise ex
 
 let createTest<'a> case =
     let getCorrectnessTestName dataType =

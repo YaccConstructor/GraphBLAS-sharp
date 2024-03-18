@@ -15,7 +15,7 @@ let context = defaultContext.ClContext
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let q = defaultContext.Queue
 
@@ -89,7 +89,7 @@ let makeTestInit<'a when 'a: equality> hostScatter valueMap scatter (positions: 
 
 let createInitTest clScatter hostScatter name valuesMap valuesMapQ =
     let scatter =
-        clScatter valuesMapQ context Utils.defaultWorkGroupSize
+        clScatter valuesMapQ context Constants.Common.defaultWorkGroupSize
 
     makeTestInit<'a> hostScatter valuesMap scatter
     |> testPropertyWithConfig config name

@@ -8,6 +8,7 @@ open Brahma.FSharp
 open GraphBLAS.FSharp
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 open GraphBLAS.FSharp.Benchmarks
 
 [<AbstractClass>]
@@ -152,15 +153,17 @@ type MxmBenchmarksMultiplicationOnly<'elem when 'elem : struct>(
         this.ReadMatrices ()
         this.LoadMatricesToGPU ()
         this.ConvertSecondMatrixToCSC()
+        finish this.Processor
 
     [<Benchmark>]
     override this.Benchmark () =
         this.Mxm()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
     [<IterationCleanup>]
     override this.IterationCleanup () =
         this.ClearResult()
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup () =
@@ -182,18 +185,20 @@ type MxmBenchmarksWithTransposing<'elem when 'elem : struct>(
     override this.GlobalSetup() =
         this.ReadMatrices()
         this.LoadMatricesToGPU ()
+        finish this.Processor
 
     [<Benchmark>]
     override this.Benchmark() =
         this.ConvertSecondMatrixToCSC()
         this.Mxm()
-        this.Processor.PostAndReply(Msg.MsgNotifyMe)
+        finish this.Processor
 
 
     [<IterationCleanup>]
     override this.IterationCleanup() =
         this.ClearResult()
         this.ConvertSecondMatrixToCSR()
+        finish this.Processor
 
     [<GlobalCleanup>]
     override this.GlobalCleanup() =

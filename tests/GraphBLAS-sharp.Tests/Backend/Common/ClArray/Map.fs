@@ -10,7 +10,8 @@ open GraphBLAS.FSharp.Objects.ClContextExtensions
 
 let context = defaultContext.Queue
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize =
+    GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
 
 let config = Utils.defaultConfig
 

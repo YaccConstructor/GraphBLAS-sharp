@@ -10,6 +10,7 @@ open GraphBLAS.FSharp.Tests
 open GraphBLAS.FSharp.Objects
 open GraphBLAS.FSharp.Objects.ClVectorExtensions
 open GraphBLAS.FSharp.Objects.ClContextExtensions
+open GraphBLAS.FSharp.Objects.MailboxProcessorExtensions
 
 [<AbstractClass>]
 [<IterationCount(100)>]
@@ -115,6 +116,7 @@ module WithoutTransfer =
         override this.IterationCleanup() =
             this.ClearResult()
             this.ClearInputVectors()
+            finish this.Processor
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()
@@ -159,6 +161,7 @@ module WithTransfer =
         [<IterationSetup>]
         override this.IterationSetup() =
             this.CreateVectors()
+            finish this.Processor
 
         [<Benchmark>]
         override this.Benchmark () =
@@ -175,6 +178,7 @@ module WithTransfer =
         override this.IterationCleanup () =
             this.ClearInputVectors()
             this.ClearResult()
+            finish this.Processor
 
         [<GlobalCleanup>]
         override this.GlobalCleanup() = ()

@@ -11,7 +11,6 @@ open OpenCL.Net
 
 [<RequireQualifiedAccess>]
 module Utils =
-    let defaultWorkGroupSize = 32
 
     let defaultConfig =
         { FsCheckConfig.defaultConfig with
@@ -36,6 +35,10 @@ module Utils =
 
     let inline float32IsEqual x y =
         float (abs (x - y)) < Accuracy.medium.absolute
+        || x.Equals y
+
+    let inline float32IsEqualLowAccuracy x y =
+        float (abs (x - y)) < Accuracy.low.absolute
         || x.Equals y
 
     let vectorToDenseVector =

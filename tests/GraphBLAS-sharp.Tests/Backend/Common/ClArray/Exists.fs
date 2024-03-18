@@ -19,7 +19,7 @@ let q = defaultContext.Queue
 
 let config = Utils.defaultConfig
 
-let wgSize = Utils.defaultWorkGroupSize
+let wgSize = Constants.Common.defaultWorkGroupSize
 
 let correctnessGenericTest<'a when 'a: struct and 'a: equality> isZero exists (array: 'a []) =
 

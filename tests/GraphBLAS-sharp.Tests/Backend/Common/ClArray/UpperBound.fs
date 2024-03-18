@@ -45,7 +45,7 @@ let makeTest testFun (array: 'a [], value: 'a) =
         |> Expect.equal actual expected
 
 let createTest<'a when 'a: equality and 'a: comparison> =
-    ClArray.upperBound<'a> context Utils.defaultWorkGroupSize
+    ClArray.upperBound<'a> context Constants.Common.defaultWorkGroupSize
     |> makeTest
     |> testPropertyWithConfig config $"test on %A{typeof<'a>}"
 

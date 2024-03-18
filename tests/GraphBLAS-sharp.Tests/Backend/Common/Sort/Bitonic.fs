@@ -17,7 +17,8 @@ module Bitonic =
         { Utils.defaultConfig with
               endSize = 1000000 }
 
-    let wgSize = Utils.defaultWorkGroupSize
+    let wgSize =
+        GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
 
     let q = defaultContext.Queue
 

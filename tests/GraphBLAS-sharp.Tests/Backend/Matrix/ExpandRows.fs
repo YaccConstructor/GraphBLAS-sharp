@@ -34,7 +34,7 @@ let makeTest isZero testFun (array: 'a [,]) =
         |> Expect.sequenceEqual actual expected
 
 let createTest (isZero: 'a -> bool) =
-    CSR.Matrix.expandRowPointers context Utils.defaultWorkGroupSize
+    CSR.Matrix.expandRowPointers context GraphBLAS.FSharp.Constants.Common.defaultWorkGroupSize
     |> makeTest isZero
     |> testPropertyWithConfig config $"test on {typeof<'a>}"
 
