@@ -211,7 +211,7 @@ module Common =
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         /// <param name="plus">Associative binary operation.</param>
         /// <param name="zero">Zero element for binary operation.</param>
-        let runExcludeInPlace plus = PrefixSum.runExcludeInPlace plus
+        let runExcludeInPlace plus = ScanInternal.runExcludeInPlace plus
 
         /// <summary>
         /// Include in-place prefix sum.
@@ -231,7 +231,8 @@ module Common =
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         /// <param name="zero">Zero element for binary operation.</param>
-        let runIncludeInPlace plus = PrefixSum.runIncludeInPlace plus
+        let runIncludeInPlace plus =
+            PrefixSumInternal.runIncludeInPlace plus
 
         /// <summary>
         /// Exclude in-place prefix sum. Array is scanned starting from the end.
@@ -241,7 +242,7 @@ module Common =
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         /// <param name="zero">Zero element for binary operation.</param>
         let runBackwardsExcludeInPlace plus =
-            PrefixSum.runBackwardsExcludeInPlace plus
+            PrefixSumInternal.runBackwardsExcludeInPlace plus
 
         /// <summary>
         /// Include in-place prefix sum. Array is scanned starting from the end.
@@ -251,7 +252,7 @@ module Common =
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
         /// <param name="zero">Zero element for binary operation.</param>
         let runBackwardsIncludeInPlace plus =
-            PrefixSum.runBackwardsIncludeInPlace plus
+            PrefixSumInternal.runBackwardsIncludeInPlace plus
 
         /// <summary>
         /// Exclude in-place prefix sum of integer array with addition operation and start value that is equal to 0.
@@ -267,7 +268,7 @@ module Common =
         /// > val sum = [| 4 |]
         /// </code>
         /// </example>
-        let standardExcludeInPlace = PrefixSum.standardExcludeInPlace
+        let standardExcludeInPlace = ScanInternal.standardExcludeInPlace
 
         /// <summary>
         /// Include in-place prefix sum of integer array with addition operation and start value that is equal to 0.
@@ -285,7 +286,7 @@ module Common =
         /// </example>
         /// <param name="clContext">ClContext.</param>
         /// <param name="workGroupSize">Should be a power of 2 and greater than 1.</param>
-        let standardIncludeInPlace = PrefixSum.standardIncludeInPlace
+        let standardIncludeInPlace = PrefixSumInternal.standardIncludeInPlace
 
         module ByKey =
             /// <summary>
@@ -299,7 +300,8 @@ module Common =
             /// > val result = [| 0; 0; 1; 2; 0; 1 |]
             /// </code>
             /// </example>
-            let sequentialExclude op = PrefixSum.ByKey.sequentialExclude op
+            let sequentialExclude op =
+                PrefixSumInternal.ByKey.sequentialExclude op
 
             /// <summary>
             /// Include scan by key.
@@ -312,7 +314,8 @@ module Common =
             /// > val result = [| 1; 1; 2; 3; 1; 2 |]
             /// </code>
             /// </example>
-            let sequentialInclude op = PrefixSum.ByKey.sequentialInclude op
+            let sequentialInclude op =
+                PrefixSumInternal.ByKey.sequentialInclude op
 
     module Reduce =
         /// <summary>

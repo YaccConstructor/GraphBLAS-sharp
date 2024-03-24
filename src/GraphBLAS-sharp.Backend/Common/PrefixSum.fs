@@ -6,7 +6,7 @@ open GraphBLAS.FSharp.Backend.Quotes
 open GraphBLAS.FSharp.Objects.ArraysExtensions
 open GraphBLAS.FSharp.Objects.ClCellExtensions
 
-module PrefixSum =
+module internal PrefixSumInternal =
     let private update (opAdd: Expr<'a -> 'a -> 'a>) (clContext: ClContext) workGroupSize =
 
         let update =
@@ -209,6 +209,7 @@ module PrefixSum =
     let runBackwardsIncludeInPlace plus = runInPlace plus true scanInclusive
 
     /// <summary>
+    /// This method is deprecated due to bad perfomance.
     /// Exclude in-place prefix sum of integer array with addition operation and start value that is equal to 0.
     /// </summary>
     /// <example>

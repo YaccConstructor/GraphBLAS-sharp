@@ -529,7 +529,7 @@ module Reduce =
                     Scatter.lastOccurrence clContext workGroupSize
 
                 let prefixSum =
-                    PrefixSum.standardExcludeInPlace clContext workGroupSize
+                    PrefixSumInternal.standardExcludeInPlace clContext workGroupSize
 
                 fun (processor: MailboxProcessor<_>) allocationMode (keys: ClArray<int>) (values: ClArray<'a option>) ->
 
@@ -661,7 +661,7 @@ module Reduce =
                     Scatter.lastOccurrence clContext workGroupSize
 
                 let prefixSum =
-                    PrefixSum.standardExcludeInPlace clContext workGroupSize
+                    PrefixSumInternal.standardExcludeInPlace clContext workGroupSize
 
                 fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (keys: ClArray<int>) (values: ClArray<'a>) ->
 
@@ -940,7 +940,7 @@ module Reduce =
                     Scatter.lastOccurrence clContext workGroupSize
 
                 let prefixSum =
-                    PrefixSum.standardExcludeInPlace clContext workGroupSize
+                    PrefixSumInternal.standardExcludeInPlace clContext workGroupSize
 
                 fun (processor: MailboxProcessor<_>) allocationMode (resultLength: int) (offsets: ClArray<int>) (firstKeys: ClArray<int>) (secondKeys: ClArray<int>) (values: ClArray<'a>) ->
 

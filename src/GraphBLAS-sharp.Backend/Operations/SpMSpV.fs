@@ -65,7 +65,7 @@ module SpMSpV =
                     inputArray.[i] <- 0 @>
 
         let sum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            PrefixSumInternal.standardExcludeInPlace clContext workGroupSize
 
         let prepareOffsets = clContext.Compile prepareOffsets
 

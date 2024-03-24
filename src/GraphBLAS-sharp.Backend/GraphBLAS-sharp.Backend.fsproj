@@ -32,6 +32,7 @@
     <Compile Include="Common/Scatter.fs" />
     <Compile Include="Common/Utils.fs" />
     <Compile Include="Common/PrefixSum.fs" />
+    <Compile Include="Common/Scan.fs" />
     <Compile Include="Common/Gather.fs" />
     <Compile Include="Common/Map.fs" />
     <Compile Include="Common/Bitmap.fs" />
