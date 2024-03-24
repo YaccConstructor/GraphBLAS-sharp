@@ -11,6 +11,7 @@ module Common =
             /// Sorts in-place input array of values by their 2d indices,
             /// which are stored in two given arrays of keys: rows and columns.
             /// When comparing, it first looks at rows, then columns.
+            /// Note that maximum possible workGroupSize is used internally for better perfomance.
             /// </summary>
             /// <example>
             /// <code>
