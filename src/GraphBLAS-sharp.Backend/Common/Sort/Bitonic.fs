@@ -1,317 +1,255 @@
 namespace GraphBLAS.FSharp.Backend.Common.Sort
 
 open Brahma.FSharp
-open GraphBLAS.FSharp.Backend.Common
+open GraphBLAS.FSharp.Backend
 
 module Bitonic =
-    let private localBegin (clContext: ClContext) workGroupSize =
 
-        let processedSize = workGroupSize * 2
+    let sortKeyValuesInplace<'a> (clContext: ClContext) (workGroupSize: int) =
 
-        let localBegin =
-            <@ fun (range: Range1D) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) (length: int) ->
-
-                let lid = range.LocalID0
-                let gid = range.GlobalID0
-                let groupId = gid / workGroupSize
-
-                // 1 рабочая группа обрабатывает 2 * workGroupSize элементов
-                let localRows = localArray<'n> processedSize
-                let localCols = localArray<'n> processedSize
-                let localValues = localArray<'a> processedSize
-
-                let mutable readIdx = processedSize * groupId + lid
-                let mutable localLength = local<int> ()
-                localLength <- processedSize
-
-                // копируем элементы из глобальной памяти в локальную
-                if readIdx < length then
-                    localRows.[lid] <- rows.[readIdx]
-                    localCols.[lid] <- cols.[readIdx]
-                    localValues.[lid] <- values.[readIdx]
-
-                if readIdx = length then
-                    localLength <- lid
-
-                readIdx <- readIdx + workGroupSize
-
-                if readIdx < length then
-                    localRows.[lid + workGroupSize] <- rows.[readIdx]
-                    localCols.[lid + workGroupSize] <- cols.[readIdx]
-                    localValues.[lid + workGroupSize] <- values.[readIdx]
-
-                if readIdx = length then
-                    localLength <- lid + workGroupSize
-
-                barrierLocal ()
-
-                let mutable segmentLength = 1
-
-                while segmentLength < processedSize do
-                    segmentLength <- segmentLength <<< 1
-                    let localLineId = lid % (segmentLength >>> 1)
-                    let localTwinId = segmentLength - localLineId - 1
-                    let groupLineId = lid / (segmentLength >>> 1)
-
-                    let lineId =
-                        segmentLength * groupLineId + localLineId
-
-                    let twinId =
-                        segmentLength * groupLineId + localTwinId
-
-                    if twinId < localLength
-                       && (localRows.[lineId] > localRows.[twinId]
-                           || localRows.[lineId] = localRows.[twinId]
-                              && localCols.[lineId] > localCols.[twinId]) then
-                        let tmpRow = localRows.[lineId]
-                        localRows.[lineId] <- localRows.[twinId]
-                        localRows.[twinId] <- tmpRow
-
-                        let tmpCol = localCols.[lineId]
-                        localCols.[lineId] <- localCols.[twinId]
-                        localCols.[twinId] <- tmpCol
-
-                        let tmpValue = localValues.[lineId]
-                        localValues.[lineId] <- localValues.[twinId]
-                        localValues.[twinId] <- tmpValue
-
-                    barrierLocal ()
-
-                    let mutable j = segmentLength >>> 1
-
-                    while j > 1 do
-                        let localLineId = lid % (j >>> 1)
-                        let localTwinId = localLineId + (j >>> 1)
-                        let groupLineId = lid / (j >>> 1)
-                        let lineId = j * groupLineId + localLineId
-                        let twinId = j * groupLineId + localTwinId
-
-                        if twinId < localLength
-                           && (localRows.[lineId] > localRows.[twinId]
-                               || localRows.[lineId] = localRows.[twinId]
-                                  && localCols.[lineId] > localCols.[twinId]) then
-                            let tmpRow = localRows.[lineId]
-                            localRows.[lineId] <- localRows.[twinId]
-                            localRows.[twinId] <- tmpRow
-
-                            let tmpCol = localCols.[lineId]
-                            localCols.[lineId] <- localCols.[twinId]
-                            localCols.[twinId] <- tmpCol
-
-                            let tmpValue = localValues.[lineId]
-                            localValues.[lineId] <- localValues.[twinId]
-                            localValues.[twinId] <- tmpValue
-
-                        barrierLocal ()
-
-                        j <- j >>> 1
-
-                let mutable writeIdx = processedSize * groupId + lid
-
-                if writeIdx < length then
-                    rows.[writeIdx] <- localRows.[lid]
-                    cols.[writeIdx] <- localCols.[lid]
-                    values.[writeIdx] <- localValues.[lid]
-
-                writeIdx <- writeIdx + workGroupSize
-
-                if writeIdx < length then
-                    rows.[writeIdx] <- localRows.[lid + workGroupSize]
-                    cols.[writeIdx] <- localCols.[lid + workGroupSize]
-                    values.[writeIdx] <- localValues.[lid + workGroupSize] @>
-
-        let program = clContext.Compile(localBegin)
-
-        fun (queue: MailboxProcessor<_>) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) ->
-
-            let ndRange =
-                Range1D.CreateValid(Utils.floorToPower2 values.Length, workGroupSize)
-
-            let kernel = program.GetKernel()
-
-            queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rows cols values values.Length))
-            queue.Post(Msg.CreateRunMsg<_, _>(kernel))
-
-
-    let private globalStep (clContext: ClContext) workGroupSize =
-
-        let globalStep =
-            <@ fun (range: Range1D) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) (length: int) (segmentLength: int) (mirror: ClCell<bool>) ->
-
-                let mirror = mirror.Value
-
-                let gid = range.GlobalID0
-
-                let localLineId = gid % (segmentLength >>> 1)
-                let mutable localTwinId = 0
-
-                if mirror then
-                    localTwinId <- segmentLength - localLineId - 1
-                else
-                    localTwinId <- localLineId + (segmentLength >>> 1)
-
-                let groupLineId = gid / (segmentLength >>> 1)
-
-                let lineId =
-                    segmentLength * groupLineId + localLineId
-
-                let twinId =
-                    segmentLength * groupLineId + localTwinId
-
-                if twinId < length
-                   && (rows.[lineId] > rows.[twinId]
-                       || rows.[lineId] = rows.[twinId]
-                          && cols.[lineId] > cols.[twinId]) then
-                    let tmpRow = rows.[lineId]
-                    rows.[lineId] <- rows.[twinId]
-                    rows.[twinId] <- tmpRow
-
-                    let tmpCol = cols.[lineId]
-                    cols.[lineId] <- cols.[twinId]
-                    cols.[twinId] <- tmpCol
-
-                    let tmpV = values.[lineId]
-                    values.[lineId] <- values.[twinId]
-                    values.[twinId] <- tmpV @>
-
-        let program = clContext.Compile(globalStep)
-
-        fun (queue: MailboxProcessor<_>) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) (segmentLength: int) (mirror: bool) ->
-
-            let ndRange =
-                Range1D.CreateValid(Utils.floorToPower2 values.Length, workGroupSize)
-
-            let mirror = clContext.CreateClCell mirror
-
-            let kernel = program.GetKernel()
-
-            queue.Post(
-                Msg.MsgSetArguments
-                    (fun () -> kernel.KernelFunc ndRange rows cols values values.Length segmentLength mirror)
+        let localSize =
+            Common.Utils.floorToPower2 (
+                int (clContext.ClDevice.LocalMemSize)
+                / (sizeof<uint64> + sizeof<'a>)
             )
 
-            queue.Post(Msg.CreateRunMsg<_, _>(kernel))
-            queue.Post(Msg.CreateFreeMsg(mirror))
+        let maxThreadsPerBlock =
+            min (clContext.ClDevice.MaxWorkGroupSize) (localSize / 2)
 
+        let waveSize = 32
+        let maxWorkGroupSize = clContext.ClDevice.MaxWorkGroupSize
 
-    let private localEnd (clContext: ClContext) workGroupSize =
-
-        let processedSize = workGroupSize * 2
-
-        let localEnd =
-            <@ fun (range: Range1D) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) (length: int) ->
-
-                let lid = range.LocalID0
-                let gid = range.GlobalID0
+        let localStep =
+            <@ fun (ndRange: Range1D) (rows: ClArray<int>) (cols: ClArray<int>) (vals: ClArray<'a>) (length: int) ->
+                let gid = ndRange.GlobalID0
+                let lid = ndRange.LocalID0
+                let workGroupSize = ndRange.LocalWorkSize
                 let groupId = gid / workGroupSize
 
-                // 1 рабочая группа обрабатывает 2 * wgSize элементов
-                let localRows = localArray<'n> processedSize
-                let localCols = localArray<'n> processedSize
-                let localValues = localArray<'a> processedSize
+                let offset = groupId * localSize
+                let border = min (offset + localSize) length
+                let n = border - offset
 
-                let mutable readIdx = processedSize * groupId + lid
-                let mutable localLength = local<int> ()
-                localLength <- processedSize
+                let nAligned =
+                    (%Quotes.ArithmeticOperations.ceilToPowerOfTwo) n
 
-                // копируем элементы из глобальной памяти в локальную
-                if readIdx < length then
-                    localRows.[lid] <- rows.[readIdx]
-                    localCols.[lid] <- cols.[readIdx]
-                    localValues.[lid] <- values.[readIdx]
+                let numberOfThreads = nAligned / 2
 
-                if readIdx = length then
-                    localLength <- lid
+                let sortedKeys = localArray<uint64> localSize
+                let sortedVals = localArray<'a> localSize
 
-                readIdx <- readIdx + workGroupSize
+                let mutable i = lid
 
-                if readIdx < length then
-                    localRows.[lid + workGroupSize] <- rows.[readIdx]
-                    localCols.[lid + workGroupSize] <- cols.[readIdx]
-                    localValues.[lid + workGroupSize] <- values.[readIdx]
+                while i + offset < border do
+                    let key: uint64 =
+                        ((uint64 rows.[i + offset]) <<< 32)
+                        ||| (uint64 cols.[i + offset])
 
-                if readIdx = length then
-                    localLength <- lid + workGroupSize
+                    sortedKeys.[i] <- key
+                    sortedVals.[i] <- vals.[i + offset]
+                    i <- i + workGroupSize
 
                 barrierLocal ()
 
-                let mutable segmentLength = processedSize
-                let mutable j = segmentLength
+                let mutable segmentSize = 2
 
-                while j > 1 do
-                    let localLineId = lid % (j / 2)
-                    let localTwinId = localLineId + (j / 2)
-                    let groupLineId = lid / (j / 2)
-                    let lineId = j * groupLineId + localLineId
-                    let twinId = j * groupLineId + localTwinId
+                while segmentSize <= nAligned do
+                    let segmentSizeHalf = segmentSize / 2
 
-                    if twinId < localLength
-                       && (localRows.[lineId] > localRows.[twinId]
-                           || localRows.[lineId] = localRows.[twinId]
-                              && localCols.[lineId] > localCols.[twinId]) then
-                        let tmpRow = localRows.[lineId]
-                        localRows.[lineId] <- localRows.[twinId]
-                        localRows.[twinId] <- tmpRow
+                    let mutable tid = lid
 
-                        let tmpCol = localCols.[lineId]
-                        localCols.[lineId] <- localCols.[twinId]
-                        localCols.[twinId] <- tmpCol
+                    while tid < numberOfThreads do
+                        let segmentId = tid / segmentSizeHalf
+                        let innerId = tid % segmentSizeHalf
+                        let innerIdSibling = segmentSize - innerId - 1
+                        let i = segmentId * segmentSize + innerId
+                        let j = segmentId * segmentSize + innerIdSibling
 
-                        let tmpValue = localValues.[lineId]
-                        localValues.[lineId] <- localValues.[twinId]
-                        localValues.[twinId] <- tmpValue
+                        if (i < n && j < n && sortedKeys.[i] > sortedKeys.[j]) then
+                            let tempK = sortedKeys.[i]
+                            sortedKeys.[i] <- sortedKeys.[j]
+                            sortedKeys.[j] <- tempK
+                            let tempV = sortedVals.[i]
+                            sortedVals.[i] <- sortedVals.[j]
+                            sortedVals.[j] <- tempV
+
+                        tid <- tid + workGroupSize
 
                     barrierLocal ()
 
-                    j <- j >>> 1
+                    let mutable k = segmentSizeHalf / 2
 
-                let mutable writeIdx = processedSize * groupId + lid
+                    while k > 0 do
 
-                if writeIdx < length then
-                    rows.[writeIdx] <- localRows.[lid]
-                    cols.[writeIdx] <- localCols.[lid]
-                    values.[writeIdx] <- localValues.[lid]
+                        let mutable tid = lid
 
-                writeIdx <- writeIdx + workGroupSize
+                        while tid < numberOfThreads do
+                            let segmentSizeInner = k * 2
+                            let segmentId = tid / k
+                            let innerId = tid % k
+                            let innerIdSibling = innerId + k
+                            let i = segmentId * segmentSizeInner + innerId
 
-                if writeIdx < length then
-                    rows.[writeIdx] <- localRows.[lid + workGroupSize]
-                    cols.[writeIdx] <- localCols.[lid + workGroupSize]
-                    values.[writeIdx] <- localValues.[lid + workGroupSize] @>
+                            let j =
+                                segmentId * segmentSizeInner + innerIdSibling
 
-        let program = clContext.Compile(localEnd)
+                            if (i < n && j < n && sortedKeys.[i] > sortedKeys.[j]) then
+                                let tempK = sortedKeys.[i]
+                                sortedKeys.[i] <- sortedKeys.[j]
+                                sortedKeys.[j] <- tempK
+                                let tempV = sortedVals.[i]
+                                sortedVals.[i] <- sortedVals.[j]
+                                sortedVals.[j] <- tempV
 
-        fun (queue: MailboxProcessor<_>) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) ->
+                            tid <- tid + workGroupSize
 
-            let ndRange =
-                Range1D.CreateValid(Utils.floorToPower2 values.Length, workGroupSize)
+                        k <- k / 2
+                        barrierLocal ()
 
-            let kernel = program.GetKernel()
+                    segmentSize <- segmentSize * 2
 
-            queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRange rows cols values values.Length))
-            queue.Post(Msg.CreateRunMsg<_, _>(kernel))
+                let mutable i = lid
 
-    let sortKeyValuesInplace<'n, 'a when 'n: comparison> (clContext: ClContext) workGroupSize =
+                while i + offset < border do
+                    let key = sortedKeys.[i]
+                    rows.[i + offset] <- int (key >>> 32)
+                    cols.[i + offset] <- int key
+                    vals.[i + offset] <- sortedVals.[i]
+                    i <- i + workGroupSize @>
 
-        let localBegin = localBegin clContext workGroupSize
-        let globalStep = globalStep clContext workGroupSize
-        let localEnd = localEnd clContext workGroupSize
+        let globalStep =
+            <@ fun (ndRange: Range1D) (rows: ClArray<int>) (cols: ClArray<int>) (vals: ClArray<'a>) (length: int) (segmentStart: int) ->
+                let lid = ndRange.LocalID0
+                let workGroupSize = ndRange.LocalWorkSize
 
-        fun (queue: MailboxProcessor<_>) (rows: ClArray<'n>) (cols: ClArray<'n>) (values: ClArray<'a>) ->
+                let n = length
 
-            let lengthCeiled = Utils.ceilToPower2 values.Length
+                let nAligned =
+                    (%Quotes.ArithmeticOperations.ceilToPowerOfTwo) n
 
-            let rec loopNested i =
-                if i > workGroupSize * 2 then
-                    globalStep queue rows cols values i false
-                    loopNested (i >>> 1)
+                let numberOfThreads = nAligned / 2
 
-            let rec mainLoop segmentLength =
-                if segmentLength <= lengthCeiled then
-                    globalStep queue rows cols values segmentLength true
-                    loopNested (segmentLength >>> 1)
-                    localEnd queue rows cols values
-                    mainLoop (segmentLength <<< 1)
+                let mutable segmentSize = segmentStart
 
-            localBegin queue rows cols values
-            mainLoop (workGroupSize <<< 2)
+                while segmentSize <= nAligned do
+                    let segmentSizeHalf = segmentSize / 2
+
+                    let mutable tid = lid
+
+                    while tid < numberOfThreads do
+                        let segmentId = tid / segmentSizeHalf
+                        let innerId = tid % segmentSizeHalf
+                        let innerIdSibling = segmentSize - innerId - 1
+                        let i = segmentId * segmentSize + innerId
+                        let j = segmentId * segmentSize + innerIdSibling
+
+                        if (i < n && j < n) then
+                            let keyI =
+                                ((uint64 rows.[i]) <<< 32) ||| (uint64 cols.[i])
+
+                            let keyJ =
+                                ((uint64 rows.[j]) <<< 32) ||| (uint64 cols.[j])
+
+                            if (keyI > keyJ) then
+                                let tempR = rows.[i]
+                                rows.[i] <- rows.[j]
+                                rows.[j] <- tempR
+                                let tempC = cols.[i]
+                                cols.[i] <- cols.[j]
+                                cols.[j] <- tempC
+                                let tempV = vals.[i]
+                                vals.[i] <- vals.[j]
+                                vals.[j] <- tempV
+
+                        tid <- tid + workGroupSize
+
+                    barrierGlobal ()
+
+                    let mutable k = segmentSizeHalf / 2
+
+                    while k > 0 do
+
+                        let mutable tid = lid
+
+                        while tid < numberOfThreads do
+                            let segmentSizeInner = k * 2
+                            let segmentId = tid / k
+                            let innerId = tid % k
+                            let innerIdSibling = innerId + k
+                            let i = segmentId * segmentSizeInner + innerId
+
+                            let j =
+                                segmentId * segmentSizeInner + innerIdSibling
+
+                            if (i < n && j < n) then
+                                let keyI =
+                                    ((uint64 rows.[i]) <<< 32) ||| (uint64 cols.[i])
+
+                                let keyJ =
+                                    ((uint64 rows.[j]) <<< 32) ||| (uint64 cols.[j])
+
+                                if (keyI > keyJ) then
+                                    let tempR = rows.[i]
+                                    rows.[i] <- rows.[j]
+                                    rows.[j] <- tempR
+                                    let tempC = cols.[i]
+                                    cols.[i] <- cols.[j]
+                                    cols.[j] <- tempC
+                                    let tempV = vals.[i]
+                                    vals.[i] <- vals.[j]
+                                    vals.[j] <- tempV
+
+                            tid <- tid + workGroupSize
+
+                        k <- k / 2
+                        barrierGlobal ()
+
+                    segmentSize <- segmentSize * 2 @>
+
+        let localStep = clContext.Compile(localStep)
+        let globalStep = clContext.Compile(globalStep)
+
+        fun (queue: MailboxProcessor<_>) (rows: ClArray<int>) (cols: ClArray<int>) (values: ClArray<'a>) ->
+
+            let size = values.Length
+
+            if (size = 1) then
+                ()
+            else if (size <= localSize) then
+                let numberOfThreads =
+                    Common.Utils.ceilToMultiple waveSize (min size maxThreadsPerBlock)
+
+                let ndRangeLocal =
+                    Range1D.CreateValid(numberOfThreads, numberOfThreads)
+
+                let kernel = localStep.GetKernel()
+
+                queue.Post(Msg.MsgSetArguments(fun () -> kernel.KernelFunc ndRangeLocal rows cols values values.Length))
+                queue.Post(Msg.CreateRunMsg<_, _>(kernel))
+            else
+                let numberOfGroups =
+                    size / localSize
+                    + (if size % localSize = 0 then 0 else 1)
+
+                let ndRangeLocal =
+                    Range1D.CreateValid(maxThreadsPerBlock * numberOfGroups, maxThreadsPerBlock)
+
+                let kernelLocal = localStep.GetKernel()
+
+                queue.Post(
+                    Msg.MsgSetArguments(fun () -> kernelLocal.KernelFunc ndRangeLocal rows cols values values.Length)
+                )
+
+                queue.Post(Msg.CreateRunMsg<_, _>(kernelLocal))
+
+                let ndRangeGlobal =
+                    Range1D.CreateValid(maxWorkGroupSize, maxWorkGroupSize)
+
+                let kernelGlobal = globalStep.GetKernel()
+
+                queue.Post(
+                    Msg.MsgSetArguments
+                        (fun () -> kernelGlobal.KernelFunc ndRangeGlobal rows cols values values.Length (localSize * 2))
+                )
+
+                queue.Post(Msg.CreateRunMsg<_, _>(kernelGlobal))

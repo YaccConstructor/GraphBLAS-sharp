@@ -11,6 +11,7 @@ module Common =
             /// Sorts in-place input array of values by their 2d indices,
             /// which are stored in two given arrays of keys: rows and columns.
             /// When comparing, it first looks at rows, then columns.
+            /// Note that maximum possible workGroupSize is used internally for better perfomance.
             /// </summary>
             /// <example>
             /// <code>
@@ -24,8 +25,7 @@ module Common =
             /// > val values = [| 1.9; 2.8; 6.4; 5.5; 4.6; 3.7; 7.3 |]
             /// </code>
             /// </example>
-            let sortKeyValuesInplace<'n, 'a when 'n: comparison> =
-                Sort.Bitonic.sortKeyValuesInplace<'n, 'a>
+            let sortKeyValuesInplace<'a> = Sort.Bitonic.sortKeyValuesInplace<'a>
 
         module Radix =
             /// <summary>
