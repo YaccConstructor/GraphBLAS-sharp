@@ -202,7 +202,7 @@ module ClArray =
             Bitmap.lastOccurrence clContext workGroupSize
 
         let prefixSumExclude =
-            PrefixSum.runExcludeInPlace <@ (+) @> clContext workGroupSize
+            ScanInternal.standardExcludeInPlace clContext workGroupSize
 
         fun (processor: MailboxProcessor<_>) (inputArray: ClArray<'a>) ->
 
@@ -210,7 +210,7 @@ module ClArray =
                 getUniqueBitmap processor DeviceOnly inputArray
 
             let resultLength =
-                (prefixSumExclude processor bitmap 0)
+                (prefixSumExclude processor bitmap)
                     .ToHostAndFree(processor)
 
             let outputArray =
@@ -314,7 +314,7 @@ module ClArray =
             Map.map<'a, int> (Map.chooseBitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            ScanInternal.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
             assignOption predicate clContext workGroupSize
@@ -410,7 +410,7 @@ module ClArray =
             Map.map2<'a, 'b, int> (Map.choose2Bitmap predicate) clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            ScanInternal.standardExcludeInPlace clContext workGroupSize
 
         let assignValues =
             assignOption2 predicate clContext workGroupSize
@@ -878,7 +878,7 @@ module ClArray =
             mapInPlace ArithmeticOperations.intNotQ clContext workGroupSize
 
         let prefixSum =
-            PrefixSum.standardExcludeInPlace clContext workGroupSize
+            ScanInternal.standardExcludeInPlace clContext workGroupSize
 
         let scatter =
             Scatter.lastOccurrence clContext workGroupSize
