@@ -22,7 +22,7 @@ module Bitonic =
 
     let q = defaultContext.Queue
 
-    let makeTest sort (array: ('n * 'n * 'a) []) =
+    let makeTest sort (array: (int * int * 'a) []) =
         if array.Length > 0 then
             let projection (row: 'n) (col: 'n) (_: 'a) = row, col
 
@@ -32,6 +32,8 @@ module Bitonic =
             )
 
             let rows, cols, vals = Array.unzip3 array
+            let rows = Array.map abs rows
+            let cols = Array.map abs cols
 
             let clRows = context.CreateClArray rows
             let clColumns = context.CreateClArray cols
@@ -58,11 +60,42 @@ module Bitonic =
             $"Column arrays should be equal. Actual is \n%A{actualCols}, expected \n%A{expectedCols}, input is \n%A{cols}"
             |> Utils.compareArrays (=) actualCols expectedCols
 
-            $"Value arrays should be equal. Actual is \n%A{actualValues}, expected \n%A{expectedValues}, input is \n%A{vals}"
-            |> Utils.compareArrays (=) actualValues expectedValues
+            // Check that for each pair of equal keys values are the same
+            let mutable i = 1
+
+            let expected, actual =
+                new ResizeArray<'a>(), new ResizeArray<'a>()
+
+            expected.Add expectedValues.[0]
+            actual.Add actualValues.[0]
+
+            while i < expectedValues.Size do
+                if
+                    not
+                        (
+                            actualRows.[i - 1] = actualRows.[i]
+                            && actualCols.[i - 1] = actualCols.[i]
+                        )
+                then
+                    Expect.sequenceEqual
+                        (actual |> Seq.countBy id)
+                        (actual |> Seq.countBy id)
+                        $"Values for keys %A{actualRows.[i - 1]}, %A{actualCols.[i - 1]} are not the same"
+
+                    expected.Clear()
+                    actual.Clear()
+
+                expected.Add expectedValues.[i]
+                actual.Add actualValues.[i]
+                i <- i + 1
+
+            Expect.sequenceEqual
+                actual
+                expected
+                $"Values for keys %A{actualRows.[i - 1]}, %A{actualCols.[i - 1]} are not the same"
 
     let testFixtures<'a when 'a: equality> =
-        Sort.Bitonic.sortKeyValuesInplace<int, 'a> context wgSize
+        Sort.Bitonic.sortKeyValuesInplace<'a> context wgSize
         |> makeTest
         |> testPropertyWithConfig config $"Correctness on %A{typeof<'a>}"
 

@@ -258,6 +258,15 @@ module ArithmeticOperations =
 
     let fst<'a> = <@ fun (x: 'a) (_: 'a) -> Some x @>
 
+    let ceilToPowerOfTwo =
+        <@ fun (x: int) ->
+            let mutable i = 1
+
+            while i < x do
+                i <- i * 2
+
+            i @>
+
     //PageRank specific
     let squareOfDifference =
         <@ fun (x: float32 option) (y: float32 option) ->
